@@ -20,7 +20,7 @@ All future Spring Initializr project generation and frontend scaffolding across 
 | **Java Group ID** | `com.devarom` | Standard package namespace (e.g., `com.devarom.accountsservice`, `com.devarom.apigateway`). |
 | **Frontend Framework** | **React + TypeScript + Vite** | Current Node.js LTS, `pnpm` package manager default; single SPA with role-based routing. |
 | **Persistence** | **PostgreSQL 16+** | Separate logical database per service; Flyway migrations owned by individual services. |
-| **Identity Provider** | **Keycloak 25+** | Standalone identity provider container with separate identity PostgreSQL database. |
+| **Identity Provider** | **Keycloak 26.8.1** (pinned) | Standalone identity provider container with separate identity PostgreSQL database (`keycloak_db`). Sanitized realm defined in `platform/identity/realm-devarom.json`. |
 
 *Note on verification:* Spring Boot 4.1.1 and Spring Cloud 2025.1.3 (Oakwood) have been verified for mutual compatibility under Java 21 LTS. Core business services (`accounts-service`, `pricing-service`, `delivery-service`, `communications-service`, `graphql-query-service`) will use Spring Boot 4.1.1 starters directly and omit Spring Cloud BOMs unless edge gateway capabilities require them.
 

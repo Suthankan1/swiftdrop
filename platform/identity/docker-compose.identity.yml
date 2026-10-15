@@ -1,0 +1,25 @@
+# ==============================================================================
+# Devarom Platform — Identity Service Isolated Compose (Issue #2)
+# Runs Keycloak 26.8.1 on port 8090 with automated realm import.
+# Reads runtime configuration from .env (injected outside Git).
+# ==============================================================================
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    container_name: devarom-keycloak
+    command: start-dev --import-realm
+    env_file:
+      - .env
+    environment:
+      KC_HTTP_PORT: 8080
+      KC_HOSTNAME: ${KC_HOSTNAME:-http://localhost:8090}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
+      JAVA_OPTS_APPEND: "-Dkeycloak.migration.replace-placeholders=true"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    ports:
+      - "${KEYCLOAK_PORT:-8090}:8080"
+    volumes:
+      - ./realm-devarom.json:/opt/keycloak/data/import/realm-devarom.json:ro
