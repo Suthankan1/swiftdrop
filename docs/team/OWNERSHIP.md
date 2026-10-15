@@ -1,14 +1,14 @@
 # Nine-member team allocation (proposed for signoff)
 
-This replaces the previous design package's generic M1–M9 developer-role allocation. It reflects the names and pairs **the group explicitly provided**, with **Suthankan1** leading Platform, Security, and Cross-Module Integration. Named individuals' frontend/backend specialization was **not established**, so pairs must choose the internal split themselves. See [Login Integration Contract](../contracts/LOGIN_CONTRACT.md) for the frozen November 1 coordination matrix.
+This replaces the previous design package's generic M1–M9 developer-role allocation. It reflects the names and pairs **the group explicitly provided**, with **Suthankan1** leading Platform, Security, and Cross-Module Integration. The team leader's latest explicit decision is that **Suthankan1 owns all authentication implementation (React SPA identity UI/OIDC session flow, Keycloak, Gateway JWT, Accounts shared JWT/security integration and primary auth tests)**. Functional team members retain their business models, their role-specific landing screens and independent security review. Individual non-auth frontend/backend splits remain subject to pair signoff. See [Login Integration Contract](../contracts/LOGIN_CONTRACT.md) for the frozen November 1 coordination matrix.
 
 | Team | Members | Primary feature ownership | Integration / cross-review |
 |---|---|---|---|
-| Customer | **Gajanthan, Sinthuha** | Customer UI + backend flows: signup/profile UX, quote/booking, customer tracking/history | Coordinate receipt interface, pricing API, SSE and auth with Platform |
+| Customer | **Gajanthan, Sinthuha** | Customer business UI + backend flows: profile/landing UX, quote/booking, tracking/history (but **not** identity login/signup/PKCE implementation) | Coordinate SPA shell/customer screens with Platform-owned shared authentication |
 | Merchant | **Eric, Thuvarahan** | Merchant registration/approval flow, scoped order API, dashboard, webhook configuration UI/contract | Coordinate webhook engine with Platform and Communications owning service |
 | Courier | **Abhinaya, Vibhushan** | Assigned-deliveries UI, status changes, notes, failed reasons, proof capture/UI and metadata | Coordinate private proof storage adapter with Platform; Delivery assignment rules with Dispatcher pair |
 | Dispatcher/Admin | **Pushmitha, HarithKeshan** | Unassigned queue, assignments/workload, zone/pricing admin, approval/report dashboards | Coordinate GraphQL stats query with Platform; assignment rules with Courier pair |
-| Platform & cross-module | **Suthankan1** | Identity (Keycloak + Google OIDC), server JWT/auth conventions, Gateway, Compose starter/CI conventions, shared contract coordination; **four bounded extra slices below** | Review, **not own**, other pairs' complete features |
+| Platform & cross-module | **Suthankan1** | **All authentication implementation:** Keycloak/Google OIDC, shared React login/signup/callback/logout/token lifecycle, Gateway JWT, Accounts JWT/resource-server security, primary auth tests; local platform setup and contract coordination; **four deferred extra slices below** | Review, **not own**, other pairs' complete features |
 
 **Service boundaries cut across actor pairs.** Delivery Operations is one service built by several feature owners; Accounts/Pricing/Communications similarly have features owned by pairs. Avoid one service per actor and avoid every pair creating a competing "delivery-service". Use feature packages inside the correct **service-owned** app; agree PR/code ownership before adding files. Platform supports shared infrastructure; it is not the implicit owner of all microservice implementation.
 
@@ -21,17 +21,24 @@ This replaces the previous design package's generic M1–M9 developer-role alloc
 | Courier | **Private proof-of-delivery object storage adapter** within Delivery | Courier status/state rules, proof metadata and capture UI | Secure store/retrieve adapter, size/type/auth tests; no public object URLs |
 | Dispatcher | **`deliveryStats` read-only GraphQL resolver** in the one GraphQL Query API | Dispatcher assignment/workload core logic, report screens and other GraphQL dashboard queries | Aggregate authorized Delivery read data, pagination/filter limits, tests |
 
-**Workload guard:** webhook delivery engine is substantial, not necessarily a "small" task. Treat it as a shared Communications integration with Eric/Thuvarahan and/or rebalance it if platform workload becomes excessive. Do **not** assume these four features must finish by Nov 1. No one should own Kafka infrastructure, complete auth, all services, all dashboards, CI and Kubernetes alone. Review effort with actual issue estimates, update owner agreement and record signoff.
+**Workload guard:** The team lead explicitly chose full authentication ownership, a larger workload than the original platform-only allocation. Defer all four cross-module extras until after Nov 1 and rebalance/reassign them with the respective pairs if needed (webhook engine especially). Independent security QA by Vibhushan does not transfer implementation ownership. Do not also assign Kafka, all services, all dashboards, CI and Kubernetes implementation to the same developer. Review effort and final signoff with all pairs.
 
 ## Proposed Nov 1 responsibilities, independently reviewable
 
-- Platform: Keycloak realm + local/Google PKCE integration plan, gateway routing and protected API JWT proof, reproducible login environment guidelines, auth-negative test coordination, integrated report architecture signoff.
-- Customer pair: React login/logout/signup UI and callback/error UX, current-user/role route experience in collaboration with Platform.
-- Merchant pair: merchant signup pending state / authentication and approval model in docs; optional thin approved-protected login page if time.
-- Courier pair: courier-only page and one authorization denial proof; don't implement status workflow prematurely.
-- Dispatcher pair: dispatcher/admin role-specific page and guarded access; document approval role provisioning.
+- Platform (Suthankan1): **Complete authentication:** real local/Google Keycloak login, React identity signup/login/callback/logout/OIDC session UI and reusable auth provider, Gateway JWT, Accounts independent JWT/role security, primary auth/security tests, reproducible local integration. See [#2](https://github.com/Suthankan1/devarom/issues/2), [#3](https://github.com/Suthankan1/devarom/issues/3), [#36](https://github.com/Suthankan1/devarom/issues/36) and [#37](https://github.com/Suthankan1/devarom/issues/37).
+- Customer pair: Gajanthan owns the one React SPA shell and customer *business profile/landing* screens [#6](https://github.com/Suthankan1/devarom/issues/6). Sinthuha owns Accounts business profile, owned PostgreSQL schema, DTO and domain ownership lookups [#5](https://github.com/Suthankan1/devarom/issues/5). They consume Platform auth; neither implements OIDC client, login/password management or shared JWT filters.
+- Merchant pair: merchant onboarding and pending/approved business status + merchant role landing page consuming Platform auth; no separate login client.
+- Courier pair: courier-only *business* landing page; Vibhushan independently verifies cross-role and resource-owner denials, while Platform owns security implementation.
+- Dispatcher pair: dispatcher/admin business landing views and staff profile read models; Platform owns Keycloak role provisioning and shared JWT authorization enforcement.
 - All nine: review own use-case/flow/ERD diagrams, cross-review one other part, link actual PRs/evidence, confirm group size with lecturer.
 
 **No branch may silently change another team's feature or the event/Protobuf contracts.** Cross-cutting contributors open small PRs into the module owner’s service; module owner reviews and retains acceptance responsibility.
 
 See [module handoff protocol](MODULE_HANDOFF.md) and [workload tracker](CONTRIBUTION_LOG.csv). Any final individual backend/frontend assignments need a group decision.
+
+## Cross-service auth code ownership
+
+- Shared React identity implementation is owned only by [#36](https://github.com/Suthankan1/devarom/issues/36). Gajanthan creates the **single** Vite SPA shell [#6](https://github.com/Suthankan1/devarom/issues/6); coordinate auth route/component ownership before parallel PRs. Eric/Abhinaya/Pushmitha build their own **role landing experiences** consuming the auth provider, not duplicate login code.
+- Shared Accounts JWT/security filter/policy is owned only by [#37](https://github.com/Suthankan1/devarom/issues/37); Accounts app and profile DB are created/owned by Sinthuha [#5](https://github.com/Suthankan1/devarom/issues/5). HarithKeshan owns staff read models, Thuvarahan owns merchant approval/status business rules. Do not create another Accounts service.
+- Vibhushan retains **independent** security verification [#18](https://github.com/Suthankan1/devarom/issues/18); independent QA is not primary authentication ownership.
+- The team must acknowledge this reassignment. These docs and issue scopes are proposed team coordination until the ownership PR is reviewed/merged; don't claim every member already consented.
