@@ -36,6 +36,10 @@ This replaces the previous design package's generic M1–M9 developer-role alloc
 
 See [module handoff protocol](MODULE_HANDOFF.md) and [workload tracker](CONTRIBUTION_LOG.csv). Any final individual backend/frontend assignments need a group decision.
 
+## Temporary Issue #6 implementation handoff — 2026-10-15
+
+The team lead explicitly reassigned **implementation of [#6](https://github.com/Suthankan1/devarom/issues/6) temporarily to Suthankan1** due to Gajanthan’s unavailability, to keep the November 1 milestone on schedule. **Gajanthan remains the original Customer feature steward** and Customer pair ownership is unchanged. Attribute this scaffold’s implementation to Suthankan1. Authentication stays in #36; Sinthuha retains Accounts business profiles #5. This exception does not transfer any other issue or module.
+
 ## Cross-service auth code ownership
 
 - Shared React identity implementation is owned only by [#36](https://github.com/Suthankan1/devarom/issues/36). Gajanthan creates the **single** Vite SPA shell [#6](https://github.com/Suthankan1/devarom/issues/6); coordinate auth route/component ownership before parallel PRs. Eric/Abhinaya/Pushmitha build their own **role landing experiences** consuming the auth provider, not duplicate login code.
