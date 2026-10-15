@@ -23,4 +23,5 @@
 
 | Date/time | Commit SHA | Environment | Command / demo steps | Observed result | Reviewer |
 |---|---|---|---|---|---|
-| TBD | TBD | TBD | TBD | **Not run** | TBD |
+| 2026-10-15 | Pending PR (Refs #2) | macOS Docker Desktop (Keycloak 26.8.1 container on port 8090) | `./platform/identity/validate-identity.sh` (JSON schema, 5 roles, default role CUSTOMER only, public client `devarom-frontend`, PKCE S256, strict origins, custom aud `devarom-api`, live discovery, negative ROPC/redirect/PKCE tests) | **PASSED (All 7 static + 5 live smoke tests passed)**; Google IdP pre-wired with runtime `.env` injection; full browser Google login pending external verification (L03 unverified) | Suthankan1 (Platform) |
+
