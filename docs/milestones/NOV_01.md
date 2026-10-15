@@ -29,4 +29,4 @@
 - [ ] Contribution evidence, actual commit IDs and screenshot/demo links recorded privately/safely
 - [ ] Report file format and submission destination confirmed with lecturer
 
-For details see [login acceptance evidence register](LOGIN_ACCEPTANCE.md).
+For details see [login acceptance evidence register](LOGIN_ACCEPTANCE.md) and [login integration contract](../contracts/LOGIN_CONTRACT.md).

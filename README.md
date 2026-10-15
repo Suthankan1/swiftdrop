@@ -7,12 +7,13 @@
 ## Read first
 
 1. [Project context](docs/project/PROJECT_CONTEXT.md) — assignment, scope, protocol choices.
-2. [Team ownership](docs/team/OWNERSHIP.md) — who builds what; the ninth member owns platform and four specifically bounded cross-module slices.
+2. [Team ownership](docs/team/OWNERSHIP.md) — who builds what; Suthankan1 owns platform and four specifically bounded cross-module slices.
 3. [November 1 milestone](docs/milestones/NOV_01.md) — report and **working initial logins**, with proof to collect.
-4. [Architecture baseline](docs/architecture/BASELINE.md) and [protocol matrix](docs/architecture/PROTOCOL_MATRIX.md).
-5. [Diagrams](docs/diagrams/README.md) — **20 original editable Draw.io files plus lightweight SVG previews**, included from the group's design pack.
-6. [AI agent instructions](AGENTS.md) and [prompt playbook](docs/ai/PROMPT_PLAYBOOK.md).
-7. [Open decisions](docs/architecture/OPEN_DECISIONS.md) — not everything in the diagrams is an approved implementation contract.
+4. [Login integration contract](docs/contracts/LOGIN_CONTRACT.md) — frozen versions, port registry, and minimal REST/OIDC contract.
+5. [Architecture baseline](docs/architecture/BASELINE.md) and [protocol matrix](docs/architecture/PROTOCOL_MATRIX.md).
+6. [Diagrams](docs/diagrams/README.md) — **20 original editable Draw.io files plus lightweight SVG previews**, included from the group's design pack.
+7. [AI agent instructions](AGENTS.md) and [prompt playbook](docs/ai/PROMPT_PLAYBOOK.md).
+8. [Open decisions](docs/architecture/OPEN_DECISIONS.md) — not everything in the diagrams is an approved implementation contract.
 
 ## Planned source layout (currently placeholder READMEs only)
 
