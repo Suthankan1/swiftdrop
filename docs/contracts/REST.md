@@ -4,6 +4,7 @@ REST is the public **command and simple read interface**, not an internal catch-
 
 | Capability | Proposed route | Owning service | Authorization emphasis |
 |---|---|---|---|
+| Current user profile | `GET /api/v1/users/me` | Accounts | authenticated user, Keycloak JWT `sub` match; see [Login Contract](LOGIN_CONTRACT.md) |
 | Quote | `POST /api/v1/quotes` | Pricing | input validation/abuse limit |
 | Book parcel | `POST /api/v1/parcels` | Delivery | bound authenticated customer/approved merchant, idempotency |
 | Parcel tracking | `GET /api/v1/tracking/{trackingNumber}` | Delivery | intentionally redacted public fields, rate limit |

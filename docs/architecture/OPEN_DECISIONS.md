@@ -5,10 +5,11 @@ Use one issue/PR or an ADR for each decision; record approver/date. Do not treat
 | Priority | Decision | Suggested owner/reviewer | Current state |
 |---|---|---|---|
 | High | Lecturer approval for 9 vs printed 10 members, final Nov 1 deliverable scope/year | Entire team / course staff | **Open** |
-| High | Team signoff of named ownership and ninth member's cross-module slices | All 9 | **Proposed** |
-| High | Identity realm/client settings, Google OAuth provider consent app, logout/reload/session/refresh behavior | Platform + Customer pair | **Open** |
-| High | Controlled courier/dispatcher/admin provisioning; pending/suspended merchant behavior | Platform + Merchant/Dispatcher pairs | **Open** |
-| High | Freeze initial REST routes and auth codes; choose developer port registry | Owners + Platform | **Draft** |
+| High | Team signoff of named ownership and Platform lead (Suthankan1) cross-module slices | All 9 members | **Proposed (Refs #1)** |
+| High | Pinned toolchain baseline (Java 21 LTS, Spring Boot 4.1.1, Spring Cloud 2025.1.3, Maven, React/Vite) | Platform (Suthankan1) + All owners | **Proposed contract ([LOGIN_CONTRACT.md](../contracts/LOGIN_CONTRACT.md))** |
+| High | Identity realm/client settings, Google OAuth provider consent app, logout/reload/session/refresh behavior | Platform (Suthankan1) + Customer pair | **Proposed contract ([LOGIN_CONTRACT.md](../contracts/LOGIN_CONTRACT.md))** |
+| High | Controlled courier/dispatcher/admin provisioning; pending/suspended merchant behavior | Platform (Suthankan1) + Merchant/Dispatcher pairs | **Proposed contract ([LOGIN_CONTRACT.md](../contracts/LOGIN_CONTRACT.md))** |
+| High | Freeze initial REST routes (`GET /api/v1/users/me`), auth codes, and developer port registry | Platform (Suthankan1) + Service Owners | **Proposed contract ([LOGIN_CONTRACT.md](../contracts/LOGIN_CONTRACT.md))** |
 | Medium | Quote expiry/currency/zone and weight bands | Customer + Dispatcher pairs | **Open** |
 | Medium | Failed-before-pickup and required delivery proof/recipient evidence | Courier + Dispatcher pairs | **Open** |
 | Medium | Merchant MVP uses API key (proposed) vs OAuth client credentials (assignment permits either) | Merchant + Platform | **Proposed API key** |

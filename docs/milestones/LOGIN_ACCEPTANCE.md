@@ -1,6 +1,6 @@
 # Initial login vertical slice — planned acceptance and evidence
 
-**All checks initially UNVERIFIED.** The starter provides no login implementation. When code appears, replace placeholders with actual commit/test evidence, including failures; don't check a box based on a mocked screen.
+**All checks initially UNVERIFIED.** The starter provides no login implementation. When code appears, replace placeholders with actual commit/test evidence, including failures; don't check a box based on a mocked screen. See [Login Integration Contract](../contracts/LOGIN_CONTRACT.md) for the agreed integration contract and port registry.
 
 | ID | Demonstration / negative case | Owner (proposed) | Evidence / result |
 |---|---|---|---|

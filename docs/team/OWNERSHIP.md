@@ -1,6 +1,6 @@
 # Nine-member team allocation (proposed for signoff)
 
-This replaces the previous design package's generic M1–M9 developer-role allocation. It reflects the names and pairs **the group explicitly provided**, with a ninth platform member whose name was not supplied. Named individuals' frontend/backend specialization was **not established**, so pairs must choose the internal split themselves.
+This replaces the previous design package's generic M1–M9 developer-role allocation. It reflects the names and pairs **the group explicitly provided**, with **Suthankan1** leading Platform, Security, and Cross-Module Integration. Named individuals' frontend/backend specialization was **not established**, so pairs must choose the internal split themselves. See [Login Integration Contract](../contracts/LOGIN_CONTRACT.md) for the frozen November 1 coordination matrix.
 
 | Team | Members | Primary feature ownership | Integration / cross-review |
 |---|---|---|---|
@@ -8,13 +8,13 @@ This replaces the previous design package's generic M1–M9 developer-role alloc
 | Merchant | **Eric, Thuvarahan** | Merchant registration/approval flow, scoped order API, dashboard, webhook configuration UI/contract | Coordinate webhook engine with Platform and Communications owning service |
 | Courier | **Abhinaya, Vibhushan** | Assigned-deliveries UI, status changes, notes, failed reasons, proof capture/UI and metadata | Coordinate private proof storage adapter with Platform; Delivery assignment rules with Dispatcher pair |
 | Dispatcher/Admin | **Pushmitha, HarithKeshan** | Unassigned queue, assignments/workload, zone/pricing admin, approval/report dashboards | Coordinate GraphQL stats query with Platform; assignment rules with Courier pair |
-| Platform & cross-module | **Ninth member (name to add)** | Identity (Keycloak + Google OIDC), server JWT/auth conventions, Gateway, Compose starter/CI conventions, shared contract coordination; **four bounded extra slices below** | Review, **not own**, other pairs' complete features |
+| Platform & cross-module | **Suthankan1** | Identity (Keycloak + Google OIDC), server JWT/auth conventions, Gateway, Compose starter/CI conventions, shared contract coordination; **four bounded extra slices below** | Review, **not own**, other pairs' complete features |
 
 **Service boundaries cut across actor pairs.** Delivery Operations is one service built by several feature owners; Accounts/Pricing/Communications similarly have features owned by pairs. Avoid one service per actor and avoid every pair creating a competing "delivery-service". Use feature packages inside the correct **service-owned** app; agree PR/code ownership before adding files. Platform supports shared infrastructure; it is not the implicit owner of all microservice implementation.
 
-## Ninth member — explicitly bounded extra features (after Nov 1 login)
+## Suthankan1 (Platform lead) — explicitly bounded extra features (after Nov 1 login)
 
-| Origin | Ninth member's small owned slice | Still owned by pair | Done boundary |
+| Origin | Platform lead's small owned slice | Still owned by pair | Done boundary |
 |---|---|---|---|
 | Customer | **PDF delivery receipt generation backend** within Delivery | Customer flow/UI, parcel/booking/history, receipt download wiring and end-to-end UX | Authorized service adapter renders receipt from existing accepted delivery data; tests |
 | Merchant | **Webhook delivery + retry worker/engine** within Communications | Merchant registration/order API/dashboard and webhook configuration contracts | Idempotent durable job, HMAC HTTPS delivery, bounded retry + failure status; tests; agree event/recipient contract first |

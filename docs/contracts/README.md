@@ -4,6 +4,7 @@ This folder describes review and compatibility requirements; **no real `.proto`,
 
 | Contract | Guidance | Future machine-readable location |
 |---|---|---|
+| Login & Auth (Nov 1) | [Login & Auth Contract](LOGIN_CONTRACT.md) | Identity integration, OIDC PKCE, JWT validation, port registry, and minimal Gateway-Accounts route |
 | External REST | [REST](REST.md) | `contracts/rest/` OpenAPI and HTTP error conventions |
 | Read-only GraphQL | [GraphQL](GRAPHQL.md) | `contracts/graphql/` schema files |
 | Internal gRPC | [gRPC](GRPC.md) | `contracts/grpc/` versioned `.proto` files |
