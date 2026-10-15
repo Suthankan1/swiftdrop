@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1110" viewBox="0 0 1600 1110"><rect width="100%" height="100%" fill="white"/>
+<rect x="45" y="140" width="1510" height="790" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="625,230 975,230" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="80,230 465,230" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="1120,230 1505,230" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="80,655 465,655" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="625,655 975,655" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="1120,655 1505,655" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="625,301.0 465,277.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="975,301.0 1120,277.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="800.0,412 800,500 272,500 272.5,615" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="800.0,412 800.0,615" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="800.0,412 800,500 1312,500 1312.5,615" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Delivery Operations - logical ERD</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">Service-owned relational model | Solid relations are local FKs; EXT marks foreign-service IDs, not cross-database FKs</text>
+<text x="53" y="1079.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="62" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">DELIVERY OPERATIONS DATABASE - exclusive writer / credentials</text>
+<rect x="625" y="190" width="350" height="222" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="638" y="217.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">PARCELS</text>
+<text x="642" y="269.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK parcel_id : UUID</text>
+<text x="642" y="288.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">UK tracking_number</text>
+<text x="642" y="307.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">EXT created_by_sub / merchant_id</text>
+<text x="642" y="326.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">quote_id, rate_version snapshot</text>
+<text x="642" y="345.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">pickup / drop-off / weight / size</text>
+<text x="642" y="364.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">amount, currency, current_status</text>
+<text x="642" y="383.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">version, created_at</text>
+<rect x="80" y="190" width="385" height="174" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="93" y="217.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">DELIVERY_ASSIGNMENTS</text>
+<text x="97" y="264.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK assignment_id</text>
+<text x="97" y="283.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK parcel_id -&gt; parcels</text>
+<text x="97" y="302.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">EXT courier_sub</text>
+<text x="97" y="321.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">active, assigned_at, assigned_by</text>
+<text x="97" y="340.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">UK active assignment per parcel</text>
+<rect x="1120" y="190" width="385" height="174" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1133" y="217.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">STATUS_HISTORY</text>
+<text x="1137" y="264.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK history_id</text>
+<text x="1137" y="283.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK parcel_id -&gt; parcels</text>
+<text x="1137" y="302.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">status, occurred_at, state_version</text>
+<text x="1137" y="321.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">actor_sub, note / failure_reason</text>
+<text x="1137" y="340.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">UK (parcel_id, state_version)</text>
+<rect x="80" y="615" width="385" height="174" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="93" y="642.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">DELIVERY_PROOFS</text>
+<text x="97" y="689.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK proof_id</text>
+<text x="97" y="708.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK parcel_id -&gt; parcels</text>
+<text x="97" y="727.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">recipient_name / delivery_note</text>
+<text x="97" y="746.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">private photo_object_key</text>
+<text x="97" y="765.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">uploaded_by_sub, uploaded_at</text>
+<rect x="625" y="615" width="350" height="174" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="638" y="642.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">OUTBOX_EVENTS</text>
+<text x="642" y="689.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK event_id</text>
+<text x="642" y="708.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK parcel_id -&gt; parcels</text>
+<text x="642" y="727.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">type, version, payload</text>
+<text x="642" y="746.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">created_at, published_at</text>
+<text x="642" y="765.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">topic: parcel.lifecycle.v1</text>
+<rect x="1120" y="615" width="385" height="174" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1133" y="642.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">IDEMPOTENCY_RECORDS</text>
+<text x="1137" y="689.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK record_id</text>
+<text x="1137" y="708.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK parcel_id -&gt; parcels</text>
+<text x="1137" y="727.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">principal_or_tenant, key, digest</text>
+<text x="1137" y="746.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">stored result, expires_at</text>
+<text x="1137" y="765.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">UK (principal_or_tenant,key)</text>
+<rect x="477.91552734375" y="258" width="132.1689453125" height="21" fill="white"/>
+<text x="544.0" y="272.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..* assignments</text>
+<rect x="997.260498046875" y="258" width="97.47900390625" height="21" fill="white"/>
+<text x="1046.0" y="272.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 1..* history</text>
+<rect x="281.86572265625" y="477" width="94.2685546875" height="22" fill="white"/>
+<text x="329.0" y="492.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..* proof</text>
+<rect x="720.95556640625" y="539" width="158.0888671875" height="22" fill="white"/>
+<text x="800.0" y="554.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..* retained events</text>
+<rect x="1187.1865234375" y="477" width="145.626953125" height="22" fill="white"/>
+<text x="1260.0" y="492.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..* retained keys</text>
+<rect x="60" y="960" width="720" height="88" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="65" y="989.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">EXT references: Accounts user / merchant / courier IDs and Pricing quote ID.</text>
+<text x="65" y="1008.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Resolve through authenticated gRPC; no cross-database joins or foreign keys.</text>
+<text x="65" y="1027.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Credentials and role authority remain in Keycloak / Accounts.</text>
+<rect x="825" y="960" width="715" height="88" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="830" y="989.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Receipt: authorized projection generated from committed parcel / proof history.</text>
+<text x="830" y="1008.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Photo and optional cached receipt object are private Delivery-owned objects.</text>
+<text x="830" y="1027.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Parcel state + history + outbox + idempotency commit in one transaction.</text>
+</svg>

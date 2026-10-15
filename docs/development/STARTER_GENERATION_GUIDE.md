@@ -1,0 +1,36 @@
+# Team-run starter generation guide (documentation only)
+
+**This starter deliberately contains no code or framework output.** Module owners generate their apps when their GitHub issue and module boundaries are approved. Use **Spring Initializr** (`start.spring.io`) for each individual Java application and the official Vite template for the frontend. Don't copy generated files from another team's module or merge all services into one app. If tool menus/versions have changed, follow current vendor compatibility guidance rather than forcing a historical version.
+
+## Versions and dependency choices
+
+- **Java:** Java **21 LTS** is our baseline. Use a **currently supported compatible Spring Boot release** when the team actually generates projects. Confirm Spring Cloud release train matches that Boot version; record chosen versions in the first scaffolding PR and pin them consistently.
+- **Build:** choose one style across Java services (Maven is a sensible default for a team using Initializr). Generate wrapper scripts as part of actual owner-created apps; the documentation ZIP deliberately includes none.
+- **Frontend:** React + TypeScript + Vite, current Node.js LTS and a single agreed package manager (pnpm is a proposed team default). React Router, typed REST/GraphQL clients, PKCE-capable Keycloak/OIDC library, form validation, and testing libraries may be added by the frontend owners in narrow tasks.
+- **Database:** supported PostgreSQL with Flyway migration ownership **per business service**. Do not create one cross-service entity model, shared migrations or business DB for Gateway/GraphQL Query API.
+- **Keycloak:** current supported release pinned with the team's eventual deployment configuration, separate identity database and sanitized example settings. Google OAuth client secrets must stay outside repo.
+- **Kafka:** KRaft-based configuration when async work starts (not needed to prove initial login); add Spring Kafka where the service genuinely publishes or consumes records, not every microservice.
+- **gRPC:** plan versioned Protobuf contract PR and choose compatible, supported Spring gRPC tooling when actually starting service-to-service integration; don't guess artifact versions or mix incompatible starter generations.
+
+## Planned Spring Initializr applications
+
+| Destination | Suggested first dependencies | Add **later only when needed** |
+|---|---|---|
+| `services/api-gateway/` | Spring Cloud Gateway **compatible with Boot version**, Spring Security, OAuth2 Resource Server, Actuator | Rate limits / observability / extended edge policies |
+| `services/accounts-service/` | Spring Web, Validation, Spring Security, OAuth2 Resource Server, Data JPA, PostgreSQL Driver, Flyway, Actuator | Private gRPC server/client as actual contract evolves; API-key persistence |
+| `services/pricing-service/` | Spring Web, Validation, Data JPA, PostgreSQL Driver, Flyway, Actuator | Internal gRPC quote validation and domain tests |
+| `services/delivery-service/` | Spring Web, Validation, Spring Security, OAuth2 Resource Server, Data JPA, PostgreSQL Driver, Flyway, Actuator | Private gRPC, Kafka producer/relay, SSE, object storage integration |
+| `services/communications-service/` | Spring Web (if needed for authenticated webhook configuration), Validation, Data JPA, PostgreSQL Driver, Flyway, Actuator | Spring Kafka consumer(s), durable retry job worker and HTTP webhook client |
+| `services/graphql-query-service/` | Spring for GraphQL, suitable Spring Web transport, Spring Security, OAuth2 Resource Server, Actuator | Internal gRPC clients, batching/DataLoader, query complexity enforcement; **no business JPA/DB** |
+
+This is an **implementation planning guide**, not a promise all dependencies are selectable in one Initializr UI. Spring Cloud, gRPC and GraphQL integration may require **reviewed subsequent dependency PRs** after generation. Check BOM/dependency alignment, avoid adding both servlet and reactive stacks accidentally, and prefer minimal dependencies initially. The Gateway stack is reactive in the intended design; other core services can use Spring MVC.
+
+## Recommended team sequence
+
+1. Agree Java/Boot/Cloud/Node/package-manager versions and basic naming convention in a docs/decision PR.
+2. Owners independently generate **only required initial-login subset** (`frontend`, `api-gateway`, `accounts-service`) and set up Keycloak via Platform-owned issue.
+3. Add the first protected request from React → Gateway → Accounts and prove JWT/owner denial. Keep Google sign-in a real OIDC browser flow, not a mocked screen.
+4. Add each remaining Spring service scaffold when an owner is ready to implement its first tested vertical slice.
+5. Freeze/prove shared gRPC/OpenAPI/GraphQL/Kafka contracts before parallel consumers begin implementing them.
+
+**No docker files, scripts, Java classes, frontend files, GitHub Action workflows or infrastructure manifests should be generated without a specific human-requested issue.**

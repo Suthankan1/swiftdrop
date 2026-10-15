@@ -1,0 +1,43 @@
+# Local secrets and private keys (keep example files safe and explicit)
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+secrets/
+
+# Java and build outputs
+**/target/
+**/build/
+**/.gradle/
+.gradle/
+*.class
+
+# Node / frontend artifacts
+**/node_modules/
+**/dist/
+**/.vite/
+**/coverage/
+
+# Local environment / editor / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+
+# Tests/caches and local broker volumes
+**/test-results/
+**/playwright-report/
+**/.pytest_cache/
+**/__pycache__/
+*.pyc
+.local/
+local-data/

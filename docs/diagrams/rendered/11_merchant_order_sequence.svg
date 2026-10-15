@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1106" viewBox="0 0 1700 1106"><rect width="100%" height="100%" fill="white"/>
+<polyline points="130.0,213 130.0,1036" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="418.0,213 418.0,1036" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="706.0,213 706.0,1036" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="994.0,213 994.0,1036" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="1282.0,213 1282.0,1036" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="1570.0,213 1570.0,1036" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="130.0,253 418.0,253" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="408.0,249.0 418.0,253 408.0,257.0" fill="#52677C"/>
+<polyline points="418.0,309 706.0,309" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="696.0,305.0 706.0,309 696.0,313.0" fill="#52677C"/>
+<polyline points="706.0,365 994.0,365" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="984.0,361.0 994.0,365 984.0,369.0" fill="#52677C"/>
+<polyline points="994.0,421 706.0,421" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="716.0,425.0 706.0,421 716.0,417.0" fill="#52677C"/>
+<polyline points="706.0,477 1282.0,477" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1272.0,473.0 1282.0,477 1272.0,481.0" fill="#52677C"/>
+<polyline points="1282.0,533 706.0,533" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="716.0,537.0 706.0,533 716.0,529.0" fill="#52677C"/>
+<polyline points="706.0,589 1570.0,589" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1560.0,585.0 1570.0,589 1560.0,593.0" fill="#52677C"/>
+<polyline points="1570.0,645 706.0,645" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="716.0,649.0 706.0,645 716.0,641.0" fill="#52677C"/>
+<polyline points="706.0,701 418.0,701" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="428.0,705.0 418.0,701 428.0,697.0" fill="#52677C"/>
+<polyline points="418.0,757 130.0,757" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="140.0,761.0 130.0,757 140.0,753.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Merchant API order creation</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">UML sequence | v1.3 MVP: scoped, hashed API-key credentials; approved tenant must be checked</text>
+<text x="53" y="1075.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<rect x="25.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="130.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Merchant system</text>
+<rect x="313.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="418.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Gateway</text>
+<rect x="601.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="706.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Delivery</text>
+<rect x="889.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="994.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Accounts</text>
+<rect x="1177.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1282.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Pricing</text>
+<rect x="1465.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1570.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Delivery DB</text>
+<text x="274.0" y="227.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">POST /api/v1/merchant/parcels</text>
+<text x="274.0" y="247.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">API key + Idempotency-Key + delivery data</text>
+<text x="562.0" y="283.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Route versioned REST command</text>
+<text x="562.0" y="303.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Rate limit + correlation ID</text>
+<text x="850.0" y="339.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">gRPC: validate key digest, scope</text>
+<text x="850.0" y="359.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Approval / revocation / tenant</text>
+<text x="850.0" y="415.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Verified approved merchant identity</text>
+<text x="994.0" y="451.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">gRPC: quote / rate validation</text>
+<text x="994.0" y="471.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Address zones + weight + size</text>
+<text x="994.0" y="527.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Immutable price snapshot</text>
+<text x="1138.0" y="563.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">BEGIN: merchant-owned parcel + history</text>
+<text x="1138.0" y="583.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Outbox + tenant-bound idempotency; COMMIT</text>
+<text x="1138.0" y="639.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Commit confirmed</text>
+<text x="562.0" y="695.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">201 tracking number + order ID</text>
+<text x="274.0" y="751.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Created delivery response</text>
+<rect x="90" y="795" width="1520" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="833.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Accounts stores only credential hash / metadata. Internal calls use authenticated service identity and verified delegated tenant context.</text>
+<rect x="90" y="877" width="1520" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="915.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">401 invalid credential; 403 unapproved / insufficient scope; 409 key reused with different payload. Duplicate same-key request returns original order.</text>
+<rect x="90" y="959" width="1520" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="997.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">OAuth 2.0 client credentials is an assignment-permitted alternate, deferred from this API-key MVP. Webhook subscription must be configured separately.</text>
+</svg>

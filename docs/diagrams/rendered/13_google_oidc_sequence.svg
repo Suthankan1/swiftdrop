@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1274" viewBox="0 0 1700 1274"><rect width="100%" height="100%" fill="white"/>
+<polyline points="130.0,213 130.0,1204" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="490.0,213 490.0,1204" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="850.0,213 850.0,1204" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="1210.0,213 1210.0,1204" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="1570.0,213 1570.0,1204" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="130.0,253 490.0,253" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="480.0,249.0 490.0,253 480.0,257.0" fill="#52677C"/>
+<polyline points="490.0,309 850.0,309" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="840.0,305.0 850.0,309 840.0,313.0" fill="#52677C"/>
+<polyline points="850.0,365 1210.0,365" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1200.0,361.0 1210.0,365 1200.0,369.0" fill="#52677C"/>
+<polyline points="1210.0,421 130.0,421" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="140.0,425.0 130.0,421 140.0,417.0" fill="#52677C"/>
+<polyline points="130.0,477 1210.0,477" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1200.0,473.0 1210.0,477 1200.0,481.0" fill="#52677C"/>
+<polyline points="1210.0,533 850.0,533" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="860.0,537.0 850.0,533 860.0,529.0" fill="#52677C"/>
+<polyline points="850.0,589 1210.0,589" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1200.0,585.0 1210.0,589 1200.0,593.0" fill="#52677C"/>
+<polyline points="1210.0,645 850.0,645" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="860.0,649.0 850.0,645 860.0,641.0" fill="#52677C"/>
+<polyline points="850.0,701 490.0,701" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="500.0,705.0 490.0,701 500.0,697.0" fill="#52677C"/>
+<polyline points="490.0,757 850.0,757" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="840.0,753.0 850.0,757 840.0,761.0" fill="#52677C"/>
+<polyline points="850.0,813 490.0,813" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="500.0,817.0 490.0,813 500.0,809.0" fill="#52677C"/>
+<polyline points="490.0,869 1570.0,869" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1560.0,865.0 1570.0,869 1560.0,873.0" fill="#52677C"/>
+<polyline points="1570.0,925 490.0,925" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="500.0,929.0 490.0,925 500.0,921.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Google login through Keycloak</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">UML sequence | SPA Authorization Code + PKCE; Google is brokered by Keycloak, which issues Devarom tokens</text>
+<text x="53" y="1243.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<rect x="25.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="130.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">User / Browser</text>
+<rect x="385.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="490.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">React SPA</text>
+<rect x="745.0" y="145" width="210" height="68" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="850.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Keycloak</text>
+<rect x="1105.0" y="145" width="210" height="68" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1210.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Google OIDC</text>
+<rect x="1465.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1570.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Gateway / Accounts</text>
+<text x="310.0" y="247.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Select Login with Google</text>
+<text x="670.0" y="283.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">/authorize: state, nonce, S256 challenge</text>
+<text x="670.0" y="303.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Public client + registered redirect URI</text>
+<text x="1030.0" y="339.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Broker OIDC authorization</text>
+<text x="1030.0" y="359.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">via browser redirect</text>
+<text x="670.0" y="415.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Authenticate / consent in Google UI</text>
+<text x="670.0" y="471.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">User completes Google login</text>
+<text x="1030.0" y="507.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Broker callback with Google code</text>
+<text x="1030.0" y="527.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">via browser redirect</text>
+<text x="1030.0" y="583.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Server-side code exchange / identity validation</text>
+<text x="1030.0" y="639.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Validated identity result</text>
+<text x="670.0" y="675.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Keycloak code + state callback</text>
+<text x="670.0" y="695.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">via browser redirect</text>
+<text x="670.0" y="751.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">/token: Keycloak code + PKCE verifier</text>
+<text x="670.0" y="807.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Keycloak access JWT + OIDC ID token</text>
+<text x="1030.0" y="863.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Bearer ACCESS token: profile bootstrap / read</text>
+<text x="1030.0" y="899.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Validate issuer/audience/expiry/signature</text>
+<text x="1030.0" y="919.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Map sub -&gt; profile; role + ownership checks</text>
+<rect x="90" y="963" width="1520" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="1001.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">React validates state; OIDC client checks nonce / ID-token claims. PKCE verifier is not sent in the authorization redirect. No client secret in SPA.</text>
+<rect x="90" y="1045" width="1520" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="1083.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Keycloak assigns approved application roles; Google login must not grant courier / dispatcher / admin privileges. Secrets remain server-side.</text>
+<rect x="90" y="1127" width="1520" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="1165.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">API accepts Keycloak access tokens, not Google ID tokens. Handle cancellation / expiry; tokens kept out of URLs and logs. Google provider setup is planned, not verified.</text>
+</svg>

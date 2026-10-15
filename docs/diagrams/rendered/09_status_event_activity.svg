@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="1190" viewBox="0 0 1560 1190"><rect width="100%" height="100%" fill="white"/>
+<rect x="50" y="140" width="580" height="950" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<rect x="700" y="140" width="810" height="950" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="335.0,219 340.0,270" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="343.0051998601662,259.65742905267473 340.0,270 335.04337165920634,260.4380004449257" fill="#52677C"/>
+<polyline points="340.0,340 340.0,397" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="344.0,387.0 340.0,397 336.0,387.0" fill="#52677C"/>
+<polyline points="340.0,474 340.0,528" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="344.0,518.0 340.0,528 336.0,518.0" fill="#52677C"/>
+<polyline points="230,574.0 176,574 177.5,705" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="181.385241492138,694.9548569672818 177.5,705 173.3857658855356,695.0464540162122" fill="#52677C"/>
+<polyline points="340.0,620 340,654 455,654 455.0,690" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="459.0,680.0 455.0,690 451.0,680.0" fill="#52677C"/>
+<polyline points="455.0,810 455.0,870" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="459.0,860.0 455.0,870 451.0,860.0" fill="#52677C"/>
+<polyline points="455.0,940 450.0,1008" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="454.7225449315219,998.3202495192409 450.0,1008 446.74408392919923,997.7335979749523" fill="#52677C"/>
+<polyline points="590,750.0 650,750 650,261 850,261.0" fill="none" stroke="#B46B1D" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="840.0,257.0 850,261.0 840.0,265.0" fill="#B46B1D"/>
+<polyline points="1105.0,297 1105.0,382" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1109.0,372.0 1105.0,382 1101.0,372.0" fill="#52677C"/>
+<polyline points="1105.0,390 1105,422 850,422 850.0,455" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="854.0,445.0 850.0,455 846.0,445.0" fill="#52677C"/>
+<polyline points="1105.0,390 1105,422 1110,422 1110.0,455" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1114.0,445.0 1110.0,455 1106.0,445.0" fill="#52677C"/>
+<polyline points="1105.0,390 1105,422 1370,422 1370.0,455" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1374.0,445.0 1370.0,455 1366.0,445.0" fill="#52677C"/>
+<polyline points="850.0,551 850.0,650" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="854.0,640.0 850.0,650 846.0,640.0" fill="#52677C"/>
+<polyline points="1110.0,551 1110.0,650" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1114.0,640.0 1110.0,650 1106.0,640.0" fill="#52677C"/>
+<polyline points="1370.0,551 1370.0,650" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1374.0,640.0 1370.0,650 1366.0,640.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Courier update -&gt; event side effects</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">Activity / event flow | Business commit succeeds independently of Kafka / provider availability</text>
+<text x="53" y="1159.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="67" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">SYNCHRONOUS COMMAND - Delivery owns consistency</text>
+<text x="717" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">ASYNCHRONOUS SIDE EFFECTS - at-least-once processing</text>
+<ellipse cx="335.0" cy="207.0" rx="12.0" ry="12.0" fill="#15324F" stroke="#52677C" stroke-width="1.5"/>
+<rect x="140" y="270" width="400" height="70" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="340.0" y="300.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Courier PATCH status + expected version</text>
+<text x="340.0" y="321.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Proof / recipient note or failure reason</text>
+<rect x="140" y="397" width="400" height="77" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="340.0" y="430.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">JWT role + current assignment ownership</text>
+<text x="340.0" y="451.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Allowed transition; required evidence</text>
+<polygon points="340.0,528 450,574.0 340.0,620 230,574.0" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="340.0" y="569.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Authorized</text>
+<text x="340.0" y="589.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">valid update?</text>
+<rect x="65" y="705" width="225" height="65" rx="8" fill="#FDEBEC" stroke="#52677C" stroke-width="1.5"/>
+<text x="177.5" y="732.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">401 / 403 / 409 / 422</text>
+<text x="177.5" y="752.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">No state change</text>
+<rect x="320" y="690" width="270" height="120" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="455.0" y="734.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Atomic DB transaction</text>
+<text x="455.0" y="755.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Current status + version</text>
+<text x="455.0" y="776.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">History + outbox event</text>
+<rect x="320" y="870" width="270" height="70" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="455.0" y="900.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">200 confirmed status</text>
+<text x="455.0" y="921.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Return before side effects</text>
+<ellipse cx="450.0" cy="1020.0" rx="12.0" ry="12.0" fill="#FFFFFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="450.0" y="1025.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">x</text>
+<rect x="156.0517578125" y="625" width="35.896484375" height="22" fill="white"/>
+<text x="174.0" y="640.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">No</text>
+<rect x="451.93798828125" y="615" width="42.1240234375" height="22" fill="white"/>
+<text x="473.0" y="630.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Yes</text>
+<rect x="850" y="225" width="510" height="72" rx="8" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="1105.0" y="256.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Outbox relay retries publish until acknowledged</text>
+<text x="1105.0" y="277.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Kafka topic parcel.lifecycle.v1; key = parcelId</text>
+<rect x="604.71728515625" y="506" width="96.5654296875" height="22" fill="white"/>
+<text x="653.0" y="521.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">After commit</text>
+<rect x="835" y="382" width="540" height="8" rx="8" fill="#15324F" stroke="#52677C" stroke-width="1.5"/>
+<rect x="740" y="455" width="220" height="96" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="850.0" y="488.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Notifications</text>
+<text x="850.0" y="508.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Consumer group</text>
+<text x="850.0" y="528.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Inbox + persistent job</text>
+<rect x="1000" y="455" width="220" height="96" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1110.0" y="488.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Webhooks</text>
+<text x="1110.0" y="508.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Consumer group</text>
+<text x="1110.0" y="528.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Inbox + persistent job</text>
+<rect x="1260" y="455" width="220" height="96" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1370.0" y="488.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Tracking fan-out</text>
+<text x="1370.0" y="508.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery consumer</text>
+<text x="1370.0" y="528.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Replica broadcast</text>
+<rect x="740" y="650" width="220" height="78" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="850.0" y="684.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Email / mock SMS</text>
+<text x="850.0" y="705.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Authorized contact lookup</text>
+<rect x="1000" y="650" width="220" height="78" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1110.0" y="684.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Signed HTTPS webhook</text>
+<text x="1110.0" y="704.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Merchant endpoint</text>
+<rect x="1260" y="650" width="220" height="78" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1370.0" y="684.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">SSE via Gateway</text>
+<text x="1370.0" y="705.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">React status update</text>
+<rect x="760" y="838" width="475" height="125" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="765" y="876.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">On provider failure: persistent bounded backoff retries.</text>
+<text x="765" y="895.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Exhausted jobs -&gt; failed / DLQ review and controlled replay.</text>
+<text x="765" y="914.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Unique (consumer,eventId); webhook job / attempt records.</text>
+<text x="765" y="933.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Consumers commit offsets only after durable scheduling.</text>
+<rect x="1260" y="838" width="220" height="125" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="1265" y="876.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">SSE reconnect:</text>
+<text x="1265" y="895.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Canonical REST GET.</text>
+<text x="1265" y="914.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Drop stale versions.</text>
+<text x="1265" y="933.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">No JWT in stream URL.</text>
+</svg>

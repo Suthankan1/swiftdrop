@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1280" viewBox="0 0 1400 1280"><rect width="100%" height="100%" fill="white"/>
+<rect x="55" y="140" width="445" height="1040" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<rect x="555" y="140" width="790" height="1040" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="273.0,216 280.0,250" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="281.90129896632175,239.39881788475154 280.0,250 274.0656426202685,241.01204125011546" fill="#52677C"/>
+<polyline points="430,283.0 740,283.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="730.0,279.0 740,283.0 730.0,287.0" fill="#52677C"/>
+<polyline points="950.0,316 950.0,355" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="954.0,345.0 950.0,355 946.0,345.0" fill="#52677C"/>
+<polyline points="1030,400.0 1110,400.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1100.0,396.0 1110,400.0 1100.0,404.0" fill="#52677C"/>
+<polyline points="950.0,445 950,502 430,502.5" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="440.0038415292903,506.49038277071844 430,502.5 439.996149225154,498.4903864689407" fill="#52677C"/>
+<polyline points="280.0,535 280.0,590" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="284.0,580.0 280.0,590 276.0,580.0" fill="#52677C"/>
+<polyline points="200,635.0 150,635 150.0,720" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="154.0,710.0 150.0,720 146.0,710.0" fill="#52677C"/>
+<polyline points="360,635.0 740,625.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="729.8982340781185,621.2644511434709 740,625.0 730.1086875348244,629.2616824982937" fill="#52677C"/>
+<polyline points="950.0,660 950.0,730" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="954.0,720.0 950.0,730 946.0,720.0" fill="#52677C"/>
+<polyline points="950.0,810 950.0,850" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="954.0,840.0 950.0,850 946.0,840.0" fill="#52677C"/>
+<polyline points="950.0,930 950.0,990" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="954.0,980.0 950.0,990 946.0,980.0" fill="#52677C"/>
+<polyline points="1050,890.0 1130,892.5" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1120.12981824864,888.1896041718744 1130,892.5 1119.8799402296183,896.1857007805711" fill="#52677C"/>
+<polyline points="1227.5,855 1370,850 1370,224 950,224 950.0,250" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="954.0,240.0 950.0,250 946.0,240.0" fill="#52677C"/>
+<polyline points="740,1034.0 430,1033.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="439.98704481259716,1037.0322370851895 430,1033.0 440.01285112994236,1029.0322787081736" fill="#52677C"/>
+<polyline points="280.0,1068 274.0,1145" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="278.76477716425217,1135.3409680311627 274.0,1145 270.7889545197431,1134.7194753575648" fill="#52677C"/>
+<polyline points="150.0,785 150,1156 263,1156.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="253.0,1152.0 263,1156.0 253.0,1160.0" fill="#52677C"/>
+<polyline points="1210.0,365 1210,225 280,225 280.0,250" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="284.0,240.0 280.0,250 276.0,240.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Customer quote -&gt; booking</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">UML-style activity | Price preview before confirmation; REST commands with internal gRPC validation</text>
+<text x="53" y="1249.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="72" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">Customer / React</text>
+<text x="572" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">Gateway -&gt; Pricing / Delivery</text>
+<ellipse cx="273.0" cy="203.0" rx="13.0" ry="13.0" fill="#15324F" stroke="#52677C" stroke-width="1.5"/>
+<rect x="130" y="250" width="300" height="66" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="280.0" y="278.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Enter pickup / drop-off</text>
+<text x="280.0" y="299.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Weight + size; validate form</text>
+<rect x="740" y="250" width="420" height="66" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="950.0" y="278.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">REST POST /api/v1/quotes</text>
+<text x="950.0" y="299.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Pricing validates zones / rate rules</text>
+<polygon points="950.0,355 1030,400.0 950.0,445 870,400.0" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="950.0" y="395.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Valid</text>
+<text x="950.0" y="415.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">quote?</text>
+<rect x="1110" y="365" width="200" height="70" rx="8" fill="#FDEBEC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1210.0" y="395.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Return validation error</text>
+<text x="1210.0" y="414.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Correct request</text>
+<rect x="130" y="470" width="300" height="65" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="280.0" y="497.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Display estimated fee</text>
+<text x="280.0" y="518.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Currency + quote expiry</text>
+<polygon points="280.0,590 360,635.0 280.0,680 200,635.0" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="280.0" y="630.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Confirm</text>
+<text x="280.0" y="650.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">booking?</text>
+<rect x="60" y="720" width="180" height="65" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="150.0" y="757.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Stop without booking</text>
+<rect x="740" y="590" width="420" height="70" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="950.0" y="620.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">POST /api/v1/parcels</text>
+<text x="950.0" y="641.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">quoteId + Idempotency-Key</text>
+<rect x="740" y="730" width="420" height="80" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="950.0" y="755.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery: owner + payload + quote check</text>
+<text x="950.0" y="775.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">gRPC Pricing; match request / expiry</text>
+<text x="950.0" y="795.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Expired quote -&gt; re-quote (no parcel)</text>
+<polygon points="950.0,850 1050,890.0 950.0,930 850,890.0" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="950.0" y="885.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Booking checks</text>
+<text x="950.0" y="905.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">passed?</text>
+<rect x="1130" y="855" width="195" height="75" rx="8" fill="#FDEBEC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1227.5" y="887.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">No parcel created</text>
+<text x="1227.5" y="907.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Re-quote / retry</text>
+<rect x="740" y="990" width="420" height="88" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="950.0" y="1019.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">One Delivery DB transaction</text>
+<text x="950.0" y="1039.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Parcel CREATED + history + outbox</text>
+<text x="950.0" y="1059.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Idempotency record + immutable fee snapshot</text>
+<rect x="130" y="998" width="300" height="70" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="280.0" y="1028.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">201 Created</text>
+<text x="280.0" y="1049.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Show tracking number + detail</text>
+<ellipse cx="274.0" cy="1156.0" rx="11.0" ry="11.0" fill="#FFFFFF" stroke="#52677C" stroke-width="1.5"/>
+<ellipse cx="274.0" cy="1156.0" rx="7.0" ry="7.0" fill="#15324F" stroke="#52677C" stroke-width="1.5"/>
+<rect x="562.3310546875" y="258" width="55.337890625" height="22" fill="white"/>
+<text x="590.0" y="273.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">REST</text>
+<rect x="1046.0517578125" y="374" width="35.896484375" height="22" fill="white"/>
+<text x="1064.0" y="389.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">No</text>
+<rect x="780.93798828125" y="477" width="42.1240234375" height="22" fill="white"/>
+<text x="802.0" y="492.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Yes</text>
+<rect x="128.0517578125" y="662" width="35.896484375" height="22" fill="white"/>
+<text x="146.0" y="677.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">No</text>
+<rect x="526.93798828125" y="607" width="42.1240234375" height="22" fill="white"/>
+<text x="548.0" y="622.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Yes</text>
+<rect x="944.93798828125" y="943" width="42.1240234375" height="22" fill="white"/>
+<text x="966.0" y="958.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Yes</text>
+<rect x="1067.0517578125" y="874" width="35.896484375" height="22" fill="white"/>
+<text x="1085.0" y="889.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">No</text>
+<rect x="569.32080078125" y="1020" width="41.3583984375" height="22" fill="white"/>
+<text x="590.0" y="1035.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">201</text>
+</svg>

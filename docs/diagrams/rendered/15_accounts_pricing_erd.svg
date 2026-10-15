@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1180" viewBox="0 0 1660 1180"><rect width="100%" height="100%" fill="white"/>
+<rect x="40" y="140" width="765" height="840" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<rect x="855" y="140" width="765" height="840" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="80,235 415,235" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="485,235 755,235" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="270,487 610,487" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="70,750 410,750" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="485,750 755,750" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="247.5,345 247,400 440,400 440.0,447" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="620.0,321 620,400 440,400 440.0,447" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="80,270.0 55,301 55,794 70,785.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="415,270.0 790,301 790,778 755,773.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="905,235 1210,235" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="1270,500 1570,500" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="900,750 1520,750" fill="none" stroke="#AFC1CF" stroke-width="1.6"/>
+<polyline points="1210,258.0 1418,282 1420.0,460" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="1420.0,610 1589,600 1589,794 1520,797.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="1057.5,321 1057,656 1115,656 1210.0,710" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Accounts &amp; Partners / Pricing &amp; Zones - ERD</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">Separate database boundaries | Cardinalities are local; Keycloak identity subject is an external stable identifier</text>
+<text x="53" y="1149.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="57" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">ACCOUNTS &amp; PARTNERS DATABASE</text>
+<text x="872" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">PRICING &amp; ZONES DATABASE</text>
+<rect x="80" y="195" width="335" height="150" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="93" y="222.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">USER_PROFILES</text>
+<text x="97" y="267.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK user_id</text>
+<text x="97" y="286.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">UK keycloak_sub (EXT)</text>
+<text x="97" y="305.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">name, email, phone</text>
+<text x="97" y="324.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">account_status</text>
+<rect x="485" y="195" width="270" height="126" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="498" y="222.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">ROLES</text>
+<text x="502" y="264.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK role_code</text>
+<text x="502" y="283.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">description</text>
+<text x="502" y="302.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Keycloak role mapping</text>
+<rect x="270" y="447" width="340" height="126" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="283" y="474.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">USER_ROLES</text>
+<text x="287" y="516.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK/FK user_id</text>
+<text x="287" y="535.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK/FK role_code</text>
+<text x="287" y="554.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Assigned / synced role metadata</text>
+<rect x="70" y="710" width="340" height="150" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="83" y="737.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">MERCHANTS</text>
+<text x="87" y="782.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK merchant_id</text>
+<text x="87" y="801.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK owner_user_id -&gt; profiles</text>
+<text x="87" y="820.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">name, approval_status</text>
+<text x="87" y="839.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">API key hash / scope / expiry / revoked</text>
+<rect x="485" y="710" width="270" height="126" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="498" y="737.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">COURIERS</text>
+<text x="502" y="779.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK courier_id</text>
+<text x="502" y="798.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">UK/FK user_id</text>
+<text x="502" y="817.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">active / eligibility</text>
+<rect x="266.765625" y="379" width="58.46875" height="22" fill="white"/>
+<text x="296.0" y="394.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..*</text>
+<rect x="570.765625" y="379" width="58.46875" height="22" fill="white"/>
+<text x="600.0" y="394.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..*</text>
+<rect x="58.765625" y="629" width="58.46875" height="22" fill="white"/>
+<text x="88.0" y="644.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..*</text>
+<rect x="691.5966796875" y="630" width="60.806640625" height="22" fill="white"/>
+<text x="722.0" y="645.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..1</text>
+<rect x="905" y="195" width="305" height="126" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="918" y="222.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">ZONES</text>
+<text x="922" y="264.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK zone_id</text>
+<text x="922" y="283.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">code, name</text>
+<text x="922" y="302.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">coverage / active</text>
+<rect x="1270" y="460" width="300" height="150" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1283" y="487.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">RATE_RULES</text>
+<text x="1287" y="532.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK rate_rule_id</text>
+<text x="1287" y="551.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK from_zone_id / to_zone_id</text>
+<text x="1287" y="570.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">weight / size band, amount / currency</text>
+<text x="1287" y="589.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">effective_from / to, version</text>
+<rect x="900" y="710" width="620" height="174" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="913" y="737.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="start">QUOTES</text>
+<text x="917" y="784.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PK quote_id</text>
+<text x="917" y="803.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">FK rate_rule_id + from_zone_id + to_zone_id</text>
+<text x="917" y="822.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">actor_sub / merchant_id (EXT references)</text>
+<text x="917" y="841.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">amount, currency, expires_at, request_digest</text>
+<text x="917" y="860.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">normalized request, policy_version</text>
+<rect x="1312.7646484375" y="290" width="144.470703125" height="21" fill="white"/>
+<text x="1385.0" y="304.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..* each zone role</text>
+<rect x="1490.765625" y="654" width="58.46875" height="22" fill="white"/>
+<text x="1520.0" y="669.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..*</text>
+<rect x="992.7646484375" y="628" width="144.470703125" height="21" fill="white"/>
+<text x="1065.0" y="642.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">1 : 0..* each zone role</text>
+<rect x="50" y="1005" width="750" height="103" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="55" y="1032.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Keycloak owns credentials / password hashes and its separate identity DB.</text>
+<text x="55" y="1051.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Accounts owns business eligibility and merchant approval.</text>
+<text x="55" y="1070.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Roles here are profile mappings; JWT role checks plus domain ownership apply.</text>
+<text x="55" y="1089.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">No passwords or Google tokens in these application tables.</text>
+<rect x="865" y="1005" width="745" height="103" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="870" y="1032.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Zone granularity and actual rates must be agreed with the lecturer / business.</text>
+<text x="870" y="1051.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Booking validates an unexpired quote and copies its immutable price snapshot.</text>
+<text x="870" y="1070.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Delivery never updates Pricing tables; later rate changes do not alter old fees.</text>
+<text x="870" y="1089.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Merchant key hash / scopes may be normalized to a credential table in implementation.</text>
+</svg>

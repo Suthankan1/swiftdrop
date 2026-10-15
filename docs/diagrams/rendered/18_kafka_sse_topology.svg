@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1200" viewBox="0 0 1700 1200"><rect width="100%" height="100%" fill="white"/>
+<rect x="40" y="375" width="755" height="440" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<rect x="850" y="375" width="800" height="440" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="460,215.0 590,215.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="580.0,211.0 590,215.0 580.0,219.0" fill="#52677C"/>
+<polyline points="945,215.0 1080,214.0" fill="none" stroke="#B46B1D" stroke-width="1.6"/>
+<polygon points="1069.970645520354,210.07418177680034 1080,214.0 1070.0299031539116,218.073962307094" fill="#B46B1D"/>
+<polyline points="230.0,520 230.0,615" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="234.0,605.0 230.0,615 226.0,605.0" fill="#52677C"/>
+<polyline points="590.0,520 590.0,615" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="594.0,605.0 590.0,615 586.0,605.0" fill="#52677C"/>
+<polyline points="1362.5,273 1362,320 230,320 230.0,432" fill="none" stroke="#B46B1D" stroke-width="1.6"/>
+<polygon points="234.0,422.0 230.0,432 226.0,422.0" fill="#B46B1D"/>
+<polyline points="1362.5,273 1362,347 590,347 590.0,432" fill="none" stroke="#B46B1D" stroke-width="1.6"/>
+<polygon points="594.0,422.0 590.0,432 586.0,422.0" fill="#B46B1D"/>
+<polyline points="1362.5,273 1362,310 1057,310 1057.5,432" fill="none" stroke="#B46B1D" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1061.458983144933,421.9836906767944 1057.5,432 1053.459050330327,422.0164772866903" fill="#B46B1D"/>
+<polyline points="1362.5,273 1437,319 1437.5,432" fill="none" stroke="#B46B1D" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1441.4557134887802,421.98239895011375 1437.5,432 1433.4557918022986,422.01779683368227" fill="#B46B1D"/>
+<polyline points="1057.5,542 1057,582 1252,582 1252.5,626" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1256.386112733259,615.9551939877167 1252.5,626 1248.3866292121645,616.0460972095473" fill="#52677C"/>
+<polyline points="1437.5,542 1437,582 1252,582 1252.5,626" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1256.386112733259,615.9551939877167 1252.5,626 1248.3866292121645,616.0460972095473" fill="#52677C"/>
+<polyline points="1252.5,701 1252.5,880" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1256.5,870.0 1252.5,880 1248.5,870.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Kafka reliability and SSE fan-out</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">Integration detail | Independent consumer groups; Delivery hosts the tracking endpoint and broadcast consumer</text>
+<text x="53" y="1169.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<rect x="60" y="165" width="400" height="100" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="260.0" y="198.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Delivery Operations</text>
+<text x="260.0" y="221.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Atomic status + history + OUTBOX</text>
+<text x="260.0" y="244.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Authoritative PostgreSQL state</text>
+<rect x="590" y="165" width="355" height="100" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="767.5" y="198.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery outbox relay</text>
+<text x="767.5" y="221.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">Ack -&gt; mark published</text>
+<text x="767.5" y="244.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">Retry; duplicates allowed</text>
+<rect x="1080" y="155" width="565" height="118" rx="8" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="1362.5" y="186.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Kafka KRaft</text>
+<text x="1362.5" y="209.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">parcel.lifecycle.v1 | key=parcelId</text>
+<text x="1362.5" y="232.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">eventId + aggregateVersion + correlationId</text>
+<text x="1362.5" y="255.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Ordering within a partition; not global</text>
+<rect x="473.58642578125" y="185" width="102.8271484375" height="22" fill="white"/>
+<text x="525.0" y="200.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Pending rows</text>
+<rect x="963.31396484375" y="185" width="97.3720703125" height="22" fill="white"/>
+<text x="1012.0" y="200.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Publish / ack</text>
+<text x="57" y="401.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">COMMUNICATIONS - one business service, independent handlers</text>
+<rect x="80" y="432" width="300" height="88" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="230.0" y="460.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Group: communications.</text>
+<text x="230.0" y="481.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">notifications.v1</text>
+<text x="230.0" y="502.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Inbox + durable jobs</text>
+<rect x="430" y="432" width="320" height="88" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="590.0" y="460.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Group: communications.</text>
+<text x="590.0" y="481.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">webhooks.v1</text>
+<text x="590.0" y="502.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Inbox + durable jobs</text>
+<rect x="80" y="615" width="300" height="72" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="230.0" y="646.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Email / mock SMS adapter</text>
+<text x="230.0" y="667.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Resolve recipient via owning APIs</text>
+<rect x="430" y="615" width="320" height="72" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="590.0" y="646.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Signed merchant webhook</text>
+<text x="590.0" y="667.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Receiver deduplicates eventId</text>
+<rect x="90" y="721" width="650" height="65" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="748.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Malformed / unprocessable event -&gt; event retry + DLQ review.</text>
+<text x="95" y="767.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">External job failure -&gt; bounded durable retries, failed-job review. No exactly-once claim.</text>
+<text x="867" y="401.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">DELIVERY TRACKING - replica fan-out target (separate from Nov 1 login build)</text>
+<rect x="890" y="432" width="335" height="110" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1057.5" y="461.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery replica A</text>
+<text x="1057.5" y="482.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Group: tracking.&lt;replica-A&gt;</text>
+<text x="1057.5" y="503.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Consumes ALL topic partitions</text>
+<text x="1057.5" y="524.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Authorized SSE connections</text>
+<rect x="1270" y="432" width="335" height="110" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1437.5" y="461.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery replica B</text>
+<text x="1437.5" y="482.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Group: tracking.&lt;replica-B&gt;</text>
+<text x="1437.5" y="503.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Consumes ALL topic partitions</text>
+<text x="1437.5" y="524.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Authorized SSE connections</text>
+<rect x="1125" y="626" width="255" height="75" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1252.5" y="658.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Gateway / Ingress</text>
+<text x="1252.5" y="679.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">SSE routing + heartbeat</text>
+<rect x="1068.9931640625" y="564" width="46.013671875" height="22" fill="white"/>
+<text x="1092.0" y="579.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">SSE</text>
+<rect x="1426.9931640625" y="564" width="46.013671875" height="22" fill="white"/>
+<text x="1450.0" y="579.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">SSE</text>
+<rect x="1050" y="880" width="405" height="75" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1252.5" y="912.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">React tracking client</text>
+<text x="1252.5" y="935.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">Redacted state-only events</text>
+<rect x="1188.54150390625" y="840" width="126.9169921875" height="22" fill="white"/>
+<text x="1252.0" y="855.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">SSE over HTTPS</text>
+<rect x="65" y="868" width="805" height="105" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="70" y="895.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Each replica has a unique group, so every connection node receives each event.</text>
+<text x="70" y="915.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">A single shared tracking group would load-balance events and miss clients.</text>
+<text x="70" y="935.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Target must be proven with two replicas; clean up stale groups and size lag / load.</text>
+<text x="70" y="955.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">One Delivery/SSE replica is the simpler non-HA full-flow demo starting point.</text>
+<rect x="895" y="1007" width="740" height="100" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="900" y="1032.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Reconnect: canonical REST GET + latest state version; discard stale events.</text>
+<text x="900" y="1052.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Fetch-based SSE supports Authorization header; never put JWT in URL.</text>
+<text x="900" y="1072.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Rate-limit public tracking; redact addresses, phones and proof.</text>
+<text x="900" y="1092.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Ingress: disable buffering, configure timeouts; heartbeats / backpressure.</text>
+</svg>

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1550" height="1090" viewBox="0 0 1550 1090"><rect width="100%" height="100%" fill="white"/>
+<rect x="40" y="140" width="1470" height="745" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="265.0,276 265.0,380" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="269.0,370.0 265.0,380 261.0,370.0" fill="#52677C"/>
+<polyline points="460,236.0 590,236.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="580.0,232.0 590,236.0 580.0,240.0" fill="#52677C"/>
+<polyline points="265.0,196 265,168 1290,168 1290.0,196" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1294.0,186.0 1290.0,196 1286.0,186.0" fill="#52677C"/>
+<polyline points="790.0,276 790.0,380" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="794.0,370.0 790.0,380 786.0,370.0" fill="#52677C"/>
+<polyline points="590,236.0 525,236 525,542 530.0,580" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="532.6612720564564,569.563638994289 530.0,580 524.729637692116,570.6072750948601" fill="#52677C"/>
+<polyline points="790.0,460 530.0,580" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="540.7558265548515,579.4412557633843 530.0,580 537.4033611351575,572.1775806873807" fill="#52677C"/>
+<polyline points="530.0,685 530,723 285,723 285.0,756" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="289.0,746.0 285.0,756 281.0,746.0" fill="#52677C"/>
+<polyline points="530.0,685 530,723 790,723 790.0,756" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="794.0,746.0 790.0,756 786.0,746.0" fill="#52677C"/>
+<polyline points="990,632.5 1130,632.5" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1120.0,628.5 1130,632.5 1120.0,636.5" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Docker Compose local target</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">Core containerization target | Initial Nov 1 login slice starts identity / UI / Gateway / Accounts first</text>
+<text x="53" y="1059.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="57" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">PRIVATE COMPOSE NETWORK | independently built containers; no monolithic backend</text>
+<rect x="70" y="196" width="390" height="80" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="265.0" y="231.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">Developer browser</text>
+<text x="265.0" y="254.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">React role workspaces / tracking</text>
+<rect x="70" y="380" width="390" height="80" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="265.0" y="415.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Frontend NGINX / Vite dev</text>
+<text x="265.0" y="437.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Static UI; configurable API origin</text>
+<rect x="590" y="196" width="400" height="80" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="790.0" y="231.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">Gateway</text>
+<text x="790.0" y="254.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="normal" fill="#15324F" text-anchor="middle">Versioned REST / GraphQL / SSE</text>
+<rect x="479.82763671875" y="206" width="90.3447265625" height="22" fill="white"/>
+<text x="525.0" y="221.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">HTTPS API</text>
+<rect x="1130" y="196" width="320" height="80" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1290.0" y="231.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Keycloak + identity DB</text>
+<text x="1290.0" y="253.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Google broker configured</text>
+<rect x="729.33642578125" y="143" width="141.3271484375" height="22" fill="white"/>
+<text x="800.0" y="158.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">OIDC code + PKCE</text>
+<rect x="590" y="380" width="400" height="80" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="790.0" y="415.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">ONE read-only GraphQL Query API</text>
+<text x="790.0" y="437.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">No business database</text>
+<rect x="755.70361328125" y="317" width="68.5927734375" height="22" fill="white"/>
+<text x="790.0" y="332.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">/graphql</text>
+<rect x="70" y="580" width="920" height="105" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="530.0" y="616.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">4 business Spring Boot containers</text>
+<text x="530.0" y="639.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Accounts &amp; Partners | Pricing &amp; Zones | Delivery Operations | Communications</text>
+<text x="530.0" y="662.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Owned data, REST commands, internal gRPC; Delivery tracking SSE endpoint</text>
+<rect x="484.48974609375" y="500" width="95.0205078125" height="22" fill="white"/>
+<text x="532.0" y="515.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">REST / SSE</text>
+<rect x="738.87255859375" y="527" width="94.2548828125" height="22" fill="white"/>
+<text x="786.0" y="542.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">gRPC reads</text>
+<rect x="70" y="756" width="430" height="90" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="285.0" y="796.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">PostgreSQL + persistent volume</text>
+<text x="285.0" y="818.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">4 isolated business DBs / distinct users</text>
+<rect x="590" y="756" width="400" height="90" rx="8" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="790.0" y="796.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Kafka KRaft + persistent volume</text>
+<text x="790.0" y="818.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Outbox / consumers / retries</text>
+<rect x="1130" y="580" width="320" height="105" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1290.0" y="616.5" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Private object storage</text>
+<text x="1290.0" y="638.5" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Proof / receipts</text>
+<text x="1290.0" y="660.5" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Persistent volume</text>
+<rect x="228.634765625" y="700" width="148.73046875" height="22" fill="white"/>
+<text x="303.0" y="715.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Own DB connections</text>
+<rect x="743.60009765625" y="700" width="60.7998046875" height="22" fill="white"/>
+<text x="774.0" y="715.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Events</text>
+<rect x="1017.54150390625" y="604" width="84.9169921875" height="22" fill="white"/>
+<text x="1060.0" y="619.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Object API</text>
+<rect x="65" y="935" width="1410" height="82" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="70" y="960.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="start">NOV 1 INITIAL BUILD ACCEPTANCE: independently bootable skeletons, React role routes, Keycloak local + Google login, JWT validation,</text>
+<text x="70" y="981.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="start">Accounts profile mapping, authorization / negative checks, safe .env.example, documented setup and evidence. Full domain/event flows follow later.</text>
+<text x="70" y="1002.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="start">Diagram is a deployment design target; this package does not implement or claim an operational codebase.</text>
+</svg>

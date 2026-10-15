@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1080" viewBox="0 0 1400 1080"><rect width="100%" height="100%" fill="white"/>
+<polyline points="697.0,169 697.5,208" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="701.3714767161699,197.9495438891484 697.5,208 693.3721340973287,198.05209956374892" fill="#52677C"/>
+<polyline points="697.5,282 697.5,335" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="701.5,325.0 697.5,335 693.5,325.0" fill="#52677C"/>
+<polyline points="697.5,405 697.5,460" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="701.5,450.0 697.5,460 693.5,450.0" fill="#52677C"/>
+<polyline points="697.5,530 697.5,585" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="701.5,575.0 697.5,585 693.5,575.0" fill="#52677C"/>
+<polyline points="697.5,655 700.0,708" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="703.5243832047076,697.8226367350686 700.0,708 695.5332683448357,698.1995761152513" fill="#52677C"/>
+<polyline points="700.0,808 697.5,870" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="701.8996505401007,860.1692790129619 697.5,870 693.9061462621156,859.8469602920754" fill="#52677C"/>
+<polyline points="697.5,945 692.0,1000" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="696.97518595105,990.4476429739841 692.0,1000 689.0148884293701,989.6516132218162" fill="#52677C"/>
+<polyline points="790,758.0 980,759.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="970.0211908412749,754.9474245505178 980,759.0 969.9790861612804,762.9473137494956" fill="#52677C"/>
+<polyline points="1140.0,722 1138,370 925,370.0" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="935.0,374.0 925,370.0 935.0,366.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Dispatcher assignment</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">UML-style activity | GraphQL loads work / workloads; REST performs assignment with concurrency checks</text>
+<text x="53" y="1049.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<ellipse cx="697.0" cy="157.0" rx="12.0" ry="12.0" fill="#15324F" stroke="#52677C" stroke-width="1.5"/>
+<rect x="470" y="208" width="455" height="74" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="697.5" y="240.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">GraphQL query via Gateway -&gt; Query API</text>
+<text x="697.5" y="261.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">gRPC: Delivery queue + Accounts couriers</text>
+<rect x="470" y="335" width="455" height="70" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="697.5" y="365.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Dispatcher selects parcel + eligible courier</text>
+<text x="697.5" y="386.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">UI shows active workload</text>
+<rect x="470" y="460" width="455" height="70" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="697.5" y="490.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">REST POST /api/v1/assignments</text>
+<text x="697.5" y="511.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">parcelId + courierId + expectedVersion</text>
+<rect x="470" y="585" width="455" height="70" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="697.5" y="615.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Verify dispatcher scope + courier eligibility</text>
+<text x="697.5" y="636.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Lock / version-check parcel and active assignment</text>
+<polygon points="700.0,708 790,758.0 700.0,808 610,758.0" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="700.0" y="753.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Allowed /</text>
+<text x="700.0" y="773.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">no conflict?</text>
+<rect x="980" y="722" width="320" height="74" rx="8" fill="#FDEBEC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1140.0" y="754.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">403 / 409 or invalid courier</text>
+<text x="1140.0" y="775.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Refresh queue; select again</text>
+<rect x="470" y="870" width="455" height="75" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="697.5" y="902.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery DB commits assignment + audit</text>
+<text x="697.5" y="923.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Assignment is NOT a parcel lifecycle status</text>
+<ellipse cx="692.0" cy="1012.0" rx="12.0" ry="12.0" fill="#FFFFFF" stroke="#52677C" stroke-width="1.5"/>
+<ellipse cx="692.0" cy="1012.0" rx="7.0" ry="7.0" fill="#15324F" stroke="#52677C" stroke-width="1.5"/>
+<rect x="874.0517578125" y="728" width="35.896484375" height="22" fill="white"/>
+<text x="892.0" y="743.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">No</text>
+<rect x="1132.27587890625" y="580" width="51.4482421875" height="22" fill="white"/>
+<text x="1158.0" y="595.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Retry</text>
+<text x="744.0" y="841.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Yes</text>
+<rect x="55" y="330" width="330" height="170" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="60" y="380.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Preconditions</text>
+<text x="60" y="400.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Dispatcher is authenticated.</text>
+<text x="60" y="420.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Courier is active and eligible.</text>
+<text x="60" y="440.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Parcel is not terminal.</text>
+<text x="60" y="460.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Only one active assignment per parcel.</text>
+<rect x="55" y="800" width="330" height="110" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="60" y="840.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Workload is derived from assignments.</text>
+<text x="60" y="860.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Multi-dispatcher conflicts must not</text>
+<text x="60" y="880.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">create two active assignments.</text>
+</svg>

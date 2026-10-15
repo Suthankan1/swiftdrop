@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1260" viewBox="0 0 1700 1260"><rect width="100%" height="100%" fill="white"/>
+<rect x="40" y="140" width="1130" height="110" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<rect x="40" y="690" width="1610" height="185" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="1470.0,260 1470.0,325" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1474.0,315.0 1470.0,325 1466.0,315.0" fill="#52677C"/>
+<polyline points="695,207.0 715,207 715,270 1230,270 1230,210 1290,210.0" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1280.0,206.0 1290,210.0 1280.0,214.0" fill="#52677C"/>
+<polyline points="382.5,233 382,286 707,286 707.5,325" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="711.3714767161699,314.94954388914834 707.5,325 703.3721340973287,315.0520995637489" fill="#52677C"/>
+<polyline points="940.0,233 940,300 800,300 707.5,325" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="718.1972700308538,326.25236332068533 707.5,325 716.1099978297116,318.5294561764592" fill="#52677C"/>
+<polyline points="355,377.5 315,377 315,460 315.0,500" fill="none" stroke="#7355A5" stroke-width="1.6"/>
+<polygon points="319.0,490.0 315.0,500 311.0,490.0" fill="#7355A5"/>
+<polyline points="255.0,848 255.0,940" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="259.0,930.0 255.0,940 251.0,930.0" fill="#52677C"/>
+<polyline points="655.0,848 655.0,940" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="659.0,930.0 655.0,940 651.0,930.0" fill="#52677C"/>
+<polyline points="1055.0,848 1055.0,940" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1059.0,930.0 1055.0,940 1051.0,930.0" fill="#52677C"/>
+<polyline points="1455.0,848 1455.0,940" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1459.0,930.0 1455.0,940 1451.0,930.0" fill="#52677C"/>
+<polyline points="710,430 710,635" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="160,635 1460,635" fill="none" stroke="#2B71B8" stroke-width="1.6"/>
+<polyline points="255.0,635 255.0,741" fill="none" stroke="#2B71B8" stroke-width="1.6"/>
+<polygon points="259.0,731.0 255.0,741 251.0,731.0" fill="#2B71B8"/>
+<polyline points="655.0,635 655.0,741" fill="none" stroke="#2B71B8" stroke-width="1.6"/>
+<polygon points="659.0,731.0 655.0,741 651.0,731.0" fill="#2B71B8"/>
+<polyline points="1055.0,635 1055.0,741" fill="none" stroke="#2B71B8" stroke-width="1.6"/>
+<polygon points="1059.0,731.0 1055.0,741 1051.0,731.0" fill="#2B71B8"/>
+<polyline points="1455.0,635 1455.0,741" fill="none" stroke="#2B71B8" stroke-width="1.6"/>
+<polygon points="1459.0,731.0 1455.0,741 1451.0,731.0" fill="#2B71B8"/>
+<polyline points="315.0,602 315,660 255.0,660 255.0,741" fill="none" stroke="#7355A5" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="259.0,731.0 255.0,741 251.0,731.0" fill="#7355A5"/>
+<polyline points="315.0,602 315,660 655.0,660 655.0,741" fill="none" stroke="#7355A5" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="659.0,731.0 655.0,741 651.0,731.0" fill="#7355A5"/>
+<polyline points="315.0,602 315,660 1055.0,660 1055.0,741" fill="none" stroke="#7355A5" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1059.0,731.0 1055.0,741 1051.0,731.0" fill="#7355A5"/>
+<polyline points="1055.0,848 1240,889 1240,1060 835,1060 835.0,1100" fill="none" stroke="#B46B1D" stroke-width="1.6"/>
+<polygon points="839.0,1090.0 835.0,1100 831.0,1090.0" fill="#B46B1D"/>
+<polyline points="1040,1138.0 1680,1138 1680,795 1640,794.5" fill="none" stroke="#B46B1D" stroke-width="1.6"/>
+<polygon points="1649.9492227473331,798.6246777721356 1640,794.5 1650.0492149357485,790.6253026989029" fill="#B46B1D"/>
+<polyline points="1240,794.5 1640,795 1640,610 1410,610 1410.0,590" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1406.0,600.0 1410.0,590 1414.0,600.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Logical / container architecture</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">C4-like containers | Presentation, API edge, business logic, event integration and owned data</text>
+<text x="53" y="1229.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="57" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">PRESENTATION</text>
+<rect x="70" y="181" width="625" height="52" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="382.5" y="213.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">React + TypeScript + Vite SPA | static NGINX</text>
+<rect x="745" y="181" width="390" height="52" rx="8" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="940.0" y="212.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Merchant platform | scoped API key</text>
+<rect x="355" y="325" width="705" height="105" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="707.5" y="361.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Spring Cloud Gateway</text>
+<text x="707.5" y="384.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">JWT coarse checks, route / rate controls</text>
+<text x="707.5" y="407.0" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">REST /api/v1 | GraphQL /graphql | SSE /tracking/stream</text>
+<rect x="1290" y="160" width="360" height="100" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1470.0" y="194.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Keycloak</text>
+<text x="1470.0" y="216.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Local login + Google OIDC broker</text>
+<text x="1470.0" y="238.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Authorization Code + PKCE</text>
+<rect x="1290" y="325" width="360" height="72" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1470.0" y="366.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Google OIDC identity provider</text>
+<rect x="1413.15185546875" y="278" width="113.6962890625" height="22" fill="white"/>
+<text x="1470.0" y="293.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Brokered OIDC</text>
+<rect x="906.66064453125" y="248" width="206.6787109375" height="22" fill="white"/>
+<text x="1010.0" y="263.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">OIDC redirects + code / PKCE</text>
+<rect x="462.6728515625" y="262" width="222.654296875" height="22" fill="white"/>
+<text x="574.0" y="277.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">REST + GraphQL queries + SSE</text>
+<rect x="937.544921875" y="269" width="98.91015625" height="22" fill="white"/>
+<text x="987.0" y="284.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">REST orders</text>
+<rect x="80" y="500" width="470" height="102" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="315.0" y="535.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="middle">ONE GraphQL Query API</text>
+<text x="315.0" y="557.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="middle">Read-only composite dashboards</text>
+<text x="315.0" y="579.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="middle">Batching / field policies | NO domain DB</text>
+<rect x="150.3037109375" y="444" width="125.392578125" height="22" fill="white"/>
+<text x="213.0" y="459.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">GraphQL queries</text>
+<text x="57" y="716.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">BUSINESS LOGIC | 4 independently deployable Spring Boot microservices</text>
+<rect x="70" y="741" width="370" height="107" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="255.0" y="779.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Accounts &amp; Partners</text>
+<text x="255.0" y="800.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Profiles, merchants, couriers</text>
+<text x="255.0" y="821.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Approval + credential eligibility</text>
+<rect x="115" y="940" width="280" height="82" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="255.0" y="976.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Accounts PostgreSQL</text>
+<text x="255.0" y="996.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Exclusive data / credentials</text>
+<rect x="190.369140625" y="901" width="129.26171875" height="21" fill="white"/>
+<text x="255.0" y="915.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">SQL (own DB only)</text>
+<rect x="470" y="741" width="370" height="107" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="655.0" y="779.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Pricing &amp; Zones</text>
+<text x="655.0" y="800.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Zones, effective rate rules</text>
+<text x="655.0" y="821.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Expiring price quotes</text>
+<rect x="515" y="940" width="280" height="82" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="655.0" y="976.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Pricing PostgreSQL</text>
+<text x="655.0" y="996.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Exclusive data / credentials</text>
+<rect x="590.369140625" y="901" width="129.26171875" height="21" fill="white"/>
+<text x="655.0" y="915.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">SQL (own DB only)</text>
+<rect x="870" y="741" width="370" height="107" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1055.0" y="779.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Delivery Operations</text>
+<text x="1055.0" y="800.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Booking, assignment, history</text>
+<text x="1055.0" y="821.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Status, proof, receipts, reports</text>
+<rect x="915" y="940" width="280" height="82" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1055.0" y="976.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery PostgreSQL</text>
+<text x="1055.0" y="996.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Exclusive data / credentials</text>
+<rect x="990.369140625" y="901" width="129.26171875" height="21" fill="white"/>
+<text x="1055.0" y="915.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">SQL (own DB only)</text>
+<rect x="1270" y="741" width="370" height="107" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1455.0" y="779.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Communications</text>
+<text x="1455.0" y="800.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Notification + webhook consumers</text>
+<text x="1455.0" y="821.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Delivery jobs, retries, receipts</text>
+<rect x="1315" y="940" width="280" height="82" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1455.0" y="976.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Communications PostgreSQL</text>
+<text x="1455.0" y="996.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Exclusive data / credentials</text>
+<rect x="1390.369140625" y="901" width="129.26171875" height="21" fill="white"/>
+<text x="1455.0" y="915.5" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="middle">SQL (own DB only)</text>
+<text x="1022.5" y="624.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="bold" fill="#2B71B8" text-anchor="middle">REST routes to owning services; SSE routes to Delivery</text>
+<text x="340.0" y="681.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#7355A5" text-anchor="middle">gRPC / Protobuf read contracts (internal only)</text>
+<rect x="630" y="1100" width="410" height="76" rx="8" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="835.0" y="1133.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="middle">Kafka KRaft | parcel.lifecycle.v1</text>
+<text x="835.0" y="1155.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="bold" fill="#15324F" text-anchor="middle">ParcelStatusChanged; key = parcelId</text>
+<rect x="1019.79345703125" y="1038" width="160.4130859375" height="22" fill="white"/>
+<text x="1100.0" y="1053.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Outbox relay publishes</text>
+<rect x="1386.04541015625" y="1088" width="207.9091796875" height="22" fill="white"/>
+<text x="1490.0" y="1103.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Independent consumer groups</text>
+<rect x="1130" y="1090" width="510" height="96" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="1135" y="1123.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Delivery tracking consumer -&gt; SSE through Gateway.</text>
+<text x="1135" y="1142.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">1 replica for initial full-flow demo; per-replica broadcast</text>
+<text x="1135" y="1161.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">fan-out target is detailed separately in diagram 18.</text>
+<rect x="1185" y="500" width="450" height="90" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1410.0" y="529.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Private object storage</text>
+<text x="1410.0" y="550.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery-owned proof / receipt objects</text>
+<text x="1410.0" y="571.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Short-lived authorized access</text>
+<rect x="1450.3623046875" y="590" width="129.275390625" height="22" fill="white"/>
+<text x="1515.0" y="605.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">Private object API</text>
+<rect x="625" y="498" width="505" height="95" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="630" y="531.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Delivery -&gt; Accounts / Pricing: gRPC eligibility + quote validation.</text>
+<text x="630" y="550.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Authenticated service identities, delegated actor context, deadlines.</text>
+<text x="630" y="569.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">No shared writes / SQL joins across service boundaries.</text>
+<rect x="1210" y="418" width="435" height="58" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="1215" y="442.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">AI Delivery Assistant: separate bonus service;</text>
+<text x="1215" y="461.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">authorized backend tools only. See target deployment.</text>
+</svg>

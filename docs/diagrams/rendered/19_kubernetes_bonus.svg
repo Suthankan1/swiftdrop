@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1270" viewBox="0 0 1700 1270"><rect width="100%" height="100%" fill="white"/>
+<rect x="40" y="140" width="1620" height="1060" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<rect x="70" y="490" width="1535" height="190" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="335.0,284 335.0,350" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="339.0,340.0 335.0,350 331.0,340.0" fill="#52677C"/>
+<polyline points="595,242.0 690,242.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="680.0,238.0 690,242.0 680.0,246.0" fill="#52677C"/>
+<polyline points="922.5,284 922.5,350" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="926.5,340.0 922.5,350 918.5,340.0" fill="#52677C"/>
+<polyline points="922,424 922,467" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="220,467 1445,467" fill="none" stroke="#7355A5" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="264.5,467 264.5,541" fill="none" stroke="#7355A5" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="268.5,531.0 264.5,541 260.5,531.0" fill="#7355A5"/>
+<polyline points="641.5,467 641.5,541" fill="none" stroke="#7355A5" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="645.5,531.0 641.5,541 637.5,531.0" fill="#7355A5"/>
+<polyline points="1018.5,467 1018.5,541" fill="none" stroke="#7355A5" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1022.5,531.0 1018.5,541 1014.5,531.0" fill="#7355A5"/>
+<polyline points="510,680 510,757" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="514.0,747.0 510,757 506.0,747.0" fill="#52677C"/>
+<polyline points="985,680 985,757" fill="none" stroke="#B46B1D" stroke-width="1.6"/>
+<polygon points="989.0,747.0 985,757 981.0,747.0" fill="#B46B1D"/>
+<polyline points="1410,680 1410,757" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1414.0,747.0 1410,757 1406.0,747.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Kubernetes / Helm deployment target</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">BONUS +5 | Future full-system demonstration target; NOT evidence of a deployed Nov 1 milestone</text>
+<text x="53" y="1239.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="57" y="166.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">KUBERNETES CLUSTER | Namespace: devarom | Helm release target</text>
+<rect x="75" y="200" width="520" height="84" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="335.0" y="226.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Ingress + TLS</text>
+<text x="335.0" y="247.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">/ -&gt; static UI | /api, /graphql, /stream -&gt; Gateway</text>
+<text x="335.0" y="268.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">/auth -&gt; Keycloak; stream buffering / timeouts</text>
+<rect x="75" y="350" width="520" height="74" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="335.0" y="371.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Frontend NGINX</text>
+<text x="335.0" y="392.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">React / TS / Vite static bundle</text>
+<text x="335.0" y="413.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Deployment + ClusterIP Service</text>
+<rect x="690" y="200" width="465" height="84" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="922.5" y="226.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Spring Cloud Gateway</text>
+<text x="922.5" y="247.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Deployment + ClusterIP Service</text>
+<text x="922.5" y="268.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Only public business API entry</text>
+<rect x="324.05517578125" y="311" width="21.8896484375" height="22" fill="white"/>
+<text x="335.0" y="326.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">/</text>
+<rect x="601.3173828125" y="213" width="83.365234375" height="22" fill="white"/>
+<text x="643.0" y="228.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">API routes</text>
+<rect x="1240" y="200" width="365" height="84" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1422.5" y="226.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Keycloak</text>
+<text x="1422.5" y="247.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Deployment + Service</text>
+<text x="1422.5" y="268.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Separate identity DB</text>
+<rect x="690" y="350" width="465" height="74" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="922.5" y="382.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">ONE GraphQL Query API</text>
+<text x="922.5" y="404.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Deployment + Service | no DB</text>
+<rect x="887.70361328125" y="311" width="68.5927734375" height="22" fill="white"/>
+<text x="922.0" y="326.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="middle">/graphql</text>
+<text x="87" y="516.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">SPRING BOOT BUSINESS SERVICES | each Deployment + REST; selected gRPC or Kafka interfaces</text>
+<rect x="92" y="541" width="345" height="110" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="264.5" y="580.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Accounts &amp; Partners</text>
+<text x="264.5" y="602.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Private REST + gRPC ports</text>
+<text x="264.5" y="624.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Probes / limits / config</text>
+<rect x="469" y="541" width="345" height="110" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="641.5" y="580.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Pricing &amp; Zones</text>
+<text x="641.5" y="602.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Private REST + gRPC ports</text>
+<text x="641.5" y="624.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Probes / limits / config</text>
+<rect x="846" y="541" width="345" height="110" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1018.5" y="580.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery Operations</text>
+<text x="1018.5" y="602.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Private REST + gRPC ports</text>
+<text x="1018.5" y="624.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Probes / limits / config</text>
+<rect x="1223" y="541" width="345" height="110" rx="8" fill="#E5F5F1" stroke="#52677C" stroke-width="1.5"/>
+<text x="1395.5" y="580.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Communications</text>
+<text x="1395.5" y="602.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Private REST + Kafka consumers</text>
+<text x="1395.5" y="624.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Probes / limits / config</text>
+<text x="1382.5" y="440.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#7355A5" text-anchor="middle">gRPC stays inside namespace</text>
+<rect x="95" y="757" width="640" height="118" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="415.0" y="789.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">PostgreSQL StatefulSet / Service + PVC</text>
+<text x="415.0" y="811.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">4 isolated business databases + Keycloak DB</text>
+<text x="415.0" y="833.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Separate users / privileges; demo shared server</text>
+<text x="415.0" y="855.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Backup / restore plan; not an HA claim</text>
+<rect x="810" y="757" width="360" height="118" rx="8" fill="#FFF2DE" stroke="#52677C" stroke-width="1.5"/>
+<text x="990.0" y="789.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Kafka KRaft / operator target</text>
+<text x="990.0" y="811.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Broker + Service + PVC</text>
+<text x="990.0" y="833.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Topic / consumer group config</text>
+<text x="990.0" y="855.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Demo single node is non-HA</text>
+<rect x="1240" y="757" width="345" height="118" rx="8" fill="#F5F8FC" stroke="#52677C" stroke-width="1.5"/>
+<text x="1412.5" y="790.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Private object storage</text>
+<text x="1412.5" y="811.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Service + persistent storage</text>
+<text x="1412.5" y="832.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Delivery proof / receipt objects</text>
+<text x="1412.5" y="853.0" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="normal" fill="#15324F" text-anchor="middle">Authorized presigned access</text>
+<rect x="100" y="977" width="445" height="95" rx="8" fill="#EFEAFF" stroke="#52677C" stroke-width="1.5"/>
+<text x="322.5" y="1008.5" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">AI Delivery Assistant | BONUS +5</text>
+<text x="322.5" y="1030.5" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Separate Deployment + Service</text>
+<text x="322.5" y="1052.5" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Authorized tools -&gt; backend APIs / gRPC</text>
+<rect x="635" y="960" width="465" height="118" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="640" y="984.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">ConfigMaps: URLs / non-secret settings.</text>
+<text x="640" y="1004.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Secrets: DB credentials / signing secrets.</text>
+<text x="640" y="1024.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">NetworkPolicy: private DB / gRPC / broker.</text>
+<text x="640" y="1044.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Resources, readiness / liveness probes.</text>
+<text x="640" y="1064.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">No secrets committed to repository.</text>
+<rect x="1170" y="960" width="405" height="118" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="1175" y="984.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Nov 1: topology + feasibility review only.</text>
+<text x="1175" y="1004.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Full deployment / Helm / bonus evidence later.</text>
+<text x="1175" y="1024.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">SSE: begin 1 replica; scale only after</text>
+<text x="1175" y="1044.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">broadcast test from diagram 18.</text>
+<text x="1175" y="1064.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="start">Google provider is external to cluster.</text>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980"><rect width="100%" height="100%" fill="white"/>
+<rect x="270" y="135" width="680" height="745" rx="8" fill="#F5F8FC" stroke="#B8C8D8" stroke-width="1.5"/>
+<polyline points="182,482.5 370,220.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="182,482.5 370,300.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="182,482.5 370,380.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="182,482.5 370,460.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="182,482.5 370,540.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="182,482.5 370,620.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="182,482.5 370,700.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="182,482.5 370,780.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="1020,245.0 850,220.0" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Customer use cases</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">UML use case diagram | System boundary: Devarom parcel delivery platform</text>
+<text x="53" y="949.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<text x="287" y="161.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="start">Devarom</text>
+<circle cx="137.0" cy="437" r="18" fill="white" stroke="#52677C" stroke-width="1.5"/>
+<polyline points="137.0,455 137.0,525" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="97,475 177,475" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="137.0,525 100,550" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="137.0,525 174,550" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<text x="137.0" y="593.5" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#15324F" text-anchor="middle">Customer</text>
+<ellipse cx="610.0" cy="220.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="226.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Sign up / local or Google login</text>
+<ellipse cx="610.0" cy="300.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="306.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Request delivery fee estimate</text>
+<ellipse cx="610.0" cy="380.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="386.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Create delivery request</text>
+<ellipse cx="610.0" cy="460.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="466.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">View own composite dashboard</text>
+<ellipse cx="610.0" cy="540.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="546.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Track parcel live status</text>
+<ellipse cx="610.0" cy="620.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="626.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">View own delivery history</text>
+<ellipse cx="610.0" cy="700.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="706.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Download delivery receipt</text>
+<ellipse cx="610.0" cy="780.0" rx="240.0" ry="30.0" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="610.0" y="786.0" font-family="Helvetica,Arial,sans-serif" font-size="17" font-weight="normal" fill="#15324F" text-anchor="middle">Public-number mobile tracking</text>
+<circle cx="1055.0" cy="207" r="18" fill="white" stroke="#52677C" stroke-width="1.5"/>
+<polyline points="1055.0,225 1055.0,280" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="1025,245 1085,245" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="1055.0,280 1028,305" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polyline points="1055.0,280 1082,305" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<text x="1055.5" y="347.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Identity provider</text>
+<rect x="270" y="886" width="680" height="36" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="275" y="908.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#15324F" text-anchor="start">Public tracking exposes only redacted status; protected details require owner authorization.</text>
+</svg>

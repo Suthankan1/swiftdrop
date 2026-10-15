@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1162" viewBox="0 0 1900 1162"><rect width="100%" height="100%" fill="white"/>
+<polyline points="130.0,213 130.0,1092" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="403.3333333333333,213 403.3333333333333,1092" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="676.6666666666666,213 676.6666666666666,1092" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="950.0,213 950.0,1092" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="1223.3333333333333,213 1223.3333333333333,1092" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="1496.6666666666667,213 1496.6666666666667,1092" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="1770.0,213 1770.0,1092" fill="none" stroke="#B9C6D3" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="130.0,253 403.3333333333333,253" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="393.3333333333333,249.0 403.3333333333333,253 393.3333333333333,257.0" fill="#52677C"/>
+<polyline points="403.3333333333333,309 676.6666666666666,309" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="666.6666666666666,305.0 676.6666666666666,309 666.6666666666666,313.0" fill="#52677C"/>
+<polyline points="676.6666666666666,365 403.3333333333333,365" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="413.3333333333333,369.0 403.3333333333333,365 413.3333333333333,361.0" fill="#52677C"/>
+<polyline points="403.3333333333333,421 130.0,421" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="140.0,425.0 130.0,421 140.0,417.0" fill="#52677C"/>
+<polyline points="950.0,477 676.6666666666666,477" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="686.6666666666666,481.0 676.6666666666666,477 686.6666666666666,473.0" fill="#52677C"/>
+<polyline points="676.6666666666666,533 950.0,533" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="940.0,529.0 950.0,533 940.0,537.0" fill="#52677C"/>
+<polyline points="950.0,589 1223.3333333333333,589" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1213.3333333333333,585.0 1223.3333333333333,589 1213.3333333333333,593.0" fill="#52677C"/>
+<polyline points="1223.3333333333333,645 950.0,645" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="960.0,649.0 950.0,645 960.0,641.0" fill="#52677C"/>
+<polyline points="1223.3333333333333,701 1496.6666666666667,701" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1486.6666666666667,697.0 1496.6666666666667,701 1486.6666666666667,705.0" fill="#52677C"/>
+<polyline points="1496.6666666666667,757 1770.0,757" fill="none" stroke="#52677C" stroke-width="1.6"/>
+<polygon points="1760.0,753.0 1770.0,757 1760.0,761.0" fill="#52677C"/>
+<polyline points="1770.0,813 1496.6666666666667,813" fill="none" stroke="#52677C" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polygon points="1506.6666666666667,817.0 1496.6666666666667,813 1506.6666666666667,809.0" fill="#52677C"/>
+<text x="53" y="63.5" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="bold" fill="#15324F" text-anchor="start">Courier status -&gt; notifications / webhooks</text>
+<text x="53" y="105.5" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#52677C" text-anchor="start">UML sequence | Transactional outbox and independent Kafka consumer groups; SSE detail is diagram 18</text>
+<text x="53" y="1131.0" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="normal" fill="#52677C" text-anchor="start">PROPOSED DESIGN | Devarom v1.3 | Nov 1 milestone - not implementation evidence</text>
+<rect x="25.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="130.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Courier / React</text>
+<rect x="298.3333333333333" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="403.3333333333333" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Delivery via Gateway</text>
+<rect x="571.6666666666666" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="676.6666666666666" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Delivery DB</text>
+<rect x="845.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="950.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Outbox relay</text>
+<rect x="1118.3333333333333" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1223.3333333333333" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Kafka KRaft</text>
+<rect x="1391.6666666666667" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1496.6666666666667" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Communications</text>
+<rect x="1665.0" y="145" width="210" height="68" rx="8" fill="#E8F1FF" stroke="#52677C" stroke-width="1.5"/>
+<text x="1770.0" y="184.5" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="bold" fill="#15324F" text-anchor="middle">Providers / Merchant</text>
+<text x="266.66666666666663" y="227.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">PATCH status (JWT, expected version)</text>
+<text x="266.66666666666663" y="247.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Note / proof or failure reason</text>
+<text x="540.0" y="283.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Verify active assignment + transition</text>
+<text x="540.0" y="303.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Atomic status, history, version, outbox COMMIT</text>
+<text x="540.0" y="359.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Committed state</text>
+<text x="266.66666666666663" y="415.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">200 confirmed status (no provider wait)</text>
+<text x="813.3333333333333" y="471.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Read pending committed outbox</text>
+<text x="813.3333333333333" y="527.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">ParcelStatusChanged / eventId / version</text>
+<text x="1086.6666666666665" y="563.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Publish parcel.lifecycle.v1</text>
+<text x="1086.6666666666665" y="583.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">key=parcelId; await acknowledgement</text>
+<text x="1086.6666666666665" y="639.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Ack; mark published (duplicates possible)</text>
+<text x="1360.0" y="675.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">notifications.v1 and webhooks.v1</text>
+<text x="1360.0" y="695.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Independent consumer groups</text>
+<text x="1633.3333333333335" y="731.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Persist inbox + delivery job first</text>
+<text x="1633.3333333333335" y="751.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Then email / signed webhook attempt</text>
+<text x="1633.3333333333335" y="807.0" font-family="Helvetica,Arial,sans-serif" font-size="15" font-weight="normal" fill="#15324F" text-anchor="middle">Success / failure response</text>
+<rect x="90" y="851" width="1720" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="889.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Kafka outage: outbox remains pending; relay retries. Duplicate publish: consumers deduplicate by (consumer,eventId), then persist jobs before offset commit.</text>
+<rect x="90" y="933" width="1720" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="971.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">Provider failure: durable backoff retries with attempt logs, then failed job / DLQ review. External side effects remain at-least-once; merchant deduplicates eventId.</text>
+<rect x="90" y="1015" width="1720" height="67" rx="8" fill="#FFF2DE" stroke="#CCA764" stroke-width="1.5"/>
+<text x="95" y="1053.0" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="normal" fill="#15324F" text-anchor="start">PARALLEL: Kafka tracking consumer in Delivery forwards redacted updates through Gateway SSE. Replica fan-out and reconnect recovery appear in diagram 18.</text>
+</svg>
