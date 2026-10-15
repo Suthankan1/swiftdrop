@@ -1,0 +1,57 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: accounts-service-users-me
+              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/users/me
+      routes:
+        - id: accounts-service-users-me
+          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/users/me
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:5173"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowed-headers:
+              - Authorization
+              - Content-Type
+              - Accept
+              - Origin
+              - X-Requested-With
+            allow-credentials: true
+            max-age: 3600
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+
+devarom:
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
+  jwt:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/devarom}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}
+    audience: ${JWT_AUDIENCE:devarom-api}
