@@ -163,12 +163,16 @@
           </span>
           <span class="devarom-brand-title">Devarom<span class="devarom-brand-period">.</span></span>
         </a>
-        <p class="devarom-brand-subtitle">Parcel Delivery &amp; Courier Management</p>
       </div>
     </header>
     <main class="${properties.kcLoginMain!} devarom-card-main" id="main-content">
       <div class="${properties.kcLoginMainHeader!} devarom-card-header">
         <h1 class="${properties.kcLoginMainTitle!} devarom-card-title" id="kc-page-title"><#nested "header"></h1>
+        <#if pageId == "login">
+          <p class="devarom-card-subtitle">${msg("loginAccountSubtitle")}</p>
+        <#elseif pageId == "register">
+          <p class="devarom-card-subtitle">${msg("registerSubtitle")}</p>
+        </#if>
         <#if realm.internationalizationEnabled && locale.supported?size gt 1>
         <div class="${properties.kcLoginMainHeaderUtilities!} devarom-locale-picker">
           <div class="${properties.kcInputClass!}">
@@ -286,16 +290,11 @@
             </#if>
         </div>
       </div>
-
-      <div class="${properties.kcLoginMainFooter!} devarom-login-footer">
-          <@loginFooter.content/>
-      </div>
     </main>
 
     <footer class="devarom-page-bottom-footer" role="contentinfo">
       <div class="devarom-page-bottom-inner">
-        <span>&copy; 2026 Devarom Platform · Architecture Baseline v1.3</span>
-        <span class="devarom-page-bottom-security">OpenID Connect &bull; PKCE S256</span>
+        <span>&copy; 2026 Devarom Platform</span>
       </div>
     </footer>
   </div>
