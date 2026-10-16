@@ -1,0 +1,771 @@
+/* ==============================================================================
+ * Devarom — Custom Keycloak Theme Stylesheet
+ * Aligned with frontend/src/styles/global.css design tokens
+ * ============================================================================== */
+
+:root {
+  --color-ink: #173f36;
+  --color-muted: #626e62;
+  --color-teal: #20594a;
+  --color-teal-hover: #103e31;
+  --color-accent: #d9ed95;
+  --color-paper: #f7f7ef;
+  --color-card: #fcfcf7;
+  --color-border: #dce0d2;
+  --color-focus: #426c32;
+  --color-error: #b42318;
+  --color-error-bg: #fef3f2;
+  --color-error-border: #fee4e2;
+  --color-success: #157347;
+  --color-success-bg: #edf7ed;
+  --color-success-border: #c8e6c9;
+  --font-family: 'Avenir Next', Avenir, 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* PatternFly Variable Overrides */
+  --pf-v5-global--FontFamily--sans-serif: var(--font-family);
+  --pf-v5-global--primary-color--100: var(--color-teal);
+  --pf-v5-global--primary-color--200: var(--color-teal-hover);
+  --pf-v5-c-login__container--GridTemplateColumns: 100% !important;
+  --pf-v5-c-login__main-header--PaddingTop: 32px !important;
+  --pf-v5-c-login__main-header--PaddingBottom: 16px !important;
+  --pf-v5-c-login__main-header--PaddingLeft: 32px !important;
+  --pf-v5-c-login__main-header--PaddingRight: 32px !important;
+  --pf-v5-c-login__main-body--PaddingTop: 0 !important;
+  --pf-v5-c-login__main-body--PaddingBottom: 28px !important;
+  --pf-v5-c-login__main-body--PaddingLeft: 32px !important;
+  --pf-v5-c-login__main-body--PaddingRight: 32px !important;
+  --pf-v5-c-login__main-footer--PaddingTop: 0 !important;
+  --pf-v5-c-login__main-footer--PaddingBottom: 28px !important;
+  --pf-v5-c-login__main-footer--PaddingLeft: 32px !important;
+  --pf-v5-c-login__main-footer--PaddingRight: 32px !important;
+  --keycloak-card-top-color: transparent !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-family) !important;
+  color: var(--color-ink) !important;
+  background-color: var(--color-paper) !important;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.devarom-theme-body,
+.login-pf body {
+  background-color: var(--color-paper) !important;
+  background-image:
+    radial-gradient(at 100% 0%, #edf3e1 0px, transparent 55%),
+    radial-gradient(at 0% 100%, #e9eedb 0px, transparent 55%) !important;
+  background-attachment: fixed !important;
+  background-size: cover !important;
+  min-height: 100vh;
+}
+
+/* Accessible skip-link */
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  transform: translateY(-160%);
+  padding: 12px 20px;
+  background: var(--color-ink);
+  color: #ffffff;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  transition: transform 0.15s ease-in-out;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Layout Reset & Centering */
+.pf-v5-c-login,
+.login-pf {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+  padding: 40px 16px !important;
+  box-sizing: border-box !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+}
+
+.pf-v5-c-login__container,
+.devarom-login-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 460px !important;
+  margin: 0 auto !important;
+  grid-template-columns: none !important;
+  grid-template-areas: none !important;
+  gap: 0 !important;
+}
+
+/* Header & Brand */
+.pf-v5-c-login__header,
+.devarom-login-header {
+  width: 100% !important;
+  text-align: center !important;
+  margin-bottom: 24px !important;
+  padding: 0 !important;
+}
+
+.devarom-brand-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.devarom-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none !important;
+  color: var(--color-ink) !important;
+  transition: transform 0.15s ease;
+}
+
+.devarom-brand-link:hover {
+  transform: translateY(-1px);
+}
+
+.devarom-brand-link:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.devarom-brand-mark {
+  width: 30px;
+  height: 31px;
+  display: flex;
+  gap: 3px;
+  transform: skewY(-24deg);
+  transform-origin: left center;
+}
+
+.devarom-brand-mark span {
+  width: 7px;
+  background: var(--color-ink);
+  border-radius: 1px;
+}
+
+.devarom-brand-mark span:nth-child(1) {
+  height: 23px;
+  margin-top: 8px;
+}
+
+.devarom-brand-mark span:nth-child(2) {
+  height: 31px;
+}
+
+.devarom-brand-mark span:nth-child(3) {
+  height: 23px;
+}
+
+.devarom-brand-title {
+  font-size: 33px;
+  font-weight: 750;
+  letter-spacing: -1.7px;
+  line-height: 1;
+  color: var(--color-ink);
+}
+
+.devarom-brand-period {
+  color: #778b48;
+}
+
+.devarom-brand-subtitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-muted);
+  margin: 0;
+  font-weight: 550;
+}
+
+/* Card Main Container */
+.pf-v5-c-login__main,
+.devarom-card-main {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 24px rgba(23, 63, 54, 0.06) !important;
+  width: 100% !important;
+  max-width: 460px !important;
+  box-sizing: border-box !important;
+  overflow: hidden;
+}
+
+.pf-v5-c-login__main-header,
+.devarom-card-header {
+  border-top: none !important;
+  padding: 32px 32px 14px 32px !important;
+  margin: 0 !important;
+}
+
+.devarom-card-title,
+#kc-page-title {
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  color: var(--color-ink) !important;
+  letter-spacing: -0.6px !important;
+  line-height: 1.25 !important;
+  margin: 0 !important;
+}
+
+.pf-v5-c-login__main-body,
+.devarom-card-body {
+  padding: 0 32px 28px 32px !important;
+}
+
+/* Required Fields Helper */
+.devarom-required-fields {
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.devarom-required-fields .pf-v5-c-form__label-required {
+  color: var(--color-error);
+  font-weight: bold;
+}
+
+/* Form Groups & Labels */
+.pf-v5-c-form__group {
+  margin-bottom: 18px !important;
+  width: 100% !important;
+}
+
+.pf-v5-c-form__group-label {
+  padding-bottom: 6px !important;
+}
+
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  color: var(--color-ink) !important;
+  letter-spacing: -0.1px !important;
+}
+
+/* Form Inputs */
+.pf-v5-c-form-control {
+  border-radius: 5px !important;
+  border: 1px solid var(--color-border) !important;
+  background-color: #ffffff !important;
+  color: var(--color-ink) !important;
+  font-size: 14px !important;
+  min-height: 46px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-v5-c-form-control input {
+  font-family: inherit !important;
+  font-size: 14px !important;
+  color: var(--color-ink) !important;
+  padding: 10px 14px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.pf-v5-c-form-control:hover {
+  border-color: #aab5a0 !important;
+}
+
+.pf-v5-c-form-control:focus-within,
+.pf-v5-c-form-control.pf-m-focus {
+  border-color: var(--color-teal) !important;
+  box-shadow: 0 0 0 3px rgba(66, 108, 50, 0.25) !important;
+  outline: none !important;
+}
+
+/* Input Groups (Password toggle) */
+.pf-v5-c-input-group {
+  width: 100% !important;
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.pf-v5-c-input-group__item.pf-m-fill {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.pf-v5-c-form-control__toggle-icon,
+.pf-v5-c-button.pf-m-control {
+  color: var(--color-muted) !important;
+  border: 1px solid var(--color-border) !important;
+  border-left: none !important;
+  border-top-right-radius: 5px !important;
+  border-bottom-right-radius: 5px !important;
+  background: #ffffff !important;
+  padding: 0 14px !important;
+}
+
+.pf-v5-c-button.pf-m-control:hover {
+  color: var(--color-ink) !important;
+  background: #f7f9f3 !important;
+}
+
+/* Remember me & Forgot Password Bar */
+.pf-v5-c-helper-text {
+  margin-top: 8px !important;
+}
+
+.pf-v5-c-check {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.pf-v5-c-check__input {
+  accent-color: var(--color-teal) !important;
+  width: 17px !important;
+  height: 17px !important;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+.pf-v5-c-check__label {
+  font-size: 13px !important;
+  color: var(--color-ink) !important;
+  cursor: pointer;
+}
+
+/* Primary Action Buttons */
+#kc-login,
+#kc-submit,
+.pf-v5-c-button.pf-m-primary,
+input[type="submit"].pf-v5-c-button {
+  min-height: 48px !important;
+  background: var(--color-teal) !important;
+  color: #ffffff !important;
+  border: 1px solid transparent !important;
+  border-radius: 5px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.5 !important;
+  width: 100% !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease !important;
+  margin-top: 12px !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+}
+
+#kc-login:hover,
+#kc-submit:hover,
+.pf-v5-c-button.pf-m-primary:hover {
+  background: var(--color-teal-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+#kc-login:active,
+#kc-submit:active,
+.pf-v5-c-button.pf-m-primary:active {
+  transform: translateY(0) !important;
+}
+
+#kc-login:focus-visible,
+#kc-submit:focus-visible,
+.pf-v5-c-button:focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 3px !important;
+}
+
+/* Secondary Button */
+.pf-v5-c-button.pf-m-secondary {
+  border: 1px solid var(--color-border) !important;
+  background: transparent !important;
+  color: var(--color-ink) !important;
+  border-radius: 5px !important;
+  min-height: 46px !important;
+  font-weight: 550 !important;
+  font-size: 13px !important;
+  width: 100% !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  transition: background 0.15s, transform 0.15s !important;
+}
+
+.pf-v5-c-button.pf-m-secondary:hover {
+  background: #edf0e2 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Social Identity Providers Section (Google) */
+#kc-social-providers {
+  margin-top: 16px !important;
+  width: 100% !important;
+}
+
+#kc-social-providers ul {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+#kc-social-providers li {
+  width: 100% !important;
+}
+
+.pf-v5-c-divider {
+  margin: 20px 0 16px !important;
+  border-top-color: var(--color-border) !important;
+  color: var(--color-muted) !important;
+  font-size: 12px !important;
+  text-align: center !important;
+  position: relative !important;
+}
+
+.pf-v5-c-divider::before,
+.pf-v5-c-divider::after {
+  border-top-color: var(--color-border) !important;
+}
+
+/* Google Sign-in Button */
+#social-google,
+.pf-v5-c-button[href*="google"] {
+  min-height: 48px !important;
+  background: #ffffff !important;
+  border: 1px solid #bcc7b4 !important;
+  border-radius: 5px !important;
+  color: var(--color-ink) !important;
+  font-size: 14px !important;
+  font-weight: 550 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  text-decoration: none !important;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#social-google:hover {
+  background: #edf0e2 !important;
+  border-color: #9cb093 !important;
+  transform: translateY(-1px) !important;
+}
+
+#social-google:active {
+  transform: translateY(0) !important;
+}
+
+#social-google:focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 2px !important;
+}
+
+#social-google img,
+#social-google picture {
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0 !important;
+}
+
+#social-google .pf-v5-u-m-auto {
+  margin: 0 !important;
+}
+
+/* Links (Registration, Forgot Password, Back to Login) */
+a {
+  color: var(--color-teal) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  transition: color 0.15s !important;
+}
+
+a:hover {
+  color: var(--color-teal-hover) !important;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 3px !important;
+  border-radius: 2px !important;
+}
+
+/* Registration Prompt Container */
+#kc-registration-container,
+#kc-registration,
+.devarom-info-band,
+#kc-info {
+  margin-top: 22px !important;
+  padding-top: 18px !important;
+  border-top: 1px solid var(--color-border) !important;
+  text-align: center !important;
+  font-size: 13px !important;
+  color: var(--color-muted) !important;
+  width: 100% !important;
+}
+
+#kc-registration span,
+#kc-info-wrapper span {
+  font-size: 13px !important;
+}
+
+#kc-registration a,
+#kc-info a {
+  font-weight: 600 !important;
+  margin-left: 4px !important;
+}
+
+/* Helper & Feedback Text */
+.pf-v5-c-form__helper-text {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+  color: var(--color-muted) !important;
+}
+
+.pf-v5-c-helper-text__item.pf-m-error,
+.kc-feedback-text.pf-m-error,
+span.pf-m-error {
+  color: var(--color-error) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+}
+
+/* Alerts (Invalid credentials, warning, info) */
+.pf-v5-c-alert.devarom-alert,
+.pf-v5-c-alert {
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  margin-bottom: 20px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  width: 100% !important;
+}
+
+.pf-v5-c-alert.pf-m-danger {
+  background-color: var(--color-error-bg) !important;
+  border-color: var(--color-error-border) !important;
+  color: var(--color-error) !important;
+}
+
+.pf-v5-c-alert.pf-m-danger .pf-v5-c-alert__title {
+  color: var(--color-error) !important;
+  font-weight: 600 !important;
+}
+
+.pf-v5-c-alert.pf-m-success {
+  background-color: var(--color-success-bg) !important;
+  border-color: var(--color-success-border) !important;
+  color: var(--color-success) !important;
+}
+
+.pf-v5-c-alert.pf-m-info {
+  background-color: #f0f7f5 !important;
+  border-color: #cce3dc !important;
+  color: var(--color-teal) !important;
+}
+
+/* Card Internal Footer (Lock & security) */
+.devarom-card-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--color-border);
+  text-align: center;
+  width: 100%;
+}
+
+.devarom-footer-secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--color-muted);
+  letter-spacing: 0.1px;
+}
+
+.devarom-lock-icon {
+  color: var(--color-teal);
+  stroke: var(--color-teal);
+}
+
+/* Page Bottom Footer */
+.devarom-page-bottom-footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-top: 20px;
+  width: 100%;
+}
+
+.devarom-page-bottom-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.devarom-page-bottom-security {
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #7b8a74;
+}
+
+/* ==============================================================================
+ * DARK MODE SUPPORT
+ * ============================================================================== */
+.pf-v5-theme-dark,
+.pf-v5-theme-dark body {
+  --color-ink: #e8efe9 !important;
+  --color-muted: #95a595 !important;
+  --color-teal: #2f7a66 !important;
+  --color-teal-hover: #3e9981 !important;
+  --color-accent: #d9ed95 !important;
+  --color-paper: #0f1d19 !important;
+  --color-card: #152822 !important;
+  --color-border: #2c443b !important;
+  --color-focus: #7ea368 !important;
+  --color-error: #fda29b !important;
+  --color-error-bg: #491212 !important;
+  --color-error-border: #7a271a !important;
+}
+
+.pf-v5-theme-dark body.devarom-theme-body,
+.pf-v5-theme-dark.login-pf body {
+  background-color: var(--color-paper) !important;
+  background-image:
+    radial-gradient(at 100% 0%, #173229 0px, transparent 60%),
+    radial-gradient(at 0% 100%, #132720 0px, transparent 60%) !important;
+}
+
+.pf-v5-theme-dark .devarom-brand-title {
+  color: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark .devarom-brand-mark span {
+  background: var(--color-accent) !important;
+}
+
+.pf-v5-theme-dark .devarom-brand-period {
+  color: var(--color-accent) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-form-control {
+  background-color: #0f1f1a !important;
+  border-color: var(--color-border) !important;
+  color: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-form-control input {
+  color: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-button.pf-m-control {
+  background-color: #0f1f1a !important;
+  border-color: var(--color-border) !important;
+  color: #95a595 !important;
+}
+
+.pf-v5-theme-dark #social-google {
+  background-color: #1a322b !important;
+  border-color: #2e5347 !important;
+  color: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark #social-google:hover {
+  background-color: #224239 !important;
+  border-color: #3f6e5e !important;
+}
+
+/* ==============================================================================
+ * RESPONSIVE VIEWPORT ADAPTATIONS
+ * ============================================================================== */
+@media (max-width: 768px) {
+  .pf-v5-c-login,
+  .login-pf {
+    padding: 24px 16px !important;
+  }
+
+  .pf-v5-c-login__main-header,
+  .devarom-card-header {
+    padding: 26px 24px 12px 24px !important;
+  }
+
+  .pf-v5-c-login__main-body,
+  .devarom-card-body {
+    padding: 0 24px 24px 24px !important;
+  }
+
+  .devarom-brand-title {
+    font-size: 29px;
+  }
+
+  .devarom-card-title,
+  #kc-page-title {
+    font-size: 22px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .pf-v5-c-login,
+  .login-pf {
+    padding: 16px 12px !important;
+  }
+
+  .pf-v5-c-login__main-header,
+  .devarom-card-header {
+    padding: 22px 18px 10px 18px !important;
+  }
+
+  .pf-v5-c-login__main-body,
+  .devarom-card-body {
+    padding: 0 18px 20px 18px !important;
+  }
+
+  .pf-v5-c-login__main,
+  .devarom-card-main {
+    border-radius: 8px !important;
+  }
+
+  .devarom-brand-title {
+    font-size: 26px;
+  }
+
+  .devarom-card-title,
+  #kc-page-title {
+    font-size: 20px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
