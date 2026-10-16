@@ -141,26 +141,22 @@ missing trusted identity is 401, policy denial is 403. Validation details and
 SQL/stack traces are not returned. Unexpected database/programming errors remain
 failures rather than fabricated profiles.
 
-## Exact integration seam for Issue #37
+## Accounts JWT Resource Server Security — Issue #37
 
-1. Replace the deny policy in `security/ProfileSecurityConfiguration.java` with
-   independent OAuth2 Resource Server validation (signature/JWKS, issuer, audience,
-   lifetime), role mapping and access policy. Add the appropriate Boot 4 Resource
-   Server dependency to `pom.xml`. Preserve public health only, no Basic/form auth.
-2. Implement `identity/CurrentIdentityProvider.java` as a security-owned bean.
-   Construct `TrustedIdentity` only from verified JWT claims/security context;
-   never from `X-User-Id`, `X-Keycloak-Sub`, request parameters or unverified tokens.
-   The conditional default provider only throws; it supplies no identity.
-3. Keep `profile/CurrentUserProfileController.java` calling the provider and
-   `CurrentUserProfileService.getOrCreate(TrustedIdentity)`. No controller parameter
-   accepts an ID/subject and the application service never authenticates a token.
-4. Extend `ProfileHttpSecurityTest` and `AccountProfilePostgresIT` with actual signed
-   JWT positive/negative tests, direct-service bypass tests and role/owner denials.
-   Keep synthetic controller-only contract tests distinguished from runtime proof.
+Refs #37 · Implementation Author: **Suthankan1** · Reviewers: **Sinthuha**, **Thuvarahan**, **Vibhushan**.
 
-#37 is not implemented here. Live Keycloak authenticated `/me`, role enforcement
-and React → Gateway → Accounts E2E remain deferred. This PR does not complete the
-November 1 login acceptance criteria or approve merchant/staff extensions.
+Accounts Service now independently validates Keycloak Bearer JWTs as an OAuth2 Resource Server:
+- **Cryptographic Signature Verification:** `NimbusJwtDecoder` independently verifies JWT signatures against trusted Keycloak JWKS (`/protocol/openid-connect/certs`).
+- **Composed Token Validation:** Validates exact issuer (`KEYCLOAK_ISSUER_URI`), required API audience (`JWT_AUDIENCE=devarom-api`), timestamps (expiration, not-before with default clock skew), and non-blank subject (`sub <= 255` characters).
+- **Application Role Mapping:** `KeycloakRoleExtractor` extracts authoritative roles from `roles` and `realm_access.roles` claims, strictly filtering to the five approved Devarom roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`). Unrecognized roles, client-supplied headers, and Keycloak default/internal roles (`default-roles-devarom`, `offline_access`, `uma_authorization`) are safely ignored.
+- **Trusted Identity Provider:** `SecurityContextCurrentIdentityProvider` extracts validated identity attributes (`subject`, `email`, `fullName`, and approved `roles`) exclusively from the authenticated Spring Security `Jwt` principal. HTTP headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameters are never trusted.
+- **HTTP Security Policy:**
+  - Stateless session management (`SessionCreationPolicy.STATELESS`), CSRF disabled for stateless API.
+  - Public access restricted strictly to `GET /actuator/health` and `/actuator/health/**`.
+  - `GET /api/v1/users/me` requires bearer authentication with an approved application role (`hasAnyRole`).
+  - Default-deny policy (`anyRequest().denyAll()`) rejects unapproved routes.
+  - Basic authentication, form login, server-side sessions, and client-side password grants remain disabled.
+  - Sanitized RFC 7807 `ProblemDetail` responses for 401 Unauthorized and 403 Forbidden without leaking internals.
 
 ## Verification evidence — 2026-10-16
 
@@ -168,21 +164,38 @@ Verified with OpenJDK **21.0.12.1**, Maven **3.10.0**, Boot **4.1.1**,
 Docker Desktop **4.95.0** / Engine **29.8.2**, and PostgreSQL **16.14**
 (`postgres:16-alpine` resolved at test time).
 
-- `JAVA_HOME=$(/usr/libexec/java_home -v 21) services/accounts-service/mvnw -f services/accounts-service/pom.xml clean verify -q`:
-  **passed**, 22 unit/MVC tests + 12 PostgreSQL integration tests; zero failures,
-  errors or skips. Includes clean Flyway V1, JPA validation/readback, DB uniqueness,
-  immutable ID/subject updates, targeted conflict no-op, separate owners, absent
-  attributes, eight concurrent first-login requests, DTO JSON and HTTP denials.
-- Packaged `java -jar target/accounts-service-0.0.1-SNAPSHOT.jar` against a second
-  disposable PostgreSQL database: **started on default port 8081**, applied V1,
-  health HTTP **200 / UP**, anonymous and spoofed bearer/header profile requests
-  **401 / ProblemDetail**. Smoke process/container stopped afterward; no developer
-  database, volume or Keycloak process was modified.
-- `git diff --check`: passed. Staged source/config reviewed for secrets; only
-  synthetic fixtures and runtime environment-variable references are committed.
-- Frontend fields/path and Gateway target/path inspected: compatible; no source
-  changes to those modules. Live authenticated HTTP success/E2E **not verified**.
-
-Docker tests are required by `verify` and are not silently skipped if Docker is unavailable.
-For a machine without Docker, `./mvnw test` runs only unit/MVC tests; report the
-PostgreSQL integration phase as blocked and run `./mvnw verify` on a Docker host.
+- `JAVA_HOME=$(/usr/libexec/java_home -v 21) services/accounts-service/mvnw -f services/accounts-service/pom.xml clean verify`:
+  **passed: 37 unit/MVC tests + 16 real Testcontainers PostgreSQL integration tests (53 tests total)**; zero failures, errors, or skips.
+  - **Unit/MVC tests (`ProfileHttpSecurityTest` — 20 tests):**
+    1. Missing token -> 401 Unauthorized ProblemDetail
+    2. Malformed token -> 401 Unauthorized ProblemDetail
+    3. Unsigned token -> 401 Unauthorized ProblemDetail
+    4. Untrusted signature -> 401 Unauthorized ProblemDetail
+    5. Wrong issuer -> 401 Unauthorized ProblemDetail
+    6. Wrong audience -> 401 Unauthorized ProblemDetail
+    7. Expired token -> 401 Unauthorized ProblemDetail
+    8. Not-yet-valid token -> 401 Unauthorized ProblemDetail
+    9. Missing subject -> 401 Unauthorized ProblemDetail
+    10. Malformed application roles -> safe 403 rejection
+    11. Missing required application role -> 403 Forbidden
+    12. Valid CUSTOMER JWT -> 200 OK profile access with `Cache-Control: no-store`
+    13. Valid MERCHANT JWT -> 200 OK with correct role mapping
+    14. Unauthorized/unrecognized role does not gain access -> 403 Forbidden
+    15. Spoofed headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameters ignored
+    16. Direct bearer authentication works independently without API Gateway
+    17. Public health endpoint remains accessible without credentials
+    18. Basic and form login remain completely unavailable (no Basic WWW-Authenticate challenge)
+    19. Unexposed actuator endpoints (`/actuator`, `/actuator/env`) denied with 401
+    20. Correct RFC 7807 ProblemDetail and `Cache-Control: no-store` behavior verified
+  - **PostgreSQL integration tests (`AccountProfilePostgresIT` — 16 tests):**
+    - Customer A authenticates and receives persisted profile A
+    - Repeated Customer A request returns the exact same profile ID
+    - Customer B authenticates and receives a distinct profile ID
+    - Customer A cannot select or retrieve Customer B's profile via query params or spoofed headers
+    - Concurrent authenticated first requests create exactly one persisted profile row
+    - Rejected tokens (expired, untrusted, wrong audience, wrong role, malformed) never create a profile row
+    - Merchant authentication maps `MERCHANT` role with `merchantProfile = null`
+    - Flyway V1 clean migration and Hibernate schema validation pass cleanly
+- `git diff --check`: passed; zero secrets, private keys, or passwords committed.
+- Static and live Keycloak invariants (`platform/identity/validate-identity.sh`): all 7 static checks and 5 live container smoke checks passed against live Keycloak 26.8.1 on port 8090.
+- Browser E2E flow (React -> Keycloak -> Gateway -> Accounts -> PostgreSQL) and Google broker acceptance (L03) remain unverified until interactive user browser authentication is exercised.

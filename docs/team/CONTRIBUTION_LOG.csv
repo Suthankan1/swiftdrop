@@ -11,3 +11,4 @@ Suthankan1,Platform / Security / cross-module slices,#1,Nov 1 Login Integration 
 Suthankan1,Platform / Security / cross-module slices,#2,Keycloak OIDC & Role Foundation,5h,PR #35 (merged),HarithKeshan / Gajanthan / Sinthuha,Merged,2026-10-15
 Suthankan1,Platform / Security / cross-module slices,#3,Spring Cloud API Gateway & Local Login Integration Foundation,5h,PR pending (feat/api-gateway-foundation),Eric / Vibhushan / Sinthuha,In Review,2026-10-15
 Suthankan1 (acting for Gajanthan),Customer (temporary coverage),#4,Customer Use Cases & Booking Flows Review,4h,docs/report/customer_journey_review.md,Pushmitha / Sinthuha,In Review,2026-10-15
+Suthankan1,Platform / Security / cross-module slices,#37,Accounts JWT Resource Server Security & Profile Authorization,6h,PR pending (feat/accounts-jwt-security),Sinthuha / Thuvarahan / Vibhushan,In Review,2026-10-16

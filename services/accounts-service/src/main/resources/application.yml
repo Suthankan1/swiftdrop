@@ -23,6 +23,17 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/devarom}
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}
+devarom:
+  jwt:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/devarom}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}
+    audience: ${JWT_AUDIENCE:devarom-api}
 management:
   endpoints:
     web:
