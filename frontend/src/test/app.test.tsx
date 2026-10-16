@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
-import { AppProviders } from '../app/providers/AppProviders'
+import { TestProviders as AppProviders } from './authFixture'
 import { AppRoutes } from '../app/router/routes'
 import { AppErrorBoundary } from '../components/ui/AppErrorBoundary'
 import { customerFixture } from './fixtures'
@@ -27,7 +27,7 @@ describe('shared application routes', () => {
     renderRoute()
 
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /customer/i }))
-    expect(screen.getByRole('heading', { name: /your profile, kept private/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /sign in to devarom/i })).toBeInTheDocument()
 
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /^home$/i }))
     expect(screen.queryByRole('heading', { name: /your profile, kept private/i })).not.toBeInTheDocument()
@@ -40,8 +40,8 @@ describe('shared application routes', () => {
     renderRoute('/customer')
 
     expect(within(screen.getByRole('main')).getByRole('heading', { level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /your profile, kept private/i })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/sign-in is not available yet/i)
+    expect(screen.getByRole('heading', { name: /sign in to devarom/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument()
     expect(screen.queryByText(customerFixture.email)).not.toBeInTheDocument()
     expect(screen.queryByText(customerFixture.keycloakSub)).not.toBeInTheDocument()
     expect(screen.queryByText(/logged in successfully/i)).not.toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('shared application routes', () => {
     await user.click(toggle)
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /customer/i }))
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('heading', { name: /your profile, kept private/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /sign in to devarom/i })).toBeInTheDocument()
   })
 
   it('provides a not-found experience and a way home', async () => {
@@ -73,17 +73,6 @@ describe('shared application routes', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/couldn.t be found/i)
     await user.click(screen.getByRole('link', { name: /back to home/i }))
     expect(screen.queryByRole('heading', { name: /couldn.t be found/i })).not.toBeInTheDocument()
-  })
-
-  it.each(['/login', '/auth/callback', '/logout'])('reserves %s without simulating an identity session', (path) => {
-    const request = vi.fn<typeof fetch>()
-    vi.stubGlobal('fetch', request)
-    renderRoute(path)
-
-    expect(screen.getByRole('status')).toHaveTextContent(/authentication is not implemented yet/i)
-    expect(screen.queryByText(customerFixture.email)).not.toBeInTheDocument()
-    expect(screen.queryByRole('form')).not.toBeInTheDocument()
-    expect(request).not.toHaveBeenCalled()
   })
 
   it('offers a safe fallback after a rendering failure', () => {
