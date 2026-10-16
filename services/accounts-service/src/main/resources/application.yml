@@ -1,0 +1,37 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: accounts-service
+  datasource:
+    url: ${ACCOUNTS_DB_URL}
+    username: ${ACCOUNTS_DB_USERNAME}
+    password: ${ACCOUNTS_DB_PASSWORD}
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    clean-disabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+server.error:
+  include-message: never
+  include-stacktrace: never
+  include-binding-errors: never
