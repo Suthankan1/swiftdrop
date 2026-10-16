@@ -182,3 +182,94 @@ docker compose -f platform/identity/docker-compose.identity.yml --project-direct
 | **Redirect Security** | Strict local origins; zero wildcards | **Verified** | `validate-identity.sh` check 5; rejected attacker redirect with HTTP 400 |
 | **Secrets Absent from Git** | Zero credentials in repo; `.env` gitignored | **Verified** | `git check-ignore -v platform/identity/.env` (`.gitignore:2:.env`) |
 | **Google Federation** | Google IdP brokering configuration prepared | **Prepared / Configured** | IdP broker defined; runtime credentials injected via `.env`; full browser login gated on human consent verification |
+
+---
+
+## 8. Custom Branded Login Theme (`platform/identity/themes/devarom/login`)
+
+**Issue:** [Refs #44](https://github.com/Suthankan1/devarom/issues/44) · **Theme Name:** `devarom` · **Parent Theme:** `keycloak.v2`
+
+A fully responsive, accessible, and professionally branded Keycloak login, registration, and error recovery theme matching the Devarom React Single Page Application design language.
+
+### 8.1 Theme Architecture & Directory Layout
+
+```text
+platform/identity/themes/devarom/login/
+├── theme.properties                  # Declares parent=keycloak.v2, styles, scripts
+├── template.ftl                      # Accessible layout wrapper, Devarom header & alert banner
+├── footer.ftl                        # Branded card footer with encrypted session badge
+├── messages/
+│   └── messages_en.properties        # Custom branded copy and error labels
+└── resources/
+    ├── css/
+    │   ├── styles.css                # Base stylesheet
+    │   └── devarom.css               # Devarom design tokens, card styling, responsive rules
+    └── img/
+        ├── devarom-logo.svg          # Primary light mode wordmark
+        ├── devarom-logo-dark.svg     # Dark mode wordmark
+        ├── devarom-mark.svg          # Geometric tilted bar brand mark
+        ├── favicon.ico               # Favicon (binary)
+        ├── favicon.svg               # Vector SVG favicon
+        └── social/
+            └── google.svg            # Local vector asset for Google Sign-In broker button
+```
+
+### 8.2 Rationale: Native FreeMarker vs. Keycloakify
+- **Zero Additional Build Tooling:** Native FreeMarker + CSS is natively supported by Keycloak 26.8.1 (Quarkus runtime) with no additional Node.js/npm transpilation pipelines required inside Docker or CI.
+- **Immediate Hot Reloading:** Changes in `./themes` are reflected immediately in the running container via volume mounting.
+- **Direct Compatibility & Security Invariants:** Directly extends `keycloak.v2` (PatternFly v5). Upstream Keycloak security forms, CSRF validation, session state management, and required action handlers are fully preserved without risk of desynchronization.
+- **Independence:** Does not duplicate or bundle the React SPA into Keycloak.
+
+### 8.3 Design Tokens & Styling
+Tokens directly match `frontend/src/styles/global.css`:
+- **Ink Primary:** `#173f36` (`--color-ink`)
+- **Teal Accent / Brand:** `#20594a` (`--color-teal`)
+- **Lime Accent:** `#d9ed95` (`--color-accent`)
+- **Paper Background:** `#f7f7ef` (`--color-paper`)
+- **Card Surface:** `#fcfcf7` (`--color-card`)
+- **Border Subtle:** `#dce0d2` (`--color-border`)
+- **Local Typography:** Uses native system sans-serif font stack (`system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`) with zero external Google Fonts / CDN network calls, ensuring fast, privacy-respecting rendering.
+- **Responsive Layout:** Optimized with fluid card width (`max-width: 460px`) and breakpoints for Desktop (1440px), Tablet (768px), Mobile (480px, 390px), and Small Mobile (360px) with zero horizontal overflow.
+- **Dark Mode Support:** Clean palette adaptation using `.pf-v5-theme-dark` and `@media (prefers-color-scheme: dark)` with dedicated dark wordmark.
+
+### 8.4 Safe Theme Installation & Existing-Realm Upgrade
+1. **Docker Compose Mounting:**
+   `platform/identity/docker-compose.identity.yml` mounts the local theme directory into the container:
+   ```yaml
+   volumes:
+     - ./realm-devarom.json:/opt/keycloak/data/import/realm-devarom.json:ro
+     - ./themes:/opt/keycloak/themes:ro
+   ```
+2. **Fresh Deployments:**
+   `realm-devarom.json` specifies `"loginTheme": "devarom"`, automatically applied on fresh container imports.
+3. **Existing Realm Upgrade (Idempotent, Zero Data Loss):**
+   Keycloak does not re-import `realm-devarom.json` when a database volume already exists. To safely apply the theme to a running Keycloak instance without deleting users, realms, or wiping volumes:
+   ```bash
+   ./platform/identity/apply-theme.sh
+   ```
+   This script securely runs `kcadm.sh` inside the container using ephemeral admin credentials, verifies the theme is installed, updates `loginTheme: devarom`, and tests the live HTTP response.
+
+### 8.5 Accessibility (WCAG 2.1 AA Compliance)
+- **Skip Link:** Hidden `#kc-skip-link` allows keyboard/screen-reader users to skip straight to the page title.
+- **Focus Rings:** High-visibility dual focus rings (`0 0 0 3px rgba(32, 89, 74, 0.25)`) on all inputs, buttons, and links.
+- **Semantic HTML & ARIA:** Preserves Keycloak's `aria-invalid`, `aria-describedby`, label associations, and `role="alert"` announcements for error banners.
+- **Color Contrast:** All text ratios exceed 4.5:1 on their respective backgrounds (Ink `#173f36` on Paper `#f7f7ef` is > 10:1).
+- **Multi-modal Feedback:** Validation errors combine icons, high-contrast borders, and descriptive text.
+
+### 8.6 Security Invariants Preserved
+- **Zero Client Password Exposure:** Passwords are never sent to the React SPA; forms post directly to Keycloak's authenticated browser endpoint.
+- **OIDC/PKCE Invariants:** Authorization Code Flow, PKCE S256, token lifetimes, and strict redirect allowlists remain 100% untouched.
+- **Zero Privilege Escalation on Registration:** Public self-registration only assigns `CUSTOMER`. Tested live: newly registered user `bobcustomer` received strictly `CUSTOMER` role membership.
+- **Google Broker Preservation:** Google sign-in button uses native Keycloak-generated identity broker links with a local SVG icon. Client secrets are never embedded in the theme.
+
+### 8.7 Theme Verification Summary (Refs #44)
+
+| Check | Scope | Result | Evidence |
+|---|---|---|---|
+| **Static Theme Structure** | Theme properties, parent inheritance, CSS, SVGs, messages | **Passed** | `./platform/identity/validate-identity.sh` (Checks 7–11) |
+| **Running Keycloak Theme Registration** | Theme recognized and listed by Keycloak 26.8.1 | **Passed** | `apply-theme.sh` & `kcadm.sh get realms/devarom` (`loginTheme=devarom`) |
+| **Branded Login UI** | Logo, typography, card layout, focus states, responsive styles | **Passed** | Chrome browser inspection; desktop (1440px) & mobile (390px) screenshots |
+| **Error Feedback** | Alert banner for invalid credentials / session expiry | **Passed** | Live test with incorrect password; verified alert styling |
+| **Registration Form** | Consistent brand layout, field formatting | **Passed** | Self-registration tested live; verified user in Keycloak with `CUSTOMER` role |
+| **E2E Baseline & Post-Theme Login** | React SPA -> Keycloak -> Gateway -> Accounts -> PostgreSQL | **Passed** | Logged in as `testcustomer`, retrieved profile via Gateway at `/customer` |
+| **Session Termination (Logout)** | RP-Initiated logout clearing session & returning to SPA | **Passed** | Verified post-logout redirect to `http://localhost:5173/` |

@@ -23,3 +23,4 @@ services:
       - "${KEYCLOAK_PORT:-8090}:8080"
     volumes:
       - ./realm-devarom.json:/opt/keycloak/data/import/realm-devarom.json:ro
+      - ./themes:/opt/keycloak/themes:ro

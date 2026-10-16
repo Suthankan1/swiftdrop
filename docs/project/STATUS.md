@@ -8,8 +8,8 @@ Last documentation update: **2026-10-16**. This file describes the **starter art
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; final submission pending** | `docs/milestones/NOV_01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
-| React application | **Single SPA merged (PR #41); shared OIDC implementation in #36 branch, review pending** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint and production build verified; live login/profile pending runtime dependencies |
-| Keycloak/Google login | **Identity foundation implemented & verified (Refs #2)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, hardened admin password requirement; full browser login pending React SPA |
+| React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
+| Keycloak/Google login | **Identity foundation & custom branded theme implemented & verified (Refs #2, #44)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`); live browser login, registration, role confinement, and logout verified with React SPA |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
 | CI/CD, Compose, Kubernetes/AI | **Not implemented by this starter** | Planned; Kubernetes/AI are bonuses |
 
@@ -70,7 +70,7 @@ See `services/accounts-service/README.md` for exact integration files/run steps.
 ## Issue #37 verification — 2026-10-16
 
 Owner: **Suthankan1** (Platform & Security integration); branch `feat/accounts-jwt-security`, based on `main` merge commit `09bd6be` (PR #43).
-Reviewers: **Sinthuha** (Accounts service owner), **Thuvarahan** (Accounts merchant consumer), **Vibhushan** (independent security QA).
+Reviewers: **Sinthuha** (Accounts service owner), **Thuvarahan** (Accounts merchant consumer), **Vvibhu** (independent security QA).
 
 Implemented independent OAuth2 Resource Server JWT security on Accounts Service:
 - Added Spring Boot 4.1.1 OAuth2 Resource Server dependencies and MockWebServer test framework.
@@ -86,7 +86,37 @@ Verification Results:
 - `JAVA_HOME=$(/usr/libexec/java_home -v 21) ./mvnw clean verify` in `services/accounts-service`: **passed, 37 unit/MVC + 16 real Testcontainers PostgreSQL integration tests (53 tests total)**; zero failures, errors, or skips.
 - `git diff --check`: passed; zero committed secrets or private keys.
 - Live Keycloak 26.8.1 on port 8090: OIDC discovery, JWKS (2 keys), negative ROPC, and negative plain-PKCE checks passed.
-- Live browser flow (React -> Keycloak -> Gateway -> Accounts -> PostgreSQL) and Google broker login (L03) remain unverified pending interactive browser session verification.
+- Live browser flow (React -> Keycloak -> Gateway -> Accounts -> PostgreSQL) verified in Issue #44.
 
-Next small task: Integrate and demonstrate the live browser login flow from React SPA through Keycloak and Gateway to Accounts Service `/api/v1/users/me`.
+Next small task: Branded Keycloak theme (Issue #44).
+
+## Issue #44 verification — 2026-10-16
+
+Owner: **Suthankan1**; branch `feat/keycloak-devarom-theme`, based on `main` merge commit `c6b31bb` (PR #45).
+Reviewers: UI / Accessibility reviewer and Security reviewer.
+
+Implemented custom branded Keycloak theme (`platform/identity/themes/devarom/login`) extending `keycloak.v2`:
+- Pure CSS design tokens strictly matching React SPA (`#173f36`, `#20594a`, `#d9ed95`, `#f7f7ef`, `#fcfcf7`, `#dce0d2`).
+- Responsive layout with zero horizontal overflow across Desktop (1440px), Tablet (768px), Mobile (390px), and Small Mobile (360px).
+- Dark mode theme variants supported (`.pf-v5-theme-dark`).
+- Local SVGs: Devarom wordmark (light & dark), brand mark, favicons, and Google broker SVG. Zero external CDN dependencies.
+- FreeMarker overrides (`template.ftl`, `footer.ftl`) providing skip links, card framing, error banners, and session indicator.
+- Extended message catalog with branded wording (`messages_en.properties`).
+- Docker Compose volume mount (`- ./themes:/opt/keycloak/themes:ro`) and realm configuration (`"loginTheme": "devarom"`).
+- Safe, idempotent upgrade script `platform/identity/apply-theme.sh` applying the theme to existing running Keycloak instances via `kcadm.sh` with zero data loss.
+- Expanded `platform/identity/validate-identity.sh` with 11 static checks and 6 runtime checks (including theme availability).
+
+Live End-to-End Browser Smoke Test:
+- Baseline verified before theme: React SPA (5173), Gateway (8080), Accounts (8081), Keycloak (8090), and PostgreSQL (5438).
+- Post-theme login verified: Navigating from React `/login` redirects to branded Keycloak login screen.
+- Invalid credentials test: Displays clear, accessible alert banner ("Invalid username or password.").
+- Successful authentication: Real login with `testcustomer` exchanges authorization code with PKCE S256 at `/auth/callback`, establishing in-memory session.
+- Gateway and Accounts integration: React Customer Space (`/customer`) successfully requests `GET /api/v1/users/me` via Gateway (8080) to Accounts (8081). Accounts validates the Keycloak access token and returns the persisted customer profile.
+- Registration verified: Self-registration of new user `bobcustomer` succeeds. Inspecting Keycloak user role mappings confirmed only `CUSTOMER` role assigned (no privilege elevation).
+- Logout verified: Keycloak RP-initiated logout clears the session and returns user to `http://localhost:5173/`.
+- External Google login (L03) remains unverified until external Google Cloud Console consent is performed.
+
+Verification Results:
+- `./platform/identity/validate-identity.sh`: **passed (11 static + 6 live runtime checks)**.
+- `git diff --check`: **passed; clean diff with zero trailing whitespace or committed secrets**.
 

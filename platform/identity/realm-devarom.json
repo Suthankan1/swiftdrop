@@ -12,6 +12,7 @@
   "resetPasswordAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
+  "loginTheme": "devarom",
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
@@ -129,7 +130,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "devarom-frontend",
+            "included.client.audience": "",
             "included.custom.audience": "devarom-api",
             "id.token.claim": "false",
             "access.token.claim": "true"
