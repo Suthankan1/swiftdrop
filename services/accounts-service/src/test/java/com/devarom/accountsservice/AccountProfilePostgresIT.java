@@ -28,7 +28,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.*;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AccountProfilePostgresIT {
     @Container
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine")
@@ -47,6 +47,33 @@ class AccountProfilePostgresIT {
     @Autowired Flyway flyway;
     @Autowired EntityManager entityManager;
     @Autowired PlatformTransactionManager transactionManager;
+    @Autowired org.springframework.context.ApplicationContext context;
+
+    @org.springframework.boot.test.web.server.LocalServerPort
+    int port;
+
+    @Test
+    void actualServerStartsWithPublicHealthAndRejectsAnonymousAndSpoofedProfileRequests() throws Exception {
+        assertThat(context.getBeansOfType(org.springframework.security.core.userdetails.UserDetailsService.class)).isEmpty();
+        try (var client = java.net.http.HttpClient.newHttpClient()) {
+            var health = client.send(java.net.http.HttpRequest.newBuilder(
+                    java.net.URI.create("http://localhost:" + port + "/actuator/health")).build(),
+                    java.net.http.HttpResponse.BodyHandlers.ofString());
+            assertThat(health.statusCode()).isEqualTo(200);
+            assertThat(tools.jackson.databind.json.JsonMapper.builder().build()
+                    .readTree(health.body()).get("status").asString()).isEqualTo("UP");
+            for (boolean spoofed : List.of(false, true)) {
+                var request = java.net.http.HttpRequest.newBuilder(
+                        java.net.URI.create("http://localhost:" + port + "/api/v1/users/me"));
+                if (spoofed) request.header("X-Keycloak-Sub", "synthetic-other")
+                        .header("Authorization", "Bearer unverified");
+                var response = client.send(request.build(), java.net.http.HttpResponse.BodyHandlers.ofString());
+                assertThat(response.statusCode()).isEqualTo(401);
+                assertThat(response.body()).doesNotContain("synthetic-other", "SELECT", "stackTrace");
+                assertThat(response.headers().firstValue("content-type").orElse("")).startsWith("application/problem+json");
+            }
+        }
+    }
 
     private TrustedIdentity identity() {
         return new TrustedIdentity("synthetic-" + UUID.randomUUID(), "customer@example.test",
@@ -89,6 +116,16 @@ class AccountProfilePostgresIT {
         assertThat(later.roles()).containsExactly("MERCHANT");
         assertThat(later.merchantProfile()).isNull();
         assertThat(count(identity.subject())).isEqualTo(1);
+    }
+
+    @Test
+    void targetedInsertConflictReloadsOriginalWithoutChangingAttributes() {
+        var identity = identity();
+        var first = service.getOrCreate(identity);
+        var rows = new TransactionTemplate(transactionManager).execute(status ->
+                repository.insertIfAbsent(identity.subject(), "other@example.test", "Other name"));
+        assertThat(rows).isZero();
+        assertThat(service.getOrCreate(identity)).isEqualTo(first);
     }
 
     @Test
