@@ -5,6 +5,15 @@
 # ==============================================================================
 
 services:
+  # Capture-only development SMTP. No relay, real delivery, or host SMTP port.
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    container_name: devarom-mailpit
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_MAX_MESSAGES: 100
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.1
     container_name: devarom-keycloak

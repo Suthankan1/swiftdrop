@@ -139,6 +139,10 @@ Keycloak's realm configuration uses environment variable substitution enabled vi
 - `curl` and `jq` installed locally.
 
 ### 6.2 Starting Keycloak Locally
+For an **existing** container, use the non-destructive Phase A upgrade in §9.
+The embedded dev database lives in that container's writable layer; a generic
+Compose `up` after configuration changes may recreate it and lose identities.
+
 ```bash
 # From repository root:
 docker compose -f platform/identity/docker-compose.identity.yml --project-directory platform/identity up -d
@@ -167,8 +171,12 @@ A comprehensive validation script is provided to verify all security invariants 
 
 ### 6.4 Safe Shutdown
 ```bash
-docker compose -f platform/identity/docker-compose.identity.yml --project-directory platform/identity down
+docker compose -f platform/identity/docker-compose.identity.yml --project-directory platform/identity stop
 ```
+
+Do not use `down`, `rm`, `--force-recreate`, or `down -v` against an existing
+embedded identity database. Persistent identity PostgreSQL remains a separate
+platform slice; this task does not migrate storage.
 
 ---
 
@@ -273,3 +281,165 @@ Tokens directly match `frontend/src/styles/global.css`:
 | **Registration Form** | Consistent brand layout, field formatting | **Passed** | Self-registration tested live; verified user in Keycloak with `CUSTOMER` role |
 | **E2E Baseline & Post-Theme Login** | React SPA -> Keycloak -> Gateway -> Accounts -> PostgreSQL | **Passed** | Logged in as `testcustomer`, retrieved profile via Gateway at `/customer` |
 | **Session Termination (Logout)** | RP-Initiated logout clearing session & returning to SPA | **Passed** | Verified post-logout redirect to `http://localhost:5173/` |
+
+## 9. Issue #47 Phase A — native email verification and local SMTP
+
+Owner: **Suthankan1**. Only native email ownership links are included. TOTP
+(Phase B) and the email OTP decision (Phase C) remain open. No React verification
+endpoint, custom token store, plugin, password grant, or new service is added.
+
+### Policy and native behavior
+
+The fresh-import realm sets `verifyEmail: true` and retains
+`registrationAllowed: true`. SMTP uses `mailpit:1025` on the existing Compose
+network, with the synthetic sender `no-reply@devarom.test`, no authentication and
+no TLS on this local container connection. Mailpit v1.27.4 captures messages;
+it has no forwarding/relay settings or published SMTP port. Its web UI/API binds
+only `127.0.0.1:${MAILPIT_UI_PORT:-8025}`. It is a development tool, never a
+production SMTP provider. Captured messages are ephemeral, bounded to 100, and
+contain sensitive action links: do not share screenshots of mail bodies/URLs.
+
+With Keycloak 26.8.1, registration normally collects profile details first,
+verifies email, then asks the user to create a password. Keep this native order.
+The required-action array is intentionally **omitted** from the realm import:
+a partial list would replace native defaults, including `UPDATE_PASSWORD`.
+Fresh import retains the native 30-second resend cooldown; the runtime upgrade
+merges `VERIFY_EMAIL.config.emailResendCooldownSeconds: "60"` into the existing
+action. It keeps `defaultAction: false`; the realm verification flag evaluates
+unverified accounts without requiring verified accounts to repeat the action.
+This is a per-user native resend cooldown, not comprehensive registration/IP
+flood protection. Production edge abuse controls require a separately reviewed
+configuration; this task does not introduce account lockout.
+
+User-generated links retain the existing **300-second** lifetime. The updater
+checks the effective `actionTokenGeneratedByUserLifespan.verify-email` override
+and native password action before changing policy. Invalid/tampered/expired
+links fail in Keycloak. Tokens bind the subject and email; a different logged-in
+identity is rejected. Native link reuse can show “already verified”; these
+links are **not described as strictly single-use**. Reuse must not verify a
+different user, create another session improperly, or grant privileged roles.
+
+### Fresh setup versus existing realm upgrade
+
+For a new installation, copy `.env.example` to ignored `.env`, supply your own
+bootstrap password, and run the §6 startup command. Do not overwrite an existing
+`.env`. Existing admin, Google and database values are preserved. The import
+contains safe local SMTP defaults; changes in `.env` are read by the upgrade
+helper, not applied to an existing realm merely by restarting Keycloak.
+
+For an existing installation:
+
+```bash
+# Preserve the existing container and its embedded identity data.
+# Inspect local port 8025 (or choose MAILPIT_UI_PORT) before starting Mailpit.
+docker start devarom-keycloak
+docker compose -f platform/identity/docker-compose.identity.yml --project-directory platform/identity up -d --no-deps mailpit
+```
+
+In Keycloak's Admin Console, create an **enabled disposable customer**, with a
+unique synthetic `.test` mailbox, no password, and no privileged roles. Copy its
+user ID (not an email link). This uses an ordinary test customer; no additional
+administrator account is needed. Then run:
+
+```bash
+python3 platform/identity/configure-email-verification.py apply --test-user-id <synthetic-customer-id>
+python3 platform/identity/configure-email-verification.py check
+```
+
+The helper reads `.env` as data without sourcing/executing it; environment
+values can override defaults. Credentials and the short-lived admin token stay
+in memory and are never printed. Admin/Mailpit URLs are loopback only, HTTP
+redirects and proxy forwarding are disabled. The helper:
+
+1. Checks the existing realm/action baseline, expiry and disposable user roles.
+2. Saves only prior SMTP/verification/action settings in ignored
+   `.local/email-verification-recovery.json`, mode `0600`.
+3. Stages only SMTP, keeping the current verification gate unchanged.
+4. Calls Keycloak's native `send-verify-email` for that customer with lifespan
+   300, and confirms a **new actual SMTP message** in Mailpit for the mailbox.
+5. Merges the cooldown, enables `verifyEmail`, then reads back the narrow policy.
+   Failures restore the previous SMTP/action/gate. Repeated apply confirms mail
+   delivery without rewriting an already matching policy.
+
+The helper never updates users, passwords, roles, clients, Google configuration,
+keys, or token/session lifetimes. Remove the disposable test customer and only
+its captured messages after testing; never bulk-mark existing users verified.
+If the existing administrator already has a synthetic `.test` mailbox, omitting
+`--test-user-id` instead uses native `testSMTPConnection` and confirms receipt
+before any SMTP settings are persisted. That endpoint sends to the authenticated
+administrator; it has no custom recipient override. No admin mailbox is edited.
+
+For an older container without the theme bind mount, copy the updated theme and
+restart that same container to clear theme/message caches, without recreating it:
+
+```bash
+docker cp platform/identity/themes/devarom/. devarom-keycloak:/opt/keycloak/themes/devarom/
+docker restart devarom-keycloak
+```
+
+The native verification/info/error templates remain inherited. Message overrides
+and wrapping use the existing Devarom card, typography, colors and alert styles;
+all native action/resend links remain intact. Original-session verification
+continues through native password setup/callback. Another browser may display a
+native confirmation/success screen and require a fresh sign-in.
+
+### Existing users, Google, and recovery
+
+Existing local unverified users encounter `VERIFY_EMAIL` at their next
+interactive login. Existing verified users continue normally. Existing JWTs and
+SSO/refresh sessions are **not retroactively revoked** by this flag; do not claim
+instant invalidation. Retiring existing sessions would require separate approval.
+Changing an email requires proving ownership of the new address through native
+Keycloak behavior. No migration sets `emailVerified` in bulk.
+
+The existing Google broker and `trustEmail` policy are preserved. Keycloak can
+honor a verified broker email; an explicitly unverified broker email must still
+be verified. Google consent/real Google login remains a separate, unverified
+acceptance item; a broker button is not evidence of successful Google sign-in.
+
+If mail delivery fails, keep the gate and **repair/start Mailpit first**, then
+retry the native resend after cooldown. Expired links require a newly sent link;
+never extend expiry or mark users verified to make a test succeed. For a reviewed
+local rollback of this upgrade only:
+
+```bash
+python3 platform/identity/configure-email-verification.py recover
+```
+
+Recovery restores the private snapshot's prior SMTP, gate and `VERIFY_EMAIL`
+configuration. It cannot restore a masked external SMTP secret and refuses such
+an upgrade. Already queued user `VERIFY_EMAIL` actions remain, so toggling the
+realm flag alone may not unblock affected users. Inspect individual accounts
+with the owner; repair SMTP rather than deleting required actions in bulk.
+The helper never deletes queued actions or resets credentials. Preserve the
+private snapshot for recovery; review/archive it privately before a different
+policy migration.
+
+### Production SMTP and focused verification
+
+Production must use approved SMTP on the Keycloak server, a verified sender,
+TLS/STARTTLS, protected provider credentials, certificate validation, and tested
+delivery/recovery. Configure via supported Admin Console/API or server-side
+secret injection, e.g. placeholders `${SMTP_HOST}`, `${SMTP_PORT}`,
+`${SMTP_FROM}`, `${SMTP_USER}`, `${SMTP_PASSWORD}`. Never put credentials in
+`VITE_*`, commit an expanded realm export, or use the dev Mailpit Compose there.
+The helper deliberately accepts **local Mailpit only**; it is not a production
+credential provisioning tool. Do not change an existing Google broker to pass
+SMTP tests.
+
+```bash
+./platform/identity/validate-identity.sh
+python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'
+# Actual native HTTP registration, Mailpit delivery, PKCE and profile regression:
+python3 platform/identity/tests/email_verification_smoke.py --include-expiry
+```
+
+Static checks do not prove mail delivery. The live harness uses only disposable
+synthetic identities; it prints sanitized outcomes, never links/passwords/JWTs.
+See the dated evidence in `docs/project/STATUS.md` for what actually ran and
+which browser/full-stack checks remain unverified.
+
+Version references: [Keycloak 26.8.1 admin guide](https://www.keycloak.org/docs/26.8.1/server_admin/),
+[native verification handler](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/authentication/actiontoken/verifyemail/VerifyEmailActionTokenHandler.java),
+[native cooldown](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/authentication/requiredactions/util/EmailCooldownManager.java),
+[Mailpit Docker configuration](https://mailpit.axllent.org/docs/install/docker/).
