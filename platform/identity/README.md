@@ -443,3 +443,91 @@ Version references: [Keycloak 26.8.1 admin guide](https://www.keycloak.org/docs/
 [native verification handler](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/authentication/actiontoken/verifyemail/VerifyEmailActionTokenHandler.java),
 [native cooldown](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/authentication/requiredactions/util/EmailCooldownManager.java),
 [Mailpit Docker configuration](https://mailpit.axllent.org/docs/install/docker/).
+
+---
+
+## 10. Issue #47 Phase B — native authenticator-app TOTP multi-factor authentication
+
+Owner: **Suthankan1**. Implements native Keycloak 26.8.1 authenticator-app Time-based
+One-Time Password (TOTP) enrollment, multi-factor authentication challenge, and
+administrative recovery flows (Issue #47 Phase B). Only standard authenticator apps
+(Google Authenticator, Microsoft Authenticator, FreeOTP) are supported via RFC 6238.
+Phase C (email OTP code feasibility) remains an open decision. No React-side OTP form,
+custom cryptographic secrets, custom token store, or direct access grant is introduced.
+
+### Policy and native behavior
+
+The `realm-devarom.json` foundation configures the RFC 6238 native OTP policy:
+- **Policy Type:** `totp` (Time-based One-Time Password)
+- **Algorithm:** `HmacSHA1`
+- **Digits:** `6`
+- **Period:** `30` seconds
+- **Look-ahead Window:** `1` (permits ±30s clock drift tolerance)
+- **Replay Prevention:** `otpPolicyCodeReusable: false` (strictly single-use; codes cannot be reused within the active time window)
+- **Supported Applications:** `totpAppGoogleName`, `totpAppMicrosoftAuthenticatorName`, `totpAppFreeOTPName`
+
+### Safe initial enrollment policy & browser flow
+
+Keycloak's native browser authentication flow (`Browser - Conditional 2FA`) features
+the subflow `Condition - user configured` (`conditional-user-configured`):
+- **Unenrolled Users:** The condition evaluates to false; unenrolled customers log in
+  seamlessly with their primary credentials without challenge, avoiding lockout.
+- **Enrolled Users:** Once a user registers an authenticator credential, the condition
+  evaluates to true and Keycloak prompts for the TOTP code via `login-otp.ftl`.
+- **Action Configuration:** The `CONFIGURE_TOTP` required action is registered with
+  `defaultAction: false`, ensuring MFA is optional for `CUSTOMER` by default while
+  permitting administrators to require MFA per user or users to voluntarily enroll.
+- **Voluntary Enrollment (Application-Initiated Action):** Users can trigger voluntary
+  enrollment from the frontend by initiating an OIDC authorization flow with
+  `kc_action=CONFIGURE_TOTP`. Keycloak provides an accessible `#cancelTOTPBtn` allowing
+  the user to decline without breaking their authentication session.
+
+### Branded Keycloak theme integration
+
+Branded screens extend `keycloak.v2` and strictly apply Devarom design tokens:
+- **`login-config-totp.ftl`:** Branded heading, description, QR code container enclosed
+  in a dedicated high-contrast white card (`#kc-totp-secret-qr-code`) for dark mode legibility,
+  monospace manual key display (`#kc-totp-secret-key`), device name input, and 6-digit TOTP input.
+- **`login-otp.ftl`:** Branded MFA challenge form with prominent 20px centered digit input
+  (`#otp`), device selection (when multiple credentials exist), and clear error messages.
+- **Responsive & Accessible:** Fluid card layout tested down to 360px small mobile displays
+  with zero horizontal overflow, WCAG 2.1 AA compliant color contrast, and visible focus rings.
+
+### Administrative recovery & credential management
+
+If a user loses access to their authenticator device, administrators can safely reset their
+MFA credentials using the loopback CLI helper without exposing secrets:
+
+```bash
+# Check existing runtime TOTP configuration
+python3 platform/identity/configure-totp.py check
+
+# Safely reset lost device MFA for a specific user and queue fresh setup on next login
+python3 platform/identity/configure-totp.py reset-user <username>
+
+# Restore previous realm OTP policy from private 0600 snapshot
+python3 platform/identity/configure-totp.py recover
+```
+
+The reset workflow deletes existing OTP credentials via Keycloak's Admin API and appends
+`CONFIGURE_TOTP` to the user's `requiredActions`. Upon their next login, the user is safely
+prompted to pair their new authenticator device.
+
+### Verification and regression suite
+
+```bash
+# Comprehensive security invariant and static structure validation:
+./platform/identity/validate-identity.sh
+
+# Complete unit and mock integration suite:
+python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'
+
+# Live native TOTP MFA integration & smoke test suite:
+python3 platform/identity/tests/totp_smoke.py
+
+# Live Phase A email verification regression:
+python3 platform/identity/tests/email_verification_smoke.py
+```
+
+All test harnesses use strictly synthetic disposable identities (`dv47b-*`) and perform
+automatic cleanup on exit. Secrets, OTP codes, and tokens are kept in memory and never logged.
