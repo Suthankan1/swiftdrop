@@ -1006,3 +1006,14 @@ span.pf-m-error {
     font-size: 18px !important;
   }
 }
+/* Native verification/info/error pages reuse the shared Devarom card. */
+.instruction,
+#kc-info-message,
+.devarom-alert-text {
+  overflow-wrap: anywhere;
+}
+
+#kc-verify-email-form .instruction {
+  line-height: 1.6;
+  margin-block: 0 1rem;
+}

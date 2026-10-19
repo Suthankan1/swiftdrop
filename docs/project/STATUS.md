@@ -9,7 +9,7 @@ Last documentation update: **2026-10-16**. This file describes the **starter art
 | November 1 report | **Existing external design package reviewed; final submission pending** | `docs/milestones/NOV_01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
 | React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
-| Keycloak/Google login | **Identity foundation & custom branded theme implemented & verified (Refs #2, #44)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`); live browser login, registration, role confinement, and logout verified with React SPA |
+| Keycloak/Google login | **Identity foundation, branded theme & native email verification verified (Refs #2, #44, #47 Phase A)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`), local Mailpit SMTP; live browser registration, email verification link, password setup, role confinement, and logout verified with React SPA |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
 | CI/CD, Compose, Kubernetes/AI | **Not implemented by this starter** | Planned; Kubernetes/AI are bonuses |
 
@@ -120,3 +120,22 @@ Verification Results:
 - `./platform/identity/validate-identity.sh`: **passed (11 static + 6 live runtime checks)**.
 - `git diff --check`: **passed; clean diff with zero trailing whitespace or committed secrets**.
 
+## Issue #47 Phase A verification — 2026-10-17
+
+Owner: **Suthankan1**; branch `feat/keycloak-email-verification`, based on `test` branch merge commit `ab65336` (PR #46).
+
+Implemented Phase A of Issue #47 (native Keycloak email verification link + local SMTP via Mailpit):
+- Added Mailpit `v1.27.4` container to `platform/identity/docker-compose.identity.yml` bound strictly to `127.0.0.1:8025` for development UI, and internal container port `1025` on the shared Docker network for SMTP.
+- Configured native Keycloak realm `realm-devarom.json` with `verifyEmail: true` and local Mailpit SMTP server (`host: mailpit`, `port: 1025`, `from: no-reply@devarom.test`, `auth: false`, `ssl: false`, `starttls: false`).
+- Configured native `VERIFY_EMAIL` required action with a 60-second resend cooldown (`emailResendCooldownSeconds: 60`), preserving default 300-second action token lifespan.
+- Branded native Keycloak verification/info/error pages extending `keycloak.v2` parent theme with Devarom design tokens and responsive wrapping (`messages_en.properties`, `devarom.css`).
+- Created safe, idempotent runtime upgrade utility `platform/identity/configure-email-verification.py` supporting `check`, `apply` (with preflight SMTP receipt check and 0600 recovery snapshot), and `recover`.
+- Automated test suites:
+  - `platform/identity/validate-identity.sh`: passed (12 static invariant checks + 6 live runtime smoke checks).
+  - `python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'`: passed (36 unit tests covering static configuration rules, isolation, and mock Keycloak admin REST interactions).
+  - `python3 platform/identity/tests/email_verification_smoke.py`: passed (live synthetic flow covering registration, real Mailpit message capture, gate enforcement, link tampering rejection, 60s cooldown enforcement, resend delivery, link completion, password setup, PKCE exchange, wrong-account context rejection, replay rejection, Gateway + Accounts profile access, and logout).
+- Live browser test:
+  - Full end-to-end user registration on branded Keycloak page, inbox check notice, Mailpit email delivery, verification link follow, password setup, PKCE code exchange at `/auth/callback`, Customer Space profile display via Gateway to Accounts, and clean RP-initiated logout verified in browser.
+- Scope bounds:
+  - Phase B (Authenticator TOTP) and Phase C (Email OTP code feasibility) explicitly deferred; Issue #47 remains open.
+  - External Google login (L03) remains unverified until external Google Cloud Console consent is performed.
