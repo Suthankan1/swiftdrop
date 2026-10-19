@@ -9,7 +9,7 @@ Last documentation update: **2026-10-19**. This file describes the **starter art
 | November 1 report | **Existing external design package reviewed; final submission pending** | `docs/milestones/NOV_01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
 | React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
-| Keycloak/Google login | **Identity foundation, branded theme, native email verification & authenticator TOTP MFA verified (Refs #2, #44, #47 Phase A & B)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`), local Mailpit SMTP, RFC 6238 TOTP MFA policy; live browser registration, email verification, TOTP enrollment/challenge/recovery, role confinement, and logout verified with React SPA |
+| Keycloak/Google login | **Identity foundation, branded theme, native email verification & authenticator TOTP MFA verified (Refs #2, #44, #47 Phase A & B); Email OTP strategy decided (ADR-0009, Phase C)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`), local Mailpit SMTP, RFC 6238 TOTP MFA policy; live browser registration, email verification, TOTP enrollment/challenge/recovery, role confinement, and logout verified with React SPA |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
 | CI/CD, Compose, Kubernetes/AI | **Not implemented by this starter** | Planned; Kubernetes/AI are bonuses |
 
@@ -201,3 +201,20 @@ Scope bounds & Blocked dependencies:
 - Staff operations and admin read models open under Issues #14, #15, #16.
 - Merchant approval-state and tenant isolation provider open under Issue #8.
 - Real Google login (L03) remains unverified until external Google Cloud Console consent is performed.
+
+## Issue #47 Phase C — Email OTP Feasibility, Threat Model & Architecture Decision — 2026-10-19
+
+Lead: **Suthankan1** (Platform & Security) · Independent Review: **Pending Vibhushan (@Vibhushan-2003)**
+Branch: `docs/email-otp-feasibility` (based on latest `test`, commit `b433ef7`).
+
+- **Keycloak 26.8.1 Investigation:** Proved Keycloak core provides **no native typed Email OTP authenticator**.
+  Upstream discussions (#36910) confirm this is out of tree. Built-in mechanisms are action-token links
+  (`VERIFY_EMAIL`, `UPDATE_PASSWORD`) and app-based TOTP/HOTP (`OTPPolicy`).
+- **Use Case & Security Evaluation:**
+  - *Signup Verification:* Degrades 256-bit signed action token entropy to 20 bits (6 digits); introduces brute-force risks without adding security.
+  - *Login MFA:* Violates NIST SP 800-63B §5.1.3.3 (fate sharing with email password reset); unencrypted intermediate SMTP hops; AiTM phishing vulnerability; introduces severe delivery latency/race conditions and transforms external SMTP outages into total authentication DoS.
+- **Threat Model ([EMAIL_OTP_THREAT_MODEL.md](../security/EMAIL_OTP_THREAT_MODEL.md)):** Modeled 18 distinct abuse scenarios and defined mandatory technical invariants (CSPRNG, max 3 attempts, 180s expiry, single-use burn-on-read, 60s cooldown, salted HMAC session binding, and zero secret logging).
+- **Formal Decision ([ADR-0009](../architecture/adr/ADR-0009.md)):**
+  - **Adopted Recommendation (OUTCOME A):** Do NOT implement typed Email OTP. Retain Keycloak's native signed email verification links (PR #48) and native RFC 6238 Authenticator-App TOTP (PR #49).
+  - **Gated Contingency (OUTCOME C):** If product management explicitly mandates typed email codes in the future, author an in-house Keycloak SPI (`DevaromEmailOtpAuthenticatorFactory`) under a separate, independently scoped and reviewed issue.
+- **Decision Status:** `PROPOSED — AWAITING SECURITY/PRODUCT APPROVAL`.

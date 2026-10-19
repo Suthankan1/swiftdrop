@@ -14,5 +14,6 @@
 | Proof leakage | Authenticated upload/download, private object store, size/type limits, malware policy as applicable | Unauthorized read/upload tests |
 | Secrets leakage | No secrets in repo/CI logs, safe env examples, credentials outside browser | Secrets review/CI scan |
 | gRPC impersonation | Authenticate service and validate delegated actor/tenant context | Forged metadata/deadline tests |
+| Email OTP abuse / fate sharing | Max 3 attempts, 60s cooldown, burn-on-read, retain TOTP for independent MFA, zero secrets in logs/React | Detailed threat model in [EMAIL_OTP_THREAT_MODEL.md](EMAIL_OTP_THREAT_MODEL.md) |
 
 This is a starting checklist, not a formal penetration test or production security certification. Update it when requirements change.
