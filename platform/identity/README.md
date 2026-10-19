@@ -531,3 +531,35 @@ python3 platform/identity/tests/email_verification_smoke.py
 
 All test harnesses use strictly synthetic disposable identities (`dv47b-*`) and perform
 automatic cleanup on exit. Secrets, OTP codes, and tokens are kept in memory and never logged.
+
+---
+
+## 11. Issue #47 Phase C — Email OTP Feasibility, Security Architecture & Decision
+
+Owner: **Suthankan1**. Reviews the feasibility, security threat model, and architectural
+decision regarding typed Email OTP codes in Devarom's Keycloak platform (Issue #47 Phase C).
+
+### Summary of findings & decision gate
+
+1. **Native Support in Keycloak 26.8.1:** Keycloak core provides **no native typed Email OTP authenticator**.
+   Keycloak's native email mechanisms are strictly action-token links (`VERIFY_EMAIL`, `UPDATE_PASSWORD`),
+   and its core `OTPPolicy` applies exclusively to RFC 6238 TOTP and RFC 4226 HOTP (app/hardware tokens).
+2. **Evaluated Use Cases:**
+   - *Use Case A (Signup Verification):* Typed codes degrade entropy from $\ge 256$ bits (cryptographic
+     action token) to 20 bits ($10^6$ combinations) and introduce brute-force attack vectors without adding security.
+   - *Use Case B (Login MFA):* Violates NIST SP 800-63B §5.1.3.3 factor independence (fate sharing between
+     email password reset and email OTP); unencrypted intermediate SMTP hops; lack of phishing resistance;
+     and transforms external SMTP latency/outages into total authentication denial of service.
+   - *Use Case C (Recovery & Step-Up):* Emailed codes offer insufficient assurance for high-risk actions.
+3. **Formal Architectural Decision ([ADR-0009](../../docs/architecture/adr/ADR-0009.md)):**
+   - **Primary Recommendation (OUTCOME A):** Do NOT implement typed Email OTP. Retain Keycloak's native signed
+     email verification links (PR #48) and native RFC 6238 Authenticator-App TOTP (PR #49).
+   - **Contingency Specification (OUTCOME C):** If product management or security stakeholders explicitly
+     mandate typed email codes, that work is gated to a separate, independently scoped follow-up issue to build
+     an in-house Keycloak SPI (`DevaromEmailOtpAuthenticatorFactory`) conforming to the strict mitigations
+     specified in [EMAIL_OTP_THREAT_MODEL.md](../../docs/security/EMAIL_OTP_THREAT_MODEL.md) (CSPRNG, 180s expiry,
+     max 3 attempts, 60s cooldown, salted HMAC session binding, and zero secrets logging).
+4. **Detailed Architecture & Security References:**
+   - Feasibility Study: [`docs/architecture/EMAIL_OTP_FEASIBILITY.md`](../../docs/architecture/EMAIL_OTP_FEASIBILITY.md)
+   - Threat Model & Invariants: [`docs/security/EMAIL_OTP_THREAT_MODEL.md`](../../docs/security/EMAIL_OTP_THREAT_MODEL.md)
+   - Architecture Decision Record: [`docs/architecture/adr/ADR-0009.md`](../../docs/architecture/adr/ADR-0009.md)
