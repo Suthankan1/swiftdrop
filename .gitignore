@@ -36,6 +36,7 @@ Thumbs.db
 # Tests/caches and local broker volumes
 **/test-results/
 **/playwright-report/
+**/reports/
 **/.pytest_cache/
 **/__pycache__/
 *.pyc

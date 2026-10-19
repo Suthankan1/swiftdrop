@@ -160,3 +160,33 @@ Implemented Phase B of Issue #47 (native Keycloak authenticator-app TOTP MFA):
 - Scope bounds:
   - Phase C (Email OTP code feasibility investigation) remains open; Issue #47 remains open.
   - External Google login (L03) remains unverified until external Google Cloud Console consent is performed.
+
+## Issue #18 verification — 2026-10-19
+
+Owner: **Suthankan1** (Platform & Security integration); branch `tests/auth-security-e2e`, based on `test` branch merge commit `7ecfc33` (PR #49).
+Independent QA Reviewer: **Vibhushan (@Vibhushan-2003)**.
+
+Implemented reproducible, automated Security E2E test harness (`tests/security-e2e/`):
+- Built `harness_common.py` providing safe, zero-secret Keycloak Admin API management, authentic interactive Authorization Code + S256 PKCE login, synthetic RS256 JWT builder, and standardized test reporting data models.
+- Built `test_jwt_rejection.py` (L06):
+  - 14 Gateway edge tests (port 8080): missing, malformed, unsigned, untrusted, wrong-issuer, wrong-audience, expired, not-yet-valid, missing-subject tokens strictly rejected with 401 ProblemDetail; unmapped protected path rejected with 401; allowed origin CORS permits `http://localhost:5173`; disallowed attacker CORS rejected; valid PKCE token accepted with 200 OK.
+  - 13 direct Accounts Service tests (port 8081): independent OAuth2 Resource Server validates Keycloak JWKS; missing, malformed, unsigned, untrusted, wrong-issuer, wrong-audience, expired, not-yet-valid, missing-subject tokens rejected with 401 ProblemDetail; Basic auth disabled (no Basic challenge); unexposed actuator routes return 401; public health returns 200 UP; direct valid PKCE token accepted with 200 OK.
+- Built `test_role_and_ownership.py` (L07 & L08):
+  - L07: Authenticated token lacking approved application role returns 403 Forbidden RFC 7807 ProblemDetail on direct Accounts (8081) and forwarded by Gateway (8080); public user registration composite role inspection proves strict confinement to `CUSTOMER` role with zero self-granted staff roles (`MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`). Unimplemented staff operations (admin, courier) verified as default-denied and tracked as blocked dependencies.
+  - L08: Resource-owner isolation verified between synthetic Customer A and Customer B. Profile A and Profile B have distinct UUIDs and subjects. Spoofed identity headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameter injections (`?id=...&subject=...`) stripped by Gateway and ignored by Accounts. Direct `/users/{id}` lookup and merchant tenancy operations verified as default-denied and tracked as blocked dependencies.
+- Built `security_e2e_runner.py` and `run-security-e2e.sh`:
+  - Preflight service readiness checks against Keycloak (8090), Gateway (8080), Accounts (8081), Postgres (5438), and Mailpit (8025).
+  - Runs Python Security E2E test suite (40 tests: 36 passed, 0 failed, 4 blocked by missing dependencies).
+  - Runs full platform regression test suites: `validate-identity.sh`, `totp_smoke.py`, Gateway `mvnw test` (13 tests), Accounts `mvnw test` (37 unit/MVC tests), and Frontend `pnpm test --run` (56 tests).
+  - Generates machine-readable JSON summary artifact at `tests/security-e2e/reports/security_e2e_results.json` without leaking secrets.
+
+Verification Results:
+- `./tests/security-e2e/run-security-e2e.sh`: **passed cleanly (40 security E2E tests: 36 passed, 0 failed, 4 blocked)**.
+- `git diff --check`: passed; clean diff with zero trailing whitespace or committed credentials.
+- Independent QA reproduction: Handed off to **Vibhushan (@Vibhushan-2003)** with full reproduction instructions in `tests/security-e2e/README.md`. Independent QA confirmation pending.
+
+Scope bounds & Blocked dependencies:
+- Cross-user explicit ID lookup API (`/api/v1/users/{id}`) does not exist in Accounts Service (profiles resolved only via authenticated `sub` in `/api/v1/users/me`).
+- Staff operations and admin read models open under Issues #14, #15, #16.
+- Merchant approval-state and tenant isolation provider open under Issue #8.
+- Real Google login (L03) remains unverified until external Google Cloud Console consent is performed.
