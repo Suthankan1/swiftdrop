@@ -1017,3 +1017,308 @@ span.pf-m-error {
   line-height: 1.6;
   margin-block: 0 1rem;
 }
+
+/* ==============================================================================
+   Keycloak TOTP Authenticator-App MFA Styling (Phase B)
+   ============================================================================== */
+
+/* Setup Steps Container */
+ol#kc-totp-settings,
+#kc-totp-settings {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 0 20px 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+#kc-totp-settings > li {
+  background: var(--color-paper) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  padding: 14px 16px !important;
+  box-sizing: border-box !important;
+}
+
+#kc-totp-settings > li > p {
+  margin: 0 0 8px 0 !important;
+  font-size: 14px !important;
+  font-weight: 550 !important;
+  color: var(--color-ink) !important;
+  line-height: 1.4 !important;
+}
+
+#kc-totp-settings > li > p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Supported Apps Pills */
+ul#kc-totp-supported-apps,
+#kc-totp-supported-apps {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 8px 0 0 0 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+#kc-totp-supported-apps > li {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 20px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--color-teal) !important;
+  line-height: 1.2 !important;
+}
+
+/* QR Code Section */
+.kc-qr-code,
+.pf-v5-c-login__main-body .kc-qr-code {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 12px 0 6px 0 !important;
+  gap: 10px !important;
+}
+
+#kc-totp-secret-qr-code {
+  background: #ffffff !important;
+  padding: 12px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  max-width: 190px !important;
+  max-height: 190px !important;
+  width: 100% !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+  display: block !important;
+}
+
+/* Manual Mode Toggle Links */
+#mode-manual,
+#mode-barcode {
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  color: var(--color-teal) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  cursor: pointer !important;
+  transition: color 0.15s ease !important;
+}
+
+#mode-manual:hover,
+#mode-barcode:hover {
+  color: var(--color-ink) !important;
+}
+
+/* Manual Secret Key Display */
+#kc-totp-secret-key {
+  display: block !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 2px !important;
+  color: var(--color-ink) !important;
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 6px !important;
+  padding: 10px 12px !important;
+  text-align: center !important;
+  word-break: break-all !important;
+  user-select: all !important;
+  -webkit-user-select: all !important;
+  margin: 8px 0 !important;
+}
+
+/* Manual Configuration Parameters */
+#kc-totp-settings ul:not(#kc-totp-supported-apps) {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 8px 0 0 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+#kc-totp-type,
+#kc-totp-algorithm,
+#kc-totp-digits,
+#kc-totp-period,
+#kc-totp-counter {
+  font-size: 13px !important;
+  color: var(--color-ink) !important;
+  font-weight: 500 !important;
+}
+
+/* TOTP Form & Inputs */
+#kc-totp-settings-form,
+#kc-otp-login-form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Large, Centered 6-Digit Verification Code Inputs */
+input#totp,
+input#otp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 6px !important;
+  text-align: center !important;
+  height: 48px !important;
+  border-radius: 8px !important;
+  color: var(--color-ink) !important;
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  padding: 4px 8px !important;
+  box-sizing: border-box !important;
+}
+
+input#totp:focus,
+input#otp:focus {
+  border-color: var(--color-teal) !important;
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 1px !important;
+}
+
+input#userLabel {
+  height: 42px !important;
+  font-size: 14px !important;
+  border-radius: 8px !important;
+  color: var(--color-ink) !important;
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+/* TOTP Input Error Messages */
+#input-error-otp-code,
+#input-error-otp-label,
+#input-error-container-otp {
+  font-size: 13px !important;
+  color: #dc2626 !important;
+  font-weight: 500 !important;
+  margin-top: 4px !important;
+  display: block !important;
+}
+
+/* Other Sessions Checkbox */
+#logout-sessions {
+  accent-color: var(--color-teal) !important;
+}
+
+/* Multi-Credential Selection on OTP Challenge */
+.pf-v5-c-login-otp-list,
+div[id^="kc-otp-credential-"] {
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 8px !important;
+  background: var(--color-card) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.pf-v5-c-login-otp-list:hover,
+div[id^="kc-otp-credential-"]:hover {
+  border-color: var(--color-teal) !important;
+  background: var(--color-paper) !important;
+}
+
+div[id^="kc-otp-credential-"].pf-m-selected {
+  border-color: var(--color-teal) !important;
+  background: rgba(32, 89, 74, 0.08) !important;
+  box-shadow: 0 0 0 1px var(--color-teal) !important;
+}
+
+/* Dark Mode Overrides for TOTP */
+.pf-v5-theme-dark #kc-totp-settings > li {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.pf-v5-theme-dark #kc-totp-supported-apps > li {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #a7f3d0 !important;
+}
+
+/* QR Code MUST stay white background in dark mode for scanner contrast */
+.pf-v5-theme-dark #kc-totp-secret-qr-code {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.pf-v5-theme-dark #kc-totp-secret-key {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #e5e7eb !important;
+}
+
+.pf-v5-theme-dark input#totp,
+.pf-v5-theme-dark input#otp,
+.pf-v5-theme-dark input#userLabel {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f9fafb !important;
+}
+
+/* Mobile Responsive Optimization for TOTP (390px, 360px) */
+@media (max-width: 480px) {
+  #kc-totp-secret-qr-code {
+    max-width: 170px !important;
+    max-height: 170px !important;
+    padding: 10px !important;
+  }
+
+  #kc-totp-settings > li {
+    padding: 12px 14px !important;
+  }
+
+  #kc-totp-secret-key {
+    font-size: 13px !important;
+    letter-spacing: 1px !important;
+    padding: 8px 10px !important;
+  }
+
+  input#totp,
+  input#otp {
+    font-size: 18px !important;
+    letter-spacing: 4px !important;
+    height: 44px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  #kc-totp-secret-qr-code {
+    max-width: 150px !important;
+    max-height: 150px !important;
+    padding: 8px !important;
+  }
+
+  #kc-totp-settings > li {
+    padding: 10px 12px !important;
+  }
+
+  #kc-totp-secret-key {
+    font-size: 12px !important;
+    letter-spacing: 0.5px !important;
+    padding: 6px 8px !important;
+  }
+
+  input#totp,
+  input#otp {
+    font-size: 16px !important;
+    letter-spacing: 3px !important;
+    height: 42px !important;
+  }
+}
+
