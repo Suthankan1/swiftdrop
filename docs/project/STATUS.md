@@ -1,6 +1,6 @@
 # Current project status — update only with evidence
 
-Last documentation update: **2026-10-16**. This file describes the **starter artifact**, not unknown external repositories.
+Last documentation update: **2026-10-19**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
@@ -9,7 +9,7 @@ Last documentation update: **2026-10-16**. This file describes the **starter art
 | November 1 report | **Existing external design package reviewed; final submission pending** | `docs/milestones/NOV_01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
 | React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
-| Keycloak/Google login | **Identity foundation, branded theme & native email verification verified (Refs #2, #44, #47 Phase A)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`), local Mailpit SMTP; live browser registration, email verification link, password setup, role confinement, and logout verified with React SPA |
+| Keycloak/Google login | **Identity foundation, branded theme, native email verification & authenticator TOTP MFA verified (Refs #2, #44, #47 Phase A & B)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`), local Mailpit SMTP, RFC 6238 TOTP MFA policy; live browser registration, email verification, TOTP enrollment/challenge/recovery, role confinement, and logout verified with React SPA |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
 | CI/CD, Compose, Kubernetes/AI | **Not implemented by this starter** | Planned; Kubernetes/AI are bonuses |
 
@@ -138,4 +138,25 @@ Implemented Phase A of Issue #47 (native Keycloak email verification link + loca
   - Full end-to-end user registration on branded Keycloak page, inbox check notice, Mailpit email delivery, verification link follow, password setup, PKCE code exchange at `/auth/callback`, Customer Space profile display via Gateway to Accounts, and clean RP-initiated logout verified in browser.
 - Scope bounds:
   - Phase B (Authenticator TOTP) and Phase C (Email OTP code feasibility) explicitly deferred; Issue #47 remains open.
+  - External Google login (L03) remains unverified until external Google Cloud Console consent is performed.
+
+## Issue #47 Phase B verification — 2026-10-19
+
+Owner: **Suthankan1**; branch `feat/keycloak-totp-mfa`, based on `test` branch merge commit `b72c005` (PR #48).
+
+Implemented Phase B of Issue #47 (native Keycloak authenticator-app TOTP MFA):
+- Configured RFC 6238 TOTP policy in `realm-devarom.json`: `otpPolicyType: "totp"`, `otpPolicyAlgorithm: "HmacSHA1"`, `otpPolicyDigits: 6`, `otpPolicyPeriod: 30`, `otpPolicyLookAheadWindow: 1`, `otpPolicyCodeReusable: false`, `otpSupportedApplications: ["totpAppGoogleName", "totpAppMicrosoftAuthenticatorName", "totpAppFreeOTPName"]`.
+- Configured native `CONFIGURE_TOTP` required action with safe optional enrollment for `CUSTOMER` (`defaultAction: false`), preserving existing user access without lockout.
+- Extended custom branded Devarom Keycloak login theme:
+  - Updated `template.ftl` with branded page titles and subtitles for `login-config-totp` and `login-otp`.
+  - Added localized branded copy to `messages_en.properties`.
+  - Implemented responsive styling in `devarom.css` for `#kc-totp-settings`, `#kc-totp-supported-apps`, QR code card enclosure for dark mode legibility, monospace manual secret key, 20px centered digit input (`#totp` / `#otp`), error banners, and responsive breakpoints down to 360px mobile with zero horizontal overflow.
+- Created safe, idempotent runtime CLI `platform/identity/configure-totp.py` supporting `check`, `apply`, `recover` (using private 0600 snapshot `.local/totp-recovery.json`), and `reset-user` for lost-device recovery.
+- Automated test suites:
+  - `platform/identity/validate-identity.sh`: passed (13 static invariant checks + 7 live runtime smoke checks).
+  - `python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'`: passed (53 unit/integration tests covering policy, action invariants, and mock loopback administration).
+  - `python3 platform/identity/tests/totp_smoke.py`: passed (all 8 suites: runtime policy compliance, unenrolled CUSTOMER login without challenge, branded TOTP setup rendering + negative code rejections [invalid, expired, wrong-secret], subsequent login challenge with replay prevention, administrative credential reset & recovery re-enrollment, voluntary AIA enrollment via `kc_action=CONFIGURE_TOTP`, self-registration privilege elevation invariant [CUSTOMER role only], and downstream resource server probe).
+  - `python3 platform/identity/tests/email_verification_smoke.py`: passed (Phase A email verification regression: registration, Mailpit delivery, cooldown, verification completion, and profile access).
+- Scope bounds:
+  - Phase C (Email OTP code feasibility investigation) remains open; Issue #47 remains open.
   - External Google login (L03) remains unverified until external Google Cloud Console consent is performed.
