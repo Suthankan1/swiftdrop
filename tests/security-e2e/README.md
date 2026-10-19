@@ -1,10 +1,11 @@
-# Devarom — Security E2E Test Automation & Independent QA Handoff
+# Devarom — Security E2E Test Automation & QA Verification
 
-**Task:** Issue #18 (`[NOV-14] Prove JWT, cross-role and resource-owner denial end to end`)  
-**Platform Owner:** Suthankan1  
-**Independent QA Reviewer:** Vibhushan (@Vibhushan-2003)  
-**Target Integration Branch:** `test`  
-**Architecture Baseline:** Devarom v1.3  
+**Task:** Issue #18 (`[NOV-14] Prove JWT, cross-role and resource-owner denial end to end`)
+**Platform & Auth Owner:** Suthankan1
+**Temporary QA Execution Owner:** Suthankan1 (Platform Self-Verification)
+**Original Intended QA Owner:** Vibhushan (@Vibhushan-2003) (Independent Review Pending)
+**Target Integration Branch:** `test`
+**Architecture Baseline:** Devarom v1.3
 
 ---
 
@@ -15,7 +16,9 @@ This test harness provides reproducible, automated end-to-end security verificat
 2. **L07 — Cross-Role Authorization Denial:** Authenticated tokens lacking approved Devarom application roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`) are rejected with HTTP 403 Forbidden. Public self-registration is strictly confined to the `CUSTOMER` role, preventing self-elevation to staff privileges. Unimplemented staff operations are verified as default-denied and documented as blocked dependencies.
 3. **L08 — Resource-Owner & Tenant Isolation:** Using authentic Keycloak-issued tokens for distinct synthetic users (Customer A and Customer B), the suite proves that Customer A receives only Customer A's persisted profile, Customer B receives only Customer B's persisted profile, and client-forged identity headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameter injections are strictly stripped/ignored without leaking cross-user data.
 
-> **Independent QA Notice:** As mandated by the repository guidelines and project governance, this test harness provides the automated tooling and verifiable evidence, but **does NOT claim independent QA sign-off**. Independent verification must be performed and signed off by **Vibhushan (@Vibhushan-2003)**.
+> **Temporary QA Ownership & Self-Verification Disclosure:**
+> The original Issue #18 independent QA owner, Vibhushan (@Vibhushan-2003), is temporarily unavailable. Suthankan1 has taken over execution of the remaining security verification tasks.
+> Because Suthankan1 also owns the authentication implementation, this work is strictly classified as **PLATFORM SELF-VERIFICATION**, not independent peer QA. Independent peer review remains pending and will be performed later when another member is available. Vibhushan has not executed or approved these test runs.
 
 ---
 
