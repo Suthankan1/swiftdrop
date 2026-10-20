@@ -9,7 +9,7 @@ Last documentation update: **2026-10-20**. This file describes the **starter art
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
 | React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
-| Keycloak/Google login | **Identity foundation, branded theme, native email verification & authenticator TOTP MFA verified (Refs #2, #44, #47 Phase A & B); Email OTP strategy decided (ADR-0009, Phase C)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`), local Mailpit SMTP, RFC 6238 TOTP MFA policy; live browser registration, email verification, TOTP enrollment/challenge/recovery, role confinement, and logout verified with React SPA |
+| Keycloak/Google login | **Real Google login L03 PASS (2026-10-20); independent peer review pending**. Identity foundation, branded theme, native email verification and TOTP MFA previously verified; Email OTP remains an ADR-0009 Phase C decision | User completed Google authentication; agent observed real Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles, and verified logout UI plus zero Keycloak sessions. See current L03 evidence below; earlier automated broker results remain historical. |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup & full-stack readiness verified (PR #53, Refs #17, #19)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py`; Kubernetes/AI remain bonuses |
 
@@ -258,10 +258,10 @@ Branch: `docs/email-otp-feasibility` (based on latest `test`, commit `b433ef7`).
 
 ### Scope Bounds & Honest Status
 - **Clean-Clone Verification (L10):** Platform environment and runbook prepared; marked **NOT VERIFIED** until independently executed from a fresh workstation by Eric (@EricPraveen) under Issue #17.
-- **External Google Login (L03):** Verified automated broker delegation, Google authorization URI construction, live Google OAuth probe (HTTP 302 acceptance), negative controls (HTTP 400 state rejection, Google URI mismatch rejection), and CUSTOMER privilege confinement. Remains **BLOCKED / NOT VERIFIED (External Human Consent Gate)** pending human developer test-user consent on `accounts.google.com`.
+- **External Google Login (L03), at the readiness run:** Automated broker delegation, Google authorization URI construction, live Google OAuth probe (HTTP 302 acceptance), negative controls and CUSTOMER privilege confinement passed; interactive login was **BLOCKED / NOT VERIFIED**. This historical blocker is superseded by the user-completed Google run recorded below.
 - **Security E2E (Issue #18):** Classified as **PLATFORM SELF-VERIFICATION**; independent security sign-off pending Vibhushan (@Vibhushan-2003).
 
-## Real Google OIDC Broker Login Verification (L03) — 2026-10-20
+## Historical Automated Google OIDC Broker Verification (L03, PR #54) — 2026-10-20
 
 Lead: **Suthankan1** (Platform & Security) · Reviewers: **Pending Gajanthan (@Gajanthan17, Customer UI) & Vibhushan (@Vibhushan-2003, Security QA)**
 Branch: `tests/google-oidc-e2e` (based on `test` branch commit `882c65e`).
@@ -293,6 +293,20 @@ Branch: `tests/google-oidc-e2e` (based on `test` branch commit `882c65e`).
 - `python3 tests/security-e2e/demo_smoke.py`: **ALL 4 SCENARIOS PASSED**.
 - `./tests/security-e2e/run-security-e2e.sh`: **passed cleanly (40 security tests: 36 passed, 0 failed, 4 blocked by missing business endpoints; 13 Gateway, 37 Accounts, 56 Frontend tests passed)**.
 
-### Honest Milestone Status for L03
-- **L03 Status:** **BLOCKED / NOT VERIFIED (External Human Consent Gate)**.
+### Historical Milestone Status for L03
+- **L03 Status at PR #54:** **BLOCKED / NOT VERIFIED (External Human Consent Gate)**. Superseded by the user-completed run below; these automated results are preserved as historical evidence.
 - **Rationale:** All broker configuration, delegation, URI construction, Google OAuth acceptance, negative controls, and role confinement are verified. Full end-to-end interactive completion requires a human developer entering their Google credentials and consenting on `accounts.google.com` using an account explicitly listed in Google Cloud Console's OAuth consent screen under Test Users. Automated agents must not fabricate credentials or claim unverified human consent.
+
+## Current L03 Real Google Login, Profile and Logout — 2026-10-20
+
+**L03: PASS for this authorized local run; independent teammate verification remains pending.** The application checkout was `60faff2` on `tests/google-oidc-e2e`; PR #54 merged that work to `test` at `d2f9b08`. This documentation follow-up starts from that latest `test` commit and changes no application or identity configuration.
+
+- **Observed environment:** React `http://localhost:5173/login`, Keycloak :8090 discovery, Gateway :8080 health and Accounts :8081 health each returned HTTP 200; both backend health responses were `UP`.
+- **Actual Google Console inspection:** Project `devarom`, External audience, Testing status. The authorized owner was already among eight test users. The web OAuth client matched the live Keycloak client configuration and included the exact broker redirect `http://localhost:8090/realms/devarom/broker/google/endpoint`. No cloud audience, test users, credentials or billing settings were changed.
+- **Human interaction and browser evidence:** The user explicitly confirmed closing the agent-opened Google chooser and registering with Google in another Chrome tab. The agent inspected that real authenticated Customer page and observed Gateway `GET /api/v1/users/me` returning HTTP 200. Returned name/email matched the authorized owner, account/identity references were present, and roles contained only `CUSTOMER`; personal values are withheld. Gateway source maps this route to Accounts :8081; no separate downstream network trace was collected.
+- **Read-only runtime corroboration:** Keycloak contained the exact authorized owner, enabled and email verified, with one Google federated link whose email matched. The runtime Google provider was enabled, its client matched ignored local configuration, external token storage was disabled, and the account had CUSTOMER without staff roles. Credentials and admin tokens were used only internally in memory; no raw admin responses or IDs are included.
+- **Logout:** Agent clicked Sign out, observed the public home page, and confirmed protected `/customer` redirected to `/login`. Subsequent Keycloak admin reads found **0 online sessions** and **0 frontend offline sessions** for the authorized owner. Browser events were truncated on navigation, so the logout HTTP response was **not observed**; server-session absence corroborates the UI result.
+
+The Google interaction was completed by the user, not automated probing. The agent did not observe every sign-in/consent prompt or a continuous redirect trace. Combined user confirmation, real authenticated profile, Google federated identity and session checks support this local L03 PASS. Earlier automated PKCE/state/nonce, negative-control and regression results remain historical; those suites were not rerun for this documentation-only update. Screenshots, raw personal profile data, account/session IDs, secrets, tokens and OTPs are excluded.
+
+This run is not an independent review by a different teammate. Gajanthan's Customer UI review and Vibhushan's security QA remain pending, as do L10 clean-clone reproduction and other separately tracked milestone work. Detailed sanitized evidence is in [LOGIN_ACCEPTANCE.md](../milestones/LOGIN_ACCEPTANCE.md#current-l03-real-google-login-evidence--2026-10-20).
