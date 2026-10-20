@@ -1,17 +1,17 @@
 # Current project status — update only with evidence
 
-Last documentation update: **2026-10-19**. This file describes the **starter artifact**, not unknown external repositories.
+Last documentation update: **2026-10-20**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
 | Devarom v1.3 design | **Proposed baseline** | `docs/architecture/BASELINE.md` and 20 supplied editable diagrams |
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
-| November 1 report | **Existing external design package reviewed; final submission pending** | `docs/milestones/NOV_01.md` |
+| November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
 | React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
 | Keycloak/Google login | **Identity foundation, branded theme, native email verification & authenticator TOTP MFA verified (Refs #2, #44, #47 Phase A & B); Email OTP strategy decided (ADR-0009, Phase C)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`), local Mailpit SMTP, RFC 6238 TOTP MFA policy; live browser registration, email verification, TOTP enrollment/challenge/recovery, role confinement, and logout verified with React SPA |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
-| CI/CD, Compose, Kubernetes/AI | **Not implemented by this starter** | Planned; Kubernetes/AI are bonuses |
+| CI/CD, Compose, Kubernetes/AI | **Local container startup & full-stack readiness verified (PR #53, Refs #17, #19)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py`; Kubernetes/AI remain bonuses |
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
@@ -218,3 +218,45 @@ Branch: `docs/email-otp-feasibility` (based on latest `test`, commit `b433ef7`).
   - **Adopted Recommendation (OUTCOME A):** Do NOT implement typed Email OTP. Retain Keycloak's native signed email verification links (PR #48) and native RFC 6238 Authenticator-App TOTP (PR #49).
   - **Gated Contingency (OUTCOME C):** If product management explicitly mandates typed email codes in the future, author an in-house Keycloak SPI (`DevaromEmailOtpAuthenticatorFactory`) under a separate, independently scoped and reviewed issue.
 - **Decision Status:** `PROPOSED — AWAITING SECURITY/PRODUCT APPROVAL`.
+
+## Nov 1 Demo Readiness & Clean-Clone Handoff Verification — 2026-10-20
+
+- Platform Lead & Integration: **Suthankan1**
+- Independent Clean-Clone Reviewer: **Eric (@EricPraveen)** (Issue #17)
+- Independent Security Reviewer: **Vibhushan (@Vibhushan-2003)** (Issue #18)
+- Academic Report & Presentation Lead: **HarithKeshan (@HarithKeshan)** (Issue #19)
+- Branch: `chore/nov1-demo-readiness`, targeting `test` (based on `test` branch commit `169d78e`).
+
+### Summary of Completed Platform Work
+- **Clean-Clone Reproducibility & Runbook:**
+  - Authored [`docs/development/CLEAN_CLONE_RUNBOOK.md`](../development/CLEAN_CLONE_RUNBOOK.md) providing step-by-step instructions for prerequisite validation, container bootstrapping, configuration, backend and frontend startup, verification, demonstration script, and troubleshooting.
+  - Updated [`docs/milestones/LOGIN_ACCEPTANCE.md`](../milestones/LOGIN_ACCEPTANCE.md) row L10 assigning independent verification to Eric (@EricPraveen).
+- **Automated Full-Stack Readiness Validator:**
+  - Created [`platform/local/check-readiness.sh`](../../platform/local/check-readiness.sh) checking local toolchain (Java 21, Node 20+, pnpm, Docker, Python 3, OpenSSL), infrastructure containers (Keycloak :8090, Mailpit :8025, PostgreSQL :5438/:5432 with dynamic port detection), backend services (Gateway :8080, Accounts :8081), and frontend dev server (:5173).
+- **Automated Login Demo Smoke Test:**
+  - Created [`tests/security-e2e/demo_smoke.py`](../../tests/security-e2e/demo_smoke.py) executing 4 end-to-end user journeys against live Gateway and Keycloak:
+    - **Scenario A:** Customer self-registration, Mailpit email verification link extraction, verification completion, and authenticated profile retrieval.
+    - **Scenario B:** Returning customer username/password authentication via Authorization Code + S256 PKCE, profile retrieval.
+    - **Scenario C:** Customer login with RFC 6238 TOTP challenge, token issuance, and authenticated profile retrieval.
+    - **Scenario D:** Core security assertions (unauthenticated 401 rejection, unprivileged 403 rejection, and resource-owner profile isolation).
+- **Safe Container Startup & Configuration:**
+  - Created [`platform/local/start-local.sh`](../../platform/local/start-local.sh) and [`platform/local/README.md`](../../platform/local/README.md) for non-destructive local container initialization.
+  - Hardened [`platform/identity/apply-theme.sh`](../../platform/identity/apply-theme.sh) to detect read-only Docker volume mounts cleanly.
+  - Updated [`tests/security-e2e/run-security-e2e.sh`](../../tests/security-e2e/run-security-e2e.sh) with dynamic PostgreSQL port resolution.
+- **Peer Handoff Documentation:**
+  - Authored [`docs/team/PLATFORM_HANDOFF_NOV01.md`](../team/PLATFORM_HANDOFF_NOV01.md) detailing exact actions, commands, and verification criteria for Eric (Issue #17), HarithKeshan (Issue #19), and Vibhushan (Issue #18).
+
+### Measured Verification Evidence
+- `./platform/local/check-readiness.sh`: **13/13 passed, 0 warnings, 0 failures**.
+- `python3 tests/security-e2e/demo_smoke.py`: **ALL 4 SCENARIOS PASSED** (A: Registration & Mailpit link, B: Returning customer, C: TOTP challenge, D: Security denials & isolation).
+- `./tests/security-e2e/run-security-e2e.sh`: **passed cleanly (40 security tests: 36 passed, 0 failed, 4 blocked by missing downstream staff dependencies)**.
+- Gateway `./mvnw test`: passed (13/13 tests, BUILD SUCCESS).
+- Accounts `./mvnw test`: passed (37 unit/MVC tests, BUILD SUCCESS; 53 total with integration suite).
+- Frontend `pnpm test --run`: passed (56/56 tests, 0 failures).
+- Frontend `pnpm typecheck` & `pnpm build`: passed cleanly.
+- Frontend manual inspection: Vite dev server running on `http://localhost:5173`, HTTP 200, branded Keycloak login redirect and return navigation operational.
+
+### Scope Bounds & Honest Status
+- **Clean-Clone Verification (L10):** Platform environment and runbook prepared; marked **NOT VERIFIED** until independently executed from a fresh workstation by Eric (@EricPraveen) under Issue #17.
+- **External Google Login (L03):** Remains **BLOCKED / NOT VERIFIED** (requires external Google Cloud Console OAuth consent configuration).
+- **Security E2E (Issue #18):** Classified as **PLATFORM SELF-VERIFICATION**; independent security sign-off pending Vibhushan (@Vibhushan-2003).
