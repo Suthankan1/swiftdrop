@@ -11,6 +11,7 @@
 - Not run / environment limitations:
 
 ## Checklist
+- [ ] Development PR targets `test`; feature branch includes current `origin/test`
 - [ ] Scope approved by module owner; one vertical slice, not a drive-by refactor
 - [ ] Contracts / DB ownership / Keycloak restrictions respected
 - [ ] No secrets, tokens, private files, binaries or unnecessary report PDFs

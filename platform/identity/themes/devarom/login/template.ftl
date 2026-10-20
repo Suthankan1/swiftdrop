@@ -38,7 +38,7 @@
             <meta name="${meta?split('==')[0]}" content="${meta?split('==')[1]}"/>
         </#list>
     </#if>
-    <title><#if pageId?? && pageId == "register">Create Account &bull; Devarom<#elseif pageId?? && pageId == "login">Sign In &bull; Devarom<#elseif pageId?? && pageId == "error">Authentication Error &bull; Devarom<#elseif pageId?? && pageId == "login-reset-password">Reset Password &bull; Devarom<#else>${title!}</#if></title>
+    <title><#if pageId?? && pageId == "register">Create Account &bull; Devarom<#elseif pageId?? && pageId == "login">Sign In &bull; Devarom<#elseif pageId?? && pageId == "error">Authentication Error &bull; Devarom<#elseif pageId?? && pageId == "login-reset-password">Reset Password &bull; Devarom<#elseif pageId?? && pageId == "login-config-totp">Set Up Two-Factor Authentication &bull; Devarom<#elseif pageId?? && pageId == "login-otp">Two-Factor Authentication &bull; Devarom<#else>${title!}</#if></title>
     <#if themeResources?? && themeResources.favicons?has_content>
         <@themeResourceTags.renderFavicons themeResources.favicons url.resourcesPath />
     <#else>
@@ -172,6 +172,10 @@
           <p class="devarom-card-subtitle">${msg("loginAccountSubtitle")}</p>
         <#elseif pageId == "register">
           <p class="devarom-card-subtitle">${msg("registerSubtitle")}</p>
+        <#elseif pageId == "login-config-totp">
+          <p class="devarom-card-subtitle">${msg("loginTotpSubtitle")}</p>
+        <#elseif pageId == "login-otp">
+          <p class="devarom-card-subtitle">${msg("loginOtpSubtitle")}</p>
         </#if>
         <#if realm.internationalizationEnabled && locale.supported?size gt 1>
         <div class="${properties.kcLoginMainHeaderUtilities!} devarom-locale-picker">

@@ -10,3 +10,4 @@ These records document the proposed **v1.3 target**; they do not prove code exis
 - [ADR-0006: Owner-owned PostgreSQL and transactional outbox](ADR-0006.md)
 - [ADR-0007: SSE for status-only realtime tracking](ADR-0007.md)
 - [ADR-0008: Bonus scope deferred beyond login milestone](ADR-0008.md)
+- [ADR-0009: Email OTP Verification Strategy for Devarom](ADR-0009.md)

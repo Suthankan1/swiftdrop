@@ -7,8 +7,21 @@ Abhinaya,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Vibhushan,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Pushmitha,Dispatcher/Admin,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 HarithKeshan,Dispatcher/Admin,TBD,TBD,TBD,Not started,TBD,Planned,TBD
-Suthankan1,Platform / Security / cross-module slices,#1,Nov 1 Login Integration Contract & Baseline Freeze,4h,PR #34 (merged),HarithKeshan,Merged,2026-10-15
-Suthankan1,Platform / Security / cross-module slices,#2,Keycloak OIDC & Role Foundation,5h,PR #35 (merged),HarithKeshan / Gajanthan / Sinthuha,Merged,2026-10-15
-Suthankan1,Platform / Security / cross-module slices,#3,Spring Cloud API Gateway & Local Login Integration Foundation,5h,PR pending (feat/api-gateway-foundation),Eric / Vibhushan / Sinthuha,In Review,2026-10-15
-Suthankan1 (acting for Gajanthan),Customer (temporary coverage),#4,Customer Use Cases & Booking Flows Review,4h,docs/report/customer_journey_review.md,Pushmitha / Sinthuha,In Review,2026-10-15
-Suthankan1,Platform / Security / cross-module slices,#37,Accounts JWT Resource Server Security & Profile Authorization,6h,PR pending (feat/accounts-jwt-security),Sinthuha / Thuvarahan / Vibhushan,In Review,2026-10-16
+Suthankan1,Platform / Security / cross-module slices,#1,Nov 1 Login Integration Contract & Baseline Freeze,4h,PR #34 (merged commit 4ad722a),HarithKeshan,Merged,2026-10-15
+Suthankan1,Platform / Security / cross-module slices,#2,Keycloak OIDC & Role Foundation,5h,PR #35 (merged commit c993204),HarithKeshan / Gajanthan / Sinthuha,Merged,2026-10-15
+Suthankan1,Platform / Security / cross-module slices,#36 #37,Centralize Authentication Ownership to Platform Lead,2h,PR #38 (merged commit c20bb5e),Team,Merged,2026-10-15
+Suthankan1,Platform / Security / cross-module slices,#3,Spring Cloud API Gateway & Edge JWT Validation,5h,PR #39 (merged commit 56341b4),Eric / Vibhushan / Sinthuha,Merged,2026-10-15
+Suthankan1 (acting for Gajanthan),Customer (temporary coverage),#4,Customer Journey & Booking Use Case Review,4h,PR #40 (merged commit 723c076),Pushmitha / Sinthuha,Merged,2026-10-15
+Suthankan1 (acting for Gajanthan),Customer (temporary coverage),#6,React 19 + Vite SPA Foundation Scaffold,5h,PR #41 (merged commit b680ce7),Team,Merged,2026-10-16
+Suthankan1,Platform / Security / cross-module slices,#36,React OIDC Client & In-Memory Token Management,6h,PR #42 (merged commit 7ebd42a),Gajanthan / Sinthuha,Merged,2026-10-16
+Suthankan1 (acting for Sinthuha),Customer (temporary coverage),#5,Accounts Service Java 21 MVC & PostgreSQL Profile Schema,6h,PR #43 (merged commit 09bd6be),Sinthuha / Thuvarahan,Merged,2026-10-16
+Suthankan1,Platform / Security / cross-module slices,#37,Accounts JWT Resource Server Security & Profile Isolation,6h,PR #45 (merged commit c6b31bb),Sinthuha / Thuvarahan / Vibhushan,Merged,2026-10-16
+Suthankan1,Platform / Security / cross-module slices,#44,Custom Branded Devarom Keycloak Login Theme,5h,PR #46 (merged commit ab65336),UI & Security Reviewers,Merged,2026-10-16
+Suthankan1,Platform / Security / cross-module slices,#47,Keycloak Email Verification Flow & Mailpit SMTP (Phase A),5h,PR #48 (merged commit b72c005),Reviewers,Merged,2026-10-17
+Suthankan1,Platform / Security / cross-module slices,#47,RFC 6238 Authenticator-App TOTP MFA Policy & Screens (Phase B),6h,PR #49 (merged commit 7ecfc33),Reviewers,Merged,2026-10-19
+Suthankan1,Platform / Security / cross-module slices,#18,Automated Security E2E Test Suite (40 Scenarios),6h,PR #50 (merged commit 3d05454),Vibhushan (Peer QA pending),Merged,2026-10-19
+Suthankan1,Platform / Security / cross-module slices,#18,Security E2E Platform Self-Verification & Evidence Documentation,3h,PR #51 (merged commit b433ef7),Vibhushan (Peer QA pending),Merged,2026-10-19
+Suthankan1,Platform / Security / cross-module slices,#47,Email OTP Threat Model & Architectural Decision (ADR-0009 Phase C),5h,PR #52 (merged commit 169d78e),Security & Product Reviewers,Merged,2026-10-19
+Suthankan1,Platform / Security / cross-module slices,#17 #19,Nov 1 Demo Readiness & Full-Stack Clean-Clone Runbook,5h,PR #53 (merged commit 882c65e),Eric / HarithKeshan / Vibhushan,Merged,2026-10-20
+Suthankan1,Platform / Security / cross-module slices,#36 #18,Automated Keycloak Google Broker Verification & Live Probe,5h,PR #54 (merged commit d2f9b08),Gajanthan / Vibhushan,Merged,2026-10-20
+Suthankan1,Platform / Security / cross-module slices,#36 #18,Verified Real Google Login & Logout Evidence (L03 PASS),4h,PR #55 (merged commit bf875a0),Gajanthan / Vibhushan (Peer review pending),Merged,2026-10-20

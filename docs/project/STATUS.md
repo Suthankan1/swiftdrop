@@ -1,17 +1,17 @@
 # Current project status — update only with evidence
 
-Last documentation update: **2026-10-16**. This file describes the **starter artifact**, not unknown external repositories.
+Last documentation update: **2026-10-20**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
 | Devarom v1.3 design | **Proposed baseline** | `docs/architecture/BASELINE.md` and 20 supplied editable diagrams |
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
-| November 1 report | **Existing external design package reviewed; final submission pending** | `docs/milestones/NOV_01.md` |
+| November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
 | React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
-| Keycloak/Google login | **Identity foundation & custom branded theme implemented & verified (Refs #2, #44)**; Compose hardened (Refs #3) | `platform/identity/` realm with 5 roles, PKCE S256, Google broker definition, branded Devarom Keycloak theme (`devarom`); live browser login, registration, role confinement, and logout verified with React SPA |
+| Keycloak/Google login | **Real Google login L03 PASS (2026-10-20); independent peer review pending**. Identity foundation, branded theme, native email verification and TOTP MFA previously verified; Email OTP remains an ADR-0009 Phase C decision | User completed Google authentication; agent observed real Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles, and verified logout UI plus zero Keycloak sessions. See current L03 evidence below; earlier automated broker results remain historical. |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
-| CI/CD, Compose, Kubernetes/AI | **Not implemented by this starter** | Planned; Kubernetes/AI are bonuses |
+| CI/CD, Compose, Kubernetes/AI | **Local container startup & full-stack readiness verified (PR #53, Refs #17, #19)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py`; Kubernetes/AI remain bonuses |
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
@@ -120,3 +120,193 @@ Verification Results:
 - `./platform/identity/validate-identity.sh`: **passed (11 static + 6 live runtime checks)**.
 - `git diff --check`: **passed; clean diff with zero trailing whitespace or committed secrets**.
 
+## Issue #47 Phase A verification — 2026-10-17
+
+Owner: **Suthankan1**; branch `feat/keycloak-email-verification`, based on `test` branch merge commit `ab65336` (PR #46).
+
+Implemented Phase A of Issue #47 (native Keycloak email verification link + local SMTP via Mailpit):
+- Added Mailpit `v1.27.4` container to `platform/identity/docker-compose.identity.yml` bound strictly to `127.0.0.1:8025` for development UI, and internal container port `1025` on the shared Docker network for SMTP.
+- Configured native Keycloak realm `realm-devarom.json` with `verifyEmail: true` and local Mailpit SMTP server (`host: mailpit`, `port: 1025`, `from: no-reply@devarom.test`, `auth: false`, `ssl: false`, `starttls: false`).
+- Configured native `VERIFY_EMAIL` required action with a 60-second resend cooldown (`emailResendCooldownSeconds: 60`), preserving default 300-second action token lifespan.
+- Branded native Keycloak verification/info/error pages extending `keycloak.v2` parent theme with Devarom design tokens and responsive wrapping (`messages_en.properties`, `devarom.css`).
+- Created safe, idempotent runtime upgrade utility `platform/identity/configure-email-verification.py` supporting `check`, `apply` (with preflight SMTP receipt check and 0600 recovery snapshot), and `recover`.
+- Automated test suites:
+  - `platform/identity/validate-identity.sh`: passed (12 static invariant checks + 6 live runtime smoke checks).
+  - `python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'`: passed (36 unit tests covering static configuration rules, isolation, and mock Keycloak admin REST interactions).
+  - `python3 platform/identity/tests/email_verification_smoke.py`: passed (live synthetic flow covering registration, real Mailpit message capture, gate enforcement, link tampering rejection, 60s cooldown enforcement, resend delivery, link completion, password setup, PKCE exchange, wrong-account context rejection, replay rejection, Gateway + Accounts profile access, and logout).
+- Live browser test:
+  - Full end-to-end user registration on branded Keycloak page, inbox check notice, Mailpit email delivery, verification link follow, password setup, PKCE code exchange at `/auth/callback`, Customer Space profile display via Gateway to Accounts, and clean RP-initiated logout verified in browser.
+- Scope bounds:
+  - Phase B (Authenticator TOTP) and Phase C (Email OTP code feasibility) explicitly deferred; Issue #47 remains open.
+  - External Google login (L03) remains unverified until external Google Cloud Console consent is performed.
+
+## Issue #47 Phase B verification — 2026-10-19
+
+Owner: **Suthankan1**; branch `feat/keycloak-totp-mfa`, based on `test` branch merge commit `b72c005` (PR #48).
+
+Implemented Phase B of Issue #47 (native Keycloak authenticator-app TOTP MFA):
+- Configured RFC 6238 TOTP policy in `realm-devarom.json`: `otpPolicyType: "totp"`, `otpPolicyAlgorithm: "HmacSHA1"`, `otpPolicyDigits: 6`, `otpPolicyPeriod: 30`, `otpPolicyLookAheadWindow: 1`, `otpPolicyCodeReusable: false`, `otpSupportedApplications: ["totpAppGoogleName", "totpAppMicrosoftAuthenticatorName", "totpAppFreeOTPName"]`.
+- Configured native `CONFIGURE_TOTP` required action with safe optional enrollment for `CUSTOMER` (`defaultAction: false`), preserving existing user access without lockout.
+- Extended custom branded Devarom Keycloak login theme:
+  - Updated `template.ftl` with branded page titles and subtitles for `login-config-totp` and `login-otp`.
+  - Added localized branded copy to `messages_en.properties`.
+  - Implemented responsive styling in `devarom.css` for `#kc-totp-settings`, `#kc-totp-supported-apps`, QR code card enclosure for dark mode legibility, monospace manual secret key, 20px centered digit input (`#totp` / `#otp`), error banners, and responsive breakpoints down to 360px mobile with zero horizontal overflow.
+- Created safe, idempotent runtime CLI `platform/identity/configure-totp.py` supporting `check`, `apply`, `recover` (using private 0600 snapshot `.local/totp-recovery.json`), and `reset-user` for lost-device recovery.
+- Automated test suites:
+  - `platform/identity/validate-identity.sh`: passed (13 static invariant checks + 7 live runtime smoke checks).
+  - `python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'`: passed (53 unit/integration tests covering policy, action invariants, and mock loopback administration).
+  - `python3 platform/identity/tests/totp_smoke.py`: passed (all 8 suites: runtime policy compliance, unenrolled CUSTOMER login without challenge, branded TOTP setup rendering + negative code rejections [invalid, expired, wrong-secret], subsequent login challenge with replay prevention, administrative credential reset & recovery re-enrollment, voluntary AIA enrollment via `kc_action=CONFIGURE_TOTP`, self-registration privilege elevation invariant [CUSTOMER role only], and downstream resource server probe).
+  - `python3 platform/identity/tests/email_verification_smoke.py`: passed (Phase A email verification regression: registration, Mailpit delivery, cooldown, verification completion, and profile access).
+- Scope bounds:
+  - Phase C (Email OTP code feasibility investigation) remains open; Issue #47 remains open.
+  - External Google login (L03) remains unverified until external Google Cloud Console consent is performed.
+
+## Issue #18 verification & temporary QA takeover — 2026-10-19
+
+Temporary QA Owner & Auth Platform Lead: **Suthankan1**
+Original Intended QA Owner: **Vibhushan (@Vibhushan-2003)** (independent review pending)
+Branch: `tests/auth-security-e2e`, targeting `test` (based on merge commit `3d05454`, PR #50).
+
+**QA Ownership & Integrity Notice:**
+The original independent QA owner for Issue #18, Vibhushan (@Vibhushan-2003), is temporarily unavailable. Suthankan1 has taken over execution of the remaining security verification tasks. Because Suthankan1 also owns the authentication implementation, this execution is classified as **PLATFORM SELF-VERIFICATION**, not independent peer QA. Independent peer review remains pending and will be performed when a peer reviewer is available. Vibhushan's original intended role is preserved in the issue history and documentation.
+
+Implemented reproducible, automated Security E2E test harness (`tests/security-e2e/`):
+- Built `harness_common.py` providing safe, zero-secret Keycloak Admin API management, authentic interactive Authorization Code + S256 PKCE login, synthetic RS256 JWT builder, and standardized test reporting data models.
+- Built `test_jwt_rejection.py` (L06):
+  - 14 Gateway edge tests (port 8080): missing, malformed, unsigned, untrusted, wrong-issuer, wrong-audience, expired, not-yet-valid, missing-subject tokens strictly rejected with 401 ProblemDetail; unmapped protected path rejected with 401; allowed origin CORS permits `http://localhost:5173`; disallowed attacker CORS rejected; valid PKCE token accepted with 200 OK.
+  - 13 direct Accounts Service tests (port 8081): independent OAuth2 Resource Server validates Keycloak JWKS; missing, malformed, unsigned, untrusted, wrong-issuer, wrong-audience, expired, not-yet-valid, missing-subject tokens rejected with 401 ProblemDetail; Basic auth disabled (no Basic challenge); unexposed actuator routes return 401; public health returns 200 UP; direct valid PKCE token accepted with 200 OK.
+- Built `test_role_and_ownership.py` (L07 & L08):
+  - L07: Authenticated token lacking approved application role returns 403 Forbidden RFC 7807 ProblemDetail on direct Accounts (8081) and forwarded by Gateway (8080); public user registration composite role inspection proves strict confinement to `CUSTOMER` role with zero self-granted staff roles (`MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`). Unimplemented staff operations (admin, courier) verified as default-denied and tracked as blocked dependencies.
+  - L08: Resource-owner isolation verified between synthetic Customer A and Customer B. Profile A and Profile B have distinct UUIDs and subjects. Spoofed identity headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameter injections (`?id=...&subject=...`) stripped by Gateway and ignored by Accounts. Direct `/users/{id}` lookup and merchant tenancy operations verified as default-denied and tracked as blocked dependencies.
+- Built `security_e2e_runner.py` and `run-security-e2e.sh`:
+  - Preflight service readiness checks against Keycloak (8090), Gateway (8080), Accounts (8081), Postgres (5438), and Mailpit (8025).
+  - Runs Python Security E2E test suite (40 tests: 36 passed, 0 failed, 4 blocked by missing dependencies).
+  - Runs full platform regression test suites: `validate-identity.sh`, `totp_smoke.py`, Gateway `mvnw test` (13 tests), Accounts `mvnw test` (37 unit/MVC tests), and Frontend `pnpm test --run` (56 tests).
+  - Generates machine-readable JSON summary artifact at `tests/security-e2e/reports/security_e2e_results.json` without leaking secrets.
+
+Verification Results (Executed by Suthankan1, Platform Self-Verification):
+- `./tests/security-e2e/run-security-e2e.sh`: **passed cleanly (40 security E2E tests: 36 passed, 0 failed, 4 blocked)**.
+- `./platform/identity/validate-identity.sh`: passed (13 static invariant checks + 7 live runtime smoke checks).
+- `python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'`: passed (53 tests).
+- `python3 platform/identity/tests/totp_smoke.py`: passed (all 8 suites).
+- `python3 platform/identity/tests/email_verification_smoke.py`: passed (Phase A email verification regression).
+- Gateway `./mvnw test`: passed (13 tests, BUILD SUCCESS).
+- Accounts `./mvnw test`: passed (37 unit/MVC tests, BUILD SUCCESS; 53 total with integration suite).
+- Frontend `pnpm typecheck`, `pnpm test --run`, `pnpm lint`, `pnpm build`: all passed (56 unit tests, clean build).
+- `git diff --check`: passed; clean diff with zero trailing whitespace or committed credentials.
+- Status: **Platform self-verification complete; independent peer QA pending**.
+
+Scope bounds & Blocked dependencies:
+- Cross-user explicit ID lookup API (`/api/v1/users/{id}`) does not exist in Accounts Service (profiles resolved only via authenticated `sub` in `/api/v1/users/me`).
+- Staff operations and admin read models open under Issues #14, #15, #16.
+- Merchant approval-state and tenant isolation provider open under Issue #8.
+- Real Google login (L03) remains unverified until external Google Cloud Console consent is performed.
+
+## Issue #47 Phase C — Email OTP Feasibility, Threat Model & Architecture Decision — 2026-10-19
+
+Lead: **Suthankan1** (Platform & Security) · Independent Review: **Pending Vibhushan (@Vibhushan-2003)**
+Branch: `docs/email-otp-feasibility` (based on latest `test`, commit `b433ef7`).
+
+- **Keycloak 26.8.1 Investigation:** Proved Keycloak core provides **no native typed Email OTP authenticator**.
+  Upstream discussions (#36910) confirm this is out of tree. Built-in mechanisms are action-token links
+  (`VERIFY_EMAIL`, `UPDATE_PASSWORD`) and app-based TOTP/HOTP (`OTPPolicy`).
+- **Use Case & Security Evaluation:**
+  - *Signup Verification:* Degrades 256-bit signed action token entropy to 20 bits (6 digits); introduces brute-force risks without adding security.
+  - *Login MFA:* Violates NIST SP 800-63B §5.1.3.3 (fate sharing with email password reset); unencrypted intermediate SMTP hops; AiTM phishing vulnerability; introduces severe delivery latency/race conditions and transforms external SMTP outages into total authentication DoS.
+- **Threat Model ([EMAIL_OTP_THREAT_MODEL.md](../security/EMAIL_OTP_THREAT_MODEL.md)):** Modeled 18 distinct abuse scenarios and defined mandatory technical invariants (CSPRNG, max 3 attempts, 180s expiry, single-use burn-on-read, 60s cooldown, salted HMAC session binding, and zero secret logging).
+- **Formal Decision ([ADR-0009](../architecture/adr/ADR-0009.md)):**
+  - **Adopted Recommendation (OUTCOME A):** Do NOT implement typed Email OTP. Retain Keycloak's native signed email verification links (PR #48) and native RFC 6238 Authenticator-App TOTP (PR #49).
+  - **Gated Contingency (OUTCOME C):** If product management explicitly mandates typed email codes in the future, author an in-house Keycloak SPI (`DevaromEmailOtpAuthenticatorFactory`) under a separate, independently scoped and reviewed issue.
+- **Decision Status:** `PROPOSED — AWAITING SECURITY/PRODUCT APPROVAL`.
+
+## Nov 1 Demo Readiness & Clean-Clone Handoff Verification — 2026-10-20
+
+- Platform Lead & Integration: **Suthankan1**
+- Independent Clean-Clone Reviewer: **Eric (@EricPraveen)** (Issue #17)
+- Independent Security Reviewer: **Vibhushan (@Vibhushan-2003)** (Issue #18)
+- Academic Report & Presentation Lead: **HarithKeshan (@HarithKeshan)** (Issue #19)
+- Branch: `chore/nov1-demo-readiness`, targeting `test` (based on `test` branch commit `169d78e`).
+
+### Summary of Completed Platform Work
+- **Clean-Clone Reproducibility & Runbook:**
+  - Authored [`docs/development/CLEAN_CLONE_RUNBOOK.md`](../development/CLEAN_CLONE_RUNBOOK.md) providing step-by-step instructions for prerequisite validation, container bootstrapping, configuration, backend and frontend startup, verification, demonstration script, and troubleshooting.
+  - Updated [`docs/milestones/LOGIN_ACCEPTANCE.md`](../milestones/LOGIN_ACCEPTANCE.md) row L10 assigning independent verification to Eric (@EricPraveen).
+- **Automated Full-Stack Readiness Validator:**
+  - Created [`platform/local/check-readiness.sh`](../../platform/local/check-readiness.sh) checking local toolchain (Java 21, Node 20+, pnpm, Docker, Python 3, OpenSSL), infrastructure containers (Keycloak :8090, Mailpit :8025, PostgreSQL :5438/:5432 with dynamic port detection), backend services (Gateway :8080, Accounts :8081), and frontend dev server (:5173).
+- **Automated Login Demo Smoke Test:**
+  - Created [`tests/security-e2e/demo_smoke.py`](../../tests/security-e2e/demo_smoke.py) executing 4 end-to-end user journeys against live Gateway and Keycloak:
+    - **Scenario A:** Customer self-registration, Mailpit email verification link extraction, verification completion, and authenticated profile retrieval.
+    - **Scenario B:** Returning customer username/password authentication via Authorization Code + S256 PKCE, profile retrieval.
+    - **Scenario C:** Customer login with RFC 6238 TOTP challenge, token issuance, and authenticated profile retrieval.
+    - **Scenario D:** Core security assertions (unauthenticated 401 rejection, unprivileged 403 rejection, and resource-owner profile isolation).
+- **Safe Container Startup & Configuration:**
+  - Created [`platform/local/start-local.sh`](../../platform/local/start-local.sh) and [`platform/local/README.md`](../../platform/local/README.md) for non-destructive local container initialization.
+  - Hardened [`platform/identity/apply-theme.sh`](../../platform/identity/apply-theme.sh) to detect read-only Docker volume mounts cleanly.
+  - Updated [`tests/security-e2e/run-security-e2e.sh`](../../tests/security-e2e/run-security-e2e.sh) with dynamic PostgreSQL port resolution.
+- **Peer Handoff Documentation:**
+  - Authored [`docs/team/PLATFORM_HANDOFF_NOV01.md`](../team/PLATFORM_HANDOFF_NOV01.md) detailing exact actions, commands, and verification criteria for Eric (Issue #17), HarithKeshan (Issue #19), and Vibhushan (Issue #18).
+
+### Measured Verification Evidence
+- `./platform/local/check-readiness.sh`: **13/13 passed, 0 warnings, 0 failures**.
+- `python3 tests/security-e2e/demo_smoke.py`: **ALL 4 SCENARIOS PASSED** (A: Registration & Mailpit link, B: Returning customer, C: TOTP challenge, D: Security denials & isolation).
+- `./tests/security-e2e/run-security-e2e.sh`: **passed cleanly (40 security tests: 36 passed, 0 failed, 4 blocked by missing downstream staff dependencies)**.
+- Gateway `./mvnw test`: passed (13/13 tests, BUILD SUCCESS).
+- Accounts `./mvnw test`: passed (37 unit/MVC tests, BUILD SUCCESS; 53 total with integration suite).
+- Frontend `pnpm test --run`: passed (56/56 tests, 0 failures).
+- Frontend `pnpm typecheck` & `pnpm build`: passed cleanly.
+- Frontend manual inspection: Vite dev server running on `http://localhost:5173`, HTTP 200, branded Keycloak login redirect and return navigation operational.
+
+### Scope Bounds & Honest Status
+- **Clean-Clone Verification (L10):** Platform environment and runbook prepared; marked **NOT VERIFIED** until independently executed from a fresh workstation by Eric (@EricPraveen) under Issue #17.
+- **External Google Login (L03), at the readiness run:** Automated broker delegation, Google authorization URI construction, live Google OAuth probe (HTTP 302 acceptance), negative controls and CUSTOMER privilege confinement passed; interactive login was **BLOCKED / NOT VERIFIED**. This historical blocker is superseded by the user-completed Google run recorded below.
+- **Security E2E (Issue #18):** Classified as **PLATFORM SELF-VERIFICATION**; independent security sign-off pending Vibhushan (@Vibhushan-2003).
+
+## Historical Automated Google OIDC Broker Verification (L03, PR #54) — 2026-10-20
+
+Lead: **Suthankan1** (Platform & Security) · Reviewers: **Pending Gajanthan (@Gajanthan17, Customer UI) & Vibhushan (@Vibhushan-2003, Security QA)**
+Branch: `tests/google-oidc-e2e` (based on `test` branch commit `882c65e`).
+
+### Summary of Broker Verification & Automated Harness
+- **Keycloak 26.8.1 Broker Architecture:**
+  - Validated Google Identity Provider declaration in `realm-devarom.json` and running Keycloak instance (`providerId: google`, `alias: google`, `trustEmail: true`, `firstBrokerLoginFlowAlias: "first broker login"`, `syncMode: IMPORT`, `useJwksUrl: true`).
+  - Confirmed runtime client ID and secret injection via `.env` with `-Dkeycloak.migration.replace-placeholders=true`.
+  - Confirmed privilege confinement: self-registration and broker federated accounts default to `default-roles-devarom` containing exclusively `CUSTOMER`; zero staff roles (`MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`).
+- **Automated Google Broker Smoke Test Suite (`platform/identity/tests/google_broker_smoke.py`):**
+  - **Check 1 (OIDC Discovery):** Keycloak issuer `http://localhost:8090/realms/devarom` verified.
+  - **Check 2 (Broker Redirection):** Request to Keycloak `/protocol/openid-connect/auth` with `kc_idp_hint=google` and S256 PKCE returned HTTP 303 delegating to `/realms/devarom/broker/google/login`.
+  - **Check 3 (Authorization URL Construction):** Keycloak broker engine constructed compliant Google OAuth authorization URL to `https://accounts.google.com/o/oauth2/v2/auth` with registered `client_id`, `redirect_uri=http://localhost:8090/realms/devarom/broker/google/endpoint`, `scope=openid profile email`, cryptographic `state`, and `nonce`.
+  - **Check 4 (Live Google OAuth Acceptance):** Probed Google authorization endpoint with registered client ID and redirect URI; Google responded with HTTP 302 to Google signin flow, confirming Google Cloud Console has accepted the Client ID and authorized the redirect URI.
+  - **Check 4 Negative (Google Redirect URI Mismatch):** Probed Google authorization endpoint with unapproved redirect URI; Google rejected the request with `redirect_uri_mismatch`.
+  - **Check 5 Negative (Keycloak State Validation):** Probed Keycloak broker callback endpoint (`/realms/devarom/broker/google/endpoint`) with tampered state; Keycloak rejected the request with HTTP 400 Bad Request (branded error page; zero session created).
+  - **Check 5 Negative (OAuth Cancellation):** Probed Keycloak broker callback with `error=access_denied`; Keycloak handled cancellation with HTTP 400 Bad Request.
+  - **Check 6 (Role Confinement & Secret Hygiene):** Verified zero client secrets in frontend or Git; verified newly created broker users receive solely `CUSTOMER`.
+- **Static Invariant Tests (`platform/identity/tests/test_google_broker_configuration.py`):**
+  - 5 static regression tests asserting placeholder hygiene, absence of committed secrets, and default-roles composite constraints.
+- **Identity Verification Suite Integration (`platform/identity/validate-identity.sh`):**
+  - Integrated Check 14 (static Google broker invariants) and Live Check H (Google broker smoke test); 14/14 static and all live smoke checks PASSED.
+
+### Measured Evidence
+- `python3 platform/identity/tests/test_google_broker_configuration.py`: **5/5 tests PASSED**.
+- `python3 platform/identity/tests/google_broker_smoke.py`: **ALL 6 CHECKS PASSED**.
+- `./platform/identity/validate-identity.sh`: **14/14 static invariant checks passed; Live smoke tests A–H ALL PASSED**.
+- `python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'`: **58/58 tests PASSED**.
+- `python3 tests/security-e2e/demo_smoke.py`: **ALL 4 SCENARIOS PASSED**.
+- `./tests/security-e2e/run-security-e2e.sh`: **passed cleanly (40 security tests: 36 passed, 0 failed, 4 blocked by missing business endpoints; 13 Gateway, 37 Accounts, 56 Frontend tests passed)**.
+
+### Historical Milestone Status for L03
+- **L03 Status at PR #54:** **BLOCKED / NOT VERIFIED (External Human Consent Gate)**. Superseded by the user-completed run below; these automated results are preserved as historical evidence.
+- **Rationale:** All broker configuration, delegation, URI construction, Google OAuth acceptance, negative controls, and role confinement are verified. Full end-to-end interactive completion requires a human developer entering their Google credentials and consenting on `accounts.google.com` using an account explicitly listed in Google Cloud Console's OAuth consent screen under Test Users. Automated agents must not fabricate credentials or claim unverified human consent.
+
+## Current L03 Real Google Login, Profile and Logout — 2026-10-20
+
+**L03: PASS for this authorized local run; independent teammate verification remains pending.** The application checkout was `60faff2` on `tests/google-oidc-e2e`; PR #54 merged that work to `test` at `d2f9b08`. This documentation follow-up starts from that latest `test` commit and changes no application or identity configuration.
+
+- **Observed environment:** React `http://localhost:5173/login`, Keycloak :8090 discovery, Gateway :8080 health and Accounts :8081 health each returned HTTP 200; both backend health responses were `UP`.
+- **Actual Google Console inspection:** Project `devarom`, External audience, Testing status. The authorized owner was already among eight test users. The web OAuth client matched the live Keycloak client configuration and included the exact broker redirect `http://localhost:8090/realms/devarom/broker/google/endpoint`. No cloud audience, test users, credentials or billing settings were changed.
+- **Human interaction and browser evidence:** The user explicitly confirmed closing the agent-opened Google chooser and registering with Google in another Chrome tab. The agent inspected that real authenticated Customer page and observed Gateway `GET /api/v1/users/me` returning HTTP 200. Returned name/email matched the authorized owner, account/identity references were present, and roles contained only `CUSTOMER`; personal values are withheld. Gateway source maps this route to Accounts :8081; no separate downstream network trace was collected.
+- **Read-only runtime corroboration:** Keycloak contained the exact authorized owner, enabled and email verified, with one Google federated link whose email matched. The runtime Google provider was enabled, its client matched ignored local configuration, external token storage was disabled, and the account had CUSTOMER without staff roles. Credentials and admin tokens were used only internally in memory; no raw admin responses or IDs are included.
+- **Logout:** Agent clicked Sign out, observed the public home page, and confirmed protected `/customer` redirected to `/login`. Subsequent Keycloak admin reads found **0 online sessions** and **0 frontend offline sessions** for the authorized owner. Browser events were truncated on navigation, so the logout HTTP response was **not observed**; server-session absence corroborates the UI result.
+
+The Google interaction was completed by the user, not automated probing. The agent did not observe every sign-in/consent prompt or a continuous redirect trace. Combined user confirmation, real authenticated profile, Google federated identity and session checks support this local L03 PASS. Earlier automated PKCE/state/nonce, negative-control and regression results remain historical; those suites were not rerun for this documentation-only update. Screenshots, raw personal profile data, account/session IDs, secrets, tokens and OTPs are excluded.
+
+This run is not an independent review by a different teammate. Gajanthan's Customer UI review and Vibhushan's security QA remain pending, as do L10 clean-clone reproduction and other separately tracked milestone work. Detailed sanitized evidence is in [LOGIN_ACCEPTANCE.md](../milestones/LOGIN_ACCEPTANCE.md#current-l03-real-google-login-evidence--2026-10-20).

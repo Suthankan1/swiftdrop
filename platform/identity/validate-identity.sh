@@ -15,7 +15,7 @@ echo " Devarom Platform — Identity Security Invariant Validation (Issue #2)"
 echo "=============================================================================="
 
 # 1. JSON Schema & Parsing Validation
-echo -n "[1/11] Validating realm JSON syntax... "
+echo -n "[1/14] Validating realm JSON syntax... "
 if ! jq empty "${REALM_FILE}" 2>/dev/null; then
   echo "FAIL: ${REALM_FILE} is not valid JSON."
   exit 1
@@ -23,7 +23,7 @@ fi
 echo "PASS"
 
 # 2. Realm Name Validation
-echo -n "[2/11] Checking realm identity... "
+echo -n "[2/14] Checking realm identity... "
 REALM_NAME=$(jq -r '.realm' "${REALM_FILE}")
 if [[ "${REALM_NAME}" != "devarom" ]]; then
   echo "FAIL: Expected realm 'devarom', found '${REALM_NAME}'."
@@ -32,7 +32,7 @@ fi
 echo "PASS (realm: ${REALM_NAME})"
 
 # 3. Application Roles & Privileged Elevation Invariants
-echo -n "[3/11] Verifying 5 application roles & privilege separation... "
+echo -n "[3/14] Verifying 5 application roles & privilege separation... "
 ROLES=$(jq -r '.roles.realm[].name' "${REALM_FILE}")
 for REQUIRED_ROLE in CUSTOMER MERCHANT COURIER DISPATCHER ADMIN; do
   if ! echo "${ROLES}" | grep -qx "${REQUIRED_ROLE}"; then
@@ -56,7 +56,7 @@ fi
 echo "PASS (CUSTOMER safe default; MERCHANT/COURIER/DISPATCHER/ADMIN restricted)"
 
 # 4. Public SPA Client & PKCE Enforcement
-echo -n "[4/11] Checking public client & PKCE security... "
+echo -n "[4/14] Checking public client & PKCE security... "
 CLIENT=$(jq -r '.clients[] | select(.clientId=="devarom-frontend")' "${REALM_FILE}")
 
 IS_PUBLIC=$(echo "${CLIENT}" | jq -r '.publicClient')
@@ -88,7 +88,7 @@ fi
 echo "PASS (Public client, Authorization Code + S256 PKCE, ROPC/Implicit disabled)"
 
 # 5. Strict Redirect URIs & Web Origins (No Wildcards)
-echo -n "[5/11] Verifying redirect URIs & origins... "
+echo -n "[5/14] Verifying redirect URIs & origins... "
 REDIRECT_URIS=$(echo "${CLIENT}" | jq -r '.redirectUris[]')
 WEB_ORIGINS=$(echo "${CLIENT}" | jq -r '.webOrigins[]')
 
@@ -111,7 +111,7 @@ fi
 echo "PASS (Strict redirect http://localhost:5173/auth/callback, origin http://localhost:5173)"
 
 # 6. Audience & Role Claims Mapping
-echo -n "[6/11] Verifying backend claims mapping (audience & roles)... "
+echo -n "[6/14] Verifying backend claims mapping (audience & roles)... "
 AUDIENCE_MAPPER=$(echo "${CLIENT}" | jq -r '.protocolMappers[] | select(.name=="devarom-audience-mapper")')
 if [[ -z "${AUDIENCE_MAPPER}" ]]; then
   echo "FAIL: Missing devarom-audience-mapper."
@@ -136,7 +136,7 @@ fi
 echo "PASS (aud: devarom-api, roles: realm roles claim)"
 
 # 7. Secret Scanning on Realm Configuration
-echo -n "[7/11] Scanning realm file for sensitive secrets/passwords... "
+echo -n "[7/14] Scanning realm file for sensitive secrets/passwords... "
 if grep -iE '("password"|"secret")\s*:\s*"[^"]{8,}"' "${REALM_FILE}" | grep -v -E '(GOOGLE_CLIENT_SECRET|\$\{env|\$\{GOOGLE)'; then
   echo "FAIL: Potential hardcoded secret found in ${REALM_FILE}."
   exit 1
@@ -144,7 +144,7 @@ fi
 echo "PASS (Zero committed secrets/passwords)"
 
 # 8. Keycloak Custom Theme Structure & Assets
-echo -n "[8/11] Checking Devarom theme files and assets... "
+echo -n "[8/14] Checking Devarom theme files and assets... "
 THEME_DIR="${SCRIPT_DIR}/themes/devarom/login"
 if [[ ! -f "${THEME_DIR}/theme.properties" ]]; then
   echo "FAIL: Missing ${THEME_DIR}/theme.properties."
@@ -177,7 +177,7 @@ fi
 echo "PASS (parent=keycloak.v2, devarom.css, templates and brand assets present)"
 
 # 9. Realm loginTheme Configuration
-echo -n "[9/11] Checking realm loginTheme declaration... "
+echo -n "[9/14] Checking realm loginTheme declaration... "
 LOGIN_THEME=$(jq -r '.loginTheme // empty' "${REALM_FILE}")
 if [[ "${LOGIN_THEME}" != "devarom" ]]; then
   echo "FAIL: realm-devarom.json must set loginTheme='devarom', found '${LOGIN_THEME}'."
@@ -186,7 +186,7 @@ fi
 echo "PASS (loginTheme: devarom)"
 
 # 10. Compose Theme Volume Mounting
-echo -n "[10/11] Verifying Docker Compose theme volume configuration... "
+echo -n "[10/14] Verifying Docker Compose theme volume configuration... "
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.identity.yml"
 if ! grep -q "./themes:/opt/keycloak/themes:ro" "${COMPOSE_FILE}"; then
   echo "FAIL: docker-compose.identity.yml must mount ./themes:/opt/keycloak/themes:ro."
@@ -199,16 +199,29 @@ fi
 echo "PASS (valid compose with ./themes volume mount)"
 
 # 11. Secret Scanning on Theme Files
-echo -n "[11/11] Scanning theme files for hardcoded credentials... "
+echo -n "[11/14] Scanning theme files for hardcoded credentials... "
 if grep -riE '(password|secret|token)\s*[:=]\s*["'\'']?[a-zA-Z0-9_\-]{16,}' "${THEME_DIR}" | grep -v -E '(passwordVisibility|passwordConfirm)'; then
   echo "FAIL: Potential hardcoded secret in theme directory."
   exit 1
 fi
 echo "PASS (Zero committed secrets in theme files)"
 
+# 12. Native Email Verification, Local SMTP Isolation & Negative Policy Regression
+# These are static configuration checks, not proof of runtime delivery or verification.
+echo "[12/14] Checking native email policy, local SMTP isolation and negative regressions..."
+python3 "${SCRIPT_DIR}/tests/test_email_configuration.py"
+
+# 13. RFC 6238 TOTP Policy & Single-Use Enforcement
+echo "[13/14] Checking RFC 6238 TOTP policy, single-use enforcement and negative regressions..."
+python3 "${SCRIPT_DIR}/tests/test_totp_configuration.py"
+
+# 14. Google OIDC Broker Invariants & Privilege Confinement
+echo "[14/14] Checking Google OIDC broker configuration, placeholders & privilege separation..."
+python3 "${SCRIPT_DIR}/tests/test_google_broker_configuration.py"
+
 echo ""
 echo "=============================================================================="
-echo " Static Invariant Checks: ALL 11 PASSED"
+echo " Static Invariant Checks: ALL 14 PASSED"
 echo "=============================================================================="
 
 # Optional Live Container Smoke Test
@@ -278,8 +291,28 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
   fi
   echo "  - Branded Devarom Theme Rendering: Verified (devarom.css loaded with HTTP 200, brand mark and title rendered)"
 
+  # G. TOTP MFA Policy & CONFIGURE_TOTP Required Action Verification
+  if python3 "${SCRIPT_DIR}/configure-totp.py" check >/dev/null 2>&1; then
+    echo "  - TOTP MFA Policy & Action: Verified (RFC 6238, 6 digits, 30s period, single-use, optional CUSTOMER)"
+  else
+    echo "    FAIL: Keycloak TOTP MFA policy differs from expected configuration."
+    exit 1
+  fi
+
+  # H. Google OIDC Broker Delegation & Negative Security Validation
+  echo "  - Google OIDC Broker Invariant & Redirect Verification:"
+  if python3 "${SCRIPT_DIR}/tests/google_broker_smoke.py" >/dev/null 2>&1; then
+    echo "    PASS (Broker delegation, contract parameters, Google probe & negative callback tests passed)"
+  else
+    echo "    FAIL: Google broker smoke test suite failed."
+    exit 1
+  fi
+
   echo ""
   echo "=============================================================================="
   echo " Live Smoke Tests: ALL PASSED"
   echo "=============================================================================="
+else
+  echo "Live smoke tests skipped: the local Keycloak discovery endpoint is not reachable."
+  echo "Static checks do not establish SMTP delivery or browser verification-flow success."
 fi
