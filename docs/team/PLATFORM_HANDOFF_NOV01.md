@@ -35,7 +35,7 @@ The Devarom initial-login vertical slice is **feature-complete, fully integrated
 
 ## 2. Merged PR Evidence & Commit Provenance
 
-The Platform and Authentication implementation comprises 6 pull requests targeting `test`:
+The Platform and Authentication implementation comprises 8 pull requests targeting `test` (and 10 preceding pull requests on `main`; see [PLATFORM_SIGNOFF_NOV01.md](PLATFORM_SIGNOFF_NOV01.md) for complete provenance):
 
 | PR # | Branch | Merged Commit | Scope & Verified Deliverable |
 |---|---|---|---|
@@ -44,7 +44,12 @@ The Platform and Authentication implementation comprises 6 pull requests targeti
 | **#50** | `tests/auth-security-e2e` | `3d05454` | Automated Security E2E test harness covering L06 (JWT rejection), L07 (role denial), and L08 (Customer A vs B isolation). |
 | **#51** | `tests/auth-security-e2e` | `b433ef7` | Documentation of Platform self-verification results and regression test consolidation. |
 | **#52** | `docs/email-otp-feasibility` | `169d78e` | Threat model ([EMAIL_OTP_THREAT_MODEL.md](../security/EMAIL_OTP_THREAT_MODEL.md)) and formal architectural decision ([ADR-0009](../architecture/adr/ADR-0009.md)) for Email OTP. |
-| **#53** (Current) | `chore/nov1-demo-readiness` | *(This PR)* | Reproducible startup helper (`start-local.sh`), full-stack readiness check (`check-readiness.sh`), automated demo runner (`demo_smoke.py`), clean-clone runbook, and team handoffs. |
+| **#53** | `chore/nov1-demo-readiness` | `882c65e` | Reproducible startup helper (`start-local.sh`), full-stack readiness check (`check-readiness.sh`), automated demo runner (`demo_smoke.py`), clean-clone runbook, and team handoffs. |
+| **#54** | `tests/google-oidc-e2e` | `d2f9b08` | Automated Keycloak Google broker verification (`google_broker_smoke.py`), live Google OAuth probe, and negative controls. |
+| **#55** | `docs/l03-google-login-verification` | `bf875a0` | Recorded verified real Google login (L03 = PASS), Gateway profile load HTTP 200, role confinement, logout, and zero sessions. |
+
+> See [PLATFORM_SIGNOFF_NOV01.md](PLATFORM_SIGNOFF_NOV01.md) for the exhaustive Platform architecture and security sign-off contribution prepared for HarithKeshan's Issue #19 report.
+
 
 ---
 
@@ -138,7 +143,8 @@ The 4 blocked tests reflect honest tracking of unimplemented teammate features, 
 2. `L07-ROLE-05` (Courier ops denial): Awaits courier queue endpoints (Issue #15: Vibhushan/Abhinaya). Gateway default-denies with 404.
 3. `L08-OWN-07` (Cross-user `/users/{id}` lookup): Accounts deliberately avoids exposing an explicit ID lookup route; profiles are resolved only via authenticated `sub`.
 4. `L08-OWN-08` (Merchant tenancy provider): Awaits merchant approval-state provider (Issue #8: Eric/Thuvarahan).
-5. `L03` (Google OAuth): Keycloak broker definition and UI buttons pre-wired; marked **BLOCKED / NOT VERIFIED** pending external Google Cloud Console consent and test-user whitelisting.
+5. `L03` (Google OAuth): **VERIFIED (PASS)**. Real Google sign-in completed by user and verified through Keycloak broker, Gateway HTTP 200 profile load, CUSTOMER role confinement, and logout with zero sessions (PR #55). Independent peer review pending Gajanthan/Vibhushan.
+
 
 ---
 
