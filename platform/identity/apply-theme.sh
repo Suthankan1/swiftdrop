@@ -24,9 +24,13 @@ fi
 
 # 2. Sync theme files directly into container themes folder (works with or without volume restart)
 echo "[1/3] Syncing theme files to /opt/keycloak/themes/devarom in container..."
-docker exec "${CONTAINER_NAME}" mkdir -p /opt/keycloak/themes/devarom
-docker cp "${SCRIPT_DIR}/themes/devarom/." "${CONTAINER_NAME}:/opt/keycloak/themes/devarom/"
-echo "PASS: Theme files synced."
+if docker exec "${CONTAINER_NAME}" test -d /opt/keycloak/themes/devarom/login 2>/dev/null; then
+  echo "PASS: Theme files already mounted via volume."
+else
+  docker exec "${CONTAINER_NAME}" mkdir -p /opt/keycloak/themes/devarom 2>/dev/null || true
+  docker cp "${SCRIPT_DIR}/themes/devarom/." "${CONTAINER_NAME}:/opt/keycloak/themes/devarom/" 2>/dev/null || true
+  echo "PASS: Theme files synced."
+fi
 
 # 3. Read admin credentials securely from local .env if present
 ADMIN_USER="admin"
