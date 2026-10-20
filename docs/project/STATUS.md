@@ -1,10 +1,12 @@
 # Current project status — update only with evidence
 
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
+
 Last documentation update: **2026-10-20**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
-| Devarom v1.3 design | **Proposed baseline** | `docs/architecture/BASELINE.md` and 20 supplied editable diagrams |
+| SwiftDrop v1.3 design | **Proposed baseline** | `docs/architecture/BASELINE.md` and 20 supplied editable diagrams |
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
@@ -14,6 +16,32 @@ Last documentation update: **2026-10-20**. This file describes the **starter art
 | CI/CD, Compose, Kubernetes/AI | **Local container startup & full-stack readiness verified (PR #53, Refs #17, #19)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py`; Kubernetes/AI remain bonuses |
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
+
+## SwiftDrop Phase 1 branding — 2026-10-20
+
+Owner **Suthankan1**; branch `chore/swiftdrop-branding`, based on `origin/test`
+`eff629af085299a5560e0b3c912e46ea4d056d42`. Current SPA/Keycloak theme copy,
+wordmarks, current documentation and all 20 editable/rendered diagram pairs now
+use **SwiftDrop**. Authentication/runtime identifiers and historical evidence
+remain unchanged. The source rebrand does not rename the GitHub repository.
+
+**Verified:** frontend typecheck, 64 tests, lint and build; 62 identity Python
+tests; 14 static identity checks and live identity smoke; Gateway 13 tests;
+Accounts 37 tests; readiness 13/13; login demo scenarios A–D; security E2E
+36 PASS / 0 FAIL / 4 existing missing-provider BLOCKED cases. Browser home,
+login and native Keycloak login/registration display SwiftDrop; anonymous
+Customer access still redirects to login. See [commands, limits and external
+branding dependencies](../branding/VALIDATION.md).
+
+**Google:** broker/probe/negative callback checks passed; interactive Google
+sign-in was **not rerun** for branding. Existing real L03 PASS below remains
+historical evidence. Persisted realm/client/email display labels and Google
+consent-screen branding need an owner-applied presentation-only update;
+independent peer/clean-clone review remains pending. Phase 2 identity/namespace
+and repository changes are [proposed only](../branding/PHASE_2_MIGRATION.md).
+
+Next small task: review the branding PR into `test` and coordinate the remaining
+persisted/provider display-label update without recreating identity storage.
 
 ## Issue #36 verification — 2026-10-16
 

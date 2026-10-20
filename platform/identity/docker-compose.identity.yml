@@ -1,5 +1,5 @@
 # ==============================================================================
-# Devarom Platform — Identity Service Isolated Compose (Issue #2)
+# SwiftDrop Platform — Identity Service Isolated Compose (Issue #2)
 # Runs Keycloak 26.8.1 on port 8090 with automated realm import.
 # Reads runtime configuration from .env (injected outside Git).
 # ==============================================================================

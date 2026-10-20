@@ -1,6 +1,6 @@
 ---
 name: Small feature
-about: One independently reviewable Devarom development slice
+about: One independently reviewable SwiftDrop development slice
 ---
 
 ## Owner and reviewer

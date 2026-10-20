@@ -1,5 +1,7 @@
 # Initial login vertical slice — planned acceptance and evidence
 
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
+
 **Acceptance is recorded only from observed evidence.** L03 now has user-completed Google authentication with agent-observed customer/profile and logout evidence from 2026-10-20; independent teammate review remains pending. Earlier automated checks below remain historical evidence, not proof of human sign-in. Shared authentication code is owned end-to-end by Suthankan1 (issues #2, #3, #36, #37); business profiles and role landing views remain with their functional owners. When code appears, replace placeholders with actual commit/test evidence, including failures; don't check a box based on a mocked screen. See [Login Integration Contract](../contracts/LOGIN_CONTRACT.md) for the agreed integration contract and port registry.
 
 | ID | Demonstration / negative case | Owner (proposed) | Evidence / result |

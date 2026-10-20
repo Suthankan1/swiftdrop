@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Devarom Platform — Keycloak Theme Installer & Realm Theme Selector (Issue #44)
+# SwiftDrop Platform — Keycloak Theme Installer & Realm Theme Selector (Issue #44)
 # Safely, idempotently applies and selects the 'devarom' theme on the running realm.
 # Never resets user data, wipes volumes, or exposes passwords.
 # ==============================================================================
@@ -12,7 +12,7 @@ ENV_FILE="${SCRIPT_DIR}/.env"
 CONTAINER_NAME="devarom-keycloak"
 
 echo "=============================================================================="
-echo " Devarom Platform — Apply Branded Keycloak Theme (Issue #44)"
+echo " SwiftDrop Platform — Apply Branded Keycloak Theme (Issue #44)"
 echo "=============================================================================="
 
 # 1. Check container presence
@@ -70,5 +70,5 @@ fi
 echo "PASS (current loginTheme: ${CURRENT_THEME})"
 
 echo "=============================================================================="
-echo " Devarom Keycloak Theme Applied Successfully!"
+echo " SwiftDrop Keycloak Theme Applied Successfully!"
 echo "=============================================================================="

@@ -1,12 +1,14 @@
-# Editable diagrams — original Devarom Nov 1 design pack
+# Editable diagrams — SwiftDrop Nov 1 design pack
 
-These **20 original `.drawio`** files were copied **unchanged** from the uploaded group design package. Each has a matching **lightweight `.svg` preview**. This repo intentionally excludes the 13 MB package's PDFs, PNG exports, atlas, contact sheets, master duplicate and rebuild scripts.
+These **20 editable `.drawio`** files were originally copied unchanged from the uploaded Devarom group design package. On **2026-10-20**, their current product labels were updated to **SwiftDrop**, and all matching `.svg` previews were regenerated with Draw.io Desktop 32.4.1. Source geometry, connectors, IDs, provenance metadata and technical identifiers were preserved. This repo intentionally excludes the 13 MB package's PDFs, PNG exports, atlas, contact sheets, master duplicate and rebuild scripts.
 
 - **Edit:** Open one `editable/*.drawio` in https://app.diagrams.net/ or Draw.io Desktop. Native text/connectors stay editable.
 - **Publish:** Export an updated SVG with the **same stem** into `rendered/`; include diagram and preview in one reviewed PR. Changes are **not auto-synced**.
+- **Regenerate:** With Draw.io Desktop installed on macOS, run `'/Applications/draw.io.app/Contents/MacOS/draw.io' --export --format svg --size page --theme light --embed-svg-fonts false --output docs/diagrams/rendered docs/diagrams/editable` from the repository root. The full-page export preserves each source canvas. Check the SVGs visually before publication.
 - **In the report:** Reference a crisp SVG converted to the required document by the report owner. Do not commit bulky PDF report outputs into this codebase.
+- **Compatibility:** Native Draw.io SVGs use HTML text labels with SVG text fallbacks. If a report converter does not render those labels correctly, export directly from the editable source using Draw.io; keep temporary PDF/PNG outputs outside the repository.
 - **Scope:** Diagrams are **architecture targets**. Kubernetes/Helm figure 19 and Compose figure 20 do **not** mean deployed infrastructure.
-- **Consistency:** Diagram names use **Devarom**. If business scope/protocol changes, update ADR/contracts and only the affected diagrams.
+- **Consistency:** Current product labels use **SwiftDrop**. Original source provenance and the proposed `devarom` namespace in figure 19 remain legacy identifiers; the namespace is deferred to the technical migration review. If business scope/protocol changes, update ADR/contracts and only the affected diagrams.
 
 | ID | Diagram / SVG preview | Editable source | Suggested reviewer |
 |---|---|---|---|

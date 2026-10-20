@@ -1,4 +1,4 @@
-# Devarom — Clean-Clone Setup, Verification & Demonstration Runbook
+# SwiftDrop — Clean-Clone Setup, Verification & Demonstration Runbook
 
 **Milestone:** November 1, 2026 Checkpoint (Report + Initial Working Logins)  
 **Target Integration Branch:** `test`  
@@ -10,7 +10,7 @@
 
 ## 1. Prerequisites & Required Software Versions
 
-Verify your host environment meets the pinned Devarom baseline before starting:
+Verify your host environment meets the pinned SwiftDrop baseline before starting:
 
 | Tool | Required Version | Verification Command | Notes |
 |---|---|---|---|
@@ -59,7 +59,7 @@ MAILPIT_UI_PORT=8025
 SMTP_HOST=mailpit
 SMTP_PORT=1025
 SMTP_FROM=no-reply@devarom.test
-SMTP_FROM_DISPLAY_NAME=Devarom
+SMTP_FROM_DISPLAY_NAME=SwiftDrop
 SMTP_AUTH=false
 SMTP_SSL=false
 SMTP_STARTTLS=false

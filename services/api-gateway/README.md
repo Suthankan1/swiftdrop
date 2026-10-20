@@ -1,8 +1,8 @@
 # Spring Cloud API Gateway
 
-**Module:** API Gateway · **Owner:** Suthankan1 (Platform & Security) · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #3](https://github.com/Suthankan1/devarom/issues/3) · **Architecture Baseline:** Devarom v1.3
+**Module:** API Gateway · **Owner:** Suthankan1 (Platform & Security) · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #3](https://github.com/Suthankan1/devarom/issues/3) · **Architecture Baseline:** SwiftDrop v1.3
 
-This service is the single public entry point for the Devarom delivery platform. Built on the non-blocking reactive Spring Cloud Gateway WebFlux stack, it handles external request routing, edge JWT authentication, CORS policy enforcement, client header sanitization, and graceful error handling.
+This service is the single public entry point for the SwiftDrop delivery platform. Built on the non-blocking reactive Spring Cloud Gateway WebFlux stack, it handles external request routing, edge JWT authentication, CORS policy enforcement, client header sanitization, and graceful error handling.
 
 ---
 
@@ -10,7 +10,7 @@ This service is the single public entry point for the Devarom delivery platform.
 
 | Component | Pinned Version | Rationale |
 |---|---|---|
-| **Java Platform** | **Java 21 LTS** | Standardized language level across all Devarom microservices. |
+| **Java Platform** | **Java 21 LTS** | Standardized language level across all SwiftDrop microservices. |
 | **Spring Boot** | **4.1.1** (GA) | Modern production baseline built on Spring Framework 7. |
 | **Spring Cloud** | **2025.1.3** (*Oakwood*) | Official release train compatible with Spring Boot 4.1.x and Java 21. |
 | **Gateway Engine** | `spring-cloud-starter-gateway-server-webflux` | Non-blocking reactive Netty runtime. Servlet / Spring MVC dependencies are strictly excluded. |
@@ -21,7 +21,7 @@ This service is the single public entry point for the Devarom delivery platform.
 
 ## 2. Architectural Boundaries & Responsibilities
 
-In accordance with [Devarom Architecture Baseline v1.3](../../docs/architecture/BASELINE.md) and [Login Contract](../../docs/contracts/LOGIN_CONTRACT.md):
+In accordance with [SwiftDrop Architecture Baseline v1.3](../../docs/architecture/BASELINE.md) and [Login Contract](../../docs/contracts/LOGIN_CONTRACT.md):
 
 ### 2.1 Gateway Responsibilities
 - **Edge Authentication Gate:** Validates Keycloak JWT cryptographic signature via JWKS, issuer URI, audience (`devarom-api`), and token lifetime. Rejects missing or invalid tokens with HTTP 401 Unauthorized before forwarding to internal services.

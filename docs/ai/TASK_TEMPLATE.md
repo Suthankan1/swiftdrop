@@ -1,8 +1,8 @@
 # Copy/paste template — one task for any AI coding agent
 
-> Replace bracketed items. **Do not submit an unbounded request like “build Devarom”**.
+> Replace bracketed items. **Do not submit an unbounded request like “build SwiftDrop”**.
 
-**Project context:** This is Devarom, architecture baseline v1.3. Read `AGENTS.md`, `docs/project/PROJECT_CONTEXT.md`, `docs/architecture/BASELINE.md`, `docs/team/OWNERSHIP.md`, relevant module README, contract docs and current Git/test state first.
+**Project context:** This is SwiftDrop, architecture baseline v1.3. Read `AGENTS.md`, `docs/project/PROJECT_CONTEXT.md`, `docs/architecture/BASELINE.md`, `docs/team/OWNERSHIP.md`, relevant module README, contract docs and current Git/test state first.
 
 **Task ID / owning team / reviewer:** [issue], [name/pair], [reviewer]
 

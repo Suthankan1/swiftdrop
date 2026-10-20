@@ -1,8 +1,10 @@
-# Devarom — Keycloak Identity & OIDC Foundation
+# SwiftDrop — Keycloak Identity & OIDC Foundation
 
-**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #2](https://github.com/Suthankan1/devarom/issues/2) · **Architecture Baseline:** Devarom v1.3
+**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #2](https://github.com/Suthankan1/devarom/issues/2) · **Architecture Baseline:** SwiftDrop v1.3
 
-This directory contains the reproducible Keycloak identity foundation for the Devarom delivery platform. It defines the `devarom` realm, public OpenID Connect (OIDC) client for the React Single Page Application (SPA), role-based access control (RBAC) definitions, claims mapping for Spring Security Resource Servers, and Google OAuth 2.0 identity federation brokering.
+This directory contains the reproducible Keycloak identity foundation for the SwiftDrop delivery platform. It defines the `devarom` realm, public OpenID Connect (OIDC) client for the React Single Page Application (SPA), role-based access control (RBAC) definitions, claims mapping for Spring Security Resource Servers, and Google OAuth 2.0 identity federation brokering.
+
+Phase 1 updates visible product text and the existing wordmark text only. Realm `devarom`, public client `devarom-frontend`, API audience `devarom-api`, theme directory `devarom`, SMTP sender address and Google broker redirect remain unchanged. Existing realm data is not re-imported or recreated; persisted users and subject IDs are preserved. Fresh imports use SwiftDrop display labels; applying those display labels to an existing realm requires a targeted administrative update, never a volume reset.
 
 ---
 
@@ -22,7 +24,7 @@ This directory contains the reproducible Keycloak identity foundation for the De
 The realm is defined in [`realm-devarom.json`](realm-devarom.json) as a sanitized, version-controlled configuration with zero hardcoded passwords or sensitive secrets.
 
 ### 2.1 Five Core Application Roles
-Keycloak manages authentication and realm roles (`realm_access.roles`). Devarom defines five core business roles:
+Keycloak manages authentication and realm roles (`realm_access.roles`). SwiftDrop defines five core business roles:
 
 1. `CUSTOMER`: Self-registered public sender/receiver. Can book parcels, track shipments, and view own order history.
 2. `MERCHANT`: Business client sending batch orders via API or merchant portal. Requires business approval in Accounts Service.
@@ -95,7 +97,7 @@ This maps realm roles directly to a top-level `"roles": ["CUSTOMER", ...]` array
 
 ## 5. Google Identity Brokering & Secrets Management
 
-Keycloak brokers federated identity with Google Sign-In. The browser application talks only to Keycloak; a Google token is **never** a Devarom API bearer token.
+Keycloak brokers federated identity with Google Sign-In. The browser application talks only to Keycloak; a Google token is **never** a SwiftDrop API bearer token.
 
 ### 5.1 Runtime Credential Injection (Outside Git)
 Google OAuth credentials are kept strictly outside source control.
@@ -115,10 +117,10 @@ Keycloak's realm configuration uses environment variable substitution enabled vi
 
 ### 5.2 Google Cloud Console Setup Steps
 1. Navigate to Google Cloud Console: `https://console.cloud.google.com/apis/credentials`.
-2. Select or create project `devarom`.
+2. Select the existing Google Cloud project (recorded legacy name `devarom`). Its project ID and OAuth credentials remain unchanged in Phase 1; do not create replacement cloud resources for branding.
 3. Configure the **OAuth consent screen**:
    - **User Type:** External.
-   - **App name:** Devarom.
+   - **App name:** SwiftDrop (visible consent-screen branding; requires an authorized Google Cloud console update, not changed by repository files).
    - **Publishing status:** Testing (standard for development).
    - **Test users:** Add the authorized Google accounts of developers testing the login flow (e.g., developer@gmail.com). Google restricts login in Testing mode exclusively to listed test users; unauthorized accounts receive `403 access_denied`.
    - **Scopes:** `.../auth/userinfo.email`, `.../auth/userinfo.profile`, `openid`.
@@ -233,21 +235,21 @@ platform slice; this task does not migrate storage.
 
 **Issue:** [Refs #44](https://github.com/Suthankan1/devarom/issues/44) · **Theme Name:** `devarom` · **Parent Theme:** `keycloak.v2`
 
-A fully responsive, accessible, and professionally branded Keycloak login, registration, and error recovery theme matching the Devarom React Single Page Application design language.
+A fully responsive, accessible, and professionally branded Keycloak login, registration, and error recovery theme matching the SwiftDrop React Single Page Application design language.
 
 ### 8.1 Theme Architecture & Directory Layout
 
 ```text
 platform/identity/themes/devarom/login/
 ├── theme.properties                  # Declares parent=keycloak.v2, styles, scripts
-├── template.ftl                      # Accessible layout wrapper, Devarom header & alert banner
+├── template.ftl                      # Accessible layout wrapper, SwiftDrop header & alert banner
 ├── footer.ftl                        # Branded card footer with encrypted session badge
 ├── messages/
 │   └── messages_en.properties        # Custom branded copy and error labels
 └── resources/
     ├── css/
     │   ├── styles.css                # Base stylesheet
-    │   └── devarom.css               # Devarom design tokens, card styling, responsive rules
+    │   └── devarom.css               # SwiftDrop design tokens, card styling, responsive rules
     └── img/
         ├── devarom-logo.svg          # Primary light mode wordmark
         ├── devarom-logo-dark.svg     # Dark mode wordmark
@@ -414,7 +416,7 @@ docker restart devarom-keycloak
 ```
 
 The native verification/info/error templates remain inherited. Message overrides
-and wrapping use the existing Devarom card, typography, colors and alert styles;
+and wrapping use the existing SwiftDrop card, typography, colors and alert styles;
 all native action/resend links remain intact. Original-session verification
 continues through native password setup/callback. Another browser may display a
 native confirmation/success screen and require a fresh sign-in.
@@ -520,7 +522,7 @@ the subflow `Condition - user configured` (`conditional-user-configured`):
 
 ### Branded Keycloak theme integration
 
-Branded screens extend `keycloak.v2` and strictly apply Devarom design tokens:
+Branded screens extend `keycloak.v2` and strictly apply SwiftDrop design tokens:
 - **`login-config-totp.ftl`:** Branded heading, description, QR code container enclosed
   in a dedicated high-contrast white card (`#kc-totp-secret-qr-code`) for dark mode legibility,
   monospace manual key display (`#kc-totp-secret-key`), device name input, and 6-digit TOTP input.
@@ -573,7 +575,7 @@ automatic cleanup on exit. Secrets, OTP codes, and tokens are kept in memory and
 ## 11. Issue #47 Phase C — Email OTP Feasibility, Security Architecture & Decision
 
 Owner: **Suthankan1**. Reviews the feasibility, security threat model, and architectural
-decision regarding typed Email OTP codes in Devarom's Keycloak platform (Issue #47 Phase C).
+decision regarding typed Email OTP codes in SwiftDrop's Keycloak platform (Issue #47 Phase C).
 
 ### Summary of findings & decision gate
 

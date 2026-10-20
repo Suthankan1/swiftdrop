@@ -1,6 +1,6 @@
-# Architecture baseline v1.3 — Devarom
+# Architecture baseline v1.3 — SwiftDrop
 
-**Status:** team-proposed design. Do not claim deployed/implemented until code and tests exist. Supersedes v1.2 REST/RabbitMQ references and the former name SwiftDrop.
+**Status:** team-proposed design. Do not claim deployed/implemented until code and tests exist. Supersedes v1.2 REST/RabbitMQ references. The product name is SwiftDrop; the v1.3 architecture and runtime identifiers are unchanged by the 2026-10-20 branding revision.
 
 ## Logical layout
 

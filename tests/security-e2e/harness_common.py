@@ -1,5 +1,5 @@
 """
-Devarom Platform — Security E2E Test Harness Common Infrastructure (Task 018)
+SwiftDrop Platform — Security E2E Test Harness Common Infrastructure (Task 018)
 Shared utilities for authentic Keycloak OIDC PKCE flows, synthetic JWT generation,
 Keycloak admin management, and standardized security test matrix reporting.
 """
@@ -426,7 +426,7 @@ class SecurityTestReport:
         total = len(self.results)
 
         print("\n" + "=" * 95)
-        print(" DEVAROM SECURITY E2E TEST EXECUTION MATRIX")
+        print(" SWIFTDROP SECURITY E2E TEST EXECUTION MATRIX")
         print("=" * 95)
         print(f"{'ID':<6} {'Category':<8} {'Service':<10} {'Exp':<5} {'Act':<5} {'Status':<8} {'Test Description'}")
         print("-" * 95)

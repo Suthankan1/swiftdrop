@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Devarom Platform — Keycloak Identity Configuration & Security Validator
+# SwiftDrop Platform — Keycloak Identity Configuration & Security Validator
 # Validates realm JSON invariants, OIDC discovery, PKCE enforcement, and role security.
 # ==============================================================================
 
@@ -11,7 +11,7 @@ REALM_FILE="${SCRIPT_DIR}/realm-devarom.json"
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8090}"
 
 echo "=============================================================================="
-echo " Devarom Platform — Identity Security Invariant Validation (Issue #2)"
+echo " SwiftDrop Platform — Identity Security Invariant Validation (Issue #2)"
 echo "=============================================================================="
 
 # 1. JSON Schema & Parsing Validation
@@ -144,7 +144,7 @@ fi
 echo "PASS (Zero committed secrets/passwords)"
 
 # 8. Keycloak Custom Theme Structure & Assets
-echo -n "[8/14] Checking Devarom theme files and assets... "
+echo -n "[8/14] Checking SwiftDrop theme files and assets... "
 THEME_DIR="${SCRIPT_DIR}/themes/devarom/login"
 if [[ ! -f "${THEME_DIR}/theme.properties" ]]; then
   echo "FAIL: Missing ${THEME_DIR}/theme.properties."
@@ -175,6 +175,7 @@ if ! grep -q "css/devarom.css" "${THEME_DIR}/theme.properties"; then
   exit 1
 fi
 echo "PASS (parent=keycloak.v2, devarom.css, templates and brand assets present)"
+python3 "${SCRIPT_DIR}/tests/test_branding_configuration.py"
 
 # 9. Realm loginTheme Configuration
 echo -n "[9/14] Checking realm loginTheme declaration... "
@@ -271,7 +272,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
     exit 1
   fi
 
-  # F. Custom Devarom Theme Runtime Rendering Check
+  # F. Custom SwiftDrop Theme Runtime Rendering Check
   LOGIN_HTML=$(curl -s -L "${KEYCLOAK_URL}/realms/devarom/protocol/openid-connect/auth?client_id=devarom-frontend&response_type=code&redirect_uri=http://localhost:5173/auth/callback&scope=openid&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256")
   if ! echo "${LOGIN_HTML}" | grep -q "css/devarom.css"; then
     echo "    FAIL: Login page did not include css/devarom.css."
@@ -279,6 +280,10 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
   fi
   if ! echo "${LOGIN_HTML}" | grep -q "devarom-brand-title"; then
     echo "    FAIL: Login page did not render devarom-brand-title."
+    exit 1
+  fi
+  if ! echo "${LOGIN_HTML}" | grep -q 'class="devarom-brand-title">SwiftDrop'; then
+    echo "    FAIL: Login page did not render the SwiftDrop wordmark."
     exit 1
   fi
   CSS_HREF=$(echo "${LOGIN_HTML}" | grep -oE '/resources/[^"]+/login/devarom/css/devarom\.css' | head -n 1)
@@ -289,7 +294,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
       exit 1
     fi
   fi
-  echo "  - Branded Devarom Theme Rendering: Verified (devarom.css loaded with HTTP 200, brand mark and title rendered)"
+  echo "  - Branded SwiftDrop Theme Rendering: Verified (devarom.css loaded with HTTP 200, brand mark and title rendered)"
 
   # G. TOTP MFA Policy & CONFIGURE_TOTP Required Action Verification
   if python3 "${SCRIPT_DIR}/configure-totp.py" check >/dev/null 2>&1; then

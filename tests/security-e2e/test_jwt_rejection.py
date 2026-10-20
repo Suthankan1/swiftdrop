@@ -1,5 +1,5 @@
 """
-Devarom Platform — Security E2E Test Suite: L06 JWT Authentication Rejection (Task 018)
+SwiftDrop Platform — Security E2E Test Suite: L06 JWT Authentication Rejection (Task 018)
 Proves that missing, malformed, untrusted, expired, and misconfigured JWTs are strictly
 rejected with HTTP 401 at both Spring Cloud Gateway (8080) and Accounts Service (8081).
 """

@@ -1,7 +1,9 @@
 # Customer Journey Review: Use Cases, Quote/Booking Activity, and Sequence Design
 
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
+
 > **Document Context & Metadata**
-> - **Product:** Devarom — Parcel Delivery & Courier Management Platform (Architecture v1.3)
+> - **Product:** SwiftDrop — Parcel Delivery & Courier Management Platform (Architecture v1.3)
 > - **Issue Reference:** Refs [#4 — [NOV-05] Review Customer report use cases, quote/booking flow and sequence](https://github.com/Suthankan1/devarom/issues/4)
 > - **Milestone:** November 1, 2026 — Report + Initial Working Logins
 > - **Module:** Customer
@@ -16,7 +18,7 @@
 
 ## Executive Summary
 
-This document presents a comprehensive architectural and technical review of the **Customer** journey within the Devarom platform. It provides university-level analysis and formal documentation for:
+This document presents a comprehensive architectural and technical review of the **Customer** journey within the SwiftDrop platform. It provides university-level analysis and formal documentation for:
 1. **Figure 01:** UML Customer Use Case Diagram ([`01_customer_use_cases.svg`](../diagrams/rendered/01_customer_use_cases.svg))
 2. **Figure 07:** UML Customer Quote-to-Booking Activity Diagram ([`07_quote_booking_activity.svg`](../diagrams/rendered/07_quote_booking_activity.svg))
 3. **Figure 10:** UML Customer Delivery Booking Sequence Diagram ([`10_customer_delivery_sequence.svg`](../diagrams/rendered/10_customer_delivery_sequence.svg))
@@ -28,13 +30,13 @@ The review cross-references the diagrams against the approved [Architecture Base
 ## A. Customer Actor and Use Cases (Figure 01)
 
 ### 1. Customer Actor Definition and System Boundary
-In Devarom, the **Customer** represents an individual or non-merchant business actor who dispatches, monitors, and receives parcels through the digital delivery platform. The system boundary—formally designated as **Devarom**—encompasses all internal services (API Gateway, Accounts & Partners, Pricing & Zones, Delivery Operations, Communications, and the GraphQL Query API). 
+In SwiftDrop, the **Customer** represents an individual or non-merchant business actor who dispatches, monitors, and receives parcels through the digital delivery platform. The system boundary—formally designated as **SwiftDrop**—encompasses all internal services (API Gateway, Accounts & Partners, Pricing & Zones, Delivery Operations, Communications, and the GraphQL Query API).
 
 External to the system boundary resides the **Identity Provider** (`Keycloak`, federating upstream identity brokers such as Google OIDC). The Customer interacts with the platform via a single-page application (React 19 + TypeScript + Vite SPA) hosted under a secure browser runtime.
 
 ```
        +-----------------------------------------------------------+
-       |                     DEVAROM PLATFORM                      |
+       |                    SWIFTDROP PLATFORM                     |
        |                                                           |
        |   (u0) Sign up / local or Google login <====================> [Identity Provider]
        |   (u1) Request delivery fee estimate                      |   (Keycloak / Google)
@@ -206,7 +208,7 @@ Figure 10 details the exact temporal sequence and protocol boundaries across six
 ### 3. Core Architectural Guarantees
 
 #### Immutable Price Snapshotting
-A fundamental rule of Devarom v1.3 is that **an accepted delivery fee is immutable**. Once committed in message 11, the fee is permanently stored within the `PARCELS` table in Delivery Operations. Delivery Operations never queries Pricing tables during subsequent parcel transitions, nor do future tariff modifications alter historical bookings.
+A fundamental rule of SwiftDrop v1.3 is that **an accepted delivery fee is immutable**. Once committed in message 11, the fee is permanently stored within the `PARCELS` table in Delivery Operations. Delivery Operations never queries Pricing tables during subsequent parcel transitions, nor do future tariff modifications alter historical bookings.
 
 #### Idempotency Safeguards
 Network retries are common in mobile and web environments. By requiring an `Idempotency-Key` header on `POST /api/v1/parcels`, Delivery Operations ensures safe retry semantics:
@@ -225,7 +227,7 @@ As demonstrated in messages 6 through 11, Delivery Operations queries Accounts a
 ## D. Security and Ownership
 
 ### 1. Identity vs. Domain Authorization
-In Devarom, identity authentication and domain authorization are strictly decoupled:
+In SwiftDrop, identity authentication and domain authorization are strictly decoupled:
 1. **Identity Provider (`Keycloak`):** Owns user credential storage, password hashing, Google OIDC federation, and token signing. Keycloak issues a cryptographically signed JWT containing the unique subject claim `sub`.
 2. **API Gateway (`Spring Cloud Gateway`):** Validates token digital signatures using Keycloak's public JSON Web Key Set (`JWKS`), checks token expiry (`exp`), issuer (`iss`), and audience (`aud`).
 3. **Business Microservices (`Accounts`, `Delivery`, `Pricing`):** Downstream services independently validate the JWT. They do not trust arbitrary caller-supplied user IDs in HTTP request bodies. The customer's identity is derived strictly from the verified `sub` claim.
@@ -330,7 +332,7 @@ Per [`docs/architecture/OPEN_DECISIONS.md`](../architecture/OPEN_DECISIONS.md), 
 For direct inclusion in the final Enterprise Application Development (EAD) technical report, the following standardized captions are established:
 
 > **Figure 01: Customer Use Cases**  
-> *UML Use Case Diagram illustrating the functional interaction boundaries for the Devarom parcel delivery platform. The primary Customer actor initiates authentication, quotation, booking, live tracking, history review, receipt retrieval, and redacted public mobile tracking. Authentication interactions (`u0`) are brokered externally through Keycloak (Identity Provider). Public tracking (`u7`) enforces field-level redaction, whereas domain operations require authenticated subject ownership.*
+> *UML Use Case Diagram illustrating the functional interaction boundaries for the SwiftDrop parcel delivery platform. The primary Customer actor initiates authentication, quotation, booking, live tracking, history review, receipt retrieval, and redacted public mobile tracking. Authentication interactions (`u0`) are brokered externally through Keycloak (Identity Provider). Public tracking (`u7`) enforces field-level redaction, whereas domain operations require authenticated subject ownership.*
 
 > **Figure 07: Customer Quote-to-Booking Activity**  
 > *UML Activity Diagram modeling the quote-to-booking business process across the `Customer / React` and `Gateway -> Pricing / Delivery` swimlanes. Illustrates form input validation, synchronous quote calculation with rate rule evaluation, fee and expiry preview, customer confirmation or voluntary cancellation, pre-booking eligibility and quote integrity verification, and atomic commit within Delivery Operations storing an immutable fee snapshot and idempotency record.*

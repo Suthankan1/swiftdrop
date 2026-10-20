@@ -4,7 +4,7 @@
 
 ## Login architecture
 
-React/Vite is a **public OAuth/OIDC client** using **Authorization Code + PKCE (S256)** with `state`/`nonce`, registered redirect URIs and restricted origins. Login with Google goes **React → Keycloak → Google → Keycloak → React**; React exchanges a *Keycloak authorization code* using PKCE and sends the **Keycloak access JWT** to Devarom APIs. Do not accept Google's ID/access token directly for domain API access. No OAuth client secret in a browser bundle.
+React/Vite is a **public OAuth/OIDC client** using **Authorization Code + PKCE (S256)** with `state`/`nonce`, registered redirect URIs and restricted origins. Login with Google goes **React → Keycloak → Google → Keycloak → React**; React exchanges a *Keycloak authorization code* using PKCE and sends the **Keycloak access JWT** to SwiftDrop APIs. Do not accept Google's ID/access token directly for domain API access. No OAuth client secret in a browser bundle.
 
 Tokens: short-lived access tokens in **browser memory**, never localStorage, logs, query params or screenshot. Document reload/logout/expiry and refresh/reauth decisions explicitly. Use CSP, dependency hygiene, safe redirect validation and no token leakage in error traces.
 

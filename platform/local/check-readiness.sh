@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Devarom Platform — Full-Stack Service Readiness Checker
+# SwiftDrop Platform — Full-Stack Service Readiness Checker
 # Clean-clone verification tool for Nov 1 demo readiness (Refs #17, #18, #19).
 # Verifies toolchain prerequisites, container health, microservices, and SPA.
 # Safe for all environments: zero credentials or secrets exposed.
@@ -38,7 +38,7 @@ fail() {
 }
 
 echo -e "${BOLD}==============================================================================${NC}"
-echo -e "${BOLD} Devarom Platform — Full-Stack Readiness Verification${NC}"
+echo -e "${BOLD} SwiftDrop Platform — Full-Stack Readiness Verification${NC}"
 echo -e "${BOLD}==============================================================================${NC}"
 echo "Repository Root : ${REPO_ROOT}"
 echo "Execution Time  : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
