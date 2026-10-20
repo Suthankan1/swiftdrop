@@ -60,9 +60,9 @@ public class ProfileSecurityConfiguration {
 
     @Bean
     public JwtDecoder jwtDecoder(
-            @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}}") String jwkSetUri,
-            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:${devarom.jwt.issuer-uri:http://localhost:8090/realms/devarom}}") String issuerUri,
-            @Value("${devarom.jwt.audience:devarom-api}") String audience) {
+            @Value("${KEYCLOAK_JWKS_URI:${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:${swiftdrop.jwt.jwk-set-uri:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}}}}") String jwkSetUri,
+            @Value("${KEYCLOAK_ISSUER_URI:${spring.security.oauth2.resourceserver.jwt.issuer-uri:${swiftdrop.jwt.issuer-uri:${devarom.jwt.issuer-uri:http://localhost:8090/realms/devarom}}}}") String issuerUri,
+            @Value("${JWT_AUDIENCE:${swiftdrop.jwt.audience:${devarom.jwt.audience:devarom-api}}}") String audience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
         OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
         OAuth2TokenValidator<Jwt> audienceValidator = new AudienceValidator(audience);

@@ -42,3 +42,7 @@ Thumbs.db
 *.pyc
 .local/
 local-data/
+backups/
+*.mv.db
+*.trace.db
+
