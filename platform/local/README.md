@@ -1,6 +1,6 @@
-# Devarom — Local Development Environment & Readiness Tooling
+# SwiftDrop — Local Development Environment & Readiness Tooling
 
-This directory provides local infrastructure orchestration and readiness verification tools for the Devarom November 1 initial-login milestone.
+This directory provides local infrastructure orchestration and readiness verification tools for the SwiftDrop November 1 initial-login milestone.
 
 ---
 

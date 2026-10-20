@@ -1,11 +1,13 @@
-# Devarom — Security E2E Test Automation & QA Verification
+# SwiftDrop — Security E2E Test Automation & QA Verification
+
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../../docs/branding/PHASE_1_AUDIT.md).
 
 **Task:** Issue #18 (`[NOV-14] Prove JWT, cross-role and resource-owner denial end to end`)
 **Platform & Auth Owner:** Suthankan1
 **Temporary QA Execution Owner:** Suthankan1 (Platform Self-Verification)
 **Original Intended QA Owner:** Vibhushan (@Vibhushan-2003) (Independent Review Pending)
 **Target Integration Branch:** `test`
-**Architecture Baseline:** Devarom v1.3
+**Architecture Baseline:** SwiftDrop v1.3
 
 ---
 
@@ -13,7 +15,7 @@
 
 This test harness provides reproducible, automated end-to-end security verification proving that:
 1. **L06 — JWT Authentication Rejection:** Unauthenticated requests, malformed tokens, untrusted signatures, wrong issuers, wrong audiences, expired tokens, not-yet-valid tokens, missing subjects, and invalid authentication schemes are strictly rejected with HTTP 401 Problem Details at **both** Spring Cloud Gateway (`:8080`) and Accounts Service (`:8081`).
-2. **L07 — Cross-Role Authorization Denial:** Authenticated tokens lacking approved Devarom application roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`) are rejected with HTTP 403 Forbidden. Public self-registration is strictly confined to the `CUSTOMER` role, preventing self-elevation to staff privileges. Unimplemented staff operations are verified as default-denied and documented as blocked dependencies.
+2. **L07 — Cross-Role Authorization Denial:** Authenticated tokens lacking approved SwiftDrop application roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`) are rejected with HTTP 403 Forbidden. Public self-registration is strictly confined to the `CUSTOMER` role, preventing self-elevation to staff privileges. Unimplemented staff operations are verified as default-denied and documented as blocked dependencies.
 3. **L08 — Resource-Owner & Tenant Isolation:** Using authentic Keycloak-issued tokens for distinct synthetic users (Customer A and Customer B), the suite proves that Customer A receives only Customer A's persisted profile, Customer B receives only Customer B's persisted profile, and client-forged identity headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameter injections are strictly stripped/ignored without leaking cross-user data.
 
 > **Temporary QA Ownership & Self-Verification Disclosure:**

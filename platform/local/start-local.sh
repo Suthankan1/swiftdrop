@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Devarom Platform — Local Infrastructure Startup Helper (Nov 1 Milestone)
+# SwiftDrop Platform — Local Infrastructure Startup Helper (Nov 1 Milestone)
 # Starts Docker containers (Keycloak, Mailpit, PostgreSQL), waits for readiness,
 # and verifies runtime policies. Safe and non-destructive.
 # ==============================================================================
@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 echo "=============================================================================="
-echo " Devarom Platform — Local Infrastructure Startup"
+echo " SwiftDrop Platform — Local Infrastructure Startup"
 echo "=============================================================================="
 echo "Repository Root: ${REPO_ROOT}"
 echo ""

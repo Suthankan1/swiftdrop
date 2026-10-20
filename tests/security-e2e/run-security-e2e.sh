@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Devarom Platform — Security E2E Test Orchestrator (Task 018)
+# SwiftDrop Platform — Security E2E Test Orchestrator (Task 018)
 # Reproducible execution of L06, L07, and L08 security tests and regressions.
 # Executed by: Suthankan1 (Platform Self-Verification)
 # Original QA Owner: Vibhushan (@Vibhushan-2003) (Independent Review Pending)
@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 echo "=============================================================================="
-echo " Devarom Platform — Security E2E Test Automation (Task 018)"
+echo " SwiftDrop Platform — Security E2E Test Automation (Task 018)"
 echo "=============================================================================="
 echo "Repository Root : ${REPO_ROOT}"
 echo "Execution Time  : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -114,7 +114,7 @@ echo "      -> Frontend tests passed."
 
 echo ""
 echo "=============================================================================="
-echo " ALL DEVAROM SECURITY E2E AND REGRESSION TESTS COMPLETED SUCCESSFULLY"
+echo " ALL SWIFTDROP SECURITY E2E AND REGRESSION TESTS COMPLETED SUCCESSFULLY"
 echo "=============================================================================="
 echo "Artifact: ${SCRIPT_DIR}/reports/security_e2e_results.json"
 echo "Classification: Platform Self-Verification (Executed by Suthankan1)"

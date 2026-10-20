@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Devarom Platform — Full-Stack Login Demonstration Smoke Suite (Nov 1 Milestone)
+SwiftDrop Platform — Full-Stack Login Demonstration Smoke Suite (Nov 1 Milestone)
 Demonstrates the three core customer authentication flows and security controls:
   Scenario A: New Customer Registration & Native Email Verification via Mailpit
   Scenario B: Existing Verified Customer Login & Profile Access
@@ -94,7 +94,7 @@ class DemoSmokeRunner:
 
     def run_all(self) -> bool:
         print("==============================================================================")
-        print(" DEVAROM NOV 1 LOGIN DEMO SMOKE TEST SUITE")
+        print(" SWIFTDROP NOV 1 LOGIN DEMO SMOKE TEST SUITE")
         print(" Execution Mode : Synthetic Disposable Flow (Safe - Zero Secrets Logged)")
         print(f" Timestamp      : {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}")
         print("==============================================================================")
@@ -385,7 +385,7 @@ class DemoSmokeRunner:
             b32_secret = base64.b32encode(raw_secret).decode("ascii").rstrip("=")
             otp_credential = {
                 "type": "otp",
-                "userLabel": "Devarom Demo Authenticator",
+                "userLabel": "SwiftDrop Demo Authenticator",
                 "value": json.dumps({"secret": b32_secret, "algorithm": "HmacSHA1", "digits": 6, "period": 30}),
             }
             # Keycloak 26 Admin API allows adding credentials or simulating enrollment

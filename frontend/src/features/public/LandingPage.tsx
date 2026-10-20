@@ -13,7 +13,7 @@ export function LandingPage() {
           <h1 id="hero-title">A little closer.<br />With every<br /><span className="hero-word">delivery<svg viewBox="0 0 410 20" preserveAspectRatio="none" aria-hidden="true"><path d="M3 13C99 1 251 0 407 9" /></svg></span><span className="hero-dot">.</span></h1>
           <p className="hero-description">From a thoughtful little something to your next big idea. We’re building a delivery experience that brings people closer.</p>
           <Link className="button button-primary hero-cta" to="/customer">Explore your customer space <ArrowIcon /></Link>
-          <p className="hero-caption">One place to begin your Devarom journey.</p>
+          <p className="hero-caption">One place to begin your SwiftDrop journey.</p>
         </div>
         <div className="hero-art" aria-hidden="true">
           <div className="art-grid" /><div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="art-orbit orbit-three" />
@@ -21,10 +21,10 @@ export function LandingPage() {
           <span className="art-coordinate coordinate-top">A LITTLE SOMETHING</span><span className="art-coordinate coordinate-bottom">A WHOLE LOT CLOSER</span>
           <div className="art-spark spark-one">✳</div><div className="art-spark spark-two">+</div><div className="parcel-shadow" />
           <div className="parcel"><div className="parcel-top" /><div className="parcel-side" /><div className="parcel-front">
-            <span className="parcel-tape" /><span className="parcel-brand">devarom.</span><span className="parcel-tagline">GOOD THINGS<br />ARE ON THEIR WAY.</span>
+            <span className="parcel-tape" /><span className="parcel-brand">SwiftDrop.</span><span className="parcel-tagline">GOOD THINGS<br />ARE ON THEIR WAY.</span>
             <div className="parcel-label"><span>WITH CARE, ALWAYS.</span><i /><small>FROM ONE PERSON TO ANOTHER</small></div><span className="parcel-arrows">↑ ↑</span>
           </div></div>
-          <div className="art-sticker"><ArrowIcon diagonal /><span>Made to<br /><strong>connect.</strong></span></div><span className="art-index">THE DEVAROM WAY / 01</span>
+          <div className="art-sticker"><ArrowIcon diagonal /><span>Made to<br /><strong>connect.</strong></span></div><span className="art-index">THE SWIFTDROP WAY / 01</span>
         </div>
       </section>
       <section className="promise-strip" aria-label="Our approach"><div className="page-container promise-inner">

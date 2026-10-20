@@ -12,7 +12,7 @@ const messages = {
 export function LoginPage() {
   const auth = useAuth()
   if (auth.snapshot.status === 'loading') return <FeedbackState title="Checking sign-in" tone="loading">Please wait.</FeedbackState>
-  return <div className="page-container"><h1>Sign in to Devarom</h1>
+  return <div className="page-container"><h1>Sign in to SwiftDrop</h1>
     {auth.problem && <p role="alert">{messages[auth.problem]}</p>}
     {auth.snapshot.status === 'authenticated' ? <><p>You are signed in.</p>
       {auth.snapshot.roles.includes('CUSTOMER') && <Link to="/customer">Customer space</Link>}
