@@ -1,10 +1,10 @@
-# Devarom — November 1 Five-Role Integration Readiness & Coordination Tracker
+# SwiftDrop — November 1 Five-Role Integration Readiness & Coordination Tracker
 
 **Document Version:** 1.0.0  
 **Target Milestone:** November 1, 2026 Checkpoint (Report + Initial Working Logins)  
 **Target Integration Branch:** `test`  
 **Platform & Integration Lead:** Suthankan1 (`@Suthankan1`)  
-**Architecture Baseline:** Devarom Architecture v1.3 ([BASELINE.md](../architecture/BASELINE.md))  
+**Architecture Baseline:** SwiftDrop Architecture v1.3 ([BASELINE.md](../architecture/BASELINE.md))
 **Related PRs / Issues:** [#8](https://github.com/Suthankan1/devarom/issues/8), [#9](https://github.com/Suthankan1/devarom/issues/9), [#14](https://github.com/Suthankan1/devarom/issues/14), [#15](https://github.com/Suthankan1/devarom/issues/15), [#16](https://github.com/Suthankan1/devarom/issues/16), [#17](https://github.com/Suthankan1/devarom/issues/17), [#18](https://github.com/Suthankan1/devarom/issues/18), [#19](https://github.com/Suthankan1/devarom/issues/19)
 
 ---

@@ -15,7 +15,7 @@ force-push, or rewrite their history. If synchronization is blocked, resolve it
 before feature development. Before submission, verify
 `git merge-base --is-ancestor origin/test HEAD` and confirm the PR base on GitHub.
 
-1. Create one **private or team-approved** GitHub repo `devarom`, extract/copy the starter *contents* into the clone root and commit docs (`docs: establish Devarom architecture baseline`). Do not upload the 13-MB report ZIP or generated PDFs to Git history.
+1. Use the existing **private or team-approved** GitHub repo `Suthankan1/devarom`. The public company/product name is **SwiftDrop**; the repository target `Suthankan1/swiftdrop` requires the separate [reviewed rename checklist](../branding/PHASE_2_MIGRATION.md). Do not create a second repository or upload the 13-MB report ZIP or generated PDFs to Git history.
 2. Set default `main`, require PR review if account plan/settings allow; protect branches, disallow force push, enable issue tracking. Add the 9 members as collaborators with minimum necessary permissions.
 3. For each slice use its existing issue (create one only if needed), update local `test` with `git pull --ff-only origin test`, then branch from it: `feat/login-keycloak-spa`, `feat/accounts-profile`, `test/auth-denials`, `docs/clarify-rest-contract`, etc. **One scope per PR**, ideally small and independently buildable; base **test**.
 4. Use conventional commits: `feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`. A breaking shared contract needs owner approvals/ADR before code.

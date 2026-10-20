@@ -1,15 +1,17 @@
-# Email OTP Feasibility & Architecture Study — Devarom
+# Email OTP Feasibility & Architecture Study — SwiftDrop
 
-**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #47 (Phase C)](https://github.com/Suthankan1/devarom/issues/47) · **Architecture Baseline:** Devarom v1.3
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
+
+**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #47 (Phase C)](https://github.com/Suthankan1/devarom/issues/47) · **Architecture Baseline:** SwiftDrop v1.3
 
 ---
 
 ## 1. Executive Summary & Objective
 
-This document provides a technical feasibility analysis, comparative evaluation, and architectural recommendation regarding the implementation of **typed Email One-Time Password (OTP) codes** in the Devarom identity platform.
+This document provides a technical feasibility analysis, comparative evaluation, and architectural recommendation regarding the implementation of **typed Email One-Time Password (OTP) codes** in the SwiftDrop identity platform.
 
 ### 1.1 Context & Current Milestone
-Devarom's November 1 milestone mandates a secure, demonstrable initial login vertical slice connecting the React Single Page Application (SPA), Spring Cloud API Gateway, Accounts Service, and PostgreSQL via a central Keycloak identity provider.
+SwiftDrop's November 1 milestone mandates a secure, demonstrable initial login vertical slice connecting the React Single Page Application (SPA), Spring Cloud API Gateway, Accounts Service, and PostgreSQL via a central Keycloak identity provider.
 
 Previous phases delivered and verified:
 - **Phase A (PR #48):** Native Keycloak email ownership verification via cryptographic signed action links (`verifyEmail: true`), backed by an isolated local Mailpit SMTP service, 60-second resend cooldown, and branded Devarom Keycloak theme screens.
@@ -57,7 +59,7 @@ Email OTP is often casually suggested as a generic solution. However, its securi
 ```
 
 ### 2.1 Use Case A: Email Address Ownership Verification During Signup
-- **Current Mechanism:** Devarom uses Keycloak's native `VERIFY_EMAIL` required action. Upon registration, Keycloak sends an email containing a high-entropy, cryptographically signed action token (`VerifyEmailActionTokenHandler`). Clicking the link verifies the email address and redirects the user back to the application.
+- **Current Mechanism:** SwiftDrop uses Keycloak's native `VERIFY_EMAIL` required action. Upon registration, Keycloak sends an email containing a high-entropy, cryptographically signed action token (`VerifyEmailActionTokenHandler`). Clicking the link verifies the email address and redirects the user back to the application.
 - **Security Comparison:**
   - *Entropy:* A signed action token link has $\ge 256$ bits of cryptographic entropy, signed with the realm's RS256/ES256 private key and bound to the subject, email, and action token ID. In contrast, a 6-digit numeric OTP has only $10^6$ combinations (approx. 20 bits of entropy), making it inherently vulnerable to online brute-force guessing unless aggressively rate-limited.
   - *Channel Binding:* Both mechanisms share the same transport channel (SMTP to the user's inbox). Typing a code does not make the proof of inbox ownership stronger than clicking a link.
@@ -66,18 +68,18 @@ Email OTP is often casually suggested as a generic solution. However, its securi
 - **Recommendation:** **Reject typed codes for signup verification.** Retain the native signed link mechanism verified in PR #48.
 
 ### 2.2 Use Case B: Second-Factor Authentication During Login (MFA)
-- **Current Mechanism:** Devarom implements native RFC 6238 Authenticator-App TOTP (PR #49) using apps like Google Authenticator or Microsoft Authenticator.
+- **Current Mechanism:** SwiftDrop implements native RFC 6238 Authenticator-App TOTP (PR #49) using apps like Google Authenticator or Microsoft Authenticator.
 - **Security Comparison & Critical Vulnerabilities:**
-  - *Violation of Factor Independence (NIST SP 800-63B §5.1.3.3):* Under NIST guidelines, an out-of-band authenticator must operate over an independent channel. Because Devarom's password reset workflow is also delivered via email, an attacker who compromises the victim's email account can **both reset the primary password AND intercept the second-factor email OTP**. This "fate-sharing" completely collapses the security boundary of multi-factor authentication back to single-factor email access.
+  - *Violation of Factor Independence (NIST SP 800-63B §5.1.3.3):* Under NIST guidelines, an out-of-band authenticator must operate over an independent channel. Because SwiftDrop's password reset workflow is also delivered via email, an attacker who compromises the victim's email account can **both reset the primary password AND intercept the second-factor email OTP**. This "fate-sharing" completely collapses the security boundary of multi-factor authentication back to single-factor email access.
   - *No Phishing Resistance:* Email OTP is easily phished. Adversary-in-the-Middle (AiTM) reverse proxies (such as Evilginx or Modlishka) prompt victims for the 6-digit code in real time and immediately relay it to Keycloak to obtain authenticated sessions.
   - *In-Transit Vulnerabilities:* SMTP is not an end-to-end encrypted protocol. Email hops across intermediate mail transfer agents (MTAs), mail relays, corporate archiving proxies, and POP3/IMAP clients where OTP codes can be intercepted or logged.
   - *SMTP Availability & Latency:* SMTP does not provide real-time delivery guarantees. Greylisting, spam filtering, and queue delays routinely introduce multi-minute latencies. Because an OTP must expire quickly (within 2–3 minutes) to resist brute forcing, delivery delays create extreme user friction, race conditions, and resend storms. If the SMTP provider experiences an outage, **all user logins fail completely**, creating an availability single point of failure (DoS).
   - *App-Based TOTP Superiority:* RFC 6238 TOTP requires no network, no SMS, no email provider, no external dependencies, and operates strictly on the user's isolated physical smartphone.
-- **Recommendation:** **Reject Email OTP as a primary or secondary authentication factor.** Devarom's existing native TOTP provides strictly superior security, zero operational dependencies, and zero code maintenance.
+- **Recommendation:** **Reject Email OTP as a primary or secondary authentication factor.** SwiftDrop's existing native TOTP provides strictly superior security, zero operational dependencies, and zero code maintenance.
 
 ### 2.3 Use Case C: Account Recovery or Step-Up Authentication
 - **Step-Up Authentication:** High-value actions (e.g., changing merchant bank payout details, updating pricing zones, or granting administrative roles) require *higher* assurance than routine logins. Relying on an emailed code for step-up authentication when email is already the recovery vector introduces a false sense of security.
-- **Account Recovery:** When a user loses their TOTP device, Devarom currently provides an administrative reset flow (`python3 platform/identity/configure-totp.py reset-user <username>`) that safely resets MFA credentials and prompts fresh enrollment upon next verified login. Self-service recovery using email links is natively supported in Keycloak without requiring custom typed-code logic.
+- **Account Recovery:** When a user loses their TOTP device, SwiftDrop currently provides an administrative reset flow (`python3 platform/identity/configure-totp.py reset-user <username>`) that safely resets MFA credentials and prompts fresh enrollment upon next verified login. Self-service recovery using email links is natively supported in Keycloak without requiring custom typed-code logic.
 - **Recommendation:** **Defer Email OTP for recovery/step-up.** Administrative recovery meets all November 1 operational requirements without introducing bespoke SPI code.
 
 ---
@@ -124,7 +126,7 @@ We conducted a technical investigation into Keycloak 26.8.1 (pinned Quarkus dist
 
 ## 4. Evaluation of Alternative Solutions
 
-We evaluate four architectural paths for Devarom:
+We evaluate four architectural paths for SwiftDrop:
 
 ```text
 +-----------------------+---------------------+---------------------+---------------------+---------------------+
@@ -169,14 +171,14 @@ We evaluate four architectural paths for Devarom:
 - **Cons:**
   - *Supply Chain & Security Risk:* Introducing third-party JARs into Keycloak's privileged Quarkus classloader creates severe supply chain vulnerabilities. Community plugins often lack formal security audits, rate-limiting safeguards, or timely vulnerability patching.
   - *Upgrade Fragility:* Keycloak's internal SPIs, Quarkus build steps, and FreeMarker contexts frequently undergo breaking changes between minor versions (e.g., 25.x $\to$ 26.x). Community plugins frequently lag behind official Keycloak releases, blocking security updates for the entire platform.
-  - *Inconsistent UI & Theme Breakage:* Third-party extensions ship their own legacy FreeMarker templates that conflict with Devarom's custom branded `keycloak.v2` theme and WCAG accessibility standards.
+  - *Inconsistent UI & Theme Breakage:* Third-party extensions ship their own legacy FreeMarker templates that conflict with SwiftDrop's custom branded `keycloak.v2` theme and WCAG accessibility standards.
 
 ### 4.4 Option D: Custom In-House Keycloak Authenticator SPI
 - **Description:** Author, build, and maintain a proprietary Java extension implementing Keycloak's `Authenticator` and `AuthenticatorFactory` SPIs (`DevaromEmailOtpAuthenticatorFactory`).
 - **Pros:**
   - Complete control over cryptographic generation, rate limiting, and session binding.
-  - Seamless integration with Devarom's branded FreeMarker theme (`platform/identity/themes/devarom/login/`).
-  - Tailored to Devarom's exact security invariants and audit requirements.
+  - Seamless integration with SwiftDrop's branded FreeMarker theme (`platform/identity/themes/devarom/login/`).
+  - Tailored to SwiftDrop's exact security invariants and audit requirements.
 - **Cons:**
   - *High Engineering & Maintenance Cost:* Requires maintaining a separate Maven Java codebase, Docker multi-stage builds, and extensive unit/integration test harnesses across Keycloak version upgrades.
   - *Operational Complexity:* Introduces SMTP delivery failure modes into primary login paths.
@@ -190,7 +192,7 @@ Any candidate email OTP implementation is strictly bounded by the underlying ema
 
 ### 5.1 Local Development vs. Production SMTP
 - **Local Development (Mailpit):**
-  - Devarom runs Mailpit v1.27.4 on loopback (`mailpit:1025`, UI on `127.0.0.1:8025`).
+  - SwiftDrop runs Mailpit v1.27.4 on loopback (`mailpit:1025`, UI on `127.0.0.1:8025`).
   - Messages are captured instantly in memory with zero delivery latency, zero spam filtering, and zero network hops.
   - **Critical Warning:** Passing tests in Mailpit **does NOT prove real-world email deliverability**. Mailpit cannot simulate internet routing, greylisting, MTA queuing, or spam reputation.
 - **Production SMTP:**
@@ -203,14 +205,14 @@ Any candidate email OTP implementation is strictly bounded by the underlying ema
 - When delivery exceeds 90 seconds, users instinctively click "Resend Code". This triggers a race condition: generating a new code invalidates the first code just as it arrives in the inbox, leading to severe user frustration and failed logins.
 
 ### 5.3 SMTP Outage Resilience
-- If Keycloak relies on email OTP for login and the external SMTP provider experiences an outage or rate-limit throttle, **the entire Devarom authentication system becomes unavailable**.
+- If Keycloak relies on email OTP for login and the external SMTP provider experiences an outage or rate-limit throttle, **the entire SwiftDrop authentication system becomes unavailable**.
 - In contrast, the current baseline (Option A) uses TOTP for MFA, allowing authenticated users to log in uninterrupted during email outages.
 
 ---
 
 ## 6. User Experience & Theme Integration Design
 
-If an email OTP code challenge were ever mandated by product management, it would be hosted strictly within Keycloak's browser session, reusing the existing Devarom theme.
+If an email OTP code challenge were ever mandated by product management, it would be hosted strictly within Keycloak's browser session, reusing the existing SwiftDrop theme.
 
 ### 6.1 Keycloak-Hosted UI Flow
 ```text
@@ -270,5 +272,5 @@ If product management or security leadership explicitly rejects the recommendati
 4. [OWASP Multi-Factor Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html)
 5. [RFC 6238: TOTP - Time-Based One-Time Password Algorithm](https://datatracker.ietf.org/doc/html/rfc6238)
 6. [RFC 7807: Problem Details for HTTP APIs](https://datatracker.ietf.org/doc/html/rfc7807)
-7. [Devarom November 1 Login Contract](../../docs/contracts/LOGIN_CONTRACT.md)
-8. [Devarom Keycloak Identity Foundation README](../../platform/identity/README.md)
+7. [SwiftDrop November 1 Login Contract](../../docs/contracts/LOGIN_CONTRACT.md)
+8. [SwiftDrop Keycloak Identity Foundation README](../../platform/identity/README.md)

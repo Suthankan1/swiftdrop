@@ -1,4 +1,6 @@
-# Repository structure (documentation-only starter)
+# SwiftDrop repository structure (original starter map)
+
+This map records the documentation-first starter layout. Implemented frontend, identity, Gateway, Accounts and test files have since been added; see [current status](docs/project/STATUS.md). The local checkout directory and `.cursor/rules/devarom.mdc` filename remain legacy technical paths during Phase 1.
 
 ```text
 Devarom/
@@ -40,4 +42,4 @@ Devarom/
         └── rendered/01..20_*.svg
 ```
 
-There are **no** application classes, `pom.xml`, `package.json`, frontend templates, `.proto`, Dockerfiles, Compose, Helm charts or CI workflows shipped. Placeholder directories can be filled with app-generated sources later by their named owners. ZIP extraction creates one enclosing folder; copy its **contents** into the root of the team's GitHub clone, rather than making a nested `Devarom/` inside the repository.
+The original starter shipped documentation and placeholder directories only. Retain remaining placeholder READMEs until their owners implement a reviewed slice. Use the existing checkout rather than extracting a nested starter directory over working files.

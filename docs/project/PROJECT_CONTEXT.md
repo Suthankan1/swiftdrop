@@ -1,6 +1,6 @@
-# Devarom — compact project context for contributors and AI agents
+# SwiftDrop — compact project context for contributors and AI agents
 
-**Product:** Parcel Delivery & Courier Management System. **Brand:** Devarom (formerly called SwiftDrop in early drafts). **Course:** Enterprise Application Development group assignment. **Actual team:** nine members; assignment prints ten, lecturer clarification is pending. **Milestone:** November 1 — design report (use cases, architecture, flowcharts, justifications) and an initial codebase **with demonstrable logins**. The supplied assignment did not specify this deadline; it came from the group.
+**Company and product:** SwiftDrop — Parcel Delivery & Courier Management System. The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on **2026-10-20** by the project owner. Legacy runtime identifiers remain unchanged in Phase 1; see the [migration proposal](../branding/PHASE_2_MIGRATION.md). **Course:** Enterprise Application Development group assignment. **Actual team:** nine members; assignment prints ten, lecturer clarification is pending. **Milestone:** November 1 — design report (use cases, architecture, flowcharts, justifications) and an initial codebase **with demonstrable logins**. The supplied assignment did not specify this deadline; it came from the group.
 
 ## Actors and main journeys
 
@@ -14,9 +14,9 @@
 
 React+TS+Vite SPA → Spring Cloud Gateway: **REST for commands/simple reads, read-only GraphQL for multi-service dashboards, SSE for parcel updates**. Keycloak brokers Google with OIDC Authorization Code + PKCE; Keycloak JWT is validated at gateway **and** owner service. Four independent Spring Boot business services: Accounts & Partners, Pricing & Zones, Delivery Operations and Communications. One separate GraphQL Query API aggregates authorized internal **gRPC** reads; Delivery also uses gRPC to Accounts/Pricing for synchronous eligibility/quote checks. Delivery PostgreSQL transaction commits parcel/history/outbox; relay publishes versioned **Kafka** records; Communications independently consumes events and schedules durable notifications/signed webhooks/retries. Delivery provides SSE. Each business service owns its **own logical PostgreSQL database**. Bonus Kubernetes/Helm and AI Delivery Assistant are later targets.
 
-## Not in this starter
+## Actual implementation and deferred targets
 
-No implementation, packages, Maven/Gradle files, React files, Docker Compose or Dockerfile, Kubernetes YAML, `.proto`, Kafka topic provisioning or generated credentials. Empty module folders have only explanatory READMEs. **Do not treat report/diagram presence as passing software.**
+The React/Keycloak/Gateway/Accounts initial-login slice and local verification tooling now exist; inspect [STATUS.md](STATUS.md) for dated results and review gaps. Delivery, Pricing, Communications, GraphQL, gRPC, Kafka, SSE, Kubernetes and the AI assistant remain deferred design targets. Preserve the placeholder READMEs in those modules. **Do not treat report/diagram presence as passing software.**
 
 ## Design constraints
 

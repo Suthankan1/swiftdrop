@@ -1,6 +1,6 @@
 ---
-description: Devarom architecture, AI implementation limits, and team boundaries
+description: SwiftDrop architecture, AI implementation limits, and team boundaries
 alwaysApply: true
 ---
 
-Read and follow `AGENTS.md` as authoritative repo policy. Also consult `docs/project/PROJECT_CONTEXT.md`, `docs/architecture/BASELINE.md`, `docs/team/OWNERSHIP.md`, and the relevant module README. This is a documentation-only baseline; do not scaffold application source unless the user explicitly asks for one owned, tested slice. Preserve Devarom v1.3 hybrid REST/GraphQL/gRPC/Kafka/SSE and service-owned data boundaries. Check real repo state before claiming implementation or test success.
+Read and follow `AGENTS.md` as authoritative repo policy. Also consult `docs/project/PROJECT_CONTEXT.md`, `docs/architecture/BASELINE.md`, `docs/team/OWNERSHIP.md`, and the relevant module README. This is a documentation-only baseline; do not scaffold application source unless the user explicitly asks for one owned, tested slice. Preserve SwiftDrop v1.3 hybrid REST/GraphQL/gRPC/Kafka/SSE and service-owned data boundaries. Check real repo state before claiming implementation or test success.

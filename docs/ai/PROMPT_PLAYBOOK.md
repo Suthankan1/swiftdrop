@@ -4,11 +4,11 @@ These templates work across tools because **repository files—not chat memory�
 
 ## A. Context-only onboarding (safe to run now)
 
-> Read `AGENTS.md`, `docs/project/PROJECT_CONTEXT.md`, `docs/architecture/BASELINE.md`, `docs/architecture/PROTOCOL_MATRIX.md`, `docs/team/OWNERSHIP.md`, and `docs/milestones/NOV_01.md`. Summarize the Devarom v1.3 components, intended November 1 login slice, what is **not implemented**, open decisions, and the 9-person ownership. **Do not create/modify any code or files.** Point out conflicts instead of inventing answers.
+> Read `AGENTS.md`, `docs/project/PROJECT_CONTEXT.md`, `docs/architecture/BASELINE.md`, `docs/architecture/PROTOCOL_MATRIX.md`, `docs/team/OWNERSHIP.md`, and `docs/milestones/NOV_01.md`. Summarize the SwiftDrop v1.3 components, intended November 1 login slice, what is **not implemented**, open decisions, and the 9-person ownership. **Do not create/modify any code or files.** Point out conflicts instead of inventing answers.
 
 ## B. Plan (without writing code) one Keycloak + SPA login slice
 
-> You are planning, **not implementing**, the Devarom November 1 login vertical slice. Read `AGENTS.md`, `docs/security/AUTHENTICATION.md`, `docs/milestones/LOGIN_ACCEPTANCE.md`, and `frontend/README.md`. Inspect repository for the actual frontend/Keycloak state. Propose one minimal tested issue with allowed paths, role/PKCE safety, actual acceptance tests, and what must be configured manually. Do not generate a Vite app or Keycloak secrets unless separately authorized by the Customer pair and Platform owner.
+> You are planning, **not implementing**, the SwiftDrop November 1 login vertical slice. Read `AGENTS.md`, `docs/security/AUTHENTICATION.md`, `docs/milestones/LOGIN_ACCEPTANCE.md`, and `frontend/README.md`. Inspect repository for the actual frontend/Keycloak state. Propose one minimal tested issue with allowed paths, role/PKCE safety, actual acceptance tests, and what must be configured manually. Do not generate a Vite app or Keycloak secrets unless separately authorized by the Customer pair and Platform owner.
 
 ## C. Spring Initializr-generated module integration (after owner generates it)
 
@@ -26,4 +26,4 @@ These templates work across tools because **repository files—not chat memory�
 
 > Read `docs/milestones/NOV_01.md`, `docs/milestones/LOGIN_ACCEPTANCE.md`, `docs/project/STATUS.md` and actual repository/tests. Distinguish requirements, planned design, implemented behavior and missing evidence. Produce a truthful pass/blocker checklist; do not infer a working Google login from a diagram or configuration file.
 
-**Reusable prefix:** “This is **Devarom**, not SwiftDrop. Preserve v1.3 React/Vite, REST + read-only GraphQL, internal gRPC, Kafka, Keycloak and SSE. Respect team/module ownership, no unsanctioned code, and report actual test evidence only.”
+**Reusable prefix:** “This is **SwiftDrop**. Preserve v1.3 React/Vite, REST + read-only GraphQL, internal gRPC, Kafka, Keycloak and SSE. Respect team/module ownership, no unsanctioned code, and report actual test evidence only.”

@@ -1,6 +1,6 @@
 # November 1 Login Integration Contract & Baseline Freeze
 
-**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/devarom/issues/1) · **Architecture Baseline:** Devarom v1.3
+**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/devarom/issues/1) · **Architecture Baseline:** SwiftDrop v1.3
 
 > **Authentication ownership update (Oct 15):** Suthankan1 owns all frontend identity/OIDC login/signup/session UI and shared backend JWT/security integration ([#36](https://github.com/Suthankan1/devarom/issues/36), [#37](https://github.com/Suthankan1/devarom/issues/37)). Customer team owns shared SPA shell and Accounts business profiles, **not** login/client/security implementation. Role UI teams build role landing pages using the common auth provider; Vibhushan independently verifies security. See [team ownership](../team/OWNERSHIP.md). This human-requested reassignment still needs pair acknowledgement.
 
@@ -10,7 +10,7 @@
 
 ## 1. Toolchain & Version Baseline Freeze
 
-All future Spring Initializr project generation and frontend scaffolding across the Devarom repository **must** strictly adhere to this pinned baseline:
+All future Spring Initializr project generation and frontend scaffolding across the SwiftDrop repository **must** strictly adhere to this pinned baseline:
 
 | Component | Selected Baseline | Verification & Compatibility Status |
 |---|---|---|
@@ -31,8 +31,8 @@ All future Spring Initializr project generation and frontend scaffolding across 
 ## 2. Authentication & Identity Architecture (Nov 1 Scope)
 
 ### 2.1 Identity Provider & OIDC Architecture
-- **Identity Provider (IdP):** Keycloak acts as the central OpenID Connect (OIDC) identity provider and authorization server for Devarom.
-- **Federated Identity Broker:** Google Sign-In is integrated as an external Identity Provider (IdP Broker) inside Keycloak. The React SPA interacts **only** with Keycloak; it never directly manages Google OAuth2 tokens or secrets. A Google token is **not** a Devarom API bearer token.
+- **Identity Provider (IdP):** Keycloak acts as the central OpenID Connect (OIDC) identity provider and authorization server for SwiftDrop.
+- **Federated Identity Broker:** Google Sign-In is integrated as an external Identity Provider (IdP Broker) inside Keycloak. The React SPA interacts **only** with Keycloak; it never directly manages Google OAuth2 tokens or secrets. A Google token is **not** a SwiftDrop API bearer token.
 - **Client Configuration:**
   - Client ID: `devarom-frontend`
   - Access Type: **Public client** (browser SPA).
@@ -57,7 +57,7 @@ All future Spring Initializr project generation and frontend scaffolding across 
 ## 3. Authorization & Role Model
 
 ### 3.1 Five Core Roles
-Devarom defines five distinct business roles in Keycloak realm roles (`realm_access.roles`):
+SwiftDrop defines five distinct business roles in Keycloak realm roles (`realm_access.roles`):
 1. `CUSTOMER`: Self-registered public sender/receiver.
 2. `MERCHANT`: Business client sending batch orders via API or dashboard.
 3. `COURIER`: Field delivery personnel managing assigned parcels.
