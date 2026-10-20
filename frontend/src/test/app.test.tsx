@@ -2,16 +2,64 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
-import { TestProviders as AppProviders } from './authFixture'
+import { anonymousAuth, TestProviders as AppProviders } from './authFixture'
+import type { AuthContextValue } from '../auth/context'
 import { AppRoutes } from '../app/router/routes'
 import { AppErrorBoundary } from '../components/ui/AppErrorBoundary'
 import { customerFixture } from './fixtures'
+import entryHtml from '../../index.html?raw'
 
-function renderRoute(path = '/') {
-  return render(<AppProviders><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></AppProviders>)
+function renderRoute(path = '/', auth?: AuthContextValue) {
+  return render(<AppProviders auth={auth}><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></AppProviders>)
 }
 
 describe('shared application routes', () => {
+  it('publishes SwiftDrop in the browser title and description', () => {
+    const entry = new DOMParser().parseFromString(entryHtml, 'text/html')
+
+    expect(entry.title).toBe('SwiftDrop — Every parcel has a purpose')
+    expect(entry.querySelector('meta[name="description"]')?.getAttribute('content')).toContain('SwiftDrop')
+    expect(entry.head.textContent).not.toMatch(/devarom/i)
+  })
+
+  it.each(['/', '/login', '/customer', '/auth/callback', '/missing-page'])('uses current branding at %s', (path) => {
+    const { container } = renderRoute(path)
+
+    expect(screen.getByRole('link', { name: 'SwiftDrop home' })).toHaveAttribute('href', '/')
+    expect(within(screen.getByRole('contentinfo')).getByRole('link', { name: 'SwiftDrop.' })).toHaveAttribute('href', '/')
+    expect(container.textContent).not.toMatch(/devarom/i)
+    expect(container.querySelector('[aria-label*="Devarom" i]')).not.toBeInTheDocument()
+  })
+
+  it('retains sign-in, Google and registration actions under SwiftDrop branding', async () => {
+    const user = userEvent.setup()
+    const auth = { ...anonymousAuth, login: vi.fn(), googleLogin: vi.fn(), register: vi.fn() }
+    renderRoute('/login', auth)
+
+    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(auth.login).toHaveBeenCalledOnce()
+    expect(auth.googleLogin).toHaveBeenCalledOnce()
+    expect(auth.register).toHaveBeenCalledOnce()
+  })
+
+  it('uses SwiftDrop on the authenticated Customer page', async () => {
+    const auth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: customerFixture.keycloakSub, roles: ['CUSTOMER'] },
+      getAccessToken: async () => 'test-only-access',
+      profileFetch: async () => new Response(JSON.stringify(customerFixture)),
+    }
+    const { container } = renderRoute('/customer', auth)
+
+    expect(await screen.findByRole('heading', { name: customerFixture.fullName })).toBeInTheDocument()
+    expect(screen.getByText(/your SwiftDrop account starts here/i)).toBeInTheDocument()
+    expect(container.textContent).not.toMatch(/devarom/i)
+  })
+
   it('renders the public shell and landing page with semantic landmarks', () => {
     renderRoute()
 
@@ -27,7 +75,7 @@ describe('shared application routes', () => {
     renderRoute()
 
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /customer/i }))
-    expect(screen.getByRole('heading', { name: /sign in to devarom/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
 
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /^home$/i }))
     expect(screen.queryByRole('heading', { name: /your profile, kept private/i })).not.toBeInTheDocument()
@@ -40,7 +88,7 @@ describe('shared application routes', () => {
     renderRoute('/customer')
 
     expect(within(screen.getByRole('main')).getByRole('heading', { level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /sign in to devarom/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument()
     expect(screen.queryByText(customerFixture.email)).not.toBeInTheDocument()
     expect(screen.queryByText(customerFixture.keycloakSub)).not.toBeInTheDocument()
@@ -63,7 +111,7 @@ describe('shared application routes', () => {
     await user.click(toggle)
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /customer/i }))
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('heading', { name: /sign in to devarom/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
   })
 
   it('provides a not-found experience and a way home', async () => {

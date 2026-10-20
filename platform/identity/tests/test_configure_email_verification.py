@@ -172,6 +172,8 @@ class EmailVerificationTests(unittest.TestCase):
         self.assertTrue(any(call[1] == "/api/v1/search" for call in calls[smtp_index + 1:first_put]))
         realm_put = next(call[2] for call in self.puts() if call[1] == CONFIG.REALM_PATH)
         self.assertEqual(set(realm_put), {"verifyEmail", "smtpServer"})
+        self.assertEqual(realm_put["smtpServer"]["fromDisplayName"], "SwiftDrop")
+        self.assertEqual(realm_put["smtpServer"]["from"], "no-reply@devarom.test")
         for key in set(original) - {"verifyEmail", "smtpServer"}:
             self.assertEqual(self.state.realm[key], original[key])
         self.assertEqual(self.state.action["config"], {"keep": "yes", "emailResendCooldownSeconds": "60"})

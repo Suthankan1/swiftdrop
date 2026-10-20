@@ -129,7 +129,7 @@ def smtp_settings(settings):
         "host": settings.get("SMTP_HOST", "mailpit"),
         "port": settings.get("SMTP_PORT", "1025"),
         "from": settings.get("SMTP_FROM", "no-reply@devarom.test"),
-        "fromDisplayName": settings.get("SMTP_FROM_DISPLAY_NAME", "Devarom"),
+        "fromDisplayName": settings.get("SMTP_FROM_DISPLAY_NAME", "SwiftDrop"),
         "auth": settings.get("SMTP_AUTH", "false"),
         "starttls": settings.get("SMTP_STARTTLS", "false"),
         "ssl": settings.get("SMTP_SSL", "false"),
@@ -156,7 +156,7 @@ def read_state(api):
             or not isinstance(action, dict) or action.get("alias") != "VERIFY_EMAIL"
             or action.get("providerId") != "VERIFY_EMAIL" or action.get("defaultAction") is not False
             or not isinstance(action.get("config", {}), dict)):
-        raise ConfigurationError("Expected Devarom realm/native required-action baseline differs; no changes applied.")
+        raise ConfigurationError("Expected SwiftDrop realm/native required-action baseline differs; no changes applied.")
     attributes = realm.get("attributes", {})
     if not isinstance(attributes, dict):
         raise ConfigurationError("Realm attributes differ from the supported baseline; no changes applied.")

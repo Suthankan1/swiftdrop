@@ -283,7 +283,7 @@ class TotpSmoke:
 
     def run_all(self):
         report("==============================================================================")
-        report(" Devarom Platform — Keycloak TOTP MFA Integration & Smoke Test Suite (Phase B)")
+        report(" SwiftDrop Platform — Keycloak TOTP MFA Integration & Smoke Test Suite (Phase B)")
         report("==============================================================================")
 
         try:

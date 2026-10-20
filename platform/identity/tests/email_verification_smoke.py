@@ -258,8 +258,8 @@ class Smoke:
         page = user["session"].form(page, "kc-register-form", fields)
         check("code" not in urllib.parse.parse_qs(urllib.parse.urlsplit(page.url).query),
               "Registration bypassed the verification gate")
-        check("css/devarom.css" in page.body and "devarom-brand-title" in page.body,
-              "Native verification page is missing Devarom branding")
+        check("css/devarom.css" in page.body and 'class="devarom-brand-title">SwiftDrop' in page.body,
+              "Native verification page is missing SwiftDrop branding")
         check(self.user_record(user).get("emailVerified") is False, "New registration was unexpectedly verified")
         self.assert_roles(user)
         user["pending_page"] = page
