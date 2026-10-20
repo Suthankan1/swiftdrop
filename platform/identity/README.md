@@ -116,19 +116,55 @@ Keycloak's realm configuration uses environment variable substitution enabled vi
 ### 5.2 Google Cloud Console Setup Steps
 1. Navigate to Google Cloud Console: `https://console.cloud.google.com/apis/credentials`.
 2. Select or create project `devarom`.
-3. Create an **OAuth 2.0 Client ID** of type **Web application**.
-4. Configure **Authorized redirect URIs**:
-   ```text
-   http://localhost:8090/realms/devarom/broker/google/endpoint
+3. Configure the **OAuth consent screen**:
+   - **User Type:** External.
+   - **App name:** Devarom.
+   - **Publishing status:** Testing (standard for development).
+   - **Test users:** Add the authorized Google accounts of developers testing the login flow (e.g., developer@gmail.com). Google restricts login in Testing mode exclusively to listed test users; unauthorized accounts receive `403 access_denied`.
+   - **Scopes:** `.../auth/userinfo.email`, `.../auth/userinfo.profile`, `openid`.
+4. Create an **OAuth 2.0 Client ID** of type **Web application**:
+   - **Name:** `Devarom Keycloak Identity Broker`
+   - **Authorized redirect URIs:**
+     ```text
+     http://localhost:8090/realms/devarom/broker/google/endpoint
+     ```
+   - **Authorized JavaScript origins:**
+     ```text
+     http://localhost:8090
+     ```
+5. Copy the generated **Client ID** and **Client Secret** into your local `platform/identity/.env` file. Never commit `.env` or paste secrets into frontend `VITE_*` configuration.
+6. To activate Google login on the Keycloak login screen, set `enabled: true` on the Google provider using `kcadm.sh` or the Keycloak Admin Console:
+   ```bash
+   # Enable Google IdP on running Keycloak container:
+   docker exec devarom-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+     --server http://localhost:8080 --realm master --user admin --password <bootstrap-pass>
+   docker exec devarom-keycloak /opt/keycloak/bin/kcadm.sh update realms/devarom/identity-provider/instances/google -s enabled=true
    ```
-5. Configure **Authorized JavaScript origins**:
-   ```text
-   http://localhost:8090
-   ```
-6. Copy the generated **Client ID** and **Client Secret** into your local `platform/identity/.env` file.
-7. To activate Google login on the Keycloak login screen, set `enabled: true` on the Google provider using `kcadm.sh` or the Keycloak Admin Console.
 
-*Status of Acceptance Item `L03`:* Real Google authentication acceptance (`L03`) is gated on external Google Cloud provider consent verification. The local broker configuration is complete and verified, while full end-to-end browser sign-in remains unverified until human team verification is conducted.
+### 5.3 Automated Verification & Negative Testing
+An automated test suite validates the broker configuration, contract parameters, live Google OAuth acceptance, and negative callback failure paths without exposing secrets:
+
+```bash
+# Run standalone Google OIDC broker smoke test:
+python3 platform/identity/tests/google_broker_smoke.py
+
+# Run static configuration and privilege confinement tests:
+python3 platform/identity/tests/test_google_broker_configuration.py
+
+# Full identity security validation (static 14/14 + live smoke checks A–H):
+./platform/identity/validate-identity.sh
+```
+
+**Verifications performed:**
+- Keycloak intercepts `kc_idp_hint=google` and delegates to the Google broker (HTTP 303).
+- Constructs strict Google authorization URL with `client_id`, `redirect_uri=http://localhost:8090/realms/devarom/broker/google/endpoint`, `scope=openid profile email`, PKCE, `state`, and `nonce`.
+- Google OAuth endpoint accepts the registered credentials and authorized redirect URI (HTTP 302 to Google signin flow).
+- Negative test: Google strictly rejects unapproved redirect URIs with `redirect_uri_mismatch`.
+- Negative test: Keycloak rejects tampered/unmatched callback state with HTTP 400 Bad Request.
+- Negative test: Keycloak rejects OAuth cancellation/`access_denied` with HTTP 400 Bad Request.
+- Role isolation: newly federated broker identities receive strictly `CUSTOMER` role via `default-roles-devarom`; zero staff roles (`MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`).
+
+*Status of Acceptance Item `L03`:* **BLOCKED / NOT VERIFIED (External Human Consent Gate)**. All automated broker invariants, contract parameters, Google server probing, and negative security controls pass. Live interactive sign-in on `accounts.google.com` requires human interaction with an authorized Google test user; automated agents must not fabricate personal Google credentials or bypass consent.
 
 ---
 
@@ -189,7 +225,7 @@ platform slice; this task does not migrate storage.
 | **Public SPA Client** | `devarom-frontend` code + PKCE S256, no client secret | **Verified** | `validate-identity.sh` check 4; rejected plain PKCE in live smoke test |
 | **Redirect Security** | Strict local origins; zero wildcards | **Verified** | `validate-identity.sh` check 5; rejected attacker redirect with HTTP 400 |
 | **Secrets Absent from Git** | Zero credentials in repo; `.env` gitignored | **Verified** | `git check-ignore -v platform/identity/.env` (`.gitignore:2:.env`) |
-| **Google Federation** | Google IdP brokering configuration prepared | **Prepared / Configured** | IdP broker defined; runtime credentials injected via `.env`; full browser login gated on human consent verification |
+| **Google Federation** | Google IdP brokering configuration & live delegation verified | **Configured & Validated (Live interactive login gated)** | `validate-identity.sh` check 14 & Check H; `google_broker_smoke.py` (Keycloak delegation, Google OAuth URI probe, negative controls passed; interactive login gated on human test-user consent) |
 
 ---
 
