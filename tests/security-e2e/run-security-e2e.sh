@@ -33,19 +33,55 @@ check_port() {
   fi
 }
 
+discover_postgres_port() {
+  if [ -n "${ACCOUNTS_DB_PORT:-}" ]; then
+    echo "${ACCOUNTS_DB_PORT}"
+    return
+  fi
+  if [ -n "${ACCOUNTS_DB_URL:-}" ]; then
+    local parsed
+    parsed=$(echo "${ACCOUNTS_DB_URL}" | grep -o ':[0-9]\+/' | tr -d ':/' || true)
+    if [ -n "${parsed}" ]; then
+      echo "${parsed}"
+      return
+    fi
+  fi
+  if command -v docker >/dev/null 2>&1; then
+    local mapped
+    mapped=$(docker port devarom-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+    if [ -n "${mapped}" ]; then
+      echo "${mapped}"
+      return
+    fi
+  fi
+  if lsof -i :5438 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "5438"
+    return
+  fi
+  echo "5432"
+}
+
+PG_PORT="$(discover_postgres_port)"
+
 check_port 8090 "Keycloak Identity Container"
 check_port 8080 "Spring Cloud Gateway"
 check_port 8081 "Accounts & Partners Service"
 check_port 8025 "Mailpit SMTP Web/API"
-check_port 5438 "PostgreSQL Container (devarom-accounts-postgres)"
+check_port "${PG_PORT}" "PostgreSQL Container (devarom-accounts-postgres on port ${PG_PORT})"
+
+if lsof -i :5173 -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "  [OK] React SPA is listening on port 5173."
+else
+  echo "  [INFO] React SPA (port 5173) not running (optional for backend security tests)."
+fi
 
 if [ "${FAILED_SERVICES}" -gt 0 ]; then
   echo ""
   echo "ERROR: One or more required local services are not running."
   echo "Prerequisites startup reference:"
   echo "  1. Identity & Mailpit : docker compose -f platform/identity/docker-compose.identity.yml up -d"
-  echo "  2. Accounts DB        : docker start devarom-accounts-postgres (mapped on port 5438)"
-  echo "  3. Accounts Service   : cd services/accounts-service && ACCOUNTS_DB_URL=jdbc:postgresql://localhost:5438/accounts_db ACCOUNTS_DB_USERNAME=accounts_app ACCOUNTS_DB_PASSWORD=accounts_dev_password ./mvnw spring-boot:run"
+  echo "  2. Accounts DB        : docker start devarom-accounts-postgres (mapped on port ${PG_PORT})"
+  echo "  3. Accounts Service   : cd services/accounts-service && ACCOUNTS_DB_URL=jdbc:postgresql://localhost:${PG_PORT}/accounts_db ACCOUNTS_DB_USERNAME=accounts_app ACCOUNTS_DB_PASSWORD=<password> ./mvnw spring-boot:run"
   echo "  4. Gateway Service    : cd services/api-gateway && ACCOUNTS_SERVICE_URL=http://localhost:8081 ./mvnw spring-boot:run"
   exit 1
 fi
