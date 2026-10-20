@@ -258,5 +258,41 @@ Branch: `docs/email-otp-feasibility` (based on latest `test`, commit `b433ef7`).
 
 ### Scope Bounds & Honest Status
 - **Clean-Clone Verification (L10):** Platform environment and runbook prepared; marked **NOT VERIFIED** until independently executed from a fresh workstation by Eric (@EricPraveen) under Issue #17.
-- **External Google Login (L03):** Remains **BLOCKED / NOT VERIFIED** (requires external Google Cloud Console OAuth consent configuration).
+- **External Google Login (L03):** Verified automated broker delegation, Google authorization URI construction, live Google OAuth probe (HTTP 302 acceptance), negative controls (HTTP 400 state rejection, Google URI mismatch rejection), and CUSTOMER privilege confinement. Remains **BLOCKED / NOT VERIFIED (External Human Consent Gate)** pending human developer test-user consent on `accounts.google.com`.
 - **Security E2E (Issue #18):** Classified as **PLATFORM SELF-VERIFICATION**; independent security sign-off pending Vibhushan (@Vibhushan-2003).
+
+## Real Google OIDC Broker Login Verification (L03) — 2026-10-20
+
+Lead: **Suthankan1** (Platform & Security) · Reviewers: **Pending Gajanthan (@Gajanthan17, Customer UI) & Vibhushan (@Vibhushan-2003, Security QA)**
+Branch: `tests/google-oidc-e2e` (based on `test` branch commit `882c65e`).
+
+### Summary of Broker Verification & Automated Harness
+- **Keycloak 26.8.1 Broker Architecture:**
+  - Validated Google Identity Provider declaration in `realm-devarom.json` and running Keycloak instance (`providerId: google`, `alias: google`, `trustEmail: true`, `firstBrokerLoginFlowAlias: "first broker login"`, `syncMode: IMPORT`, `useJwksUrl: true`).
+  - Confirmed runtime client ID and secret injection via `.env` with `-Dkeycloak.migration.replace-placeholders=true`.
+  - Confirmed privilege confinement: self-registration and broker federated accounts default to `default-roles-devarom` containing exclusively `CUSTOMER`; zero staff roles (`MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`).
+- **Automated Google Broker Smoke Test Suite (`platform/identity/tests/google_broker_smoke.py`):**
+  - **Check 1 (OIDC Discovery):** Keycloak issuer `http://localhost:8090/realms/devarom` verified.
+  - **Check 2 (Broker Redirection):** Request to Keycloak `/protocol/openid-connect/auth` with `kc_idp_hint=google` and S256 PKCE returned HTTP 303 delegating to `/realms/devarom/broker/google/login`.
+  - **Check 3 (Authorization URL Construction):** Keycloak broker engine constructed compliant Google OAuth authorization URL to `https://accounts.google.com/o/oauth2/v2/auth` with registered `client_id`, `redirect_uri=http://localhost:8090/realms/devarom/broker/google/endpoint`, `scope=openid profile email`, cryptographic `state`, and `nonce`.
+  - **Check 4 (Live Google OAuth Acceptance):** Probed Google authorization endpoint with registered client ID and redirect URI; Google responded with HTTP 302 to Google signin flow, confirming Google Cloud Console has accepted the Client ID and authorized the redirect URI.
+  - **Check 4 Negative (Google Redirect URI Mismatch):** Probed Google authorization endpoint with unapproved redirect URI; Google rejected the request with `redirect_uri_mismatch`.
+  - **Check 5 Negative (Keycloak State Validation):** Probed Keycloak broker callback endpoint (`/realms/devarom/broker/google/endpoint`) with tampered state; Keycloak rejected the request with HTTP 400 Bad Request (branded error page; zero session created).
+  - **Check 5 Negative (OAuth Cancellation):** Probed Keycloak broker callback with `error=access_denied`; Keycloak handled cancellation with HTTP 400 Bad Request.
+  - **Check 6 (Role Confinement & Secret Hygiene):** Verified zero client secrets in frontend or Git; verified newly created broker users receive solely `CUSTOMER`.
+- **Static Invariant Tests (`platform/identity/tests/test_google_broker_configuration.py`):**
+  - 5 static regression tests asserting placeholder hygiene, absence of committed secrets, and default-roles composite constraints.
+- **Identity Verification Suite Integration (`platform/identity/validate-identity.sh`):**
+  - Integrated Check 14 (static Google broker invariants) and Live Check H (Google broker smoke test); 14/14 static and all live smoke checks PASSED.
+
+### Measured Evidence
+- `python3 platform/identity/tests/test_google_broker_configuration.py`: **5/5 tests PASSED**.
+- `python3 platform/identity/tests/google_broker_smoke.py`: **ALL 6 CHECKS PASSED**.
+- `./platform/identity/validate-identity.sh`: **14/14 static invariant checks passed; Live smoke tests A–H ALL PASSED**.
+- `python3 -m unittest discover -s platform/identity/tests -p 'test_*.py'`: **58/58 tests PASSED**.
+- `python3 tests/security-e2e/demo_smoke.py`: **ALL 4 SCENARIOS PASSED**.
+- `./tests/security-e2e/run-security-e2e.sh`: **passed cleanly (40 security tests: 36 passed, 0 failed, 4 blocked by missing business endpoints; 13 Gateway, 37 Accounts, 56 Frontend tests passed)**.
+
+### Honest Milestone Status for L03
+- **L03 Status:** **BLOCKED / NOT VERIFIED (External Human Consent Gate)**.
+- **Rationale:** All broker configuration, delegation, URI construction, Google OAuth acceptance, negative controls, and role confinement are verified. Full end-to-end interactive completion requires a human developer entering their Google credentials and consenting on `accounts.google.com` using an account explicitly listed in Google Cloud Console's OAuth consent screen under Test Users. Automated agents must not fabricate credentials or claim unverified human consent.

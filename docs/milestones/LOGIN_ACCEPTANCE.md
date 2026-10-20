@@ -6,7 +6,7 @@
 |---|---|---|---|
 | L01 | Independently start Keycloak and generated React + Gateway + Accounts login subset | Suthankan1 (auth orchestration); Customer (SPA shell/Accounts provider) | **Verified (Platform)**: Live local stack (React :5173, Keycloak :8090, Gateway :8080, Accounts :8081, PostgreSQL :5438, Mailpit :8025) started and verified end-to-end; QA handoff pending independent confirmation |
 | L02 | Local customer sign-up/login, linked profile by Keycloak `sub`, no business password storage | Suthankan1 (identity UI); Sinthuha (profile data) | **Verified (Platform)**: Keycloak OIDC PKCE registration/login exchanges code, Accounts JIT creates profile row bound to `keycloak_sub`; password stored only in Keycloak |
-| L03 | Real Google login: Keycloak broker, S256 PKCE, correct callback/state/nonce | Suthankan1 (implementation); Gajanthan (UI review) | **Not verified (External Blocker Gate)**: Keycloak broker definition and frontend buttons pre-wired; real Google Cloud credentials/consent pending |
+| L03 | Real Google login: Keycloak broker, S256 PKCE, correct callback/state/nonce | Suthankan1 (implementation); Gajanthan (UI review) | **BLOCKED / NOT VERIFIED (External Human Consent Gate)**: Keycloak 26.8.1 broker delegation, `kc_idp_hint=google` S256 PKCE flow, Google OAuth client ID & authorized redirect URI (`http://localhost:8090/realms/devarom/broker/google/endpoint`) verified via live probing (HTTP 302 to Google signin); negative callback & state rejection verified (HTTP 400); role confinement verified (CUSTOMER only); full interactive login blocked pending human developer test-user authorization on accounts.google.com |
 | L04 | Logout and expired token/session behavior documented/tested | Suthankan1 | **Verified (Platform)**: RP-initiated logout clears Keycloak SSO and redirects to `http://localhost:5173/`; expired tokens rejected with 401 and cleared from in-memory state |
 | L05 | Five roles have appropriate role entry pages; user cannot self-grant staff | Role UI pairs (entry views); Suthankan1 (auth guard/roles) | **Partially verified (Platform)**: Self-registration privilege confinement strictly verified (CUSTOMER role only, zero staff roles); role landing pages for Courier/Dispatcher/Admin open under Issues #9, #15, #16 |
 | L06 | No token returns 401, invalid/expired JWT is rejected | Suthankan1 (implementation & platform self-verification); Vibhushan (original QA owner, independent review pending) | **Verified (Platform Self-Verification)**: 27 automated tests passing across Gateway (8080) and Accounts (8081); missing/malformed/unsigned/untrusted/wrong-iss/wrong-aud/expired/not-yet-valid tokens rejected with 401 RFC 7807 ProblemDetail; independent QA reproduction pending Vibhushan |
@@ -30,6 +30,7 @@
 | 2026-10-19 | PR #49 (`7ecfc33`) | Keycloak 26.8.1 (8090) | `python3 platform/identity/tests/totp_smoke.py` (Phase B TOTP MFA: runtime policy, unenrolled customer login, branded setup, negative code rejections, single-use replay prevention, recovery reset, voluntary AIA, gateway REST probe) | **PASSED (All 8 suites passed)**; native RFC 6238 TOTP MFA policy and challenge flow verified | Suthankan1 (Platform) |
 | 2026-10-19 | PR #50 (`3d05454`) | Live stack: Keycloak (8090), Gateway (8080), Accounts (8081), Postgres (5438), Mailpit (8025) | `./tests/security-e2e/run-security-e2e.sh` (L06: 27 JWT rejection & edge tests across Gateway & Accounts; L07: role denial on 8081/8080 and privilege confinement; L08: Customer A vs B isolation, Gateway header stripping, Accounts parameter injection resistance, IDOR & merchant dependency tracking; full identity, TOTP, gateway, accounts, and frontend regressions) | **PASSED (36 passed, 0 failed, 4 blocked by missing provider endpoints)**; all 13 Gateway, 37 Accounts, and 56 Frontend unit tests passed; zero secrets or tokens committed or logged | Suthankan1 (Platform self-verification); Independent QA pending Vibhushan (@Vibhushan-2003) |
 | 2026-10-20 | PR #53 (`chore/nov1-demo-readiness`) | Live full stack: Keycloak (8090), Gateway (8080), Accounts (8081), Postgres (5438), Mailpit (8025), Frontend (5173) | `./platform/local/check-readiness.sh` & `python3 tests/security-e2e/demo_smoke.py` & `./tests/security-e2e/run-security-e2e.sh` (Full toolchain and 13 readiness checks passed; demo runner passed Scenarios A, B, C, D; 40 security tests: 36 passed, 0 failed, 4 blocked; 13 Gateway, 37 Accounts, 56 Frontend tests passed) | **PASSED (Readiness: 13/13; Demo: 4/4; Security E2E: 36 passed, 0 failed, 4 blocked by missing provider endpoints)**; clean-clone runbook authored; clean startup helper verified | Suthankan1 (Platform Self-Verification & Rehearsal); Independent clean-clone reproduction (L10) pending Eric (@EricPraveen) |
+| 2026-10-20 | `test` (`882c65e`) / branch `tests/google-oidc-e2e` | Live stack: Keycloak (8090), Gateway (8080), Accounts (8081), Postgres (5438), Mailpit (8025), Frontend (5173) | `python3 platform/identity/tests/google_broker_smoke.py` & `python3 platform/identity/tests/test_google_broker_configuration.py` & `./platform/identity/validate-identity.sh` (Broker delegation, `kc_idp_hint=google`, S256 PKCE, redirect_uri `http://localhost:8090/realms/devarom/broker/google/endpoint`, live Google probe HTTP 302, negative URI mismatch, negative callback state/access_denied rejection HTTP 400, CUSTOMER-only role confinement, zero frontend secrets) | **BLOCKED (Automated broker invariants, contract parameters, Google probe and negative tests ALL PASSED; live interactive sign-in BLOCKED pending human developer test-user consent on accounts.google.com)**; L03 status honestly recorded as BLOCKED | Suthankan1 (Platform) |
 
 ## L06, L07, and L08 Detailed Security Verification Matrix (Platform Self-Verification)
 
@@ -81,3 +82,50 @@
 | L08-OWN-06 | Direct Accounts ignores spoofed headers | Accounts (`GET /api/v1/users/me?id=...`) | 200 OK | 200 | **PASS** | `test_role_and_ownership.py` | Customer A profile returned from SecurityContext only |
 | L08-OWN-07 | Explicit `/users/{id}` cross-user lookup | Accounts (`GET /api/v1/users/{id}`) | 403 Forbidden | 404 Not Found | **BLOCKED** | `test_role_and_ownership.py` | Provider endpoint unmapped in Accounts (Issue #5/37) |
 | L08-OWN-08 | Merchant tenant isolation probe | Accounts (`GET /api/v1/merchants/orders`) | 403 Forbidden | 404 Not Found | **BLOCKED** | `test_role_and_ownership.py` | Merchant backend endpoint unmapped (Issue #8/14) |
+
+## L03 Google OIDC Broker Detailed Verification Matrix & Blocker Register
+
+- **Executed by:** Suthankan1 (Platform & Security)
+- **Reviewer:** Pending Gajanthan (@Gajanthan17, Customer UI) & Vibhushan (@Vibhushan-2003, Security QA)
+- **Tested Commit SHA:** `882c65e` (branch `tests/google-oidc-e2e`)
+- **Keycloak Runtime:** Keycloak 26.8.1 (Quarkus) on port 8090
+- **Test Harness:** `platform/identity/tests/google_broker_smoke.py` & `platform/identity/tests/test_google_broker_configuration.py`
+- **Milestone L03 Status:** **BLOCKED / NOT VERIFIED (External Human Consent Gate)**
+
+| Check ID | Verification Scope | Endpoint / Component | Expected Behavior | Actual Behavior | Result | Evidence / Diagnostic Notes |
+|---|---|---|---|---|---|---|
+| L03-CFG-01 | Keycloak Google IdP declaration | `realm-devarom.json` | Single IdP alias `google`, provider `google` | Declared; `alias=google`, `providerId=google` | **PASS** | `test_google_broker_configuration.py` |
+| L03-CFG-02 | Keycloak broker scopes & syncMode | Keycloak Admin API | `openid profile email`, `syncMode=IMPORT`, `useJwksUrl=true` | Configured per OIDC standard | **PASS** | `google_broker_smoke.py` check 1 |
+| L03-CFG-03 | Email trust & first login flow | Keycloak 26.8.1 | `trustEmail=true`, `firstBrokerLoginFlowAlias="first broker login"` | Matches baseline; verified Google emails trusted | **PASS** | `test_google_broker_configuration.py` |
+| L03-CFG-04 | Privilege confinement on federated signup | Keycloak `default-roles-devarom` | Solely `CUSTOMER` assigned; zero staff roles | Confined: `CUSTOMER` assigned, zero staff roles | **PASS** | `test_google_broker_configuration.py` check 5 |
+| L03-CFG-05 | Secrets hygiene in source control | Git repository / `.env` | Zero hardcoded client secrets; `.env` gitignored | `.gitignore:2:.env` protects secrets; zero secrets in git | **PASS** | Git check & regex scanner |
+| L03-FLO-01 | Frontend Google sign-in trigger | React SPA `/login` | `auth.googleLogin()` passes `kc_idp_hint=google` with S256 PKCE | Generates S256 challenge, state, nonce; invokes Keycloak | **PASS** | `frontend/src/auth/session.ts` & Vitest |
+| L03-FLO-02 | Keycloak broker delegation redirect | Keycloak `:8090/realms/devarom/...` | HTTP 303 redirect to `/realms/devarom/broker/google/login?...` | HTTP 303 See Other returned with session cookies | **PASS** | `google_broker_smoke.py` check 2 |
+| L03-FLO-03 | Google OAuth2 authorization URL construction | Keycloak Broker Engine | Redirects to `https://accounts.google.com/o/oauth2/v2/auth` with exact params | URL constructed with registered client ID, redirect URI, scope, state, nonce | **PASS** | `google_broker_smoke.py` check 3 |
+| L03-FLO-04 | Google Cloud Console client ID & redirect URI acceptance | Google Authorization Server | Google accepts registered client ID and authorized redirect URI | HTTP 302 to Google signin identifier flow | **PASS** | `google_broker_smoke.py` check 4 (Live Google probe) |
+| L03-NEG-01 | Unapproved redirect URI rejection | Google Authorization Server | Google rejects unauthorized redirect URI with `redirect_uri_mismatch` | Google returns HTTP 302 to error page with `redirect_uri_mismatch` | **PASS** | `google_broker_smoke.py` check 4 (Negative probe) |
+| L03-NEG-02 | Tampered / unmatched callback state rejection | Keycloak `:8090/.../broker/google/endpoint` | Keycloak rejects callback with invalid state with HTTP 400 | HTTP 400 Bad Request; branded error page; zero session | **PASS** | `google_broker_smoke.py` check 5 (Negative probe) |
+| L03-NEG-03 | OAuth cancellation (`access_denied`) handling | Keycloak & React SPA | Handled cleanly with HTTP 400 at broker, and `/login?error=cancelled` on frontend | HTTP 400 at broker; frontend displays cancellation notice; zero false session | **PASS** | `google_broker_smoke.py` check 5 & `session.test.ts` |
+| L03-E2E-01 | Live human interactive sign-in on accounts.google.com | Google Account + Keycloak + React + Gateway + Accounts | Interactive Google login completes -> Keycloak exchange -> Gateway -> Accounts profile | **BLOCKED**: Requires human developer Google account credentials and explicit Test User entry in Google Cloud Console | **BLOCKED** | External dependency gate (cannot automate human Google credentials) |
+
+### Blocker Details & Human Configuration Checklist for L03
+
+To unblock the live human browser E2E test (`L03-E2E-01`):
+
+1. **Google Cloud Console OAuth Consent Screen:**
+   - URL: `https://console.cloud.google.com/apis/credentials/consent`
+   - Publishing Status: **Testing**
+   - User Type: **External**
+   - **Action Required:** Under **Test users**, click **Add Users** and enter the human tester's Google email address (e.g. `suthankan@...` or developer account). Without this, Google halts login with `403 access_denied` ("This app is blocked").
+2. **Authorized Redirect URI Verification:**
+   - Client ID: `999856063696-ae6aineb7tmng7pcje9me3902h547h0g.apps.googleusercontent.com`
+   - Verified Redirect URI: `http://localhost:8090/realms/devarom/broker/google/endpoint`
+   - Verified JavaScript Origin: `http://localhost:8090`
+3. **Interactive Human Demonstration Steps:**
+   - Open browser to `http://localhost:5173/login`.
+   - Click **Continue with Google**.
+   - Authenticate on `accounts.google.com` using the registered Test User Google account.
+   - Consent to the requested scopes (email, profile, openid).
+   - Verify redirection through Keycloak broker -> React `/auth/callback` -> Customer Space (`/customer`).
+   - Verify customer profile loaded through Gateway (`:8080`) -> Accounts (`:8081`).
+   - Click **Sign out** and confirm return to unauthenticated landing page.
