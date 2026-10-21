@@ -150,6 +150,10 @@ main:focus { outline: none; }
 .customer-page-header > p { max-width: 600px; }
 .customer-page .profile-grid { margin-top: 30px; }
 .customer-page .card p { font-size: 13px; line-height: 1.8; }
+.courier-page { padding-block: 57px 80px; }
+.courier-page .page-heading > .muted { max-width: 620px; font-size: 15px; }
+.courier-page .profile-grid { margin-top: 30px; }
+.courier-note p { font-size: 13px; }
 .profile-avatar { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: #e9eedb; color: var(--color-teal); font-size: 22px; }
 .state-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #e9eedb; color: var(--color-teal); margin-bottom: 24px; }
 .not-found-page { padding-block: 65px 100px; text-align: center; }
@@ -216,6 +220,7 @@ main:focus { outline: none; }
   .profile-grid { grid-template-columns: 1fr; }
   .profile-details { gap: 20px; }
   .customer-page { padding-block: 38px 50px; }
+  .courier-page { padding-block: 38px 50px; }
   .card, .state-panel { padding: 26px 22px; }
   .state-panel h2 { font-size: 23px; }
 }
