@@ -12,7 +12,7 @@ Use one issue/PR or an ADR for each decision; record approver/date. Do not treat
 | High | Freeze initial REST routes (`GET /api/v1/users/me`), auth codes, and developer port registry | Platform (Suthankan1) + Service Owners | **Proposed contract ([LOGIN_CONTRACT.md](../contracts/LOGIN_CONTRACT.md))** |
 | High | Email OTP verification strategy: retain native links & TOTP vs custom SPI | Platform (Suthankan1) + Independent QA (Vibhushan) | **Proposed ([ADR-0009](adr/ADR-0009.md), Refs #47)** |
 | Medium | Quote expiry/currency/zone and weight bands | Customer + Dispatcher pairs | **Open** |
-| Medium | Allowed `FAILED` stages, including failed-before-pickup, and stage-specific failure-reason/evidence rules | Courier + Dispatcher pairs; HarithKeshan review | **Open - do not infer transitions from Figure 17** |
+| Medium | Allowed `FAILED` stages, including failed-before-pickup, and stage-specific failure-reason/evidence rules | Courier + Dispatcher pairs; HarithKeshan review | **Open — see [Delivery Design Review](ISSUE_12_DELIVERY_DESIGN_REVIEW.md#9-register-of-open-architectural-decisions) (DEC-DEL-01)** |
 | Medium | Proof requirement by outcome (`DELIVERED`/`FAILED`), accepted evidence types/combinations, and recipient/signature policy | Courier + Dispatcher pairs; business/lecturer confirmation | **Open** |
 | Medium | Proof file limits/validation, authorized retrieval, retention/deletion/replacement, and privacy audit policy | Courier + Platform proof-adapter owner; security/privacy review | **Open** |
 | Medium | Merchant MVP uses API key (proposed) vs OAuth client credentials (assignment permits either) | Merchant + Platform | **Proposed API key** |
