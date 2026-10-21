@@ -48,11 +48,13 @@ discover_postgres_port() {
   fi
   if command -v docker >/dev/null 2>&1; then
     local mapped
-    mapped=$(docker port devarom-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
-    if [ -n "${mapped}" ]; then
-      echo "${mapped}"
-      return
-    fi
+    for c in swiftdrop-accounts-postgres devarom-accounts-postgres; do
+      mapped=$(docker port "$c" 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+      if [ -n "${mapped}" ]; then
+        echo "${mapped}"
+        return
+      fi
+    done
   fi
   if lsof -i :5438 -sTCP:LISTEN >/dev/null 2>&1; then
     echo "5438"
@@ -67,7 +69,7 @@ check_port 8090 "Keycloak Identity Container"
 check_port 8080 "Spring Cloud Gateway"
 check_port 8081 "Accounts & Partners Service"
 check_port 8025 "Mailpit SMTP Web/API"
-check_port "${PG_PORT}" "PostgreSQL Container (devarom-accounts-postgres on port ${PG_PORT})"
+check_port "${PG_PORT}" "PostgreSQL Container (swiftdrop/devarom-accounts-postgres on port ${PG_PORT})"
 
 if lsof -i :5173 -sTCP:LISTEN >/dev/null 2>&1; then
   echo "  [OK] React SPA is listening on port 5173."
@@ -80,7 +82,7 @@ if [ "${FAILED_SERVICES}" -gt 0 ]; then
   echo "ERROR: One or more required local services are not running."
   echo "Prerequisites startup reference:"
   echo "  1. Identity & Mailpit : docker compose -f platform/identity/docker-compose.identity.yml up -d"
-  echo "  2. Accounts DB        : docker start devarom-accounts-postgres (mapped on port ${PG_PORT})"
+  echo "  2. Accounts DB        : docker start swiftdrop-accounts-postgres (or devarom-accounts-postgres, mapped on port ${PG_PORT})"
   echo "  3. Accounts Service   : cd services/accounts-service && ACCOUNTS_DB_URL=jdbc:postgresql://localhost:${PG_PORT}/accounts_db ACCOUNTS_DB_USERNAME=accounts_app ACCOUNTS_DB_PASSWORD=<password> ./mvnw spring-boot:run"
   echo "  4. Gateway Service    : cd services/api-gateway && ACCOUNTS_SERVICE_URL=http://localhost:8081 ./mvnw spring-boot:run"
   exit 1

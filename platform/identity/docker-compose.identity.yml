@@ -4,11 +4,13 @@
 # Reads runtime configuration from .env (injected outside Git).
 # ==============================================================================
 
+name: swiftdrop
+
 services:
   # Capture-only development SMTP. No relay, real delivery, or host SMTP port.
   mailpit:
     image: axllent/mailpit:v1.27.4
-    container_name: devarom-mailpit
+    container_name: ${MAILPIT_CONTAINER_NAME:-swiftdrop-mailpit}
     ports:
       - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
     environment:
@@ -16,7 +18,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.1
-    container_name: devarom-keycloak
+    container_name: ${KEYCLOAK_CONTAINER_NAME:-swiftdrop-keycloak}
     command: start-dev --import-realm
     env_file:
       - .env
