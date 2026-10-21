@@ -1,9 +1,8 @@
 # SwiftDrop Phase 2B Technical Identity Cutover Runbook
 
-**Status: PREPARED — PENDING TEAM SIGNOFF AND SCHEDULED MAINTENANCE WINDOW**  
+**Status: PREPARED & SAFETY HARDENED — PENDING TEAM SIGNOFF AND SCHEDULED MAINTENANCE WINDOW**  
 **Classification: OPERATIONAL RELEASE RUNBOOK — DO NOT EXECUTE OUTSIDE MAINTENANCE WINDOW**  
-**Date:** 2026-10-20  
-**Author / Platform Lead:** Suthankan1 (Platform & Security)  
+**Lead / Author:** Suthankan1 (Platform & Security)  
 **Related Documents:**  
 - [Phase 2 Migration Proposal](PHASE_2_MIGRATION.md)  
 - [Phase 2A Rehearsal Report](PHASE_2A_REHEARSAL.md)  
@@ -29,7 +28,7 @@ This runbook defines the exact, sequential, non-destructive procedure for transi
 - **Preserve Realm Internal ID:** The internal ID (`"id": "devarom"`) must NOT be recreated or renamed.
 - **Preserve User UUIDs (`sub`):** Every registered user's internal Keycloak UUID must remain identical.
 - **Preserve Accounts Profiles:** `account_profiles` table in `accounts_db` is keyed by `keycloak_sub`. Zero database updates or migrations are permitted.
-- **Preserve Client Internal UUID:** The frontend client internal UUID (`2d80857e-52df-4d3c-9413-bc74a53e1de5`) must be retained.
+- **Preserve Client Internal UUID:** The frontend client internal UUID (dynamically discovered from the live installation) must be retained.
 - **Preserve External Federation:** Google broker alias (`google`) and external user ID links must remain intact.
 - **Preserve Credentials & MFA:** Password hashes, RFC 6238 TOTP authenticators, and email verification states must survive.
 - **Preserve Privilege Separation:** Self-registration is confined strictly to role `CUSTOMER`.
@@ -57,7 +56,7 @@ Execution is strictly forbidden until every signoff below is recorded with times
 
 ---
 
-## 3. Storage Architecture & Consistent Backup Procedure
+## 3. Storage Architecture & Proven Disaster Recovery
 
 > [!CAUTION]
 > **CRITICAL ARCHITECTURAL FINDING:**  
@@ -65,38 +64,52 @@ Execution is strictly forbidden until every signoff below is recorded with times
 > This file resides in the **container writable layer** (`overlayfs`) with **zero persistent volume mounts**.  
 > Executing `docker compose down -v`, `docker rm -f devarom-keycloak`, or `docker system prune` will **PERMANENTLY DESTROY ALL REALM IDENTITIES**.
 
-### 3.1 Why Hot Copying is Forbidden
-H2's MVStore engine buffers modified pages in memory and maintains an active write lock. Copying `/opt/keycloak/data/h2` while the container is actively writing can produce a corrupt, torn, or unrecoverable database snapshot. A **consistent cold backup** with a stopped container is mandatory.
+### 3.1 Consistent Cold Backup (Inside Maintenance Window)
+H2's MVStore buffers modified pages in memory and maintains an active write lock. Copying `/opt/keycloak/data/h2` while active risks creating a corrupt snapshot. A cold backup from a cleanly stopped container is mandatory.
 
-### 3.2 Cold Backup Execution Steps (Inside Maintenance Window)
+The automated backup tool executes the consistent cold copy and immediately verifies SHA-256 integrity:
 
 ```bash
-# 1. Announce write freeze (no new registrations or logins)
-# 2. Stop Keycloak container cleanly (allows H2 to flush write buffer and release file locks)
-docker stop devarom-keycloak -t 30
+# Execute consistent cold backup during authorized maintenance window
+python3 platform/identity/backup-restore-identity.py --backup-live-cold \
+  --confirm-maintenance-stop "SWIFTDROP-MAINTENANCE-STOP-AUTHORIZED"
 
-# 3. Create restricted private backup directory (outside Git)
+# Note: The tool stops the container (30s timeout), copies /opt/keycloak/data/h2 to
+# .local/backups/identity/cold_backup_<timestamp> (mode 0700/0600), verifies SHA-256,
+# and automatically restarts devarom-keycloak.
+
+# Optional consistent Accounts PostgreSQL backup (if desired alongside Keycloak cold backup):
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR=".local/backups/identity/${TIMESTAMP}"
-mkdir -p "${BACKUP_DIR}"
-chmod 700 "${BACKUP_DIR}"
-
-# 4. Copy H2 database files from stopped container
-docker cp devarom-keycloak:/opt/keycloak/data/h2 "${BACKUP_DIR}/"
-chmod 600 "${BACKUP_DIR}"/h2/*
-
-# 5. Compute SHA-256 integrity checksums
-shasum -a 256 "${BACKUP_DIR}/h2/keycloakdb.mv.db" > "${BACKUP_DIR}/h2/keycloakdb.mv.db.sha256"
-
-# 6. Verify backup checksum immediately
-shasum -a 256 -c "${BACKUP_DIR}/h2/keycloakdb.mv.db.sha256"
-
-# 7. Take consistent Accounts PostgreSQL backup
-docker exec devarom-accounts-postgres pg_dump -U postgres -d accounts_db -F c -f "/tmp/accounts_backup_${TIMESTAMP}.dump"
+docker exec -e PGPASSWORD=accounts_dev_password devarom-accounts-postgres pg_dump -U accounts_app -d accounts_db -F c -f "/tmp/accounts_backup_${TIMESTAMP}.dump"
 docker cp devarom-accounts-postgres:"/tmp/accounts_backup_${TIMESTAMP}.dump" "${BACKUP_DIR}/"
 docker exec devarom-accounts-postgres rm "/tmp/accounts_backup_${TIMESTAMP}.dump"
 shasum -a 256 "${BACKUP_DIR}/accounts_backup_${TIMESTAMP}.dump" > "${BACKUP_DIR}/accounts_backup_${TIMESTAMP}.dump.sha256"
 ```
+
+### 3.2 Verify Backup Directory Integrity
+```bash
+BACKUP_DIR=$(ls -td .local/backups/identity/cold_backup_* | head -n 1)
+python3 platform/identity/backup-restore-identity.py --verify-backup "${BACKUP_DIR}"
+```
+
+### 3.3 Test Bootable Isolated Restoration (Disaster Recovery Proof)
+Before touching production identities, prove that the backup can be booted and read by an isolated Keycloak 26.8.1 container:
+
+```bash
+python3 platform/identity/backup-restore-identity.py \
+  --test-restore-isolated "${BACKUP_DIR}" \
+  --port 8098
+```
+
+**Verification Invariants Proven on Restored Container:**
+- Realm internal ID matches `devarom`
+- Frontend client internal UUID matches source
+- Audience protocol mapper matches source
+- 100% of user UUIDs (`sub`) are present
+- Email verification states (`emailVerified`) are preserved
+- Credentials (password, TOTP) are preserved
+- Google federated identity links are preserved
+- Structured evidence saved to `${BACKUP_DIR}/restoration_evidence.json`
 
 ---
 
@@ -115,10 +128,10 @@ python3 platform/identity/cutover-identity-migration.py --preflight \
 - [ ] Realm internal ID: `devarom`
 - [ ] Realm name: `devarom`
 - [ ] Frontend client ID: `devarom-frontend`
-- [ ] Frontend client UUID: `2d80857e-52df-4d3c-9413-bc74a53e1de5`
-- [ ] Audience mapper ID: `53ec84cc-aa93-4344-84ce-369bbee64f6e`
+- [ ] Frontend client UUID: dynamically discovered from live server (e.g. `3e66328a-14ec-4d2c-a06d-b92175d7fc37`)
+- [ ] Audience mapper ID: dynamically discovered from live server (e.g. `731dc2c9-468d-4a9e-8936-c7bab76e3d0c`)
 - [ ] Current audience claim: `devarom-api`
-- [ ] Total registered users counted and recorded
+- [ ] Total registered users counted via pagination and recorded
 - [ ] Google IdP provider alias: `google`
 
 ---
@@ -133,23 +146,26 @@ python3 platform/identity/cutover-identity-migration.py --preflight \
 2. Select Web Client ID (`999856063696-ae6aineb7tmng7pcje9me3902h547h0g.apps.googleusercontent.com`).
 3. Under **Authorized redirect URIs**, add:
    `http://localhost:8090/realms/swiftdrop/broker/google/endpoint`
-4. **DO NOT DELETE** the legacy URI (`http://localhost:8090/realms/devarom/broker/google/endpoint`) yet! Keep both during the migration and rollback window.
-5. Click **Save**.
-6. Verify Google accepts the new callback URI without redirect mismatch.
+4. **DO NOT DELETE** the legacy URI (`http://localhost:8090/realms/devarom/broker/google/endpoint`)! Keep both active throughout the migration and rollback window.
+5. **DO NOT ROTATE** or change the OAuth client ID or client secret.
+6. **DO NOT CREATE** a new OAuth client.
+7. Click **Save**.
+8. Set verification flag: `export GOOGLE_CALLBACK_VERIFIED=true`.
 
 ---
 
-## 6. Maintenance Window & Write Freeze
+## 6. Safety Gate Evaluation (GO / NO-GO)
 
-1. Announce start of maintenance window to the team.
-2. Direct all traffic away from the React SPA (or display maintenance banner).
-3. Confirm with Sinthuha that no manual batch writes to `accounts_db` are active.
-4. Restart `devarom-keycloak` after the cold backup:
-   ```bash
-   docker start devarom-keycloak
-   # Wait for readiness on port 8090
-   ./platform/local/check-readiness.sh
-   ```
+Run the comprehensive safety gate tool to verify that all machine-verifiable and human-confirmed prerequisites are satisfied:
+
+```bash
+export MAINTENANCE_WINDOW_APPROVED=true
+export GOOGLE_CALLBACK_VERIFIED=true
+python3 platform/identity/backup-restore-identity.py --safety-status
+```
+
+Only proceed to Step 7 if the tool returns:
+`Live Cutover Classification : GO`
 
 ---
 
@@ -167,18 +183,21 @@ python3 platform/identity/cutover-identity-migration.py \
 ```
 
 ### What This Operation Executes Under the Hood:
-1. `PUT /admin/realms/devarom`:
+1. Verifies target realm `swiftdrop` does not already exist.
+2. `PUT /admin/realms/devarom`:
    ```json
    { "id": "devarom", "realm": "swiftdrop" }
    ```
-2. `PUT /admin/realms/swiftdrop/clients/2d80857e-52df-4d3c-9413-bc74a53e1de5`:
+3. Dynamically queries frontend client internal UUID (`cid`) and executes:
+   `PUT /admin/realms/swiftdrop/clients/{cid}`:
    ```json
    { "clientId": "swiftdrop-frontend" }
    ```
-3. `PUT /admin/realms/swiftdrop/clients/2d80857e-52df-4d3c-9413-bc74a53e1de5/protocol-mappers/models/53ec84cc-aa93-4344-84ce-369bbee64f6e`:
+4. Dynamically queries audience mapper ID (`mid`) and executes:
+   `PUT /admin/realms/swiftdrop/clients/{cid}/protocol-mappers/models/{mid}`:
    ```json
    {
-     "id": "53ec84cc-aa93-4344-84ce-369bbee64f6e",
+     "id": "{mid}",
      "name": "devarom-api-audience",
      "protocol": "openid-connect",
      "protocolMapper": "oidc-audience-mapper",
@@ -187,6 +206,7 @@ python3 platform/identity/cutover-identity-migration.py \
      }
    }
    ```
+5. Executes post-cutover preflight and asserts 100% stable ID-keyed invariant retention.
 
 ### Immediate Health Check:
 ```bash
@@ -206,7 +226,7 @@ Set environment variables on Spring Cloud Gateway:
 export KEYCLOAK_ISSUER_URI="http://localhost:8090/realms/swiftdrop"
 export KEYCLOAK_JWKS_URI="http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs"
 export JWT_AUDIENCE="swiftdrop-api"
-# Restart or reload Gateway
+# Restart Gateway
 ```
 
 ### 8.2 Accounts Service Configuration
@@ -215,7 +235,7 @@ Set environment variables on Accounts & Partners Service:
 export KEYCLOAK_ISSUER_URI="http://localhost:8090/realms/swiftdrop"
 export KEYCLOAK_JWKS_URI="http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs"
 export JWT_AUDIENCE="swiftdrop-api"
-# Restart or reload Accounts Service
+# Restart Accounts Service
 ```
 
 ### 8.3 React Frontend Configuration
@@ -345,15 +365,22 @@ python3 platform/identity/cutover-identity-migration.py \
 - Reset Accounts `KEYCLOAK_ISSUER_URI="http://localhost:8090/realms/devarom"`, `JWT_AUDIENCE="devarom-api"`.
 - Reset Frontend `VITE_KEYCLOAK_REALM="devarom"`, `VITE_KEYCLOAK_CLIENT_ID="devarom-frontend"`.
 
-### Step 3: Emergency Database Restoration (If In-Place Reversion Fails)
-If data corruption occurred:
-1. `docker stop devarom-keycloak`
-2. Restore H2 files from the cold backup directory:
+### Step 3: Emergency Keycloak Restoration (If In-Place Reversion Fails)
+If container corruption occurred:
+1. `docker stop devarom-keycloak -t 30`
+2. Restore H2 files from the verified cold backup directory:
    `docker cp ${BACKUP_DIR}/h2/. devarom-keycloak:/opt/keycloak/data/h2/`
-3. Restore Accounts PostgreSQL:
-   `docker exec -i devarom-accounts-postgres pg_restore -U postgres -d accounts_db --clean < ${BACKUP_DIR}/accounts_backup_*.dump`
-4. `docker start devarom-keycloak`
-5. Verify health via `./platform/local/check-readiness.sh`.
+3. `docker start devarom-keycloak`
+4. Verify health via `./platform/local/check-readiness.sh`.
+
+> [!CAUTION]
+> **NEVER EXECUTE AN EMERGENCY ACCOUNTS DATABASE RESTORE AUTOMATICALLY.**  
+> Restoring the Accounts PostgreSQL database may overwrite newer transactional records created during the maintenance window.  
+> Any database restore must be a separately authorized, deliberate recovery decision made in direct consultation with Accounts Steward Sinthuha based on verified data consistency needs.  
+> If separately authorized and confirmed by Sinthuha:
+> ```bash
+> docker exec -i -e PGPASSWORD=accounts_dev_password devarom-accounts-postgres pg_restore -U accounts_app -d accounts_db --clean < ${BACKUP_DIR}/accounts_backup_*.dump
+> ```
 
 ---
 

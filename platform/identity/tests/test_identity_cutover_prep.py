@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for Phase 2B identity cutover preparation, backup integrity, and safety gates."""
+"""Unit tests for Phase 2C identity cutover safety hardening, disaster recovery verification, and safety gates."""
 
 from __future__ import annotations
 
@@ -29,10 +29,11 @@ SafetyGateEvaluator = backup_mod.SafetyGateEvaluator
 
 
 class MockAdminClient:
-    """Mock Keycloak Admin API for testing preflight and cutover logic."""
+    """Mock Keycloak Admin API for testing preflight, pagination, and cutover logic."""
 
-    def __init__(self, current_realm: str = "devarom"):
+    def __init__(self, current_realm: str = "devarom", target_realm_exists: bool = False):
         self.current_realm = current_realm
+        self.target_realm_exists = target_realm_exists
         self.requests: list = []
 
     def request(self, path: str, method: str = "GET", payload: dict = None, expected_status: tuple = (200,)):
@@ -45,6 +46,12 @@ class MockAdminClient:
                 "displayName": "SwiftDrop",
                 "enabled": True,
             }
+
+        # Check for target realm existence check
+        if path == "/admin/realms/swiftdrop" and method == "GET":
+            if self.target_realm_exists:
+                return 200, {"id": "swiftdrop", "realm": "swiftdrop"}
+            return 404, None
 
         if path == f"/admin/realms/{self.current_realm}/clients" and method == "GET":
             client_id = f"{self.current_realm}-frontend" if self.current_realm == "swiftdrop" else "devarom-frontend"
@@ -70,6 +77,20 @@ class MockAdminClient:
             ]
 
         if "/users" in path and method == "GET":
+            # Support pagination parameters (first/max)
+            first = 0
+            if "first=" in path:
+                try:
+                    query = path.split("?", 1)[1]
+                    for param in query.split("&"):
+                        if param.startswith("first="):
+                            first = int(param.split("=")[1])
+                except Exception:
+                    first = 0
+
+            if first > 0:
+                return 200, []  # End of pagination
+
             return 200, [
                 {
                     "id": "sub-alice-uuid-001",
@@ -129,12 +150,60 @@ class TestCutoverPreflightAndSafety(unittest.TestCase):
         )
 
         self.assertTrue(res["identity_invariants_preserved"])
+        self.assertIn("journal", res)
+        self.assertEqual(len(res["journal"]), 3)
+        self.assertEqual(res["journal"][0]["step"], "rename_realm")
+        self.assertEqual(res["journal"][1]["step"], "rename_client")
+        self.assertEqual(res["journal"][2]["step"], "update_audience_mapper")
+
         post = res["post_cutover_verification"]
         self.assertEqual(post["realm_internal_id"], "devarom", "Realm internal ID must remain devarom")
         self.assertEqual(post["realm_name"], "swiftdrop", "Realm name must be swiftdrop")
         self.assertEqual(post["frontend_client_internal_uuid"], "2d80857e-52df-4d3c-9413-bc74a53e1de5")
         self.assertEqual(post["audience_mapper_id"], "53ec84cc-aa93-4344-84ce-369bbee64f6e")
         self.assertEqual(post["users"][0]["id"], "sub-alice-uuid-001", "User UUID must be 100% preserved")
+
+    def test_cutover_engine_aborts_if_target_realm_already_exists(self):
+        mock_admin = MockAdminClient("devarom", target_realm_exists=True)
+        engine = IdentityCutoverEngine(mock_admin)
+
+        with self.assertRaises(CutoverError) as ctx:
+            engine.execute_in_place_cutover()
+        self.assertIn("already exists", str(ctx.exception))
+
+    def test_cutover_engine_user_pagination(self):
+        mock_admin = MockAdminClient("devarom")
+        engine = IdentityCutoverEngine(mock_admin)
+        users = engine.get_all_users("devarom", page_size=10)
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0]["id"], "sub-alice-uuid-001")
+
+    def test_cutover_engine_stable_id_keyed_invariants_detects_mismatch(self):
+        mock_admin = MockAdminClient("devarom")
+        engine = IdentityCutoverEngine(mock_admin)
+        pre = {
+            "realm_internal_id": "devarom",
+            "frontend_client_internal_uuid": "cid-1",
+            "audience_mapper_id": "mid-1",
+            "users_by_id": {
+                "u1": {"username": "alice", "emailVerified": True, "credentials": ["password"], "federated": [], "roles": ["CUSTOMER"]}
+            }
+        }
+        # Post state with mutated roles
+        post_mutated = {
+            "realm_internal_id": "devarom",
+            "realm_name": "swiftdrop",
+            "frontend_client_internal_uuid": "cid-1",
+            "frontend_client_id": "swiftdrop-frontend",
+            "audience_mapper_id": "mid-1",
+            "current_audience": "swiftdrop-api",
+            "users_by_id": {
+                "u1": {"username": "alice", "emailVerified": True, "credentials": ["password"], "federated": [], "roles": ["ADMIN"]}
+            }
+        }
+        passed, mismatches = engine.verify_identity_invariants(pre, post_mutated, "swiftdrop", "swiftdrop-frontend", "swiftdrop-api")
+        self.assertFalse(passed)
+        self.assertTrue(any("roles changed" in m for m in mismatches))
 
     def test_in_place_rollback_restores_legacy_names(self):
         mock_admin = MockAdminClient("swiftdrop")
@@ -167,6 +236,25 @@ class TestBackupAndSafetyGate(unittest.TestCase):
             self.assertEqual(res["sha256"], sha256)
             self.assertEqual(res["status"], "VALID")
 
+    def test_backup_engine_find_database_file_in_h2_subdir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backup_dir = Path(tmpdir)
+            h2_dir = backup_dir / "h2"
+            h2_dir.mkdir()
+            db_file = h2_dir / "keycloakdb.mv.db"
+            db_file.write_bytes(b"H2_TEST_CONTENT_IN_SUBDIR")
+
+            sha256 = BackupEngine.compute_sha256(db_file)
+            checksum_file = h2_dir / "keycloakdb.mv.db.sha256"
+            checksum_file.write_text(f"{sha256}  keycloakdb.mv.db\n", encoding="utf-8")
+
+            found_db, found_chk = BackupEngine.find_database_file(backup_dir)
+            self.assertEqual(found_db, db_file)
+            self.assertEqual(found_chk, checksum_file)
+
+            res = BackupEngine.verify_backup_directory(backup_dir)
+            self.assertTrue(res["checksum_verified"])
+
     def test_backup_engine_detects_corrupted_checksum(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             backup_dir = Path(tmpdir)
@@ -180,6 +268,11 @@ class TestBackupAndSafetyGate(unittest.TestCase):
                 BackupEngine.verify_backup_directory(backup_dir)
             self.assertIn("Checksum mismatch", str(ctx.exception))
 
+    def test_backup_live_cold_refuses_without_explicit_maintenance_confirmation(self):
+        with self.assertRaises(BackupError) as ctx:
+            BackupEngine.execute_live_cold_backup(confirm_maintenance_stop="WRONG-PHRASE")
+        self.assertIn("maintenance operation that requires explicit authorization", str(ctx.exception))
+
     def test_safety_gate_returns_no_go_without_maintenance_approval(self):
         os.environ["MAINTENANCE_WINDOW_APPROVED"] = "false"
         os.environ["GOOGLE_CALLBACK_VERIFIED"] = "false"
@@ -188,6 +281,10 @@ class TestBackupAndSafetyGate(unittest.TestCase):
         self.assertEqual(gate["classification"], "NO-GO")
         self.assertGreaterEqual(len(gate["blocking_reasons"]), 2)
         self.assertIn("DO NOT EXECUTE ACTIVE REALM MIGRATION YET", gate["recommendation"])
+        # Verify distinction between machine-verifiable and human-confirmed checks
+        self.assertEqual(gate["checks"]["source_keycloak_running"]["type"], "MACHINE_VERIFIABLE")
+        self.assertEqual(gate["checks"]["maintenance_window_approved"]["type"], "HUMAN_CONFIRMED")
+        self.assertEqual(gate["checks"]["google_callback_verified"]["type"], "HUMAN_CONFIRMED")
 
 
 class TestGoogleCloudCallbackPrerequisite(unittest.TestCase):
