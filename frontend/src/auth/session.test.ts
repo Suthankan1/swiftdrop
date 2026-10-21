@@ -3,7 +3,7 @@ import type Keycloak from 'keycloak-js'
 import { AuthSession } from './session'
 function fixture(authenticated = false) {
   const client = {
-    authServerUrl: 'http://localhost:8090', realm: 'devarom', authenticated, token: authenticated ? 'test-access' : undefined,
+    authServerUrl: 'http://localhost:8090', realm: 'swiftdrop', authenticated, token: authenticated ? 'test-access' : undefined,
     tokenParsed: authenticated ? { sub: 'subject-a', exp: 9999999999 } : undefined,
     init: vi.fn().mockResolvedValue(authenticated), updateToken: vi.fn().mockResolvedValue(false),
     login: vi.fn().mockResolvedValue(undefined), register: vi.fn().mockResolvedValue(undefined),

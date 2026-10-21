@@ -24,7 +24,7 @@ This service is the single public entry point for the SwiftDrop delivery platfor
 In accordance with [SwiftDrop Architecture Baseline v1.3](../../docs/architecture/BASELINE.md) and [Login Contract](../../docs/contracts/LOGIN_CONTRACT.md):
 
 ### 2.1 Gateway Responsibilities
-- **Edge Authentication Gate:** Validates Keycloak JWT cryptographic signature via JWKS, issuer URI, audience (`devarom-api`), and token lifetime. Rejects missing or invalid tokens with HTTP 401 Unauthorized before forwarding to internal services.
+- **Edge Authentication Gate:** Validates Keycloak JWT cryptographic signature via JWKS, issuer URI, audience (`swiftdrop-api`), and token lifetime. Rejects missing or invalid tokens with HTTP 401 Unauthorized before forwarding to internal services.
 - **Request Routing:** Forwards approved API requests to downstream business microservices (`accounts-service`, etc.) without unexpected path mutation.
 - **Client Header Sanitization:** Automatically strips untrusted caller-supplied identity headers (`X-User-Id`, `X-Roles`, `X-Tenant-Id`, `X-Keycloak-Sub`, `X-User-Email`) to prevent identity spoofing, while strictly preserving the authentic `Authorization: Bearer <token>` header for downstream validation.
 - **CORS Policy:** Restricts browser origins strictly to the authorized Vite development server (`http://localhost:5173`) and handles preflight `OPTIONS` requests.
@@ -53,9 +53,9 @@ The downstream target URL is fully configurable via the environment variable `AC
 ## 4. Keycloak JWT Security & Claims Enforcement
 
 The Gateway configures a reactive `NimbusReactiveJwtDecoder` with:
-- **Issuer URI:** `http://localhost:8090/realms/devarom` (configurable via `KEYCLOAK_ISSUER_URI`)
-- **JWKS Set URI:** `http://localhost:8090/realms/devarom/protocol/openid-connect/certs` (configurable via `KEYCLOAK_JWKS_URI`)
-- **Required Audience:** `devarom-api` (enforced via `AudienceValidator`)
+- **Issuer URI:** `http://localhost:8090/realms/swiftdrop` (configurable via `KEYCLOAK_ISSUER_URI`)
+- **JWKS Set URI:** `http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs` (configurable via `KEYCLOAK_JWKS_URI`)
+- **Required Audience:** `swiftdrop-api` (enforced via `AudienceValidator`)
 - **Cryptographic Signature:** Verified via public keys from the Keycloak realm's published JWKS.
 - **Token Lifetime:** Validates non-expired token (`exp`), issue time (`iat`), and not-before (`nbf`).
 

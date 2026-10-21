@@ -23,8 +23,8 @@ import urllib.request
 
 
 DIRECTORY = Path(__file__).resolve().parent
-REALM = os.environ.get("KEYCLOAK_REALM", "devarom")
-CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
+REALM = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
+CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "swiftdrop-frontend")
 REALM_PATH = f"/admin/realms/{REALM}"
 ACTION_PATH = REALM_PATH + "/authentication/required-actions/VERIFY_EMAIL"
 COOLDOWN = "60"

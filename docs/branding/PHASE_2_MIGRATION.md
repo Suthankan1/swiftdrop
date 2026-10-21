@@ -1,9 +1,10 @@
-# SwiftDrop Phase 2 technical migration proposal
+# SwiftDrop Phase 2 technical migration record
 
-**Status: PROPOSED — NOT EXECUTED OR APPROVED.** Prepared 2026-10-20 from the
-tracked baseline in [PHASE_1_AUDIT.md](PHASE_1_AUDIT.md). Phase 1 changes public
-wording; it retains working protocol and persistence identifiers. This document
-does not authorize identity, schema, provider, storage or repository changes.
+**Status: EXECUTED AND VERIFIED — Phase 2 Migration Complete.**
+Prepared 2026-10-20; executed and verified 2026-10-21 through Phases 2A–2F.
+Live cutover merged to `test` via PR #64. Fresh-install canonical contract,
+runtime defaults, and full security regression verified under Phase 2F.
+See [PHASE_2_FINAL_SIGNOFF.md](PHASE_2_FINAL_SIGNOFF.md) for complete signoff.
 
 ## Decisions required before execution
 

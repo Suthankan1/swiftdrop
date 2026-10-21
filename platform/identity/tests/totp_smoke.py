@@ -192,9 +192,9 @@ class TotpSmoke:
     def __init__(self, keycloak_url="http://localhost:8090", gateway_url="http://localhost:8080"):
         self.keycloak_url = keycloak_url.rstrip("/")
         self.gateway_url = gateway_url.rstrip("/")
-        self.realm = os.environ.get("KEYCLOAK_REALM", "devarom")
-        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
-        self.audience = os.environ.get("JWT_AUDIENCE", "devarom-api")
+        self.realm = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
+        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "swiftdrop-frontend")
+        self.audience = os.environ.get("JWT_AUDIENCE", "swiftdrop-api")
         self.admin_url = f"{self.keycloak_url}/admin/realms/{self.realm}"
         self.http = Session(self.keycloak_url)
         self.run_id = secrets.token_hex(4)

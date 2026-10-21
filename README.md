@@ -4,7 +4,7 @@
 
 > **Current state:** The initial login slice includes the React SPA, Keycloak, API Gateway and Accounts Service. Local/Google login evidence and remaining independent review work are recorded in [project status](docs/project/STATUS.md). Delivery, Pricing, Communications, GraphQL, gRPC, Kafka and SSE remain design targets.
 
-The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on **2026-10-20** by the project owner. Phase 1 updates visible branding while preserving authentication and runtime identifiers. See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md) and [Phase 2 migration proposal](docs/branding/PHASE_2_MIGRATION.md). The GitHub repository remains `Suthankan1/devarom` until the team reviews and schedules its rename to `swiftdrop`.
+The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on **2026-10-20** by the project owner. Phase 1 updated visible branding. Phase 2 completed the identity migration across the realm (`swiftdrop`), public client (`swiftdrop-frontend`), and API audience (`swiftdrop-api`), including live local cutover, canonical fresh-install bootstrap, and security regression verification. See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md), [Phase 2 migration record](docs/branding/PHASE_2_MIGRATION.md), and [Phase 2 final signoff](docs/branding/PHASE_2_FINAL_SIGNOFF.md). The GitHub repository remains `Suthankan1/devarom` until the team reviews and schedules its rename to `swiftdrop`.
 
 ## Read first
 

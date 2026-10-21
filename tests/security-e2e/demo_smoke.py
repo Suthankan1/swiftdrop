@@ -73,8 +73,8 @@ class DemoSmokeRunner:
         frontend_url: str = "http://localhost:5173",
     ):
         self.keycloak_url = keycloak_url.rstrip("/")
-        self.realm = os.environ.get("KEYCLOAK_REALM", "devarom")
-        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
+        self.realm = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
+        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "swiftdrop-frontend")
         self.realm_url = f"{self.keycloak_url}/realms/{self.realm}"
         self.gateway_url = gateway_url.rstrip("/")
         self.accounts_url = accounts_url.rstrip("/")
@@ -142,7 +142,7 @@ class DemoSmokeRunner:
         self.log_scenario("SCENARIO A: New Customer Self-Registration & Email Verification")
         try:
             username = f"dv-demo-new-{secrets.token_hex(4)}"
-            email = f"{username}@devarom.test"
+            email = f"{username}@swiftdrop.test"
             password = generate_secure_password()
             verifier = secrets.token_urlsafe(48)
             challenge = b64url(hashlib.sha256(verifier.encode("ascii")).digest())
@@ -295,7 +295,7 @@ class DemoSmokeRunner:
         try:
             # Create a verified synthetic user directly via Admin API
             username = f"dv-demo-exist-{secrets.token_hex(4)}"
-            email = f"{username}@devarom.test"
+            email = f"{username}@swiftdrop.test"
             password = generate_secure_password()
 
             user_payload = {
@@ -360,7 +360,7 @@ class DemoSmokeRunner:
         try:
             # Create user and enroll in TOTP directly via Keycloak
             username = f"dv-demo-totp-{secrets.token_hex(4)}"
-            email = f"{username}@devarom.test"
+            email = f"{username}@swiftdrop.test"
             password = generate_secure_password()
 
             user_payload = {
