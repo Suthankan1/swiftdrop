@@ -4,7 +4,16 @@
 
 > **Current state:** The initial login slice includes the React SPA, Keycloak, API Gateway and Accounts Service. Local/Google login evidence and remaining independent review work are recorded in [project status](docs/project/STATUS.md). Delivery, Pricing, Communications, GraphQL, gRPC, Kafka and SSE remain design targets.
 
-The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on **2026-10-20** by the project owner. Phase 1 updated visible branding. Phase 2 completed the identity migration across the realm (`swiftdrop`), public client (`swiftdrop-frontend`), and API audience (`swiftdrop-api`), including live local cutover, canonical fresh-install bootstrap, and security regression verification. See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md), [Phase 2 migration record](docs/branding/PHASE_2_MIGRATION.md), and [Phase 2 final signoff](docs/branding/PHASE_2_FINAL_SIGNOFF.md). The GitHub repository remains `Suthankan1/devarom` until the team reviews and schedules its rename to `swiftdrop`.
+The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on **2026-10-20** by the project owner.
+- **Official project:** SwiftDrop
+- **GitHub rename:** completed (`https://github.com/Suthankan1/swiftdrop.git`)
+- **Phase 1 visible branding:** complete
+- **Phase 2 identity migration:** complete
+- **Current identity realm:** `swiftdrop`
+- **Current OIDC client:** `swiftdrop-frontend`
+- **Current JWT audience:** `swiftdrop-api`
+
+See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md), [Phase 2 migration record](docs/branding/PHASE_2_MIGRATION.md), and [Phase 2 final signoff](docs/branding/PHASE_2_FINAL_SIGNOFF.md).
 
 ## Read first
 
@@ -40,7 +49,7 @@ The platform was previously referred to as Devarom during initial development an
 
 ## Contribution workflow
 
-Use the existing repository. Create feature branches from the latest `origin/test` and target development PRs at **`test`**. Preserve `main` as the stable release baseline. Do not rename the repository, merge, or deploy as part of Phase 1 branding. Continue with one owner-reviewed slice at a time.
+Use the official repository (`https://github.com/Suthankan1/swiftdrop.git`). Create feature branches from the latest `origin/test` and target development PRs at **`test`**. Preserve `main` as the stable release baseline. Continue with one owner-reviewed slice at a time.
 
 - [Team-run Spring Initializr and Vite setup guide](docs/development/STARTER_GENERATION_GUIDE.md)
 - [Git workflow](docs/development/GIT_WORKFLOW.md)

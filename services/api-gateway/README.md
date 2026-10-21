@@ -1,6 +1,6 @@
 # Spring Cloud API Gateway
 
-**Module:** API Gateway · **Owner:** Suthankan1 (Platform & Security) · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #3](https://github.com/Suthankan1/devarom/issues/3) · **Architecture Baseline:** SwiftDrop v1.3
+**Module:** API Gateway · **Owner:** Suthankan1 (Platform & Security) · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #3](https://github.com/Suthankan1/swiftdrop/issues/3) · **Architecture Baseline:** SwiftDrop v1.3
 
 This service is the single public entry point for the SwiftDrop delivery platform. Built on the non-blocking reactive Spring Cloud Gateway WebFlux stack, it handles external request routing, edge JWT authentication, CORS policy enforcement, client header sanitization, and graceful error handling.
 

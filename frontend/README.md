@@ -1,6 +1,6 @@
 # SwiftDrop shared SPA
 
-The single React application for SwiftDrop. Issue [#6](https://github.com/Suthankan1/devarom/issues/6) implements the public shell and Customer profile presentation. **Shared authentication is implemented in #36; live full-stack login remains unverified pending local Keycloak and Accounts #5/#37.**
+The single React application for SwiftDrop. Issue [#6](https://github.com/Suthankan1/swiftdrop/issues/6) implements the public shell and Customer profile presentation. **Shared authentication is implemented in #36; live full-stack login remains unverified pending local Keycloak and Accounts #5/#37.**
 
 Temporary implementation: **Suthankan1**, while Gajanthan is unavailable. **Gajanthan remains the original Customer feature steward.** Accounts business profiles remain Sinthuha’s #5; authentication remains Suthankan1’s #36 and backend JWT policy #37.
 

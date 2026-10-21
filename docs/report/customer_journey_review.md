@@ -4,7 +4,7 @@
 
 > **Document Context & Metadata**
 > - **Product:** SwiftDrop — Parcel Delivery & Courier Management Platform (Architecture v1.3)
-> - **Issue Reference:** Refs [#4 — [NOV-05] Review Customer report use cases, quote/booking flow and sequence](https://github.com/Suthankan1/devarom/issues/4)
+> - **Issue Reference:** Refs [#4 — [NOV-05] Review Customer report use cases, quote/booking flow and sequence](https://github.com/Suthankan1/swiftdrop/issues/4)
 > - **Milestone:** November 1, 2026 — Report + Initial Working Logins
 > - **Module:** Customer
 > - **Original Feature Steward:** Gajanthan ([@Gajanthan23](https://github.com/Gajanthan23))

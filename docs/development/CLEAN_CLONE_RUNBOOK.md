@@ -38,8 +38,8 @@ Ensure the following ports are available on `localhost`:
 Always clone or checkout the `test` branch (all feature integration occurs on `test`, never directly on `main`):
 
 ```bash
-git clone -b test https://github.com/Suthankan1/devarom.git
-cd devarom
+git clone -b test https://github.com/Suthankan1/swiftdrop.git
+cd swiftdrop
 ```
 
 ### 2.2 Configure Local Identity Secrets (Ignored by Git)

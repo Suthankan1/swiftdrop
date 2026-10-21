@@ -1,8 +1,8 @@
 # November 1 Login Integration Contract & Baseline Freeze
 
-**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/devarom/issues/1) · **Architecture Baseline:** SwiftDrop v1.3
+**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/swiftdrop/issues/1) · **Architecture Baseline:** SwiftDrop v1.3
 
-> **Authentication ownership update (Oct 15):** Suthankan1 owns all frontend identity/OIDC login/signup/session UI and shared backend JWT/security integration ([#36](https://github.com/Suthankan1/devarom/issues/36), [#37](https://github.com/Suthankan1/devarom/issues/37)). Customer team owns shared SPA shell and Accounts business profiles, **not** login/client/security implementation. Role UI teams build role landing pages using the common auth provider; Vibhushan independently verifies security. See [team ownership](../team/OWNERSHIP.md). This human-requested reassignment still needs pair acknowledgement.
+> **Authentication ownership update (Oct 15):** Suthankan1 owns all frontend identity/OIDC login/signup/session UI and shared backend JWT/security integration ([#36](https://github.com/Suthankan1/swiftdrop/issues/36), [#37](https://github.com/Suthankan1/swiftdrop/issues/37)). Customer team owns shared SPA shell and Accounts business profiles, **not** login/client/security implementation. Role UI teams build role landing pages using the common auth provider; Vibhushan independently verifies security. See [team ownership](../team/OWNERSHIP.md). This human-requested reassignment still needs pair acknowledgement.
 
 > **Contract-first principle:** This document freezes the authentication scope, backend/frontend toolchain baseline, identity flows, minimal REST contract, local development port registry, and team responsibilities for the November 1 deliverable. No application code, scaffolding, or configurations are generated in this task.
 
