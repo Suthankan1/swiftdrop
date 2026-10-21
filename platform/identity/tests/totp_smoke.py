@@ -192,7 +192,10 @@ class TotpSmoke:
     def __init__(self, keycloak_url="http://localhost:8090", gateway_url="http://localhost:8080"):
         self.keycloak_url = keycloak_url.rstrip("/")
         self.gateway_url = gateway_url.rstrip("/")
-        self.admin_url = self.keycloak_url + "/admin/realms/devarom"
+        self.realm = os.environ.get("KEYCLOAK_REALM", "devarom")
+        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
+        self.audience = os.environ.get("JWT_AUDIENCE", "devarom-api")
+        self.admin_url = f"{self.keycloak_url}/admin/realms/{self.realm}"
         self.http = Session(self.keycloak_url)
         self.run_id = secrets.token_hex(4)
         self.disposable_users = []
@@ -268,10 +271,10 @@ class TotpSmoke:
         self.disposable_users.clear()
 
     def exchange_code(self, session, code, verifier):
-        token_url = f"{self.keycloak_url}/realms/devarom/protocol/openid-connect/token"
+        token_url = f"{self.keycloak_url}/realms/{self.realm}/protocol/openid-connect/token"
         payload = urllib.parse.urlencode({
             "grant_type": "authorization_code",
-            "client_id": "devarom-frontend",
+            "client_id": self.client_id,
             "code": code,
             "redirect_uri": REDIRECT_URI,
             "code_verifier": verifier,
@@ -314,9 +317,9 @@ class TotpSmoke:
             state = secrets.token_hex(8)
 
             auth_url = (
-                f"{self.keycloak_url}/realms/devarom/protocol/openid-connect/auth?"
+                f"{self.keycloak_url}/realms/{self.realm}/protocol/openid-connect/auth?"
                 + urllib.parse.urlencode({
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "response_type": "code",
                     "scope": "openid profile email",
                     "redirect_uri": REDIRECT_URI,
@@ -332,7 +335,7 @@ class TotpSmoke:
             access_tok, _ = self.exchange_code(sess, code, verifier)
             claims = decode_claims(access_tok)
             check("CUSTOMER" in claims.get("roles", []), "CUSTOMER role missing from JWT")
-            check("devarom-api" in (claims.get("aud") or []), "Audience devarom-api missing from JWT")
+            check(self.audience in (claims.get("aud") or []), f"Audience {self.audience} missing from JWT")
             report("  PASS: Unenrolled customer logs in smoothly without challenge; received valid scoped JWT.")
 
             # 3. Scenario B: Forced / Required TOTP Enrollment & Negative Validation
@@ -344,9 +347,9 @@ class TotpSmoke:
             state2 = secrets.token_hex(8)
 
             auth_url2 = (
-                f"{self.keycloak_url}/realms/devarom/protocol/openid-connect/auth?"
+                f"{self.keycloak_url}/realms/{self.realm}/protocol/openid-connect/auth?"
                 + urllib.parse.urlencode({
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "response_type": "code",
                     "scope": "openid profile email",
                     "redirect_uri": REDIRECT_URI,
@@ -402,9 +405,9 @@ class TotpSmoke:
             state3 = secrets.token_hex(8)
 
             auth_url3 = (
-                f"{self.keycloak_url}/realms/devarom/protocol/openid-connect/auth?"
+                f"{self.keycloak_url}/realms/{self.realm}/protocol/openid-connect/auth?"
                 + urllib.parse.urlencode({
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "response_type": "code",
                     "scope": "openid profile email",
                     "redirect_uri": REDIRECT_URI,
@@ -478,9 +481,9 @@ class TotpSmoke:
             ch_vol = base64.urlsafe_b64encode(hashlib.sha256(ver_vol.encode()).digest()).decode().rstrip("=")
             # Login first
             auth_vol = (
-                f"{self.keycloak_url}/realms/devarom/protocol/openid-connect/auth?"
+                f"{self.keycloak_url}/realms/{self.realm}/protocol/openid-connect/auth?"
                 + urllib.parse.urlencode({
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "response_type": "code",
                     "scope": "openid profile email",
                     "redirect_uri": REDIRECT_URI,
@@ -495,9 +498,9 @@ class TotpSmoke:
 
             # Trigger voluntary MFA enrollment via kc_action
             aia_url = (
-                f"{self.keycloak_url}/realms/devarom/protocol/openid-connect/auth?"
+                f"{self.keycloak_url}/realms/{self.realm}/protocol/openid-connect/auth?"
                 + urllib.parse.urlencode({
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "response_type": "code",
                     "scope": "openid profile email",
                     "redirect_uri": REDIRECT_URI,

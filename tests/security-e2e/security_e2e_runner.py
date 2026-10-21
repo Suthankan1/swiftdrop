@@ -46,9 +46,9 @@ def run_full_security_e2e_suite(
     print(" SWIFTDROP PLATFORM — SECURITY E2E AUTOMATED TEST SUITE (TASK 018)")
     print("=" * 95)
 
-    print("\n[Step 1/4] Checking live runtime service readiness...")
+    realm = os.environ.get("KEYCLOAK_REALM", "devarom")
     services = [
-        ("Keycloak IdP", f"{keycloak_url}/realms/devarom/.well-known/openid-configuration", (200,)),
+        ("Keycloak IdP", f"{keycloak_url}/realms/{realm}/.well-known/openid-configuration", (200,)),
         ("API Gateway", f"{gateway_url}/actuator/health", (200,)),
         ("Accounts Service", f"{accounts_url}/actuator/health", (200,)),
         ("Mailpit SMTP Dev", f"{mailpit_url}/api/v1/info", (200,)),

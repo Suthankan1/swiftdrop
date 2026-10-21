@@ -21,7 +21,8 @@ import urllib.request
 
 
 DIRECTORY = Path(__file__).resolve().parent
-REALM_PATH = "/admin/realms/devarom"
+REALM = os.environ.get("KEYCLOAK_REALM", "devarom")
+REALM_PATH = f"/admin/realms/{REALM}"
 ACTION_PATH = REALM_PATH + "/authentication/required-actions/CONFIGURE_TOTP"
 SNAPSHOT_PATH = DIRECTORY / ".local" / "totp-recovery.json"
 
@@ -144,7 +145,7 @@ def realm_otp_projection(realm):
 def read_state(api):
     realm = api.request("GET", REALM_PATH)
     action = api.request("GET", ACTION_PATH)
-    if (not isinstance(realm, dict) or realm.get("realm") != "devarom" or not realm.get("id")
+    if (not isinstance(realm, dict) or realm.get("realm") not in (REALM, "devarom", "swiftdrop") or not realm.get("id")
             or realm.get("registrationAllowed") is not True or realm.get("loginTheme") != "devarom"
             or not isinstance(action, dict) or action.get("alias") != "CONFIGURE_TOTP"
             or action.get("providerId") != "CONFIGURE_TOTP"):
