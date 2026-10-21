@@ -9,11 +9,13 @@ The platform was previously referred to as Devarom during initial development an
 - **GitHub rename:** completed (`https://github.com/Suthankan1/swiftdrop.git`)
 - **Phase 1 visible branding:** complete
 - **Phase 2 identity migration:** complete
+- **Phase 3 technical rebrand:** complete (Java `com.swiftdrop.*`, Maven `com.swiftdrop`, theme `swiftdrop`, canonical containers `swiftdrop-*`)
 - **Current identity realm:** `swiftdrop`
 - **Current OIDC client:** `swiftdrop-frontend`
 - **Current JWT audience:** `swiftdrop-api`
+- **Current login theme:** `swiftdrop`
 
-See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md), [Phase 2 migration record](docs/branding/PHASE_2_MIGRATION.md), and [Phase 2 final signoff](docs/branding/PHASE_2_FINAL_SIGNOFF.md).
+See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md), [Phase 2 migration record](docs/branding/PHASE_2_MIGRATION.md), [Phase 2 final signoff](docs/branding/PHASE_2_FINAL_SIGNOFF.md), and [Phase 3 technical rebrand audit](docs/branding/PHASE_3_TECHNICAL_REBRAND_AUDIT.md).
 
 ## Read first
 

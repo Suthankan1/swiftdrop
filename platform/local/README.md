@@ -10,9 +10,9 @@ The local development stack binds to dedicated host ports to prevent port confli
 
 | Service | Port | Protocol | Container / Process | Health Endpoint |
 |---|---|---|---|---|
-| **Keycloak IdP** | `8090` | HTTP | Container (`devarom-keycloak`) | `/realms/devarom/.well-known/openid-configuration` |
-| **Mailpit SMTP & UI** | `8025` (UI), `1025` (SMTP) | HTTP / SMTP | Container (`devarom-mailpit`) | `http://localhost:8025/` |
-| **Accounts PostgreSQL** | `5438` (or `5432`) | TCP | Container (`devarom-accounts-postgres`) | Port listen / connection |
+| **Keycloak IdP** | `8090` | HTTP | Container (`swiftdrop-keycloak` / `devarom-keycloak`) | `/realms/swiftdrop/.well-known/openid-configuration` |
+| **Mailpit SMTP & UI** | `8025` (UI), `1025` (SMTP) | HTTP / SMTP | Container (`swiftdrop-mailpit` / `devarom-mailpit`) | `http://localhost:8025/` |
+| **Accounts PostgreSQL** | `5438` (or `5432`) | TCP | Container (`swiftdrop-accounts-postgres` / `devarom-accounts-postgres`) | Port listen / connection |
 | **Accounts Service** | `8081` | HTTP | Spring Boot MVC (`mvnw spring-boot:run`) | `http://localhost:8081/actuator/health` |
 | **API Gateway** | `8080` | HTTP | Spring Cloud Gateway (`mvnw spring-boot:run`) | `http://localhost:8080/actuator/health` |
 | **React Frontend SPA** | `5173` | HTTP | Vite Dev Server (`pnpm dev`) | `http://localhost:5173/` |
@@ -28,7 +28,7 @@ The local development stack binds to dedicated host ports to prevent port confli
 What this script does:
 1. Validates that `platform/identity/.env` exists and contains a non-empty `KC_BOOTSTRAP_ADMIN_PASSWORD`.
 2. Starts Keycloak (`:8090`) and Mailpit (`:8025`) using `platform/identity/docker-compose.identity.yml`.
-3. Starts (or non-destructively initializes) the dedicated PostgreSQL container `devarom-accounts-postgres` mapped to localhost port 5438 (or 5432).
+3. Starts (or non-destructively initializes) the dedicated PostgreSQL container `swiftdrop-accounts-postgres` (or legacy `devarom-accounts-postgres`) mapped to localhost port 5438 (or 5432).
 4. Waits for Keycloak OIDC discovery to become responsive.
 5. Verifies and applies runtime policies: branded theme (`apply-theme.sh`), native email verification with 60s cooldown (`configure-email-verification.py`), and RFC 6238 TOTP MFA policy (`configure-totp.py`).
 6. Displays the exact commands to run the microservices and frontend in separate terminals.

@@ -19,7 +19,7 @@ All future Spring Initializr project generation and frontend scaffolding across 
 | **Spring Cloud** | **2025.1.3** (*Oakwood* release train) | Verified officially compatible with Spring Boot 4.0.x and 4.1.x lines. Used **only** in applications requiring Cloud components (`services/api-gateway/`). Core business services do not bundle Spring Cloud unnecessarily. |
 | **Build Tool** | **Apache Maven** | Standardized across all backend services; wrapper scripts (`mvnw`) generated per service by owners. |
 | **Packaging** | **JAR** | Executable standalone microservice containers. |
-| **Java Group ID** | `com.devarom` | Standard package namespace (e.g., `com.devarom.accountsservice`, `com.devarom.apigateway`). |
+| **Java Group ID** | `com.swiftdrop` | Standard package namespace (e.g., `com.swiftdrop.accountsservice`, `com.swiftdrop.apigateway`). |
 | **Frontend Framework** | **React + TypeScript + Vite** | Current Node.js LTS, `pnpm` package manager default; single SPA with role-based routing. |
 | **Persistence** | **PostgreSQL 16+** | Separate logical database per service; Flyway migrations owned by individual services. |
 | **Identity Provider** | **Keycloak 26.8.1** (pinned) | Standalone identity provider container with separate identity PostgreSQL database (`keycloak_db`). Sanitized realm defined in `platform/identity/realm-swiftdrop.json` (canonical `swiftdrop` realm; migrated live instance preserves internal ID). |

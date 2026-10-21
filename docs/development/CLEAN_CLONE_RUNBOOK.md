@@ -103,7 +103,7 @@ You can start steps 1 through 3 automatically using the platform startup script:
 This helper:
 1. Validates your `platform/identity/.env` file.
 2. Starts Keycloak (`:8090`) and Mailpit (`:8025`) via Docker Compose.
-3. Starts (or non-destructively provisions) `devarom-accounts-postgres` on port `5438`.
+3. Starts (or non-destructively provisions) `swiftdrop-accounts-postgres` (or legacy `devarom-accounts-postgres`) on port `5438`.
 4. Waits for Keycloak OIDC discovery to respond.
 5. Verifies and applies the branded theme, native email verification required action, and TOTP MFA policy.
 
@@ -115,16 +115,18 @@ If you prefer starting each component manually:
 
 #### Step 1: Start Accounts PostgreSQL Container
 ```bash
-# Check if container already exists
-if docker ps -a --format '{{.Names}}' | grep -qx "devarom-accounts-postgres"; then
+# Check if container already exists (swiftdrop-accounts-postgres or legacy devarom-accounts-postgres)
+if docker ps -a --format '{{.Names}}' | grep -qx "swiftdrop-accounts-postgres"; then
+  docker start swiftdrop-accounts-postgres
+elif docker ps -a --format '{{.Names}}' | grep -qx "devarom-accounts-postgres"; then
   docker start devarom-accounts-postgres
 else
-  docker run -d --name devarom-accounts-postgres \
+  docker run -d --name swiftdrop-accounts-postgres \
     -e POSTGRES_USER=accounts_app \
     -e POSTGRES_DB=accounts_db \
     -e POSTGRES_PASSWORD=accounts_dev_password \
     -p 127.0.0.1:5438:5432 \
-    -v devarom-accounts-postgres-data:/var/lib/postgresql/data \
+    -v swiftdrop-accounts-postgres-data:/var/lib/postgresql/data \
     postgres:16-alpine
 fi
 ```
@@ -211,7 +213,7 @@ Expected Output:
 [2/4] Checking Container Infrastructure Services...
   [PASS] Keycloak Container is listening on :8090 and realm 'swiftdrop' OIDC discovery succeeded
   [PASS] Mailpit SMTP UI is healthy on port 8025 (HTTP 200)
-  [PASS] PostgreSQL container (devarom-accounts-postgres) is listening on port 5438
+  [PASS] PostgreSQL container (swiftdrop/devarom-accounts-postgres) is listening on port 5438
 
 [3/4] Checking Microservices and Frontend Application...
   [PASS] Accounts & Partners Service is UP on port 8081 (database connectivity verified)
@@ -323,8 +325,8 @@ Run the master security and regression orchestrator:
 |---|---|---|
 | `Port 5432 or 5438 already in use` | Another PostgreSQL instance running | Check `lsof -i :5438` or `lsof -i :5432`. If needed, specify `ACCOUNTS_DB_PORT=5439` and re-run `./platform/local/start-local.sh`. |
 | `KC_BOOTSTRAP_ADMIN_PASSWORD must be explicitly set` | Missing or blank password in `platform/identity/.env` | Edit `platform/identity/.env` and supply a non-empty string. |
-| `Keycloak connection refused on :8090` | Docker daemon stopped or container crashed | Run `docker ps` and check logs: `docker logs devarom-keycloak`. |
-| `Accounts Service fail to connect to DB` | Wrong DB port or container not running | Check `docker ps` for `devarom-accounts-postgres`. Verify `ACCOUNTS_DB_URL` matches the mapped port. |
+| `Keycloak connection refused on :8090` | Docker daemon stopped or container crashed | Run `docker ps` and check logs: `docker logs swiftdrop-keycloak` (or `devarom-keycloak`). |
+| `Accounts Service fail to connect to DB` | Wrong DB port or container not running | Check `docker ps` for `swiftdrop-accounts-postgres` (or `devarom-accounts-postgres`). Verify `ACCOUNTS_DB_URL` matches the mapped port. |
 | `An earlier recovery snapshot exists` | Stale recovery file in `.local/` | Remove stale file: `rm platform/identity/.local/email-verification-recovery.json` and re-run `./platform/identity/configure-email-verification.py apply`. |
 | `mounted volume is marked read-only` | Theme volume mounted `:ro` in Compose | Handled automatically by updated `apply-theme.sh`. Volume mount already contains live theme files. |
 
@@ -342,8 +344,8 @@ docker compose -f platform/identity/docker-compose.identity.yml \
   --project-directory platform/identity down
 
 # 3. Stop PostgreSQL container
-docker stop devarom-accounts-postgres
+docker stop swiftdrop-accounts-postgres 2>/dev/null || docker stop devarom-accounts-postgres
 ```
 
 > [!NOTE]
-> Database volumes (`devarom-accounts-postgres-data`) and Keycloak imports are preserved across container stops. Do not delete volumes unless you explicitly wish to start from an empty database.
+> Database volumes (`swiftdrop-accounts-postgres-data` or legacy `devarom-accounts-postgres-data`) and Keycloak imports are preserved across container stops. Do not delete volumes unless you explicitly wish to start from an empty database.
