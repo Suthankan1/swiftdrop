@@ -18,6 +18,17 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## Issue #18 Independent Security End-to-End QA Verification — 2026-10-21
+
+Independent QA Lead: **Vibhushan (@Vibhushan-2003)**; branch `tests/issue-18-independent-security-qa`, targeting `test` (based on `origin/test` commit `b974af0`).
+Formal independent peer verification of milestone acceptance items L06, L07, and L08 completed:
+- **L06 (JWT Authentication Rejection):** 27 automated tests passing across Gateway (:8080) and Accounts (:8081). Missing, malformed, unsigned (`alg=none`), untrusted signature, wrong issuer, wrong audience, expired, and not-yet-valid tokens strictly rejected with HTTP 401 RFC 7807 ProblemDetail.
+- **L07 (Role Denial & Privilege Confinement):** Authenticated tokens without approved application roles rejected with HTTP 403 Forbidden. Keycloak self-registration verified strictly confined to `CUSTOMER` role (zero staff self-elevation).
+- **L08 (Resource Ownership & Tenant Isolation):** Customer A and B profile isolation verified using authentic Keycloak PKCE tokens. Gateway strips spoofed identity headers and query parameters; Accounts ignores forged headers and strictly resolves identity from verified JWT `SecurityContext`.
+- **Blocked Downstream Dependencies (4 cases):** Unmapped staff admin (`/api/v1/admin/users`), courier (`/api/v1/courier/deliveries`), explicit ID lookup (`/api/v1/users/{id}`), and merchant tenancy (`/api/v1/merchants/orders`) endpoints fail-closed (HTTP 404/401) and remain tracked honestly as BLOCKED against Issues #5, #8, #14, and #15.
+- **Regressions Verified:** Full Python security runner (36 PASS / 0 FAIL / 4 BLOCKED), Gateway tests (19/19 PASS), Accounts tests (37/37 PASS), and Frontend tests (70/70 PASS).
+- **Formal QA Report:** Authored [`docs/milestones/ISSUE_18_INDEPENDENT_SECURITY_QA_REPORT.md`](../milestones/ISSUE_18_INDEPENDENT_SECURITY_QA_REPORT.md).
+
 ## SwiftDrop Phase 4B Team Kickoff, QA Handoff & Release Prep — 2026-10-21
 
 Owner **Suthankan1**; branch `chore/nov1-phase4b-handoff`, based on `origin/test` (`0d44d15`).
