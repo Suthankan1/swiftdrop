@@ -9,7 +9,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/.env"
-CONTAINER_NAME="devarom-keycloak"
+CONTAINER_NAME="${KEYCLOAK_CONTAINER_NAME:-}"
+if [[ -z "${CONTAINER_NAME}" ]]; then
+  if docker ps --format '{{.Names}}' | grep -qx "swiftdrop-keycloak"; then
+    CONTAINER_NAME="swiftdrop-keycloak"
+  elif docker ps --format '{{.Names}}' | grep -qx "devarom-keycloak"; then
+    CONTAINER_NAME="devarom-keycloak"
+  else
+    CONTAINER_NAME="swiftdrop-keycloak"
+  fi
+fi
+
+THEME_NAME="${KEYCLOAK_LOGIN_THEME:-swiftdrop}"
 
 echo "=============================================================================="
 echo " SwiftDrop Platform — Apply Branded Keycloak Theme (Issue #44)"
@@ -23,13 +34,21 @@ if ! docker ps --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
 fi
 
 # 2. Sync theme files directly into container themes folder (works with or without volume restart)
-echo "[1/3] Syncing theme files to /opt/keycloak/themes/devarom in container..."
-if docker exec "${CONTAINER_NAME}" test -d /opt/keycloak/themes/devarom/login 2>/dev/null; then
+echo "[1/3] Syncing theme files to /opt/keycloak/themes/${THEME_NAME} in container..."
+if docker exec "${CONTAINER_NAME}" test -d "/opt/keycloak/themes/${THEME_NAME}/login" 2>/dev/null; then
   echo "PASS: Theme files already mounted via volume."
 else
-  docker exec "${CONTAINER_NAME}" mkdir -p /opt/keycloak/themes/devarom 2>/dev/null || true
-  docker cp "${SCRIPT_DIR}/themes/devarom/." "${CONTAINER_NAME}:/opt/keycloak/themes/devarom/" 2>/dev/null || true
+  docker exec "${CONTAINER_NAME}" mkdir -p "/opt/keycloak/themes/${THEME_NAME}" 2>/dev/null || true
+  docker cp "${SCRIPT_DIR}/themes/${THEME_NAME}/." "${CONTAINER_NAME}:/opt/keycloak/themes/${THEME_NAME}/" 2>/dev/null || true
   echo "PASS: Theme files synced."
+fi
+
+# Also preserve legacy devarom theme files if present on host
+if [[ -d "${SCRIPT_DIR}/themes/devarom" ]]; then
+  if ! docker exec "${CONTAINER_NAME}" test -d /opt/keycloak/themes/devarom/login 2>/dev/null; then
+    docker exec "${CONTAINER_NAME}" mkdir -p /opt/keycloak/themes/devarom 2>/dev/null || true
+    docker cp "${SCRIPT_DIR}/themes/devarom/." "${CONTAINER_NAME}:/opt/keycloak/themes/devarom/" 2>/dev/null || true
+  fi
 fi
 
 # 3. Read admin credentials securely from local .env if present
@@ -52,21 +71,21 @@ fi
 KEYCLOAK_REALM="${KEYCLOAK_REALM:-swiftdrop}"
 
 # 4. Authenticate kcadm.sh and select theme on target realm
-echo -n "[2/3] Configuring loginTheme='devarom' on realm '${KEYCLOAK_REALM}'... "
+echo -n "[2/3] Configuring loginTheme='${THEME_NAME}' on realm '${KEYCLOAK_REALM}'... "
 docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh config credentials \
   --server http://localhost:8080 \
   --realm master \
   --user "${ADMIN_USER}" \
   --password "${ADMIN_PASS}" >/dev/null 2>&1
 
-docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh update "realms/${KEYCLOAK_REALM}" -s loginTheme=devarom >/dev/null
+docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh update "realms/${KEYCLOAK_REALM}" -s "loginTheme=${THEME_NAME}" >/dev/null
 echo "PASS"
 
 # 5. Verify configuration
 echo -n "[3/3] Verifying realm theme selection... "
 CURRENT_THEME=$(docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh get "realms/${KEYCLOAK_REALM}" | jq -r '.loginTheme')
-if [[ "${CURRENT_THEME}" != "devarom" ]]; then
-  echo "FAIL: Expected loginTheme 'devarom', found '${CURRENT_THEME}'."
+if [[ "${CURRENT_THEME}" != "${THEME_NAME}" ]]; then
+  echo "FAIL: Expected loginTheme '${THEME_NAME}', found '${CURRENT_THEME}'."
   exit 1
 fi
 echo "PASS (current loginTheme: ${CURRENT_THEME})"
