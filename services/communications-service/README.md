@@ -12,6 +12,6 @@ Own Communications DB and side-effect jobs, **not** parcel state. Merchant pair 
 
 ## First planned slice
 
-Future milestone: one idempotent event receipt + durable job, then signed delivery and retry tests.
+Future milestone: one idempotent event receipt + durable job, then signed delivery and retry tests. See formal architectural review in [`docs/reviews/NOV_11_COMMUNICATIONS_MERCHANT_REVIEW.md`](../../docs/reviews/NOV_11_COMMUNICATIONS_MERCHANT_REVIEW.md) (Issue #10).
 
 Read `AGENTS.md` at repository root, `docs/team/OWNERSHIP.md` where applicable, `docs/architecture/BASELINE.md` and `docs/contracts/README.md` before implementation.
