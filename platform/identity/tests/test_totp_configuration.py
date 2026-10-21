@@ -8,7 +8,7 @@ import unittest
 
 
 IDENTITY_DIR = Path(__file__).resolve().parents[1]
-REALM_FILE = IDENTITY_DIR / "realm-devarom.json"
+REALM_FILE = IDENTITY_DIR / "realm-swiftdrop.json" if (IDENTITY_DIR / "realm-swiftdrop.json").exists() else IDENTITY_DIR / "realm-devarom.json"
 PRIVILEGED_ROLES = {"MERCHANT", "COURIER", "DISPATCHER", "ADMIN"}
 
 EXPECTED_OTP_POLICY = {
@@ -71,7 +71,8 @@ class TotpConfigurationTests(unittest.TestCase):
         """Privileged staff roles must not be in default roles."""
         roles = {r["name"]: r for r in self.realm["roles"]["realm"]}
         self.assertTrue(PRIVILEGED_ROLES.issubset(set(roles)))
-        default_role = roles["default-roles-devarom"]
+        default_role_name = self.realm.get("defaultRole", {}).get("name", "default-roles-swiftdrop")
+        default_role = roles[default_role_name]
         composites = default_role.get("composites", {}).get("realm", [])
         for priv in PRIVILEGED_ROLES:
             self.assertNotIn(priv, composites, f"Privileged role {priv} found in default role composites")

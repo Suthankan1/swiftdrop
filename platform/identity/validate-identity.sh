@@ -7,8 +7,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REALM_FILE="${SCRIPT_DIR}/realm-devarom.json"
+REALM_FILE="${REALM_FILE:-${SCRIPT_DIR}/realm-swiftdrop.json}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8090}"
+KEYCLOAK_REALM="${KEYCLOAK_REALM:-swiftdrop}"
+KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-swiftdrop-frontend}"
 
 echo "=============================================================================="
 echo " SwiftDrop Platform — Identity Security Invariant Validation (Issue #2)"
@@ -25,8 +27,8 @@ echo "PASS"
 # 2. Realm Name Validation
 echo -n "[2/14] Checking realm identity... "
 REALM_NAME=$(jq -r '.realm' "${REALM_FILE}")
-if [[ "${REALM_NAME}" != "devarom" ]]; then
-  echo "FAIL: Expected realm 'devarom', found '${REALM_NAME}'."
+if [[ "${REALM_NAME}" != "swiftdrop" ]]; then
+  echo "FAIL: Expected realm 'swiftdrop', found '${REALM_NAME}'."
   exit 1
 fi
 echo "PASS (realm: ${REALM_NAME})"
@@ -42,7 +44,8 @@ for REQUIRED_ROLE in CUSTOMER MERCHANT COURIER DISPATCHER ADMIN; do
 done
 
 # Ensure privileged roles cannot be self-assigned via default roles
-DEFAULT_COMPOSITES=$(jq -r '.roles.realm[] | select(.name=="default-roles-devarom") | .composites.realm[]' "${REALM_FILE}")
+DEFAULT_ROLE_NAME="default-roles-${REALM_NAME}"
+DEFAULT_COMPOSITES=$(jq -r --arg r "${DEFAULT_ROLE_NAME}" '.roles.realm[] | select(.name==$r) | .composites.realm[]' "${REALM_FILE}")
 for PRIVILEGED_ROLE in MERCHANT COURIER DISPATCHER ADMIN; do
   if echo "${DEFAULT_COMPOSITES}" | grep -qx "${PRIVILEGED_ROLE}"; then
     echo "FAIL: Privileged role '${PRIVILEGED_ROLE}' must NOT be in default roles!"
@@ -57,7 +60,8 @@ echo "PASS (CUSTOMER safe default; MERCHANT/COURIER/DISPATCHER/ADMIN restricted)
 
 # 4. Public SPA Client & PKCE Enforcement
 echo -n "[4/14] Checking public client & PKCE security... "
-CLIENT=$(jq -r '.clients[] | select(.clientId=="devarom-frontend")' "${REALM_FILE}")
+EXPECTED_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-swiftdrop-frontend}"
+CLIENT=$(jq -r --arg c "${EXPECTED_CLIENT_ID}" '.clients[] | select(.clientId==$c)' "${REALM_FILE}")
 
 IS_PUBLIC=$(echo "${CLIENT}" | jq -r '.publicClient')
 STANDARD_FLOW=$(echo "${CLIENT}" | jq -r '.standardFlowEnabled')
@@ -66,7 +70,7 @@ DIRECT_GRANTS=$(echo "${CLIENT}" | jq -r '.directAccessGrantsEnabled')
 PKCE_METHOD=$(echo "${CLIENT}" | jq -r '.attributes["pkce.code.challenge.method"]')
 
 if [[ "${IS_PUBLIC}" != "true" ]]; then
-  echo "FAIL: devarom-frontend must be a public client."
+  echo "FAIL: ${EXPECTED_CLIENT_ID} must be a public client."
   exit 1
 fi
 if [[ "${STANDARD_FLOW}" != "true" ]]; then
@@ -112,14 +116,15 @@ echo "PASS (Strict redirect http://localhost:5173/auth/callback, origin http://l
 
 # 6. Audience & Role Claims Mapping
 echo -n "[6/14] Verifying backend claims mapping (audience & roles)... "
-AUDIENCE_MAPPER=$(echo "${CLIENT}" | jq -r '.protocolMappers[] | select(.name=="devarom-audience-mapper")')
+AUDIENCE_MAPPER=$(echo "${CLIENT}" | jq -r '.protocolMappers[] | select(.protocolMapper=="oidc-audience-mapper")')
 if [[ -z "${AUDIENCE_MAPPER}" ]]; then
-  echo "FAIL: Missing devarom-audience-mapper."
+  echo "FAIL: Missing audience mapper."
   exit 1
 fi
 CUSTOM_AUD=$(echo "${AUDIENCE_MAPPER}" | jq -r '.config["included.custom.audience"]')
-if [[ "${CUSTOM_AUD}" != "devarom-api" ]]; then
-  echo "FAIL: Custom audience must be 'devarom-api'."
+EXPECTED_AUDIENCE="${JWT_AUDIENCE:-swiftdrop-api}"
+if [[ "${CUSTOM_AUD}" != "${EXPECTED_AUDIENCE}" ]]; then
+  echo "FAIL: Custom audience must be '${EXPECTED_AUDIENCE}'."
   exit 1
 fi
 
@@ -133,7 +138,7 @@ if [[ "${CLAIM_NAME}" != "roles" ]]; then
   echo "FAIL: Roles claim name must be 'roles'."
   exit 1
 fi
-echo "PASS (aud: devarom-api, roles: realm roles claim)"
+echo "PASS (aud: ${EXPECTED_AUDIENCE}, roles: realm roles claim)"
 
 # 7. Secret Scanning on Realm Configuration
 echo -n "[7/14] Scanning realm file for sensitive secrets/passwords... "
@@ -226,20 +231,28 @@ echo " Static Invariant Checks: ALL 14 PASSED"
 echo "=============================================================================="
 
 # Optional Live Container Smoke Test
-if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configuration" >/dev/null 2>&1; then
+if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration" >/dev/null 2>&1; then
   echo ""
   echo "Live Keycloak instance detected at ${KEYCLOAK_URL}. Running runtime smoke tests..."
   
   # A. OIDC Discovery
-  OIDC_ISSUER=$(curl -s "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configuration" | jq -r '.issuer')
+  OIDC_ISSUER=$(curl -s "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration" | jq -r '.issuer')
   echo "  - OIDC Issuer: ${OIDC_ISSUER}"
-  if [[ "${OIDC_ISSUER}" != "${KEYCLOAK_URL}/realms/devarom" ]]; then
+  if [[ "${OIDC_ISSUER}" != "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}" ]]; then
     echo "    FAIL: Unexpected issuer URL."
+    exit 1
+  fi
+
+  # Negative check: legacy devarom realm must NOT exist or return OIDC discovery
+  LEGACY_OIDC_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configuration" || true)
+  echo "  - Negative Legacy Realm Test: /realms/devarom returned HTTP ${LEGACY_OIDC_STATUS} (expected 404)"
+  if [[ "${LEGACY_OIDC_STATUS}" != "404" ]]; then
+    echo "    FAIL: Legacy realm 'devarom' still active or did not return 404 (status: ${LEGACY_OIDC_STATUS})."
     exit 1
   fi
   
   # B. JWKS Verification
-  JWKS_KEYS=$(curl -s "${KEYCLOAK_URL}/realms/devarom/protocol/openid-connect/certs" | jq -r '.keys | length')
+  JWKS_KEYS=$(curl -s "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs" | jq -r '.keys | length')
   echo "  - JWKS Signing Keys Published: ${JWKS_KEYS} key(s)"
   if [[ "${JWKS_KEYS}" -lt 1 ]]; then
     echo "    FAIL: No keys published on JWKS certs endpoint."
@@ -247,8 +260,8 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
   fi
 
   # C. Negative Security: Direct Grant (ROPC) Rejection
-  ROPC_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${KEYCLOAK_URL}/realms/devarom/protocol/openid-connect/token" \
-    -d "grant_type=password&client_id=devarom-frontend&username=baduser&password=badpassword")
+  ROPC_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token" \
+    -d "grant_type=password&client_id=${KEYCLOAK_CLIENT_ID}&username=baduser&password=badpassword")
   echo "  - Negative ROPC Test: HTTP ${ROPC_STATUS} (expected 400/unauthorized_client)"
   if [[ "${ROPC_STATUS}" != "400" ]]; then
     echo "    FAIL: Direct grant was not rejected with HTTP 400."
@@ -256,7 +269,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
   fi
 
   # D. Negative Security: Unauthorized Redirect URI Rejection
-  REDIRECT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${KEYCLOAK_URL}/realms/devarom/protocol/openid-connect/auth?client_id=devarom-frontend&response_type=code&redirect_uri=http://attacker.com/evil&scope=openid")
+  REDIRECT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth?client_id=${KEYCLOAK_CLIENT_ID}&response_type=code&redirect_uri=http://attacker.com/evil&scope=openid")
   echo "  - Negative Redirect URI Test: HTTP ${REDIRECT_STATUS} (expected 400)"
   if [[ "${REDIRECT_STATUS}" != "400" ]]; then
     echo "    FAIL: Unauthorized redirect URI was not rejected with HTTP 400."
@@ -264,7 +277,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
   fi
 
   # E. Negative Security: Plain PKCE Challenge Rejection
-  PLAIN_PKCE_LOC=$(curl -s -i "${KEYCLOAK_URL}/realms/devarom/protocol/openid-connect/auth?client_id=devarom-frontend&response_type=code&redirect_uri=http://localhost:5173/auth/callback&scope=openid&code_challenge=test&code_challenge_method=plain" | grep -i "^location:" || true)
+  PLAIN_PKCE_LOC=$(curl -s -i "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth?client_id=${KEYCLOAK_CLIENT_ID}&response_type=code&redirect_uri=http://localhost:5173/auth/callback&scope=openid&code_challenge=test&code_challenge_method=plain" | grep -i "^location:" || true)
   if echo "${PLAIN_PKCE_LOC}" | grep -q "code+challenge+method+is+not+matching"; then
     echo "  - Negative Plain PKCE Test: Redirected with error 'code challenge method is not matching'"
   else
@@ -273,7 +286,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
   fi
 
   # F. Custom SwiftDrop Theme Runtime Rendering Check
-  LOGIN_HTML=$(curl -s -L "${KEYCLOAK_URL}/realms/devarom/protocol/openid-connect/auth?client_id=devarom-frontend&response_type=code&redirect_uri=http://localhost:5173/auth/callback&scope=openid&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256")
+  LOGIN_HTML=$(curl -s -L "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth?client_id=${KEYCLOAK_CLIENT_ID}&response_type=code&redirect_uri=http://localhost:5173/auth/callback&scope=openid&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256")
   if ! echo "${LOGIN_HTML}" | grep -q "css/devarom.css"; then
     echo "    FAIL: Login page did not include css/devarom.css."
     exit 1
@@ -297,7 +310,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
   echo "  - Branded SwiftDrop Theme Rendering: Verified (devarom.css loaded with HTTP 200, brand mark and title rendered)"
 
   # G. TOTP MFA Policy & CONFIGURE_TOTP Required Action Verification
-  if python3 "${SCRIPT_DIR}/configure-totp.py" check >/dev/null 2>&1; then
+  if KEYCLOAK_REALM="${KEYCLOAK_REALM}" KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID}" python3 "${SCRIPT_DIR}/configure-totp.py" check >/dev/null 2>&1; then
     echo "  - TOTP MFA Policy & Action: Verified (RFC 6238, 6 digits, 30s period, single-use, optional CUSTOMER)"
   else
     echo "    FAIL: Keycloak TOTP MFA policy differs from expected configuration."
@@ -306,7 +319,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configurat
 
   # H. Google OIDC Broker Delegation & Negative Security Validation
   echo "  - Google OIDC Broker Invariant & Redirect Verification:"
-  if python3 "${SCRIPT_DIR}/tests/google_broker_smoke.py" >/dev/null 2>&1; then
+  if KEYCLOAK_REALM="${KEYCLOAK_REALM}" KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID}" python3 "${SCRIPT_DIR}/tests/google_broker_smoke.py" >/dev/null 2>&1; then
     echo "    PASS (Broker delegation, contract parameters, Google probe & negative callback tests passed)"
   else
     echo "    FAIL: Google broker smoke test suite failed."

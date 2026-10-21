@@ -37,9 +37,11 @@ def validate_realm(realm):
     require("requiredActions" not in realm,
             "Fresh imports must retain all native required actions rather than replace them")
 
+    realm_name = realm.get("realm", "swiftdrop")
+    expected_from = f"no-reply@{realm_name}.test"
     smtp = realm.get("smtpServer", {})
     expected = {
-        "host": "mailpit", "port": "1025", "from": "no-reply@devarom.test",
+        "host": "mailpit", "port": "1025", "from": expected_from,
         "auth": "false", "ssl": "false", "starttls": "false",
     }
     require(all(smtp.get(key) == value for key, value in expected.items()),
@@ -49,9 +51,10 @@ def validate_realm(realm):
 
     roles = {role["name"]: role for role in realm["roles"]["realm"]}
     require(PRIVILEGED_ROLES <= set(roles), "All privileged application roles must remain declared")
-    require(realm.get("defaultRole", {}).get("name") == "default-roles-devarom",
+    default_role_name = f"default-roles-{realm_name}"
+    require(realm.get("defaultRole", {}).get("name") == default_role_name,
             "Registration must retain the existing default role")
-    pending = ["default-roles-devarom"]
+    pending = [default_role_name]
     visited = set()
     while pending:
         name = pending.pop()
@@ -65,7 +68,7 @@ def validate_realm(realm):
         require(not any(composites.get("client", {}).values()),
                 "Default roles must not grant client privileges")
         pending.extend(composites.get("realm", []))
-    require(visited == {"default-roles-devarom", "CUSTOMER", "offline_access", "uma_authorization"},
+    require(visited == {default_role_name, "CUSTOMER", "offline_access", "uma_authorization"},
             "Registration must retain only CUSTOMER and the existing Keycloak defaults")
 
 
@@ -103,7 +106,10 @@ def validate_compose(compose):
 class EmailConfigurationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.realm = json.loads((IDENTITY_DIR / "realm-devarom.json").read_text())
+        realm_file = IDENTITY_DIR / "realm-swiftdrop.json"
+        if not realm_file.exists():
+            realm_file = IDENTITY_DIR / "realm-devarom.json"
+        cls.realm = json.loads(realm_file.read_text())
         # Capture resolved configuration in memory only: it can contain ignored .env values.
         # Never include that configuration or Docker stderr in assertion output.
         result = subprocess.run(
@@ -162,7 +168,8 @@ class EmailConfigurationTests(unittest.TestCase):
             for privileged_role in sorted(PRIVILEGED_ROLES):
                 with self.subTest(via_customer=via_customer, role=privileged_role):
                     realm = copy.deepcopy(self.realm)
-                    role_name = "CUSTOMER" if via_customer else "default-roles-devarom"
+                    default_role = realm.get("defaultRole", {}).get("name", "default-roles-swiftdrop")
+                    role_name = "CUSTOMER" if via_customer else default_role
                     role = next(role for role in realm["roles"]["realm"] if role["name"] == role_name)
                     role["composite"] = True
                     role.setdefault("composites", {}).setdefault("realm", []).append(privileged_role)

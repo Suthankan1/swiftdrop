@@ -21,7 +21,7 @@ import urllib.request
 
 
 DIRECTORY = Path(__file__).resolve().parent
-REALM = os.environ.get("KEYCLOAK_REALM", "devarom")
+REALM = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
 REALM_PATH = f"/admin/realms/{REALM}"
 ACTION_PATH = REALM_PATH + "/authentication/required-actions/CONFIGURE_TOTP"
 SNAPSHOT_PATH = DIRECTORY / ".local" / "totp-recovery.json"

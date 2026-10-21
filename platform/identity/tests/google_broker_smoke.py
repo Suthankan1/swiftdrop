@@ -34,8 +34,8 @@ import urllib.request
 import os
 
 KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL", "http://localhost:8090").rstrip("/")
-REALM = os.environ.get("KEYCLOAK_REALM", "devarom")
-CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
+REALM = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
+CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "swiftdrop-frontend")
 FRONTEND_CALLBACK = "http://localhost:5173/auth/callback"
 EXPECTED_BROKER_REDIRECT = f"{KEYCLOAK_URL}/realms/{REALM}/broker/google/endpoint"
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"

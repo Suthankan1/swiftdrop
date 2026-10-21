@@ -168,8 +168,8 @@ class Session:
 class Smoke:
     def __init__(self, args):
         self.args = args
-        self.realm = os.environ.get("KEYCLOAK_REALM", "devarom")
-        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
+        self.realm = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
+        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "swiftdrop-frontend")
         self.realm_url = f"{args.keycloak_url}/realms/{self.realm}"
         self.admin_url = f"{args.keycloak_url}/admin/realms/{self.realm}"
         self.http = Session(args.keycloak_url)

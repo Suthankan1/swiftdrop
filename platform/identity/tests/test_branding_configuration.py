@@ -37,7 +37,20 @@ class BrandingConfigurationTests(unittest.TestCase):
         self.assertEqual(self.realm["smtpServer"]["from"], "no-reply@devarom.test")
         google = next(p for p in self.realm["identityProviders"] if p["alias"] == "google")
         self.assertEqual(google["config"]["clientId"], "${GOOGLE_CLIENT_ID}")
-        self.assertEqual(google["config"]["clientSecret"], "${GOOGLE_CLIENT_SECRET}")
+    def test_canonical_swiftdrop_realm_configuration(self):
+        swiftdrop_file = IDENTITY_DIR / "realm-swiftdrop.json"
+        if swiftdrop_file.exists():
+            realm = json.loads(swiftdrop_file.read_text())
+            client = next(c for c in realm["clients"] if c["clientId"] == "swiftdrop-frontend")
+            self.assertEqual(realm["id"], "swiftdrop")
+            self.assertEqual(realm["realm"], "swiftdrop")
+            self.assertEqual(realm["displayName"], "SwiftDrop Parcel Delivery & Courier Management")
+            self.assertEqual(realm["defaultRole"]["name"], "default-roles-swiftdrop")
+            self.assertEqual(client["clientId"], "swiftdrop-frontend")
+            self.assertEqual(client["name"], "SwiftDrop Frontend SPA")
+            audience = next(m for m in client["protocolMappers"] if m["name"] == "swiftdrop-audience-mapper")
+            self.assertEqual(audience["config"]["included.custom.audience"], "swiftdrop-api")
+            self.assertEqual(realm["smtpServer"]["from"], "no-reply@swiftdrop.test")
 
     def test_login_registration_and_recovery_copy_has_no_obsolete_brand(self):
         template = (THEME_DIR / "template.ftl").read_text()

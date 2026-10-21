@@ -31,5 +31,5 @@ services:
     ports:
       - "${KEYCLOAK_PORT:-8090}:8080"
     volumes:
-      - ./realm-devarom.json:/opt/keycloak/data/import/realm-devarom.json:ro
+      - ./realm-swiftdrop.json:/opt/keycloak/data/import/realm-swiftdrop.json:ro
       - ./themes:/opt/keycloak/themes:ro
