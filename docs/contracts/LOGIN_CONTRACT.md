@@ -22,7 +22,7 @@ All future Spring Initializr project generation and frontend scaffolding across 
 | **Java Group ID** | `com.devarom` | Standard package namespace (e.g., `com.devarom.accountsservice`, `com.devarom.apigateway`). |
 | **Frontend Framework** | **React + TypeScript + Vite** | Current Node.js LTS, `pnpm` package manager default; single SPA with role-based routing. |
 | **Persistence** | **PostgreSQL 16+** | Separate logical database per service; Flyway migrations owned by individual services. |
-| **Identity Provider** | **Keycloak 26.8.1** (pinned) | Standalone identity provider container with separate identity PostgreSQL database (`keycloak_db`). Sanitized realm defined in `platform/identity/realm-devarom.json`. |
+| **Identity Provider** | **Keycloak 26.8.1** (pinned) | Standalone identity provider container with separate identity PostgreSQL database (`keycloak_db`). Sanitized realm defined in `platform/identity/realm-swiftdrop.json` (canonical `swiftdrop` realm; migrated live instance preserves internal ID). |
 
 *Note on verification:* Spring Boot 4.1.1 and Spring Cloud 2025.1.3 (Oakwood) have been verified for mutual compatibility under Java 21 LTS. Core business services (`accounts-service`, `pricing-service`, `delivery-service`, `communications-service`, `graphql-query-service`) will use Spring Boot 4.1.1 starters directly and omit Spring Cloud BOMs unless edge gateway capabilities require them.
 
@@ -34,7 +34,9 @@ All future Spring Initializr project generation and frontend scaffolding across 
 - **Identity Provider (IdP):** Keycloak acts as the central OpenID Connect (OIDC) identity provider and authorization server for SwiftDrop.
 - **Federated Identity Broker:** Google Sign-In is integrated as an external Identity Provider (IdP Broker) inside Keycloak. The React SPA interacts **only** with Keycloak; it never directly manages Google OAuth2 tokens or secrets. A Google token is **not** a SwiftDrop API bearer token.
 - **Client Configuration:**
-  - Client ID: `devarom-frontend`
+  - Realm: `swiftdrop`
+  - Client ID: `swiftdrop-frontend`
+  - Audience: `swiftdrop-api`
   - Access Type: **Public client** (browser SPA).
   - Standard Flow: **Authorization Code Grant with PKCE** (Proof Key for Code Exchange) using code challenge method `S256`.
   - Client Authentication: **Disabled** (no client secret in browser code or runtime bundle; `VITE_*` environment variables are completely public).
@@ -187,8 +189,8 @@ To prevent port collisions between services and third-party containers during lo
 Non-sensitive configuration exposed to the Vite frontend (`VITE_*` keys are public by design):
 ```properties
 VITE_KEYCLOAK_URL=http://localhost:8090
-VITE_KEYCLOAK_REALM=devarom
-VITE_KEYCLOAK_CLIENT_ID=devarom-frontend
+VITE_KEYCLOAK_REALM=swiftdrop
+VITE_KEYCLOAK_CLIENT_ID=swiftdrop-frontend
 VITE_API_GATEWAY_URL=http://localhost:8080
 ```
 
@@ -198,7 +200,7 @@ VITE_API_GATEWAY_URL=http://localhost:8080
 
 ### 5.4 Platform vs. Customer Team Integration Responsibilities
 - **Platform Team (`Suthankan1`):**
-  - Exports sanitized Keycloak realm configuration (`platform/identity/realm-devarom-export.json`).
+  - Exports sanitized Keycloak realm configuration (`platform/identity/realm-swiftdrop.json`).
   - Implements Spring Cloud Gateway routing, JWT edge filter, and CORS headers permitting `http://localhost:5173`.
   - Provides reproducible local container startup documentation and verify Gateway-to-Accounts forwarding.
 - **Customer Team (`Gajanthan`, `Sinthuha`):**
