@@ -26,7 +26,7 @@ export function CustomerPage() {
   }
   return <div className="page-container customer-page">
     <header className="page-heading"><p className="eyebrow">Customer space</p><h1>A little space for<br />everything you send.</h1>
-      <p className="muted">Your Devarom account starts here, with your personal details kept private.</p></header>
+      <p className="muted">Your SwiftDrop account starts here, with your personal details kept private.</p></header>
     <div className="profile-grid"><CustomerProfile state={state} />
       <aside className="card customer-note" aria-labelledby="customer-note-heading"><h2 id="customer-note-heading">Built around you.</h2>
         <p>Booking and parcel tracking will arrive in a later release.</p><button onClick={() => { void auth.logout() }}>Sign out</button>

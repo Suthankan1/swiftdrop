@@ -55,9 +55,9 @@ public class SecurityConfig {
 
     @Bean
     public ReactiveJwtDecoder reactiveJwtDecoder(
-            @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}}") String jwkSetUri,
-            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:${devarom.jwt.issuer-uri:http://localhost:8090/realms/devarom}}") String issuerUri,
-            @Value("${devarom.jwt.audience:devarom-api}") String audience) {
+            @Value("${KEYCLOAK_JWKS_URI:${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:${swiftdrop.jwt.jwk-set-uri:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}}}}") String jwkSetUri,
+            @Value("${KEYCLOAK_ISSUER_URI:${spring.security.oauth2.resourceserver.jwt.issuer-uri:${swiftdrop.jwt.issuer-uri:${devarom.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}}}") String issuerUri,
+            @Value("${JWT_AUDIENCE:${swiftdrop.jwt.audience:${devarom.jwt.audience:swiftdrop-api}}}") String audience) {
         NimbusReactiveJwtDecoder jwtDecoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build();
         OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
         OAuth2TokenValidator<Jwt> audienceValidator = new AudienceValidator(audience);
@@ -67,7 +67,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${devarom.cors.allowed-origin:http://localhost:5173}") String allowedOrigin) {
+            @Value("${CORS_ALLOWED_ORIGIN:${swiftdrop.cors.allowed-origin:${devarom.cors.allowed-origin:http://localhost:5173}}}") String allowedOrigin) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(allowedOrigin));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

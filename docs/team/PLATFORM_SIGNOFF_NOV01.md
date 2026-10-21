@@ -1,4 +1,7 @@
-# Devarom Platform — November 1 Architecture & Security Sign-Off
+# SwiftDrop Platform — November 1 Architecture & Security Sign-Off
+
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
+
 ## Contribution for Issue #19 Final Submission Report
 
 **Date:** 2026-10-20
@@ -16,7 +19,7 @@
 
 ## 1. Executive Summary & Platform Sign-Off Verdict
 
-As Platform & Security Lead for Project **Devarom**, I hereby provide formal architectural sign-off and empirical security evidence for the **November 1 initial login checkpoint**.
+As Platform & Security Lead for Project **SwiftDrop**, I hereby provide formal architectural sign-off and empirical security evidence for the **November 1 initial login checkpoint**.
 
 ### Sign-Off Verdict: READY FOR REPORT INTEGRATION & INDEPENDENT PEER REVIEW
 1. **Core Login Slice Operational:** The initial login vertical slice (`React SPA -> Keycloak 26.8.1 -> Spring Cloud Gateway -> Accounts Service -> PostgreSQL`) is fully implemented, verified, and demonstrably reproducible.
@@ -98,7 +101,7 @@ The running codebase implements the minimal contracted vertical slice defined in
 
 #### E. Google Identity Broker Federation
 - **Broker Configuration:** Keycloak delegates Google authentication via OIDC broker (`alias: google`, `providerId: google`, `trustEmail: true`, `syncMode: IMPORT`).
-- **Token Decoupling:** The Google OAuth token is an external identity token used solely between Google and Keycloak. A Google token is **never** accepted as a Devarom API bearer token. Keycloak issues its own signed Devarom JWT with audience `devarom-api` and role `CUSTOMER`.
+- **Token Decoupling:** The Google OAuth token is an external identity token used solely between Google and Keycloak. A Google token is **never** accepted as a SwiftDrop API bearer token. Keycloak issues its own signed SwiftDrop JWT with audience `devarom-api` and role `CUSTOMER`.
 - **Zero External Token Storage:** Keycloak disables external token storage for the Google provider, preventing external provider tokens from persisting in identity storage.
 
 #### F. Customer Profile Ownership & Persistence
@@ -290,7 +293,7 @@ All contributions authored by Suthankan1 are backed by real, merged Pull Request
 To ensure maximum academic rigor and accuracy, the following guidelines should be used when writing the report:
 
 1. **Authentication Architecture Description:**
-   *"Devarom implements centralized identity and access management using Keycloak 26.8.1 as an OpenID Connect (OIDC) identity provider, integrated with a React Single-Page Application via Authorization Code Flow with Proof Key for Code Exchange (PKCE S256). To mitigate Cross-Site Scripting (XSS) token exfiltration risks, access tokens are held strictly in JavaScript runtime memory and are never persisted to web storage. Dual-layer defense-in-depth is enforced: the API Gateway performs edge signature and audience filtering with identity header sanitization, while downstream services operate as independent OAuth2 Resource Servers that re-verify Keycloak JSON Web Key Sets (JWKS) and resolve identity exclusively from verified security principals."*
+   *"SwiftDrop implements centralized identity and access management using Keycloak 26.8.1 as an OpenID Connect (OIDC) identity provider, integrated with a React Single-Page Application via Authorization Code Flow with Proof Key for Code Exchange (PKCE S256). To mitigate Cross-Site Scripting (XSS) token exfiltration risks, access tokens are held strictly in JavaScript runtime memory and are never persisted to web storage. Dual-layer defense-in-depth is enforced: the API Gateway performs edge signature and audience filtering with identity header sanitization, while downstream services operate as independent OAuth2 Resource Servers that re-verify Keycloak JSON Web Key Sets (JWKS) and resolve identity exclusively from verified security principals."*
 2. **Clarifying Deployed Code vs. Target Architecture:**
    *"While the comprehensive logical architecture (Figure 06) defines four business services, an internal gRPC communication fabric, an asynchronous Kafka event mesh with transactional outbox, and a read-only GraphQL Query API, the November 1 implementation deliverable adheres strictly to the contracted initial login vertical slice. The running system demonstrates end-to-end authentication, edge routing, independent resource server token verification, PostgreSQL profile persistence, native email verification, and authenticator multi-factor authentication across the React SPA, Spring Cloud Gateway, Keycloak, and Accounts Service."*
 3. **Transparent Reporting of Security Test Results:**

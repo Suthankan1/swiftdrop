@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Devarom Platform — Full-Stack Login Demonstration Smoke Suite (Nov 1 Milestone)
+SwiftDrop Platform — Full-Stack Login Demonstration Smoke Suite (Nov 1 Milestone)
 Demonstrates the three core customer authentication flows and security controls:
   Scenario A: New Customer Registration & Native Email Verification via Mailpit
   Scenario B: Existing Verified Customer Login & Profile Access
@@ -73,7 +73,9 @@ class DemoSmokeRunner:
         frontend_url: str = "http://localhost:5173",
     ):
         self.keycloak_url = keycloak_url.rstrip("/")
-        self.realm_url = f"{self.keycloak_url}/realms/devarom"
+        self.realm = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
+        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "swiftdrop-frontend")
+        self.realm_url = f"{self.keycloak_url}/realms/{self.realm}"
         self.gateway_url = gateway_url.rstrip("/")
         self.accounts_url = accounts_url.rstrip("/")
         self.mailpit_url = mailpit_url.rstrip("/")
@@ -94,7 +96,7 @@ class DemoSmokeRunner:
 
     def run_all(self) -> bool:
         print("==============================================================================")
-        print(" DEVAROM NOV 1 LOGIN DEMO SMOKE TEST SUITE")
+        print(" SWIFTDROP NOV 1 LOGIN DEMO SMOKE TEST SUITE")
         print(" Execution Mode : Synthetic Disposable Flow (Safe - Zero Secrets Logged)")
         print(f" Timestamp      : {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}")
         print("==============================================================================")
@@ -140,7 +142,7 @@ class DemoSmokeRunner:
         self.log_scenario("SCENARIO A: New Customer Self-Registration & Email Verification")
         try:
             username = f"dv-demo-new-{secrets.token_hex(4)}"
-            email = f"{username}@devarom.test"
+            email = f"{username}@swiftdrop.test"
             password = generate_secure_password()
             verifier = secrets.token_urlsafe(48)
             challenge = b64url(hashlib.sha256(verifier.encode("ascii")).digest())
@@ -151,7 +153,7 @@ class DemoSmokeRunner:
             auth_url = (
                 f"{self.realm_url}/protocol/openid-connect/registrations?"
                 + urllib.parse.urlencode({
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "response_type": "code",
                     "scope": "openid email profile",
                     "redirect_uri": REDIRECT_URI,
@@ -195,7 +197,7 @@ class DemoSmokeRunner:
                 parser.feed(verify_page.body)
                 # Check for action-token links
                 import re
-                confirm_links = re.findall(r'href=["\'](http://localhost:8090/realms/devarom/login-actions/action-token[^"\']+)["\']', verify_page.body)
+                confirm_links = re.findall(rf'href=["\']({self.keycloak_url}/realms/{self.realm}/login-actions/action-token[^"\']+)["\']', verify_page.body)
                 if confirm_links:
                     verify_page = reg_session.get(confirm_links[0])
 
@@ -237,7 +239,7 @@ class DemoSmokeRunner:
             # Step 6: Token exchange
             token_payload = urllib.parse.urlencode({
                 "grant_type": "authorization_code",
-                "client_id": "devarom-frontend",
+                "client_id": self.client_id,
                 "code": code,
                 "redirect_uri": REDIRECT_URI,
                 "code_verifier": verifier,
@@ -293,7 +295,7 @@ class DemoSmokeRunner:
         try:
             # Create a verified synthetic user directly via Admin API
             username = f"dv-demo-exist-{secrets.token_hex(4)}"
-            email = f"{username}@devarom.test"
+            email = f"{username}@swiftdrop.test"
             password = generate_secure_password()
 
             user_payload = {
@@ -358,7 +360,7 @@ class DemoSmokeRunner:
         try:
             # Create user and enroll in TOTP directly via Keycloak
             username = f"dv-demo-totp-{secrets.token_hex(4)}"
-            email = f"{username}@devarom.test"
+            email = f"{username}@swiftdrop.test"
             password = generate_secure_password()
 
             user_payload = {
@@ -385,7 +387,7 @@ class DemoSmokeRunner:
             b32_secret = base64.b32encode(raw_secret).decode("ascii").rstrip("=")
             otp_credential = {
                 "type": "otp",
-                "userLabel": "Devarom Demo Authenticator",
+                "userLabel": "SwiftDrop Demo Authenticator",
                 "value": json.dumps({"secret": b32_secret, "algorithm": "HmacSHA1", "digits": 6, "period": 30}),
             }
             # Keycloak 26 Admin API allows adding credentials or simulating enrollment
@@ -404,7 +406,7 @@ class DemoSmokeRunner:
             auth_url = (
                 f"{self.realm_url}/protocol/openid-connect/auth?"
                 + urllib.parse.urlencode({
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "response_type": "code",
                     "scope": "openid email profile",
                     "redirect_uri": REDIRECT_URI,
@@ -428,7 +430,7 @@ class DemoSmokeRunner:
                 # Exchange token
                 token_payload = urllib.parse.urlencode({
                     "grant_type": "authorization_code",
-                    "client_id": "devarom-frontend",
+                    "client_id": self.client_id,
                     "code": code,
                     "redirect_uri": REDIRECT_URI,
                     "code_verifier": verifier,

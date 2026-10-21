@@ -31,9 +31,11 @@ import urllib.parse
 import urllib.request
 
 
-KEYCLOAK_URL = "http://localhost:8090"
-REALM = "devarom"
-CLIENT_ID = "devarom-frontend"
+import os
+
+KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL", "http://localhost:8090").rstrip("/")
+REALM = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
+CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "swiftdrop-frontend")
 FRONTEND_CALLBACK = "http://localhost:5173/auth/callback"
 EXPECTED_BROKER_REDIRECT = f"{KEYCLOAK_URL}/realms/{REALM}/broker/google/endpoint"
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -243,7 +245,7 @@ def run_google_broker_smoke(probe_google=True):
     print("=" * 78)
     print("  Keycloak Version     : Keycloak 26.8.1 (Quarkus)")
     print("  Broker Provider      : google (enabled)")
-    print("  Redirect URI Binding : http://localhost:8090/realms/devarom/broker/google/endpoint")
+    print(f"  Redirect URI Binding : {EXPECTED_BROKER_REDIRECT}")
     print("  Google Cloud Auth    : Accepted Client ID & Redirect URI (HTTP 302)")
     print("  Negative Controls    : Google URI mismatch passed; Keycloak state reject passed (400)")
     print("  Role Confinement     : Strictly CUSTOMER (zero staff role elevation)")

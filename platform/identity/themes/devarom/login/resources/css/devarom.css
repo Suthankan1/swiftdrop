@@ -1,5 +1,5 @@
 /* ==============================================================================
-   Devarom Platform — Keycloak Login & Registration Theme Stylesheet
+   SwiftDrop Platform — Keycloak Login & Registration Theme Stylesheet
    Design Language: React SPA Design Tokens (frontend/src/styles/global.css)
    Target Runtime: Keycloak 26.8.1 (PatternFly v5 base, Quarkus runtime)
    Accessibility: WCAG 2.1 AA Compliant (Contrast, Focus Indicators, Semantics)
@@ -1006,7 +1006,7 @@ span.pf-m-error {
     font-size: 18px !important;
   }
 }
-/* Native verification/info/error pages reuse the shared Devarom card. */
+/* Native verification/info/error pages reuse the shared SwiftDrop card. */
 .instruction,
 #kc-info-message,
 .devarom-alert-text {

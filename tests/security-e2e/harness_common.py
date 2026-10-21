@@ -1,5 +1,5 @@
 """
-Devarom Platform — Security E2E Test Harness Common Infrastructure (Task 018)
+SwiftDrop Platform — Security E2E Test Harness Common Infrastructure (Task 018)
 Shared utilities for authentic Keycloak OIDC PKCE flows, synthetic JWT generation,
 Keycloak admin management, and standardized security test matrix reporting.
 """
@@ -172,8 +172,8 @@ class SyntheticJwtBuilder:
 
     def build_jwt(
         self,
-        issuer: Optional[str] = "http://localhost:8090/realms/devarom",
-        audience: Optional[str] = "devarom-api",
+        issuer: Optional[str] = None,
+        audience: Optional[str] = None,
         subject: Optional[str] = "synthetic-sub",
         roles: Optional[List[str]] = None,
         issued_at: Optional[int] = None,
@@ -185,11 +185,13 @@ class SyntheticJwtBuilder:
         kid: str = "untrusted-test-key",
     ) -> str:
         now = int(time.time())
+        resolved_issuer = issuer if issuer is not None else os.getenv("KEYCLOAK_ISSUER_URI", "http://localhost:8090/realms/swiftdrop")
+        resolved_audience = audience if audience is not None else os.getenv("JWT_AUDIENCE", "swiftdrop-api")
         claims: Dict[str, Any] = {}
-        if issuer is not None:
-            claims["iss"] = issuer
-        if audience is not None:
-            claims["aud"] = audience
+        if resolved_issuer:
+            claims["iss"] = resolved_issuer
+        if resolved_audience:
+            claims["aud"] = resolved_audience
         if subject is not None:
             claims["sub"] = subject
         claims["iat"] = issued_at if issued_at is not None else (now - 60)
@@ -219,9 +221,10 @@ class SyntheticJwtBuilder:
 class KeycloakAdminClient:
     """Keycloak Admin REST API client for synthetic identity provisioning and verification."""
 
-    def __init__(self, keycloak_url: str = "http://localhost:8090"):
+    def __init__(self, keycloak_url: str = "http://localhost:8090", realm: Optional[str] = None):
         self.keycloak_url = keycloak_url.rstrip("/")
-        self.realm_admin_url = f"{self.keycloak_url}/admin/realms/devarom"
+        self.realm = realm or os.getenv("KEYCLOAK_REALM", "swiftdrop")
+        self.realm_admin_url = f"{self.keycloak_url}/admin/realms/{self.realm}"
         self.http = Session(self.keycloak_url)
         self.admin_token: Optional[str] = None
         self.disposable_users: List[Dict[str, Any]] = []
@@ -283,7 +286,7 @@ class KeycloakAdminClient:
         last_name: str = "TestUser",
     ) -> Dict[str, Any]:
         username = f"{username_prefix}-{secrets.token_hex(4)}"
-        email = f"{username}@devarom.test"
+        email = f"{username}@swiftdrop.test"
         password = generate_secure_password()
         payload = {
             "username": username,
@@ -334,9 +337,16 @@ class KeycloakAdminClient:
 class OidcPkceClient:
     """Performs authentic interactive Authorization Code + S256 PKCE authentication."""
 
-    def __init__(self, keycloak_url: str = "http://localhost:8090"):
-        self.keycloak_url = keycloak_url.rstrip("/")
-        self.realm_url = f"{self.keycloak_url}/realms/devarom"
+    def __init__(
+        self,
+        keycloak_url: Optional[str] = None,
+        realm: Optional[str] = None,
+        client_id: Optional[str] = None,
+    ):
+        self.keycloak_url = (keycloak_url or os.environ.get("KEYCLOAK_URL") or "http://localhost:8090").rstrip("/")
+        self.realm = realm or os.environ.get("KEYCLOAK_REALM") or "swiftdrop"
+        self.client_id = client_id or os.environ.get("KEYCLOAK_CLIENT_ID") or "swiftdrop-frontend"
+        self.realm_url = f"{self.keycloak_url}/realms/{self.realm}"
 
     def login(self, username: str, password: str) -> Dict[str, Any]:
         session = Session(self.keycloak_url)
@@ -349,7 +359,7 @@ class OidcPkceClient:
         auth_url = (
             f"{self.realm_url}/protocol/openid-connect/auth?"
             + urllib.parse.urlencode({
-                "client_id": "devarom-frontend",
+                "client_id": self.client_id,
                 "response_type": "code",
                 "scope": "openid email profile",
                 "redirect_uri": REDIRECT_URI,
@@ -376,7 +386,7 @@ class OidcPkceClient:
         code = params["code"][0]
         token_payload = urllib.parse.urlencode({
             "grant_type": "authorization_code",
-            "client_id": "devarom-frontend",
+            "client_id": self.client_id,
             "code": code,
             "redirect_uri": REDIRECT_URI,
             "code_verifier": verifier,
@@ -426,7 +436,7 @@ class SecurityTestReport:
         total = len(self.results)
 
         print("\n" + "=" * 95)
-        print(" DEVAROM SECURITY E2E TEST EXECUTION MATRIX")
+        print(" SWIFTDROP SECURITY E2E TEST EXECUTION MATRIX")
         print("=" * 95)
         print(f"{'ID':<6} {'Category':<8} {'Service':<10} {'Exp':<5} {'Act':<5} {'Status':<8} {'Test Description'}")
         print("-" * 95)

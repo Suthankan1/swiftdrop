@@ -1,6 +1,6 @@
 # Suggested November 1 report outline (submit file outside this Git repo)
 
-1. **Title/summary** — Devarom, nine-member team and approval pending; milestone and source citation.
+1. **Title/summary** — SwiftDrop, nine-member team and approval pending; milestone and source citation.
 2. **Requirements & actors** — assignment scope; use cases figures 01–04.
 3. **Context/architecture** — figures 05–06; four owned services, gateway, GraphQL Query API; justify REST vs GraphQL vs internal gRPC vs Kafka events vs SSE; document service DB ownership.
 4. **Workflows** — figures 07–09 and sequence figures 10–13. Google login through Keycloak; failure paths and security checks.

@@ -38,7 +38,7 @@
             <meta name="${meta?split('==')[0]}" content="${meta?split('==')[1]}"/>
         </#list>
     </#if>
-    <title><#if pageId?? && pageId == "register">Create Account &bull; Devarom<#elseif pageId?? && pageId == "login">Sign In &bull; Devarom<#elseif pageId?? && pageId == "error">Authentication Error &bull; Devarom<#elseif pageId?? && pageId == "login-reset-password">Reset Password &bull; Devarom<#elseif pageId?? && pageId == "login-config-totp">Set Up Two-Factor Authentication &bull; Devarom<#elseif pageId?? && pageId == "login-otp">Two-Factor Authentication &bull; Devarom<#else>${title!}</#if></title>
+    <title><#if pageId?? && pageId == "register">Create Account &bull; SwiftDrop<#elseif pageId?? && pageId == "login">Sign In &bull; SwiftDrop<#elseif pageId?? && pageId == "error">Authentication Error &bull; SwiftDrop<#elseif pageId?? && pageId == "login-reset-password">Reset Password &bull; SwiftDrop<#elseif pageId?? && pageId == "login-config-totp">Set Up Two-Factor Authentication &bull; SwiftDrop<#elseif pageId?? && pageId == "login-otp">Two-Factor Authentication &bull; SwiftDrop<#else>SwiftDrop</#if></title>
     <#if themeResources?? && themeResources.favicons?has_content>
         <@themeResourceTags.renderFavicons themeResources.favicons url.resourcesPath />
     <#else>
@@ -155,13 +155,13 @@
   <div class="${properties.kcLoginContainer!} devarom-login-container">
     <header id="kc-header" class="pf-v5-c-login__header devarom-login-header">
       <div id="kc-header-wrapper" class="devarom-brand-wrapper">
-        <a href="http://localhost:5173/" class="devarom-brand-link" aria-label="Devarom Home">
+        <a href="http://localhost:5173/" class="devarom-brand-link" aria-label="SwiftDrop Home">
           <span class="devarom-brand-mark" aria-hidden="true">
             <span></span>
             <span></span>
             <span></span>
           </span>
-          <span class="devarom-brand-title">Devarom<span class="devarom-brand-period">.</span></span>
+          <span class="devarom-brand-title">SwiftDrop<span class="devarom-brand-period">.</span></span>
         </a>
       </div>
     </header>
@@ -298,7 +298,7 @@
 
     <footer class="devarom-page-bottom-footer" role="contentinfo">
       <div class="devarom-page-bottom-inner">
-        <span>&copy; 2026 Devarom Platform</span>
+        <span>&copy; 2026 SwiftDrop Platform</span>
       </div>
     </footer>
   </div>

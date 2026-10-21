@@ -3,7 +3,7 @@ import Keycloak from 'keycloak-js'
 import { webcrypto } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthSession } from './session'
-const config = { url: 'http://localhost:8090', realm: 'devarom', clientId: 'devarom-frontend' }
+const config = { url: 'http://localhost:8090', realm: 'swiftdrop', clientId: 'swiftdrop-frontend' }
 const origin = 'http://localhost:3000'
 function jwt(claims: object) {
   return `${btoa('{}')}.${btoa(JSON.stringify(claims))}.test-only-signature`

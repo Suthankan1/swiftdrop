@@ -8,10 +8,10 @@ import unittest
 
 
 IDENTITY_DIR = Path(__file__).resolve().parents[1]
-REALM_FILE = IDENTITY_DIR / "realm-devarom.json"
+REALM_FILE = IDENTITY_DIR / "realm-swiftdrop.json" if (IDENTITY_DIR / "realm-swiftdrop.json").exists() else IDENTITY_DIR / "realm-devarom.json"
 ENV_EXAMPLE = IDENTITY_DIR / ".env.example"
 PRIVILEGED_ROLES = {"MERCHANT", "COURIER", "DISPATCHER", "ADMIN"}
-EXPECTED_BROKER_REDIRECT = "http://localhost:8090/realms/devarom/broker/google/endpoint"
+EXPECTED_BROKER_REDIRECT = "http://localhost:8090/realms/swiftdrop/broker/google/endpoint"
 
 
 def require(condition, message):
@@ -55,16 +55,18 @@ def validate_google_broker(realm):
     require(cfg.get("useJwksUrl") == "true", "useJwksUrl must be 'true'")
 
     # Role privilege confinement: Google broker users must only receive CUSTOMER
+    realm_name = realm.get("realm", "swiftdrop")
+    default_role_name = f"default-roles-{realm_name}"
     default_role = realm.get("defaultRole", {})
     require(
-        default_role.get("name") == "default-roles-devarom",
-        "Default role must remain 'default-roles-devarom'",
+        default_role.get("name") == default_role_name,
+        f"Default role must remain '{default_role_name}'",
     )
     composites = set(
         next(
             (r.get("composites", {}).get("realm", [])
              for r in realm.get("roles", {}).get("realm", [])
-             if r.get("name") == "default-roles-devarom"),
+             if r.get("name") == default_role_name),
             [],
         )
     )
@@ -117,8 +119,9 @@ class GoogleBrokerConfigurationTests(unittest.TestCase):
     def test_privileged_role_elevation_is_rejected(self):
         """Verify granting staff roles on default-roles-devarom fails invariant check."""
         tampered = json.loads(json.dumps(self.realm))
+        default_role_name = self.realm.get("defaultRole", {}).get("name", "default-roles-swiftdrop")
         for r in tampered.get("roles", {}).get("realm", []):
-            if r.get("name") == "default-roles-devarom":
+            if r.get("name") == default_role_name:
                 r.setdefault("composites", {}).setdefault("realm", []).append("ADMIN")
         with self.assertRaises(ValueError):
             validate_google_broker(tampered)

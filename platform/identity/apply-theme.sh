@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Devarom Platform — Keycloak Theme Installer & Realm Theme Selector (Issue #44)
+# SwiftDrop Platform — Keycloak Theme Installer & Realm Theme Selector (Issue #44)
 # Safely, idempotently applies and selects the 'devarom' theme on the running realm.
 # Never resets user data, wipes volumes, or exposes passwords.
 # ==============================================================================
@@ -12,7 +12,7 @@ ENV_FILE="${SCRIPT_DIR}/.env"
 CONTAINER_NAME="devarom-keycloak"
 
 echo "=============================================================================="
-echo " Devarom Platform — Apply Branded Keycloak Theme (Issue #44)"
+echo " SwiftDrop Platform — Apply Branded Keycloak Theme (Issue #44)"
 echo "=============================================================================="
 
 # 1. Check container presence
@@ -49,20 +49,22 @@ if [[ -z "${ADMIN_PASS}" ]]; then
   exit 1
 fi
 
-# 4. Authenticate kcadm.sh and select theme on devarom realm
-echo -n "[2/3] Configuring loginTheme='devarom' on realm 'devarom'... "
+KEYCLOAK_REALM="${KEYCLOAK_REALM:-swiftdrop}"
+
+# 4. Authenticate kcadm.sh and select theme on target realm
+echo -n "[2/3] Configuring loginTheme='devarom' on realm '${KEYCLOAK_REALM}'... "
 docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh config credentials \
   --server http://localhost:8080 \
   --realm master \
   --user "${ADMIN_USER}" \
   --password "${ADMIN_PASS}" >/dev/null 2>&1
 
-docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh update realms/devarom -s loginTheme=devarom >/dev/null
+docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh update "realms/${KEYCLOAK_REALM}" -s loginTheme=devarom >/dev/null
 echo "PASS"
 
 # 5. Verify configuration
 echo -n "[3/3] Verifying realm theme selection... "
-CURRENT_THEME=$(docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh get realms/devarom | jq -r '.loginTheme')
+CURRENT_THEME=$(docker exec "${CONTAINER_NAME}" /opt/keycloak/bin/kcadm.sh get "realms/${KEYCLOAK_REALM}" | jq -r '.loginTheme')
 if [[ "${CURRENT_THEME}" != "devarom" ]]; then
   echo "FAIL: Expected loginTheme 'devarom', found '${CURRENT_THEME}'."
   exit 1
@@ -70,5 +72,5 @@ fi
 echo "PASS (current loginTheme: ${CURRENT_THEME})"
 
 echo "=============================================================================="
-echo " Devarom Keycloak Theme Applied Successfully!"
+echo " SwiftDrop Keycloak Theme Applied Successfully!"
 echo "=============================================================================="

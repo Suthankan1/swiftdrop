@@ -1,14 +1,16 @@
-# Email OTP Threat Model & Security Specification — Devarom
+# Email OTP Threat Model & Security Specification — SwiftDrop
 
-**Module:** Security & Architecture · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #47 (Phase C)](https://github.com/Suthankan1/devarom/issues/47) · **Architecture Baseline:** Devarom v1.3
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
+
+**Module:** Security & Architecture · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #47 (Phase C)](https://github.com/Suthankan1/devarom/issues/47) · **Architecture Baseline:** SwiftDrop v1.3
 
 ---
 
 ## 1. Scope & Objective
 
-This threat model analyzes the attack surface, abuse vectors, and operational failure modes of implementing **typed Email One-Time Password (OTP) codes** in the Devarom identity architecture. It establishes mandatory security controls and technical invariants that **must** be enforced if any code-based email authentication or verification mechanism is ever authorized for implementation.
+This threat model analyzes the attack surface, abuse vectors, and operational failure modes of implementing **typed Email One-Time Password (OTP) codes** in the SwiftDrop identity architecture. It establishes mandatory security controls and technical invariants that **must** be enforced if any code-based email authentication or verification mechanism is ever authorized for implementation.
 
-This specification adheres to [NIST SP 800-63B (Section 5.1.3.3)](https://pages.nist.gov/800-63-3/sp800-63b.html), the [OWASP Multi-Factor Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html), and Devarom's [Authentication Security Rules](AUTHENTICATION.md).
+This specification adheres to [NIST SP 800-63B (Section 5.1.3.3)](https://pages.nist.gov/800-63-3/sp800-63b.html), the [OWASP Multi-Factor Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html), and SwiftDrop's [Authentication Security Rules](AUTHENTICATION.md).
 
 ---
 
@@ -59,7 +61,7 @@ We identify and model 18 realistic threat scenarios specific to email-delivered 
 - **Mitigation Requirement:** Enforce TLS on all outbound SMTP connections; use minimal, generic subject lines and body copy that omit sensitive account or role identifiers.
 
 #### T-04: Adversary-in-the-Middle (AiTM) Phishing & Real-Time Relaying
-- **Attack:** Attackers deploy transparent reverse proxies (e.g., Evilginx) mimicking Devarom's Keycloak login domain. When the victim enters their password and the subsequent email OTP, the proxy forwards both credentials to the real Keycloak server in real time, capturing the emitted session cookie and OIDC tokens.
+- **Attack:** Attackers deploy transparent reverse proxies (e.g., Evilginx) mimicking SwiftDrop's Keycloak login domain. When the victim enters their password and the subsequent email OTP, the proxy forwards both credentials to the real Keycloak server in real time, capturing the emitted session cookie and OIDC tokens.
 - **Severity:** Critical.
 - **Architectural Note:** Email OTP is **NOT phishing-resistant**. Unlike FIDO2 / WebAuthn, email codes lack cryptographic origin binding. App-based TOTP is equally susceptible to AiTM, but WebAuthn is the only standard that eliminates this vector.
 
@@ -81,12 +83,12 @@ We identify and model 18 realistic threat scenarios specific to email-delivered 
 - **Mitigation Requirement:** Advise users against shared mailboxes; restrict sensitive roles (ADMIN, DISPATCHER) from using disposable or forwarded domains.
 
 #### T-08: Account Enumeration & Timing Oracles
-- **Attack:** An attacker submits arbitrary email addresses to the OTP dispatch endpoint. If Keycloak responds faster when an email does not exist, or returns different error messages ("User not found" vs "Code sent"), the attacker compiles a list of registered Devarom accounts.
+- **Attack:** An attacker submits arbitrary email addresses to the OTP dispatch endpoint. If Keycloak responds faster when an email does not exist, or returns different error messages ("User not found" vs "Code sent"), the attacker compiles a list of registered SwiftDrop accounts.
 - **Severity:** High.
 - **Mitigation Requirement:** Constant-time execution; uniform generic responses ("If an account exists with this email, a code has been sent") regardless of user existence.
 
 #### T-09: Resend Flooding & Mailbox Bombing
-- **Attack:** Attackers script repeated OTP dispatch requests targeting a victim's email address to flood their inbox (email bombing) or exhaust Devarom's transactional SMTP sending quota, leading to financial loss or provider suspension.
+- **Attack:** Attackers script repeated OTP dispatch requests targeting a victim's email address to flood their inbox (email bombing) or exhaust SwiftDrop's transactional SMTP sending quota, leading to financial loss or provider suspension.
 - **Severity:** High.
 - **Mitigation Requirement:** Mandatory 60-second resend cooldown per user; global IP-based rate limiting (maximum 5 requests per minute per IP address).
 
@@ -126,7 +128,7 @@ We identify and model 18 realistic threat scenarios specific to email-delivered 
 - **Mitigation Requirement:** Users enrolled in TOTP must **not** be allowed to unilaterally downgrade to Email OTP without administrative intervention.
 
 #### T-17: SMTP Provider Outage (Authentication Denial of Service)
-- **Attack / Failure:** A distributed denial-of-service (DDoS) attack against the external SMTP provider, or a provider configuration outage, prevents OTP emails from reaching users. If email OTP is required for login, all users are completely locked out of Devarom.
+- **Attack / Failure:** A distributed denial-of-service (DDoS) attack against the external SMTP provider, or a provider configuration outage, prevents OTP emails from reaching users. If email OTP is required for login, all users are completely locked out of SwiftDrop.
 - **Severity:** Critical.
 - **Mitigation Requirement:** Primary MFA must rely on offline, network-independent mechanisms (RFC 6238 TOTP).
 
@@ -173,9 +175,9 @@ If an Email OTP implementation is ever authorized by the team, the following tec
 
 ---
 
-## 4. Preservation of Devarom Security Boundaries
+## 4. Preservation of SwiftDrop Security Boundaries
 
-Any implementation must strictly preserve Devarom's established architecture:
+Any implementation must strictly preserve SwiftDrop's established architecture:
 
 ```text
                                 [ React SPA ]

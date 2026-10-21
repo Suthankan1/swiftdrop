@@ -1,5 +1,5 @@
 """
-Devarom Platform — Security E2E Test Suite: L07 Role & L08 Ownership Isolation (Task 018)
+SwiftDrop Platform — Security E2E Test Suite: L07 Role & L08 Ownership Isolation (Task 018)
 Proves that unauthorized roles cannot access protected operations (L07), and that distinct
 customers are strictly isolated so Customer A cannot access Customer B's data (L08).
 Accurately records blocked dependencies for endpoints that are not yet implemented.

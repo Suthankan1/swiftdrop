@@ -1,19 +1,67 @@
 # Current project status — update only with evidence
 
-Last documentation update: **2026-10-20**. This file describes the **starter artifact**, not unknown external repositories.
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
+
+Last documentation update: **2026-10-21**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
-| Devarom v1.3 design | **Proposed baseline** | `docs/architecture/BASELINE.md` and 20 supplied editable diagrams |
+| SwiftDrop v1.3 design | **Proposed baseline** | `docs/architecture/BASELINE.md` and 20 supplied editable diagrams |
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
-| Spring Boot services | **API Gateway verified (Refs #3); Accounts profile & Keycloak JWT security implemented (Refs #5, #37), review pending** | `services/api-gateway/`: 13 tests passed; Accounts `services/accounts-service/`: 37 unit/MVC + 16 PostgreSQL integration tests passed (53 total); OAuth2 Resource Server independently validates Keycloak JWTs, roles, and profile persistence |
-| React application | **Single SPA merged (PR #41); OIDC & branded Keycloak login flow verified (PR #42, Refs #44)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated |
-| Keycloak/Google login | **Real Google login L03 PASS (2026-10-20); independent peer review pending**. Identity foundation, branded theme, native email verification and TOTP MFA previously verified; Email OTP remains an ADR-0009 Phase C decision | User completed Google authentication; agent observed real Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles, and verified logout UI plus zero Keycloak sessions. See current L03 evidence below; earlier automated broker results remain historical. |
+| Spring Boot services | **API Gateway & Accounts canonical defaults aligned to SwiftDrop; independent JWT security verified** | `services/api-gateway/`: 19 tests passed; Accounts `services/accounts-service/`: 44 unit/MVC/integration tests passed (63 total); OAuth2 Resource Server independently validates SwiftDrop JWTs (`swiftdrop-api` audience), roles, and profile persistence |
+| React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 70 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm |
+| Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup & full-stack readiness verified (PR #53, Refs #17, #19)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py`; Kubernetes/AI remain bonuses |
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
+
+## SwiftDrop Phase 2 Identity Migration Finalization — 2026-10-21
+
+Owner **Suthankan1**; branch `fix/swiftdrop-phase2-finalization`, based on merged PR #64 (`0b01f0ae0af73c8d5d196b529d749706a7881a2c`).
+Canonical SwiftDrop identity contract across the repository:
+- Realm: `swiftdrop` (canonical development default; legacy immutable internal container ID preserved)
+- Public Client: `swiftdrop-frontend` (standard flow, PKCE S256, direct grant disabled)
+- JWT Audience: `swiftdrop-api`
+- Issuer: `http://localhost:8090/realms/swiftdrop`
+- Broker Callback: `http://localhost:8090/realms/swiftdrop/broker/google/endpoint`
+
+**Verification Summary:**
+- **Fresh-Install Bootstrap:** Isolated Keycloak container imported `realm-swiftdrop.json` without errors. All 14 static invariant checks and live smoke checks passed on fresh container (`http://localhost:8190`).
+- **Live Local Environment:** Existing container `devarom-keycloak` intact and healthy. Discovery at `http://localhost:8090/realms/swiftdrop/.well-known/openid-configuration` verified. Legacy `/realms/devarom` returns HTTP 404.
+- **Frontend SPA:** Canonical defaults in `src/auth/session.ts` updated to `swiftdrop` / `swiftdrop-frontend`. All 70 unit tests, typecheck, lint, and build passed.
+- **Gateway & Accounts Services:** Canonical application defaults updated to `http://localhost:8090/realms/swiftdrop` and `swiftdrop-api`. All 19 Gateway tests and 44 Accounts tests passed.
+- **Full Security E2E Suite:** 36 PASS / 0 FAIL / 4 BLOCKED (retained honestly per missing-endpoint baseline).
+- **Readiness Verification:** `platform/local/check-readiness.sh` reported 13/13 PASS.
+- **Human Interactive Google Login:** Operator-verified PASS on migrated environment. Customer profile and token persistence preserved without data loss.
+- **Zero Secrets Committed:** Confirmed no passwords, Google OAuth secrets, or tokens committed in repo.
+
+## SwiftDrop Phase 1 branding — 2026-10-20
+
+Owner **Suthankan1**; branch `chore/swiftdrop-branding`, based on `origin/test`
+`eff629af085299a5560e0b3c912e46ea4d056d42`. Current SPA/Keycloak theme copy,
+wordmarks, current documentation and all 20 editable/rendered diagram pairs now
+use **SwiftDrop**. Authentication/runtime identifiers and historical evidence
+remain unchanged. The source rebrand does not rename the GitHub repository.
+
+**Verified:** frontend typecheck, 64 tests, lint and build; 62 identity Python
+tests; 14 static identity checks and live identity smoke; Gateway 13 tests;
+Accounts 37 tests; readiness 13/13; login demo scenarios A–D; security E2E
+36 PASS / 0 FAIL / 4 existing missing-provider BLOCKED cases. Browser home,
+login and native Keycloak login/registration display SwiftDrop; anonymous
+Customer access still redirects to login. See [commands, limits and external
+branding dependencies](../branding/VALIDATION.md).
+
+**Google:** broker/probe/negative callback checks passed; interactive Google
+sign-in was **not rerun** for branding. Existing real L03 PASS below remains
+historical evidence. Persisted realm/client/email display labels and Google
+consent-screen branding need an owner-applied presentation-only update;
+independent peer/clean-clone review remains pending. Phase 2 identity/namespace
+and repository changes are [proposed only](../branding/PHASE_2_MIGRATION.md).
+
+Next small task: review the branding PR into `test` and coordinate the remaining
+persisted/provider display-label update without recreating identity storage.
 
 ## Issue #36 verification — 2026-10-16
 

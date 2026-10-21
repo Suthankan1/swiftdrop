@@ -1,0 +1,1011 @@
+baseline_sha,location_kind,file,line,column,matched_string,category,phase_1_action
+eff629af085299a5560e0b3c912e46ea4d056d42,content,.cursor/rules/devarom.mdc,2,14,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,.cursor/rules/devarom.mdc,6,342,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,.github/ISSUE_TEMPLATE/feature.md,3,37,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,.github/copilot-instructions.md,3,126,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,AGENTS.md,1,24,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,AGENTS.md,17,11,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,AGENTS.md,20,226,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,CLAUDE.md,1,25,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,GEMINI.md,1,24,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,PROJECT_STRUCTURE.md,4,1,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,PROJECT_STRUCTURE.md,10,19,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,PROJECT_STRUCTURE.md,43,387,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,README.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,README.md,41,42,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,README.md,51,44,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/ai/PROMPT_PLAYBOOK.md,7,202,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/ai/PROMPT_PLAYBOOK.md,11,47,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/ai/PROMPT_PLAYBOOK.md,29,33,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/ai/TASK_TEMPLATE.md,3,77,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/ai/TASK_TEMPLATE.md,5,30,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/BASELINE.md,1,32,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,1,48,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,3,162,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,3,210,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,9,200,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,12,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,15,220,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,60,26,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,69,26,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,71,170,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,76,93,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,80,62,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,127,42,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,172,126,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,175,151,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,178,31,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,178,93,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,179,17,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,193,5,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,206,135,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,213,158,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,260,38,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,273,5,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/EMAIL_OTP_FEASIBILITY.md,274,5,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0001.md,3,53,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0002.md,3,53,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0003.md,3,53,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0004.md,3,53,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0005.md,3,53,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0006.md,3,53,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0007.md,3,53,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0008.md,3,61,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,1,49,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,3,75,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,3,175,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,9,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,12,178,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,16,136,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,51,86,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,74,43,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,74,118,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/ADR-0009.md,91,4,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/architecture/adr/README.md,13,50,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/GRPC.md,13,61,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,3,163,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,3,210,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,5,197,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,5,253,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,13,85,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,22,28,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,22,78,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,22,109,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,25,209,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,34,130,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,35,261,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,37,17,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,60,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,190,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,191,25,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/contracts/LOGIN_CONTRACT.md,201,78,devarom,G,Preserve sensitive configuration boundary; review privately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,13,47,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,41,49,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,42,4,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,61,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,62,24,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,106,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,119,51,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,120,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,122,24,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,127,8,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,140,38,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,212,62,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,214,32,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,257,28,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,262,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,269,29,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,278,39,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,326,134,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,327,110,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,345,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/CLEAN_CLONE_RUNBOOK.md,349,22,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/GIT_WORKFLOW.md,18,57,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/GIT_WORKFLOW.md,18,157,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/development/STARTER_GENERATION_GUIDE.md,12,41,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/README.md,1,32,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/README.md,9,40,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/01_customer_use_cases.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/01_customer_use_cases.drawio,1,3829,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/01_customer_use_cases.drawio,1,4245,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/01_customer_use_cases.drawio,1,4678,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/02_merchant_use_cases.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/02_merchant_use_cases.drawio,1,4121,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/02_merchant_use_cases.drawio,1,4537,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/02_merchant_use_cases.drawio,1,4970,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/03_courier_use_cases.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/03_courier_use_cases.drawio,1,3250,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/03_courier_use_cases.drawio,1,3666,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/03_courier_use_cases.drawio,1,4099,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/04_dispatcher_admin_use_cases.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/04_dispatcher_admin_use_cases.drawio,1,4600,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/04_dispatcher_admin_use_cases.drawio,1,5033,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,668,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,1059,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,1449,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,1840,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,2239,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,2641,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,2985,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,3371,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,3973,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,4406,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,6368,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/05_system_context.drawio,1,6384,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/06_logical_architecture.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/06_logical_architecture.drawio,1,9454,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/07_quote_booking_activity.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/07_quote_booking_activity.drawio,1,7519,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/08_assignment_activity.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/08_assignment_activity.drawio,1,4064,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/09_status_event_activity.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/09_status_event_activity.drawio,1,7027,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/10_customer_delivery_sequence.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/10_customer_delivery_sequence.drawio,1,7595,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/11_merchant_order_sequence.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/11_merchant_order_sequence.drawio,1,6344,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/12_courier_status_sequence.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/12_courier_status_sequence.drawio,1,7272,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/13_google_oidc_sequence.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/13_google_oidc_sequence.drawio,1,6504,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/13_google_oidc_sequence.drawio,1,6902,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/14_delivery_erd.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/14_delivery_erd.drawio,1,5114,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/15_accounts_pricing_erd.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/15_accounts_pricing_erd.drawio,1,7095,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/16_communications_erd.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/16_communications_erd.drawio,1,3160,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/17_parcel_state_machine.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/17_parcel_state_machine.drawio,1,4966,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/18_kafka_sse_topology.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/18_kafka_sse_topology.drawio,1,5869,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/19_kubernetes_bonus.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/19_kubernetes_bonus.drawio,1,5368,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/19_kubernetes_bonus.drawio,1,5835,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/20_compose_target.drawio,1,40,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/editable/20_compose_target.drawio,1,4716,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/01_customer_use_cases.svg,13,176,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/01_customer_use_cases.svg,14,154,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/01_customer_use_cases.svg,15,135,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/02_merchant_use_cases.svg,14,176,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/02_merchant_use_cases.svg,15,154,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/02_merchant_use_cases.svg,16,135,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/03_courier_use_cases.svg,11,176,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/03_courier_use_cases.svg,12,154,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/03_courier_use_cases.svg,13,135,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/04_dispatcher_admin_use_cases.svg,15,154,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/04_dispatcher_admin_use_cases.svg,16,135,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/05_system_context.svg,19,162,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/05_system_context.svg,20,154,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/05_system_context.svg,34,138,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/06_logical_architecture.svg,46,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/07_quote_booking_activity.svg,40,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/08_assignment_activity.svg,22,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/09_status_event_activity.svg,36,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/10_customer_delivery_sequence.svg,38,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/11_merchant_order_sequence.svg,30,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/12_courier_status_sequence.svg,33,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/13_google_oidc_sequence.svg,34,227,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/13_google_oidc_sequence.svg,35,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/14_delivery_erd.svg,16,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/15_accounts_pricing_erd.svg,21,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/16_communications_erd.svg,10,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/17_parcel_state_machine.svg,26,154,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/18_kafka_sse_topology.svg,28,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/19_kubernetes_bonus.svg,26,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/19_kubernetes_bonus.svg,27,166,devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/diagrams/rendered/20_compose_target.svg,23,155,Devarom,F,Regenerate from reviewed editable diagram source
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,13,277,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,26,212,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,26,270,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,33,453,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,98,57,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,101,84,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,104,77,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,104,122,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,123,59,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,141,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,141,266,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/LOGIN_ACCEPTANCE.md,145,233,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,7,28,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,62,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,116,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,171,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,227,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,283,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,339,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,395,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,8,451,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,35,584,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,35,638,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,35,692,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,36,616,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,36,675,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,36,735,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,37,612,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,37,673,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,37,734,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,38,624,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,38,685,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,38,746,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,39,616,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,39,677,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,39,738,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,88,104,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,98,51,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,190,27,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,264,55,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,264,110,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,265,49,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,265,104,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,266,58,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,266,114,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,266,170,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,267,54,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,267,110,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,268,55,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,268,111,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,269,54,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,269,108,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,270,53,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,270,107,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,271,55,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,272,55,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,272,109,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,272,163,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,272,218,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,272,274,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV01_ROLE_INTEGRATION.md,272,330,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/NOV_01.md,24,79,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/milestones/REPORT_OUTLINE.md,3,24,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/PROJECT_CONTEXT.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/PROJECT_CONTEXT.md,3,70,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,7,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,20,240,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,77,127,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,78,136,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,79,327,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,95,46,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,98,70,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,102,15,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,105,111,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,129,43,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,129,160,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,131,99,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,131,173,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,148,45,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,150,27,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,153,40,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,219,149,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,271,62,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,273,112,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,275,81,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,276,172,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,277,249,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,280,106,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,305,50,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/project/STATUS.md,305,289,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,4,18,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,5,143,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,19,114,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,31,4,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,31,217,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,37,30,DEVAROM,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,209,23,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,228,4,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,333,84,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,349,84,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/report/customer_journey_review.md,349,164,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/requirements/ASSIGNMENT_SCOPE.md,3,98,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/AUTHENTICATION.md,7,333,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,1,53,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,3,166,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,3,214,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,9,162,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,11,265,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,62,87,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,84,263,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,89,146,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,129,259,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,176,23,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,178,43,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/security/EMAIL_OTP_THREAT_MODEL.md,202,67,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/CONTRIBUTION_LOG.csv,19,73,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,28,330,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,28,384,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,28,439,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,28,498,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,29,140,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,29,293,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,41,92,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,45,93,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,45,196,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,46,99,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,46,212,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/OWNERSHIP.md,47,95,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_HANDOFF_NOV01.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_HANDOFF_NOV01.md,15,5,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_HANDOFF_NOV01.md,69,52,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_HANDOFF_NOV01.md,69,64,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_HANDOFF_NOV01.md,70,7,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_HANDOFF_NOV01.md,121,131,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_HANDOFF_NOV01.md,123,104,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,13,57,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,13,113,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,13,169,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,13,225,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,13,281,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,13,337,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,19,43,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,49,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,50,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,51,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,81,44,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,87,152,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,92,210,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,92,242,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,101,161,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,101,218,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,101,245,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,131,241,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,138,24,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,193,25,DEVAROM,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,216,66,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,268,112,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,276,28,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,docs/team/PLATFORM_SIGNOFF_NOV01.md,293,6,Devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/.env.example,2,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/README.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/README.md,3,34,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/README.md,3,84,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/README.md,81,8,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/README.md,81,33,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/README.md,81,66,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/README.md,103,330,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/index.html,8,39,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/index.html,9,12,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/package.json,2,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/AuthPages.tsx,5,15,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/AuthPages.tsx,15,57,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/AuthPages.tsx,37,51,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/adapter.test.ts,6,56,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/adapter.test.ts,6,77,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/contracts.ts,2,13,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/contracts.ts,7,65,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/session.test.ts,6,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/session.ts,2,46,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/session.ts,5,23,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/session.ts,154,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/auth/session.ts,154,34,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/components/layout/AppLayout.tsx,18,52,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/components/layout/AppLayout.tsx,20,17,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/components/layout/AppLayout.tsx,42,47,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/features/customer/pages/CustomerPage.tsx,29,33,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/features/public/LandingPage.tsx,16,63,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/features/public/LandingPage.tsx,24,76,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/features/public/LandingPage.tsx,27,151,DEVAROM,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/test/app.test.tsx,30,60,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/test/app.test.tsx,43,60,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/test/app.test.tsx,66,60,devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,frontend/src/test/app.test.tsx,71,30,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/.env.example,2,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/.env.example,29,20,devarom,G,Preserve sensitive configuration boundary; review privately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/.env.example,30,24,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,3,151,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,3,198,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,5,79,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,5,122,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,20,28,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,22,33,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,22,54,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,25,73,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,34,150,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,41,38,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,47,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,66,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,67,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,68,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,69,61,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,70,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,71,68,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,74,34,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,75,32,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,78,65,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,98,136,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,118,30,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,121,20,Devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,126,17,Devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,129,35,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,139,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,141,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,141,74,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,160,107,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,165,105,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,194,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,195,32,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,197,14,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,199,31,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,223,30,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,223,103,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,224,141,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,225,28,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,232,61,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,234,53,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,234,91,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,236,128,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,241,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,243,68,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,250,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,250,41,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,252,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,253,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,254,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,284,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,284,61,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,288,11,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,288,51,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,290,39,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,294,151,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,314,147,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,314,169,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,331,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,371,14,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,412,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,412,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,412,84,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,413,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,417,31,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,496,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,523,57,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,576,45,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/README.md,595,33,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,3,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,4,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,12,17,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,15,8,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,26,57,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,27,65,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,30,65,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,31,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,31,86,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,52,48,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,53,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,53,59,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,60,74,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,60,96,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,65,87,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,66,30,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,67,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/apply-theme.sh,73,8,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,26,29,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,131,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,132,68,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,153,63,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,154,92,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,159,44,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,238,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-email-verification.py,341,59,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-totp.py,24,29,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-totp.py,147,63,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-totp.py,148,92,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/configure-totp.py,151,44,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/docker-compose.identity.yml,2,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/docker-compose.identity.yml,11,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/docker-compose.identity.yml,19,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/docker-compose.identity.yml,34,17,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/docker-compose.identity.yml,34,62,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,2,10,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,3,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,4,19,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,5,57,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,15,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,38,28,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,42,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,89,32,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,105,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,106,16,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,140,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,146,42,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,217,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/realm-devarom.json,218,25,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,171,55,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,172,61,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,228,33,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,251,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,261,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,261,51,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,262,52,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,316,47,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,353,93,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,425,47,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/email_verification_smoke.py,445,61,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/google_broker_smoke.py,9,49,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/google_broker_smoke.py,35,10,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/google_broker_smoke.py,36,14,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/google_broker_smoke.py,77,13,DEVAROM,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/google_broker_smoke.py,237,75,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/google_broker_smoke.py,246,66,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_email_verification.py,26,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_email_verification.py,27,57,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_email_verification.py,30,39,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_email_verification.py,36,34,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_email_verification.py,44,76,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_email_verification.py,46,79,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_email_verification.py,113,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_totp.py,28,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_configure_totp.py,30,28,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_email_configuration.py,42,62,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_email_configuration.py,52,72,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_email_configuration.py,54,31,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_email_configuration.py,68,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_email_configuration.py,106,55,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_email_configuration.py,165,80,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,11,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,14,58,devarom,D,Retain external binding; provider owner reviews separately
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,60,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,61,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,67,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,83,25,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,92,69,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,118,57,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_google_broker_configuration.py,121,48,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_totp_configuration.py,11,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_totp_configuration.py,60,25,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/test_totp_configuration.py,74,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,195,61,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,243,30,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,271,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,274,27,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,286,18,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,317,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,319,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,335,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,335,73,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,347,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,349,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,405,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,407,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,481,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,483,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,498,46,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,500,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/tests/totp_smoke.py,517,62,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,1,3,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,5,35,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,13,29,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,21,56,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,27,60,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,28,71,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,29,92,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/messages/messages_en.properties,37,31,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,2,4,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,52,6,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,101,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,117,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,119,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,126,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,133,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,139,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,148,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,152,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,158,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,167,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,173,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,178,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,182,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,186,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,194,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,200,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,212,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,222,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,237,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,249,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,256,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,464,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,474,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,475,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,483,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,494,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,502,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,512,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,521,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,547,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,556,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,562,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,568,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,580,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,617,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,628,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,760,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,803,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,810,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,817,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,835,24,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,843,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,847,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,862,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,871,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,878,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,901,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,909,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,917,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,924,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,930,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,934,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,991,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,996,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,1000,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,1004,4,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,1009,58,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/css/devarom.css,1012,2,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/img/devarom-logo-dark.svg,7,168,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/resources/img/devarom-logo.svg,7,168,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,2,15,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,5,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,6,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,8,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,10,29,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,10,48,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,14,119,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/social-providers.ftl,15,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,41,72,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,41,133,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,41,207,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,41,290,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,41,388,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,41,471,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,152,58,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,154,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,155,47,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,156,57,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,157,42,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,158,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,158,81,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,159,24,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,164,24,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,164,45,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,164,65,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,168,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,169,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,170,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,172,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,174,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,176,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,178,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,181,63,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,219,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,222,66,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,232,66,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,252,115,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,253,61,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,259,80,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,285,54,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,289,105,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,290,95,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,299,20,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,300,19,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/template.ftl,301,27,Devarom,A,Update visible copy or corresponding branding assertion; preserve behavior
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/themes/devarom/login/theme.properties,4,27,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,3,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,10,33,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,14,8,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,28,27,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,29,31,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,45,75,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,60,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,69,15,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,115,81,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,117,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,121,27,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,122,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,136,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,147,26,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,148,33,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,153,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,154,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,161,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,162,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,173,19,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,174,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,177,33,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,182,28,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,183,21,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,183,55,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,186,25,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,228,44,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,233,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,235,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,241,47,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,249,88,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,250,39,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,258,84,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,258,131,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,266,55,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,266,102,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,274,15,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,275,51,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,275,98,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,276,44,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,277,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,280,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,281,47,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,284,70,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,284,82,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,292,21,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/identity/validate-identity.sh,292,56,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/README.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/README.md,3,101,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/README.md,13,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/README.md,13,80,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/README.md,14,82,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/README.md,15,68,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/README.md,31,82,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,3,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,41,18,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,124,72,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,126,63,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,128,58,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,163,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,178,31,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/check-readiness.sh,180,91,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,3,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,13,8,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,58,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,73,51,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,74,30,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,75,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,77,31,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,78,24,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,83,8,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,platform/local/start-local.sh,92,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/README.md,13,22,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/README.md,20,22,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/README.md,51,22,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/README.md,53,29,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/README.md,150,119,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/README.md,151,172,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/README.md,151,343,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/pom.xml,11,16,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/pom.xml,15,16,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/AccountsServiceApplication.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/identity/CurrentIdentityProvider.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/identity/TrustedIdentity.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/AccountProfile.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/AccountProfileRepository.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfile.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfileController.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfileController.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfileService.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfileService.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/ProfileProblemHandler.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/AudienceValidator.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/AudienceValidator.java,13,56,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/AudienceValidator.java,13,85,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakJwtAuthenticationConverter.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakJwtAuthenticationConverter.java,14,18,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakRoleExtractor.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakRoleExtractor.java,13,34,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakRoleExtractor.java,14,75,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakRoleExtractor.java,19,37,DEVAROM,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakRoleExtractor.java,37,51,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakRoleExtractor.java,61,25,DEVAROM,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,63,79,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,63,132,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,64,78,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,64,130,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,65,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,65,44,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/SecurityContextCurrentIdentityProvider.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/SecurityContextCurrentIdentityProvider.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/SecurityContextCurrentIdentityProvider.java,4,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/java/com/devarom/accountsservice/security/SubjectValidator.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/resources/application.yml,30,74,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/resources/application.yml,31,73,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/resources/application.yml,32,1,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/resources/application.yml,34,68,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/resources/application.yml,35,67,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/main/resources/application.yml,36,30,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,4,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,5,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,6,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,86,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,101,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,102,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,103,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,103,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,170,22,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,206,22,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,240,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,273,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,277,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,285,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,317,18,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountsServiceApplicationTest.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileContractTest.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileContractTest.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileContractTest.java,4,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileServiceTest.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileServiceTest.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileServiceTest.java,4,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,4,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,5,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,6,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,85,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,97,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,98,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,99,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,99,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,155,28,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,170,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,182,80,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,207,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,220,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,233,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,245,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,258,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,259,58,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,278,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,303,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,316,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,334,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,364,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,412,52,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/TrustedIdentityTest.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/accounts-service/src/test/java/com/devarom/accountsservice/TrustedIdentityTest.java,3,12,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,3,165,devarom,E,Preserve provenance or historical evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,3,212,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,5,55,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,13,80,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,24,21,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,27,113,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,56,49,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,57,51,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/README.md,58,27,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/pom.xml,11,15,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/ApiGatewayApplication.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/config/GatewayRoutesConfig.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/config/GatewayRoutesConfig.java,10,68,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/filter/GatewayErrorWebExceptionHandler.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/filter/StripUntrustedHeadersGatewayFilter.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/AudienceValidator.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/AudienceValidator.java,13,56,Devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/AudienceValidator.java,13,85,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/ProblemDetailAccessDeniedHandler.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/ProblemDetailAuthenticationEntryPoint.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,58,79,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,58,132,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,59,78,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,59,130,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,60,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,60,44,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,70,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/resources/application.yml,51,1,devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/resources/application.yml,55,68,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/resources/application.yml,56,67,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/main/resources/application.yml,57,30,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayApplicationTests.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,74,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,86,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,87,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,88,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,88,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,100,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,1,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,83,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,113,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,114,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,115,23,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,115,53,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,189,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,203,74,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,231,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,245,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,267,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,1,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,8,28,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,16,85,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,49,14,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,141,73,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,142,72,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,188,13,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,188,38,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/README.md,188,66,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,3,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,76,55,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,97,17,DEVAROM,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,143,34,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,154,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,179,25,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,198,86,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,240,31,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,296,34,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,361,34,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,388,31,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,407,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/demo_smoke.py,431,35,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,2,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,175,63,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,176,36,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,224,67,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,286,30,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,339,55,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,352,31,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,379,27,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/harness_common.py,429,17,DEVAROM,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/run-security-e2e.sh,3,3,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/run-security-e2e.sh,14,8,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/run-security-e2e.sh,51,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/run-security-e2e.sh,70,48,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/run-security-e2e.sh,83,48,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/run-security-e2e.sh,117,12,DEVAROM,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/security_e2e_runner.py,2,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/security_e2e_runner.py,46,13,DEVAROM,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/security_e2e_runner.py,51,50,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/security_e2e_runner.py,132,51,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/test_jwt_rejection.py,2,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/test_role_and_ownership.py,2,1,Devarom,B,Update current product prose; preserve architecture and evidence
+eff629af085299a5560e0b3c912e46ea4d056d42,content,tests/security-e2e/test_role_and_ownership.py,53,86,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,.cursor/rules/devarom.mdc,0,15,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/realm-devarom.json,0,25,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/footer.ftl,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/messages/messages_en.properties,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/css/devarom.css,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/css/devarom.css,0,54,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/devarom-logo-dark.svg,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/devarom-logo-dark.svg,0,54,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/devarom-logo.svg,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/devarom-logo.svg,0,54,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/devarom-mark.svg,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/devarom-mark.svg,0,54,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/favicon.ico,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/favicon.svg,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/google.svg,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/resources/img/social/google.svg,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/social-providers.ftl,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/template.ftl,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,platform/identity/themes/devarom/login/theme.properties,0,26,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/AccountsServiceApplication.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/identity/CurrentIdentityProvider.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/identity/TrustedIdentity.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/AccountProfile.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/AccountProfileRepository.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfile.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfileController.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/CurrentUserProfileService.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/profile/ProfileProblemHandler.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/security/AudienceValidator.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakJwtAuthenticationConverter.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/security/KeycloakRoleExtractor.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/security/ProfileSecurityConfiguration.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/security/SecurityContextCurrentIdentityProvider.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/main/java/com/devarom/accountsservice/security/SubjectValidator.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountProfilePostgresIT.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/test/java/com/devarom/accountsservice/AccountsServiceApplicationTest.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileContractTest.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/test/java/com/devarom/accountsservice/CurrentUserProfileServiceTest.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/test/java/com/devarom/accountsservice/ProfileHttpSecurityTest.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/accounts-service/src/test/java/com/devarom/accountsservice/TrustedIdentityTest.java,0,45,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/ApiGatewayApplication.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/config/GatewayRoutesConfig.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/filter/GatewayErrorWebExceptionHandler.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/filter/StripUntrustedHeadersGatewayFilter.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/security/AudienceValidator.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/security/ProblemDetailAccessDeniedHandler.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/security/ProblemDetailAuthenticationEntryPoint.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/main/java/com/devarom/apigateway/security/SecurityConfig.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayApplicationTests.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewayDownstreamUnavailableTest.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration
+eff629af085299a5560e0b3c912e46ea4d056d42,path,services/api-gateway/src/test/java/com/devarom/apigateway/ApiGatewaySecurityAndRoutingTest.java,0,40,devarom,C,Retain Phase 1; assess in approved technical migration

@@ -1,4 +1,4 @@
-# Agent instructions — Devarom repository
+# Agent instructions — SwiftDrop repository
 
 Read this document **before any plan, code generation or change**. Applies to coding assistants, autonomous agents, IDE assistants and human contributors.
 
@@ -14,10 +14,10 @@ Resolve a conflict by **asking** for a decision or proposing a concise ADR. Don'
 
 ## Non-negotiable architecture
 
-- Name: **Devarom**. Independent Spring Boot business services: **Accounts & Partners; Pricing & Zones; Delivery Operations; Communications**. Separate **Spring Cloud Gateway** and **one read-only GraphQL Query API**. React/TypeScript/Vite SPA, Keycloak/Google OIDC + PKCE, per-business-service PostgreSQL ownership.
+- Name: **SwiftDrop**. Independent Spring Boot business services: **Accounts & Partners; Pricing & Zones; Delivery Operations; Communications**. Separate **Spring Cloud Gateway** and **one read-only GraphQL Query API**. React/TypeScript/Vite SPA, Keycloak/Google OIDC + PKCE, per-business-service PostgreSQL ownership.
 - **REST** = external commands/simple reads/merchant APIs; **GraphQL** = read-only composite dashboards; **gRPC/Protobuf** = selected internal synchronous calls; **Kafka** = async domain event delivery; **SSE** = browser's one-way live parcel updates.
 - Delivery owns parcel transitions, assignment consistency, history and transactional outbox. Communications owns notification/webhook retries. Do not perform cross-service SQL joins or share business entity JARs. Do not replace Kafka with RabbitMQ or invent extra microservices.
-- API Gateway routes and applies edge policy; core services enforce JWT, roles, merchant tenant/resource ownership and assignment authorization **independently**. Keycloak brokers Google identity; a Google token is **not** a Devarom API bearer token.
+- API Gateway routes and applies edge policy; core services enforce JWT, roles, merchant tenant/resource ownership and assignment authorization **independently**. Keycloak brokers Google identity; a Google token is **not** a SwiftDrop API bearer token.
 - GraphQL must not query business DBs directly, implement mutations, or bypass permissions. gRPC internal endpoints require service authentication, actor context validation and deadlines. Kafka consumers require idempotency and version checks; outbox publication is at-least-once. Avoid sensitive data in events/logs.
 - Nov 1 goal is design report + demonstrable **initial logins**, not a full completed system. Kubernetes/AI assistant are later optional bonuses.
 

@@ -1,5 +1,7 @@
 # Architecture Decision Records (ADRs)
 
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../../branding/PHASE_1_AUDIT.md).
+
 These records document the proposed **v1.3 target**; they do not prove code exists. Record a new ADR with context, alternatives, decision, security/consequences and reviewers whenever the design changes materially. Do not overwrite old decisions without a superseding record.
 
 - [ADR-0001: Independent business services and team monorepo](ADR-0001.md)
@@ -10,4 +12,4 @@ These records document the proposed **v1.3 target**; they do not prove code exis
 - [ADR-0006: Owner-owned PostgreSQL and transactional outbox](ADR-0006.md)
 - [ADR-0007: SSE for status-only realtime tracking](ADR-0007.md)
 - [ADR-0008: Bonus scope deferred beyond login milestone](ADR-0008.md)
-- [ADR-0009: Email OTP Verification Strategy for Devarom](ADR-0009.md)
+- [ADR-0009: Email OTP Verification Strategy for SwiftDrop](ADR-0009.md)

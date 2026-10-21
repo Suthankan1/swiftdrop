@@ -1,5 +1,5 @@
 """
-Devarom Platform — Security E2E Master Test Runner (Task 018)
+SwiftDrop Platform — Security E2E Master Test Runner (Task 018)
 Coordinates automated execution of:
   - L06: JWT authentication rejection (Gateway 8080 and Accounts 8081)
   - L07: Cross-role authorization denial and privilege confinement
@@ -43,12 +43,12 @@ def run_full_security_e2e_suite(
     mailpit_url: str = "http://localhost:8025",
 ) -> int:
     print("\n" + "=" * 95)
-    print(" DEVAROM PLATFORM — SECURITY E2E AUTOMATED TEST SUITE (TASK 018)")
+    print(" SWIFTDROP PLATFORM — SECURITY E2E AUTOMATED TEST SUITE (TASK 018)")
     print("=" * 95)
 
-    print("\n[Step 1/4] Checking live runtime service readiness...")
+    realm = os.environ.get("KEYCLOAK_REALM", "swiftdrop")
     services = [
-        ("Keycloak IdP", f"{keycloak_url}/realms/devarom/.well-known/openid-configuration", (200,)),
+        ("Keycloak IdP", f"{keycloak_url}/realms/{realm}/.well-known/openid-configuration", (200,)),
         ("API Gateway", f"{gateway_url}/actuator/health", (200,)),
         ("Accounts Service", f"{accounts_url}/actuator/health", (200,)),
         ("Mailpit SMTP Dev", f"{mailpit_url}/api/v1/info", (200,)),
@@ -129,7 +129,7 @@ def run_full_security_e2e_suite(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Devarom Platform Security E2E Test Runner")
+    parser = argparse.ArgumentParser(description="SwiftDrop Platform Security E2E Test Runner")
     parser.add_argument("--gateway-url", default="http://localhost:8080", help="Spring Cloud Gateway URL")
     parser.add_argument("--accounts-url", default="http://localhost:8081", help="Accounts Service URL")
     parser.add_argument("--keycloak-url", default="http://localhost:8090", help="Keycloak IdP URL")

@@ -1,6 +1,6 @@
 # November 1 Login Integration Contract & Baseline Freeze
 
-**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/devarom/issues/1) · **Architecture Baseline:** Devarom v1.3
+**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/devarom/issues/1) · **Architecture Baseline:** SwiftDrop v1.3
 
 > **Authentication ownership update (Oct 15):** Suthankan1 owns all frontend identity/OIDC login/signup/session UI and shared backend JWT/security integration ([#36](https://github.com/Suthankan1/devarom/issues/36), [#37](https://github.com/Suthankan1/devarom/issues/37)). Customer team owns shared SPA shell and Accounts business profiles, **not** login/client/security implementation. Role UI teams build role landing pages using the common auth provider; Vibhushan independently verifies security. See [team ownership](../team/OWNERSHIP.md). This human-requested reassignment still needs pair acknowledgement.
 
@@ -10,7 +10,7 @@
 
 ## 1. Toolchain & Version Baseline Freeze
 
-All future Spring Initializr project generation and frontend scaffolding across the Devarom repository **must** strictly adhere to this pinned baseline:
+All future Spring Initializr project generation and frontend scaffolding across the SwiftDrop repository **must** strictly adhere to this pinned baseline:
 
 | Component | Selected Baseline | Verification & Compatibility Status |
 |---|---|---|
@@ -22,7 +22,7 @@ All future Spring Initializr project generation and frontend scaffolding across 
 | **Java Group ID** | `com.devarom` | Standard package namespace (e.g., `com.devarom.accountsservice`, `com.devarom.apigateway`). |
 | **Frontend Framework** | **React + TypeScript + Vite** | Current Node.js LTS, `pnpm` package manager default; single SPA with role-based routing. |
 | **Persistence** | **PostgreSQL 16+** | Separate logical database per service; Flyway migrations owned by individual services. |
-| **Identity Provider** | **Keycloak 26.8.1** (pinned) | Standalone identity provider container with separate identity PostgreSQL database (`keycloak_db`). Sanitized realm defined in `platform/identity/realm-devarom.json`. |
+| **Identity Provider** | **Keycloak 26.8.1** (pinned) | Standalone identity provider container with separate identity PostgreSQL database (`keycloak_db`). Sanitized realm defined in `platform/identity/realm-swiftdrop.json` (canonical `swiftdrop` realm; migrated live instance preserves internal ID). |
 
 *Note on verification:* Spring Boot 4.1.1 and Spring Cloud 2025.1.3 (Oakwood) have been verified for mutual compatibility under Java 21 LTS. Core business services (`accounts-service`, `pricing-service`, `delivery-service`, `communications-service`, `graphql-query-service`) will use Spring Boot 4.1.1 starters directly and omit Spring Cloud BOMs unless edge gateway capabilities require them.
 
@@ -31,10 +31,12 @@ All future Spring Initializr project generation and frontend scaffolding across 
 ## 2. Authentication & Identity Architecture (Nov 1 Scope)
 
 ### 2.1 Identity Provider & OIDC Architecture
-- **Identity Provider (IdP):** Keycloak acts as the central OpenID Connect (OIDC) identity provider and authorization server for Devarom.
-- **Federated Identity Broker:** Google Sign-In is integrated as an external Identity Provider (IdP Broker) inside Keycloak. The React SPA interacts **only** with Keycloak; it never directly manages Google OAuth2 tokens or secrets. A Google token is **not** a Devarom API bearer token.
+- **Identity Provider (IdP):** Keycloak acts as the central OpenID Connect (OIDC) identity provider and authorization server for SwiftDrop.
+- **Federated Identity Broker:** Google Sign-In is integrated as an external Identity Provider (IdP Broker) inside Keycloak. The React SPA interacts **only** with Keycloak; it never directly manages Google OAuth2 tokens or secrets. A Google token is **not** a SwiftDrop API bearer token.
 - **Client Configuration:**
-  - Client ID: `devarom-frontend`
+  - Realm: `swiftdrop`
+  - Client ID: `swiftdrop-frontend`
+  - Audience: `swiftdrop-api`
   - Access Type: **Public client** (browser SPA).
   - Standard Flow: **Authorization Code Grant with PKCE** (Proof Key for Code Exchange) using code challenge method `S256`.
   - Client Authentication: **Disabled** (no client secret in browser code or runtime bundle; `VITE_*` environment variables are completely public).
@@ -57,7 +59,7 @@ All future Spring Initializr project generation and frontend scaffolding across 
 ## 3. Authorization & Role Model
 
 ### 3.1 Five Core Roles
-Devarom defines five distinct business roles in Keycloak realm roles (`realm_access.roles`):
+SwiftDrop defines five distinct business roles in Keycloak realm roles (`realm_access.roles`):
 1. `CUSTOMER`: Self-registered public sender/receiver.
 2. `MERCHANT`: Business client sending batch orders via API or dashboard.
 3. `COURIER`: Field delivery personnel managing assigned parcels.
@@ -187,8 +189,8 @@ To prevent port collisions between services and third-party containers during lo
 Non-sensitive configuration exposed to the Vite frontend (`VITE_*` keys are public by design):
 ```properties
 VITE_KEYCLOAK_URL=http://localhost:8090
-VITE_KEYCLOAK_REALM=devarom
-VITE_KEYCLOAK_CLIENT_ID=devarom-frontend
+VITE_KEYCLOAK_REALM=swiftdrop
+VITE_KEYCLOAK_CLIENT_ID=swiftdrop-frontend
 VITE_API_GATEWAY_URL=http://localhost:8080
 ```
 
@@ -198,7 +200,7 @@ VITE_API_GATEWAY_URL=http://localhost:8080
 
 ### 5.4 Platform vs. Customer Team Integration Responsibilities
 - **Platform Team (`Suthankan1`):**
-  - Exports sanitized Keycloak realm configuration (`platform/identity/realm-devarom-export.json`).
+  - Exports sanitized Keycloak realm configuration (`platform/identity/realm-swiftdrop.json`).
   - Implements Spring Cloud Gateway routing, JWT edge filter, and CORS headers permitting `http://localhost:5173`.
   - Provides reproducible local container startup documentation and verify Gateway-to-Accounts forwarding.
 - **Customer Team (`Gajanthan`, `Sinthuha`):**

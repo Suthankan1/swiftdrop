@@ -1,6 +1,6 @@
-# Devarom shared SPA
+# SwiftDrop shared SPA
 
-The single React application for Devarom. Issue [#6](https://github.com/Suthankan1/devarom/issues/6) implements the public shell and Customer profile presentation. **Shared authentication is implemented in #36; live full-stack login remains unverified pending local Keycloak and Accounts #5/#37.**
+The single React application for SwiftDrop. Issue [#6](https://github.com/Suthankan1/devarom/issues/6) implements the public shell and Customer profile presentation. **Shared authentication is implemented in #36; live full-stack login remains unverified pending local Keycloak and Accounts #5/#37.**
 
 Temporary implementation: **Suthankan1**, while Gajanthan is unavailable. **Gajanthan remains the original Customer feature steward.** Accounts business profiles remain Sinthuha’s #5; authentication remains Suthankan1’s #36 and backend JWT policy #37.
 
@@ -77,6 +77,8 @@ Public optional variables (shell exports; no .env required):
 |---|---|
 | `VITE_KEYCLOAK_URL` | `http://localhost:8090` |
 | `VITE_API_GATEWAY_URL` | `http://localhost:8080` |
+
+Phase 1 changes visible branding only. The legacy realm, public client, audience, package namespace and theme path remain unchanged until a reviewed technical migration.
 
 Realm `devarom`, public client `devarom-frontend`, API audience `devarom-api`. Run the SPA at `http://localhost:5173`; callback must be registered exactly as `http://localhost:5173/auth/callback`, post-logout as `http://localhost:5173/`. HTTPS and matching exact registered origins/redirects are required outside localhost. All VITE values are public; never provide OAuth secrets.
 

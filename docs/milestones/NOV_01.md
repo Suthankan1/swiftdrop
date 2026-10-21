@@ -21,7 +21,7 @@
 ## Exit checklist
 
 - [ ] Lecturer group-size exception (9 vs 10) clarified
-- [ ] Report text/figure captions reviewed against v1.3, current product name Devarom
+- [ ] Report text/figure captions reviewed against v1.3, current product name SwiftDrop
 - [ ] All required diagrams are legible and correctly referenced (don't export duplicate gigantic PDFs to repo)
 - [ ] Local login real and demonstrable; Google login real or explicitly recorded as blocked/not done
 - [ ] Private token handling, JWT rejection and wrong-role/owner rejection proven in actual backend

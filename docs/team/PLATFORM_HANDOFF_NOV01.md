@@ -1,4 +1,6 @@
-# Devarom Platform — November 1 Milestone Submission & QA Handoff
+# SwiftDrop Platform — November 1 Milestone Submission & QA Handoff
+
+> **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
 
 **Target Milestone:** November 1, 2026 Checkpoint (Report + Initial Working Logins)  
 **Target Integration Branch:** `test`  
@@ -12,7 +14,7 @@
 
 ## 1. Executive Summary & Architecture Baseline
 
-The Devarom initial-login vertical slice is **feature-complete, fully integrated, and demo-ready** across the contracted core stack:
+The SwiftDrop initial-login vertical slice is **feature-complete, fully integrated, and demo-ready** across the contracted core stack:
 
 ```text
 [React SPA] (5173) ────────► [Spring Cloud Gateway] (8080) ────────► [Accounts Service] (8081)

@@ -6,6 +6,19 @@ const roles: readonly DevaromRole[] = ['CUSTOMER', 'MERCHANT', 'COURIER', 'DISPA
 const anonymous: AuthSnapshot = { status: 'unauthenticated', subject: null, roles: [] }
 export type SessionState = { snapshot: AuthSnapshot; problem: AuthProblem }
 
+export interface AuthSessionOptions {
+  redirectUri?: string
+  postLogoutRedirectUri?: string
+}
+
+export interface OidcConfig {
+  url: string
+  realm: string
+  clientId: string
+  redirectUri?: string
+  postLogoutRedirectUri?: string
+}
+
 /** One runtime per browser document: init/code exchange must survive StrictMode remounts. */
 export class AuthSession {
   private state: SessionState = { snapshot: { status: 'loading', subject: null, roles: [] }, problem: null }
@@ -17,10 +30,16 @@ export class AuthSession {
   private entry?: Promise<void>
   private logoutPromise?: Promise<void>
   private readonly client: Keycloak
-  private readonly origin: string
-  constructor(client: Keycloak, origin = window.location.origin) {
+  private readonly redirectUri: string
+  private readonly postLogoutRedirectUri: string
+  constructor(
+    client: Keycloak,
+    origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173',
+    options?: AuthSessionOptions,
+  ) {
     this.client = client
-    this.origin = origin
+    this.redirectUri = options?.redirectUri || `${origin}/auth/callback`
+    this.postLogoutRedirectUri = options?.postLogoutRedirectUri || `${origin}/`
     client.onAuthLogout = () => { if (!this.signingOut) this.expire() }
     client.onTokenExpired = () => { void this.getAccessToken() }
   }
@@ -57,7 +76,7 @@ export class AuthSession {
       const authenticated = await this.client.init({
         flow: 'standard', pkceMethod: 'S256', responseMode: 'query', useNonce: true,
         checkLoginIframe: false, enableLogging: false, logoutMethod: 'POST',
-        redirectUri: `${this.origin}/auth/callback`, messageReceiveTimeout: 5000,
+        redirectUri: this.redirectUri, messageReceiveTimeout: 5000,
       })
       if (generation !== this.generation) { this.clearCredentials(); return }
       if (!authenticated || !this.accept()) {
@@ -107,7 +126,7 @@ export class AuthSession {
       })
       if (generation !== this.generation || this.signingOut) return
       if (!available.ok) throw new Error('Identity provider unavailable')
-      const options = { redirectUri: `${this.origin}/auth/callback` }
+      const options = { redirectUri: this.redirectUri }
       if (kind === 'register') await this.client.register(options)
       else await this.client.login({ ...options, ...(kind === 'google' ? { idpHint: 'google' } : {}) })
     } catch { this.clearCredentials(); this.publish(anonymous, 'provider-unavailable') }
@@ -122,7 +141,7 @@ export class AuthSession {
     this.publish(anonymous)
     try {
       // Adapter builds/submits POST synchronously using the in-memory ID token hint.
-      const pending = this.client.logout({ redirectUri: `${this.origin}/`, logoutMethod: 'POST' })
+      const pending = this.client.logout({ redirectUri: this.postLogoutRedirectUri, logoutMethod: 'POST' })
       this.clearCredentials()
       await pending
     } catch { this.publish(anonymous, 'provider-unavailable') }
@@ -147,11 +166,36 @@ export class AuthSession {
   }
 }
 
+export function getAuthConfig(): OidcConfig {
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173'
+  const url = (import.meta.env.VITE_KEYCLOAK_URL || import.meta.env.VITE_KEYCLOAK_ORIGIN || 'http://localhost:8090').replace(/\/$/, '')
+  const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'swiftdrop'
+  const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'swiftdrop-frontend'
+  const redirectUri = import.meta.env.VITE_AUTH_REDIRECT_URI || `${origin}/auth/callback`
+  const postLogoutRedirectUri = import.meta.env.VITE_AUTH_POST_LOGOUT_URI || import.meta.env.VITE_AUTH_POST_LOGOUT_REDIRECT_URI || `${origin}/`
+  return { url, realm, clientId, redirectUri, postLogoutRedirectUri }
+}
+
 let session: AuthSession | undefined
-export function browserSession() {
-  session ??= new AuthSession(new Keycloak({
-    url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8090',
-    realm: 'devarom', clientId: 'devarom-frontend',
-  }))
+export function browserSession(config?: OidcConfig): AuthSession {
+  if (config) {
+    return new AuthSession(
+      new Keycloak({ url: config.url, realm: config.realm, clientId: config.clientId }),
+      typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173',
+      { redirectUri: config.redirectUri, postLogoutRedirectUri: config.postLogoutRedirectUri },
+    )
+  }
+  if (!session) {
+    const cfg = getAuthConfig()
+    session = new AuthSession(
+      new Keycloak({ url: cfg.url, realm: cfg.realm, clientId: cfg.clientId }),
+      typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173',
+      { redirectUri: cfg.redirectUri, postLogoutRedirectUri: cfg.postLogoutRedirectUri },
+    )
+  }
   return session
+}
+
+export function resetBrowserSessionForTesting(): void {
+  session = undefined
 }

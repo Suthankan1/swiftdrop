@@ -1,8 +1,8 @@
 {
   "id": "devarom",
   "realm": "devarom",
-  "displayName": "Devarom Parcel Delivery & Courier Management",
-  "displayNameHtml": "<div class=\"kc-logo-text\"><span>Devarom</span></div>",
+  "displayName": "SwiftDrop Parcel Delivery & Courier Management",
+  "displayNameHtml": "<div class=\"kc-logo-text\"><span>SwiftDrop</span></div>",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": true,
@@ -103,7 +103,7 @@
   "clients": [
     {
       "clientId": "devarom-frontend",
-      "name": "Devarom Frontend SPA",
+      "name": "SwiftDrop Frontend SPA",
       "description": "Public OIDC client for React + TypeScript + Vite Single Page Application",
       "enabled": true,
       "alwaysDisplayInConsole": false,
@@ -215,7 +215,7 @@
     "host": "mailpit",
     "port": "1025",
     "from": "no-reply@devarom.test",
-    "fromDisplayName": "Devarom",
+    "fromDisplayName": "SwiftDrop",
     "auth": "false",
     "ssl": "false",
     "starttls": "false"
