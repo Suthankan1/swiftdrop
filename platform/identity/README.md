@@ -1,6 +1,6 @@
 # SwiftDrop — Keycloak Identity & OIDC Foundation
 
-**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #2](https://github.com/Suthankan1/devarom/issues/2) · **Architecture Baseline:** SwiftDrop v1.3
+**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #2](https://github.com/Suthankan1/swiftdrop/issues/2) · **Architecture Baseline:** SwiftDrop v1.3
 
 This directory contains the reproducible Keycloak identity foundation for the SwiftDrop delivery platform. It defines the `devarom` realm, public OpenID Connect (OIDC) client for the React Single Page Application (SPA), role-based access control (RBAC) definitions, claims mapping for Spring Security Resource Servers, and Google OAuth 2.0 identity federation brokering.
 
@@ -233,7 +233,7 @@ platform slice; this task does not migrate storage.
 
 ## 8. Custom Branded Login Theme (`platform/identity/themes/devarom/login`)
 
-**Issue:** [Refs #44](https://github.com/Suthankan1/devarom/issues/44) · **Theme Name:** `devarom` · **Parent Theme:** `keycloak.v2`
+**Issue:** [Refs #44](https://github.com/Suthankan1/swiftdrop/issues/44) · **Theme Name:** `devarom` · **Parent Theme:** `keycloak.v2`
 
 A fully responsive, accessible, and professionally branded Keycloak login, registration, and error recovery theme matching the SwiftDrop React Single Page Application design language.
 

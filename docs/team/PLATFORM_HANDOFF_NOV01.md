@@ -68,8 +68,8 @@ The Platform and Authentication implementation comprises 8 pull requests targeti
 
 1. **Clone the `test` branch into a fresh folder:**
    ```bash
-   git clone -b test https://github.com/Suthankan1/devarom.git devarom-clean
-   cd devarom-clean
+   git clone -b test https://github.com/Suthankan1/swiftdrop.git swiftdrop-clean
+   cd swiftdrop-clean
    ```
 
 2. **Supply local administrator credentials:**
@@ -120,9 +120,9 @@ Below are the verified platform inputs ready for direct inclusion in the report:
 
 ### 4.1 System Security & Protocol Architecture Rationale
 - **Frontend SPA Security:** Single React 19 + TypeScript + Vite SPA. Tokens are kept exclusively in **JavaScript runtime memory**; zero token storage in `localStorage`, `sessionStorage`, or readable cookies, eliminating browser XSS token-exfiltration vectors.
-- **Identity & OIDC:** Keycloak 26.8.1 acts as the central IdP. Uses Authorization Code Grant with **PKCE S256**. Public client (`devarom-frontend`) with zero client secrets in browser code (`VITE_*` variables are strictly public).
+- **Identity & OIDC:** Keycloak 26.8.1 acts as the central IdP. Uses Authorization Code Grant with **PKCE S256**. Public client (`swiftdrop-frontend`) with zero client secrets in browser code (`VITE_*` variables are strictly public).
 - **Dual-Layer JWT Verification:**
-  - *Layer 1 (API Gateway :8080):* Validates JWT signature against Keycloak JWKS, validates audience (`devarom-api`), issuer, and expiration. Strips all client-supplied identity headers (`X-User-Id`, `X-Roles`, `X-Keycloak-Sub`) to prevent spoofing. Returns RFC 7807 401 ProblemDetail on rejection.
+  - *Layer 1 (API Gateway :8080):* Validates JWT signature against Keycloak JWKS, validates audience (`swiftdrop-api`), issuer, and expiration. Strips all client-supplied identity headers (`X-User-Id`, `X-Roles`, `X-Keycloak-Sub`) to prevent spoofing. Returns RFC 7807 401 ProblemDetail on rejection.
   - *Layer 2 (Accounts Service :8081):* Independent OAuth2 Resource Server (`NimbusJwtDecoder`). Extracts `sub` and roles strictly from verified Spring Security `Jwt` principal in `SecurityContext`. Enforces multi-tenant profile isolation.
 - **Native Verification & MFA:**
   - Phase A: Native Keycloak email verification link captured locally via Mailpit (RFC 2822 / 5321) with 60s anti-flooding resend cooldown.

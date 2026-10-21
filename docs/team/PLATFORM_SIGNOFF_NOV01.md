@@ -13,7 +13,7 @@
 **Clean-Clone QA Lead:** Eric (`@EricPraveen`, Issue #17, independent review pending)
 **Customer UI Steward:** Gajanthan (`@Gajanthan17`, Issue #4, #6, UI review pending)
 **Accounts Domain Steward:** Sinthuha (`@Sinthuha`, Issue #5, domain review pending)
-**Related Issues:** [#19](https://github.com/Suthankan1/devarom/issues/19), [#18](https://github.com/Suthankan1/devarom/issues/18), [#47](https://github.com/Suthankan1/devarom/issues/47), [#17](https://github.com/Suthankan1/devarom/issues/17), [#36](https://github.com/Suthankan1/devarom/issues/36), [#37](https://github.com/Suthankan1/devarom/issues/37)
+**Related Issues:** [#19](https://github.com/Suthankan1/swiftdrop/issues/19), [#18](https://github.com/Suthankan1/swiftdrop/issues/18), [#47](https://github.com/Suthankan1/swiftdrop/issues/47), [#17](https://github.com/Suthankan1/swiftdrop/issues/17), [#36](https://github.com/Suthankan1/swiftdrop/issues/36), [#37](https://github.com/Suthankan1/swiftdrop/issues/37)
 
 ---
 
