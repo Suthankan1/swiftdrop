@@ -18,6 +18,18 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## Issue #10 Communications ERD, Merchant Integration & Reliability Review — 2026-10-21
+
+Lead Architectural Reviewer: **Thuvarahan (@thuvarahan-t)**; branch `docs/nov11-communications-merchant-review`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Delivery events & SSE topology), **Suthankan1 (@Suthankan1)** (Platform lead, Kafka contracts & webhook retry engine), **Eric (@EricPraveen)** (Merchant contract), **HarithKeshan (@Harithkeshan)** (academic report assembly).
+
+Delivered comprehensive architectural review of Communications ERD, Merchant integration, and reliability rationale for November 1 milestone:
+- **Communications ERD Review (Figure 16):** Confirmed Communications service ownership of `WEBHOOK_SUBSCRIPTIONS`, `WEBHOOK_DELIVERIES`, `CONSUMED_EVENTS`, `NOTIFICATIONS`, and child `WEBHOOK_ATTEMPTS` in dedicated `communications_db`. Enforces strict invariant that Communications does **not** own parcel transitions. Local FKs, external references (`EXT merchant_id`, `EXT parcel_id`, `EXT recipient_sub`), and unique constraints (`UK (subscription_id, event_id)`) verified.
+- **Merchant Integration Review (Figures 02, 11, 12):** Mapped four integration seams: Webhook Subscription Management (REST), Order API (REST with synchronous Accounts key validation gRPC), Asynchronous Status Event Streaming (`parcel.lifecycle.v1`), and Signed Webhook Dispatch. Confirmed decoupling of order ingestion from downstream notification latency.
+- **Reliability Rationale & SSE Topology (Figure 18):** Justified Kafka KRaft at-least-once asynchronous domain events with per-parcel ordering (`key = parcelId`) and state versioning. Formally documented that universal exactly-once external side-effects are not possible; merchant receivers must deduplicate via `eventId`. Rigorously analyzed SSE scaling invariant: each Delivery tracking replica requires a unique consumer group (`tracking.<replica-pod-id>`) rather than a shared group, with canonical REST fallback on reconnect.
+- **Security & Tenant Isolation:** Verified strict tenant isolation in Communications webhooks matching Accounts `MerchantTenantAuthorizationProvider` boundary. Strips client headers at Gateway. Enforced event payload sanitization (zero customer PII in Kafka). Prohibited storing raw webhook response bodies.
+- **Deliverable:** Created [`docs/reviews/NOV_11_COMMUNICATIONS_MERCHANT_REVIEW.md`](../reviews/NOV_11_COMMUNICATIONS_MERCHANT_REVIEW.md), updated [`docs/architecture/OPEN_DECISIONS.md`](../architecture/OPEN_DECISIONS.md) with `DEC-COM-01` to `DEC-COM-04`, and prepared report-ready captions for Issue #19. Zero application code generated (strictly design review).
+
 ## Issue #8 Merchant Approval-State & Tenant Authorization Provider — 2026-10-21
 
 Primary Implementer: **Thuvarahan (@thuvarahan-t)**; branch `feat/nov10-merchant-approval-tenant-auth`, targeting `test`.

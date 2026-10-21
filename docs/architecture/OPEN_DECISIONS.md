@@ -17,8 +17,9 @@ Use one issue/PR or an ADR for each decision; record approver/date. Do not treat
 | Medium | Proof file limits/validation, authorized retrieval, retention/deletion/replacement, and privacy audit policy | Courier + Platform proof-adapter owner; security/privacy review | **Open** |
 | Medium | Merchant MVP uses API key (proposed) vs OAuth client credentials (assignment permits either) | Merchant + Platform | **Proposed API key** |
 | Medium | gRPC packages, field compatibility and service authentication | All service owners + Platform | **Draft** |
-| Medium | Kafka event schema, topic/partition/retry/DLT handling, approved recipient lookup | Courier/Delivery + Merchant/Platform | **Draft** |
-| Medium | SSE reconnect and multi-replica fanout mechanism | Customer/Courier + Platform | **Design target** |
+| Medium | Kafka event schema, topic/partition/retry/DLT handling, approved recipient lookup | Courier/Delivery + Merchant/Platform | **Draft — see [Communications Review](../reviews/NOV_11_COMMUNICATIONS_MERCHANT_REVIEW.md#8-register-of-open-architectural-decisions) (DEC-COM-01 to DEC-COM-04)** |
+| Medium | SSE reconnect and multi-replica fanout mechanism | Customer/Courier + Platform | **Design target — see [Communications Review](../reviews/NOV_11_COMMUNICATIONS_MERCHANT_REVIEW.md#65-sse-real-time-fan-out-topology--authoritative-rest-recovery-figure-18)** |
+| Medium | Webhook retry limits, backoff ceiling, HMAC signing header, and event filter granularity | Merchant Pair + Platform | **Open — see [Communications Review](../reviews/NOV_11_COMMUNICATIONS_MERCHANT_REVIEW.md#8-register-of-open-architectural-decisions) (DEC-COM-01, DEC-COM-02, DEC-COM-03)** |
 | Later | Retention policies, failure/backoff limits, receipt object storage, K8s/AI bonus acceptance | Relevant owners | **Later** |
 
 See also [decision records](adr/README.md). Even once approved, contract changes should follow review rules.
