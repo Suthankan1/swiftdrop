@@ -23,7 +23,9 @@ import urllib.request
 
 
 DIRECTORY = Path(__file__).resolve().parent
-REALM_PATH = "/admin/realms/devarom"
+REALM = os.environ.get("KEYCLOAK_REALM", "devarom")
+CLIENT_ID = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
+REALM_PATH = f"/admin/realms/{REALM}"
 ACTION_PATH = REALM_PATH + "/authentication/required-actions/VERIFY_EMAIL"
 COOLDOWN = "60"
 
@@ -150,7 +152,7 @@ def read_state(api):
     realm = api.request("GET", REALM_PATH)
     action = api.request("GET", ACTION_PATH)
     password_action = api.request("GET", REALM_PATH + "/authentication/required-actions/UPDATE_PASSWORD")
-    if (not isinstance(realm, dict) or realm.get("realm") != "devarom" or not realm.get("id")
+    if (not isinstance(realm, dict) or realm.get("realm") not in (REALM, "devarom", "swiftdrop") or not realm.get("id")
             or realm.get("registrationAllowed") is not True or realm.get("loginTheme") != "devarom"
             or not isinstance(realm.get("smtpServer", {}), dict)
             or not isinstance(action, dict) or action.get("alias") != "VERIFY_EMAIL"
@@ -338,7 +340,7 @@ def run(mode, settings, api, mailpit, snapshot_path, receipt_timeout=10, test_us
             if previous["smtpServer"] != smtp:
                 # The previous gate is deliberately absent from this SMTP update.
                 api.request("PUT", REALM_PATH, {"smtpServer": smtp})
-            query = urllib.parse.urlencode({"client_id": "devarom-frontend", "lifespan": 300})
+            query = urllib.parse.urlencode({"client_id": CLIENT_ID, "lifespan": 300})
             api.request("PUT", REALM_PATH + "/users/" + test_user_id + "/send-verify-email?" + query)
             wait_for_receipt(mailpit, mailbox, previous_ids, receipt_timeout)
             if already_configured:

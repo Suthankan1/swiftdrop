@@ -101,11 +101,11 @@ python3 "${REPO_ROOT}/platform/identity/tests/totp_smoke.py"
 echo ""
 echo "[Phase 4/4] Executing Service-Level Unit & Integration Security Regressions..."
 echo "  [+] Running API Gateway unit & routing security tests..."
-(cd "${REPO_ROOT}/services/api-gateway" && ./mvnw test -q)
+(cd "${REPO_ROOT}/services/api-gateway" && env -u KEYCLOAK_ISSUER_URI -u KEYCLOAK_JWKS_URI -u JWT_AUDIENCE ./mvnw test -q)
 echo "      -> Gateway tests passed."
 
 echo "  [+] Running Accounts Service OAuth2 Resource Server unit & MVC tests..."
-(cd "${REPO_ROOT}/services/accounts-service" && ./mvnw test -q)
+(cd "${REPO_ROOT}/services/accounts-service" && env -u KEYCLOAK_ISSUER_URI -u KEYCLOAK_JWKS_URI -u JWT_AUDIENCE ./mvnw test -q)
 echo "      -> Accounts tests passed."
 
 echo "  [+] Running Frontend token persistence & route guard tests..."

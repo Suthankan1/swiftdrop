@@ -168,8 +168,10 @@ class Session:
 class Smoke:
     def __init__(self, args):
         self.args = args
-        self.realm_url = args.keycloak_url + "/realms/devarom"
-        self.admin_url = args.keycloak_url + "/admin/realms/devarom"
+        self.realm = os.environ.get("KEYCLOAK_REALM", "devarom")
+        self.client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "devarom-frontend")
+        self.realm_url = f"{args.keycloak_url}/realms/{self.realm}"
+        self.admin_url = f"{args.keycloak_url}/admin/realms/{self.realm}"
         self.http = Session(args.keycloak_url)
         self.run_id = secrets.token_hex(6)
         self.users, self.message_ids = [], set()
@@ -225,7 +227,7 @@ class Smoke:
 
     def authorization_url(self, verifier, state, registration=False, prompt=None):
         challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-        params = {"client_id": "devarom-frontend", "response_type": "code", "redirect_uri": REDIRECT_URI,
+        params = {"client_id": self.client_id, "response_type": "code", "redirect_uri": REDIRECT_URI,
                   "scope": "openid profile email", "code_challenge": challenge, "code_challenge_method": "S256",
                   "state": state, "nonce": secrets.token_urlsafe(20)}
         if prompt:
@@ -350,7 +352,7 @@ class Smoke:
         params = urllib.parse.parse_qs(urllib.parse.urlsplit(page.url).query)
         check(params.get("state", [None])[0] == user["state"] and bool(params.get("code")),
               "Verified native flow did not return its bound PKCE authorization code")
-        payload = urllib.parse.urlencode({"grant_type": "authorization_code", "client_id": "devarom-frontend",
+        payload = urllib.parse.urlencode({"grant_type": "authorization_code", "client_id": self.client_id,
                     "code": params["code"][0], "redirect_uri": REDIRECT_URI, "code_verifier": user["verifier"]}).encode()
         response = session.request(self.realm_url + "/protocol/openid-connect/token", payload)
         check(response.status == 200, "PKCE authorization code exchange failed")
