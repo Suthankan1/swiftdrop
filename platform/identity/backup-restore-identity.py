@@ -175,6 +175,10 @@ class StorageInspector:
         has_persistent_volume = data_mount is not None
         is_embedded_h2 = any("keycloakdb.mv.db" in f for f in h2_files) or not has_persistent_volume
 
+        env_list = data.get("Config", {}).get("Env", [])
+        env_map = {e.split("=", 1)[0]: e.split("=", 1)[1] for e in env_list if "=" in e}
+        db_username = env_map.get("KC_DB_USERNAME")
+
         return {
             "container_name": container_name,
             "container_running": is_running,
@@ -182,6 +186,7 @@ class StorageInspector:
             "has_persistent_volume": has_persistent_volume,
             "is_embedded_h2": is_embedded_h2,
             "h2_files": h2_files,
+            "db_username": db_username,
             "storage_vulnerability": "HIGH - Identities stored in container writable layer; destroying container deletes data"
             if not has_persistent_volume else "LOW",
         }
@@ -321,6 +326,9 @@ class BackupEngine:
                 "storage_layer": "container_writable_layer",
                 "status": "VALID",
             }
+            if storage.get("db_username"):
+                metadata["db_username"] = storage["db_username"]
+
             metadata_file = target_dir / "backup_metadata.json"
             metadata_file.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
             os.chmod(metadata_file, 0o600)
@@ -616,13 +624,19 @@ class RestorationVerifier:
         metadata = backup_info.get("metadata", {})
         effective_admin_user = metadata.get("admin_username") or os.getenv("KEYCLOAK_ADMIN_USER", "admin")
         effective_admin_pass = metadata.get("synthetic_admin_pass") or os.getenv("KEYCLOAK_ADMIN_PASS") or os.getenv("KC_BOOTSTRAP_ADMIN_PASSWORD")
-        if not effective_admin_pass:
-            env_file = REPO_ROOT / "platform" / "identity" / ".env"
-            if env_file.exists():
-                for line in env_file.read_text(encoding="utf-8").splitlines():
-                    if line.startswith("KC_BOOTSTRAP_ADMIN_PASSWORD="):
-                        effective_admin_pass = line.split("=", 1)[1].strip()
-                        break
+        effective_db_user = metadata.get("db_username") or os.getenv("KC_DB_USERNAME")
+        effective_db_pass = metadata.get("db_password") or os.getenv("KC_DB_PASSWORD")
+
+        env_file = REPO_ROOT / "platform" / "identity" / ".env"
+        if env_file.exists():
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                if not effective_admin_pass and line.startswith("KC_BOOTSTRAP_ADMIN_PASSWORD="):
+                    effective_admin_pass = line.split("=", 1)[1].strip()
+                elif not effective_db_user and line.startswith("KC_DB_USERNAME="):
+                    effective_db_user = line.split("=", 1)[1].strip()
+                elif not effective_db_pass and line.startswith("KC_DB_PASSWORD="):
+                    effective_db_pass = line.split("=", 1)[1].strip()
+
         if not effective_admin_pass:
             effective_admin_pass = "SyntheticAdminSecret123!"
 
@@ -648,10 +662,17 @@ class RestorationVerifier:
                 "-e", f"KC_HOSTNAME=http://localhost:{port}",
                 "-e", f"KC_BOOTSTRAP_ADMIN_USERNAME={admin_user}",
                 "-e", f"KC_BOOTSTRAP_ADMIN_PASSWORD={admin_pass}",
+            ]
+            if effective_db_user:
+                cmd.extend(["-e", f"KC_DB_USERNAME={effective_db_user}"])
+            if effective_db_pass:
+                cmd.extend(["-e", f"KC_DB_PASSWORD={effective_db_pass}"])
+
+            cmd.extend([
                 "-v", f"{scratch_h2}:/opt/keycloak/data/h2",
                 keycloak_image,
                 "start-dev",
-            ]
+            ])
             run_res = subprocess.run(cmd, capture_output=True, text=True)
             if run_res.returncode != 0:
                 raise BackupError(f"Failed to start restored Keycloak container: {run_res.stderr.strip()}")
@@ -808,7 +829,7 @@ class SafetyGateEvaluator:
         # 2. Machine-verifiable: Check for verified cold backups in .local
         backups = []
         if BACKUP_BASE_DIR.exists():
-            for child in sorted(BACKUP_BASE_DIR.iterdir(), reverse=True):
+            for child in sorted(BACKUP_BASE_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
                 if child.is_dir():
                     try:
                         v = BackupEngine.verify_backup_directory(child)
