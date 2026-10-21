@@ -45,6 +45,7 @@ public class ProfileSecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").hasAnyRole("CUSTOMER", "MERCHANT", "COURIER", "DISPATCHER", "ADMIN")
+                        .requestMatchers("/api/v1/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt

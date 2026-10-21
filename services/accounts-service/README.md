@@ -197,6 +197,23 @@ Docker Desktop **4.95.0** / Engine **29.8.2**, and PostgreSQL **16.14**
     - Rejected tokens (expired, untrusted, wrong audience, wrong role, malformed) never create a profile row
     - Merchant authentication maps `MERCHANT` role with `merchantProfile = null`
     - Flyway V1 clean migration and Hibernate schema validation pass cleanly
-- `git diff --check`: passed; zero secrets, private keys, or passwords committed.
 - Static and live Keycloak invariants (`platform/identity/validate-identity.sh`): all 7 static checks and 5 live container smoke checks passed against live Keycloak 26.8.1 on port 8090.
 - Browser E2E flow (React -> Keycloak -> Gateway -> Accounts -> PostgreSQL) and Google broker acceptance (L03) remain unverified until interactive user browser authentication is exercised.
+
+## Merchant Approval-State & Tenant Authorization Provider — Issue #8
+
+Refs #8 · Author: **Thuvarahan** (Merchant team) · Reviewers: **Sinthuha**, **HarithKeshan**, **Eric**, **Vibhushan**.
+
+Accounts Service now provides the minimal merchant approval-state representation, in-process provider interfaces, and tenant authorization boundary required for role landing and tenant isolation:
+- **Database Boundary (`V2__create_merchants.sql`):** Accounts owns the `merchants` table and Flyway V2 migration. A merchant tenant binds an immutable `id` (UUID), `account_profile_id`, and `keycloak_sub` (subject claim) with unique registration numbers and check constraints on approval status. A PostgreSQL trigger (`merchant_identity_immutable`) strictly prevents tampering with tenant identity or subject binding on UPDATE.
+- **Decoupled Approval Lifecycle (`MerchantStatus`):** States `PENDING`, `APPROVED`, `SUSPENDED`, `REJECTED`. Keycloak authentication establishes identity, but does **not** imply business approval. Registration defaults to non-operational pending status; self-approval by client parameters or HTTP headers is impossible.
+- **Provider Interfaces:**
+  - `MerchantApprovalProvider`: Resolves `MerchantStatus` by tenant ID or Keycloak subject (`getApprovalStatus`, `isApproved`).
+  - `MerchantTenantAuthorizationProvider`: Enforces tenant ownership checks (`authorizeTenantAccess`, `requireTenantAccess`, `requireApprovedTenantAccess`, `resolveMerchantForIdentity`).
+- **Fail-Closed Security & Role Policy:**
+  - Only authenticated actors with `MERCHANT` or `ADMIN` roles can access merchant endpoints (`/api/v1/merchants/**`).
+  - Strict tenant ownership: Merchant A cannot read or modify Merchant B's resources (throws `TenantAccessDeniedException` -> RFC 7807 403 Forbidden).
+  - Admin oversight: Verified administrators may inspect tenant records for review and onboarding approval.
+  - Operations requiring approval fail closed with `MerchantNotApprovedException` (403 Forbidden) if status is `PENDING`, `SUSPENDED`, or `REJECTED`.
+- **Integrated Profile Resolution:** `GET /api/v1/users/me` automatically populates the frozen `merchantProfile` contract (`merchantId`, `businessName`, `registrationNumber`, `status`) when an authenticated `MERCHANT` has a bound merchant record, and returns `null` for `CUSTOMER` actors.
+- **REST Seams:** `GET /api/v1/merchants/me`, `GET /api/v1/merchants/{merchantId}`, `GET /api/v1/merchants/{merchantId}/status` guarded by OAuth2 Resource Server and tenant authorization.
