@@ -25,26 +25,22 @@ The platform foundation is frozen and verified. The repository is now ready for 
 
 ---
 
-## 2. Git Branch State & Synchronization Plan
+## 2. Git Branch State & Release Synchronization Plan
 
 ### 2.1 Branch Divergence Analysis
 - **`origin/main` Commit:** `c11bf89` (Merge PR #70)
-- **`origin/test` Commit:** `803df4c` (Merge PR #69)
-- **Divergence Count (`git rev-list --left-right --count origin/main...origin/test`):** `3 0`
-- **Unique Commits on `origin/test`:** `0` (strictly behind `main` by 3 merge commits: PR #70, PR #66, PR #58).
-- **Working Tree Comparison (`git diff origin/test..origin/main`):** `0` differences. The code tree is identical.
+- **`origin/test` Commit:** `0d44d15` (Merge PR #71)
+- **Divergence Count (`git rev-list --left-right --count origin/main...origin/test`):** `0 2`
+- **Unique Commits on `origin/test`:** `2` (Commit `2b67001` and merge commit `0d44d15` from PR #71).
+- **Working Tree Comparison (`git diff origin/main..origin/test`):** Purely documentation additions (`NOV_01_READINESS_TRACKER.md` and `NOV_01.md`). Zero code differences. Zero merge conflicts.
 
-### 2.2 Synchronization Plan (Main to Test)
+### 2.2 Release Promotion Plan (Test to Main)
 Per [`docs/development/GIT_WORKFLOW.md`](../development/GIT_WORKFLOW.md):
-1. When `test` has 0 unique commits and is strictly behind `main`, a **fast-forward synchronization** is the safest mechanism.
-2. Local `test` has been fast-forwarded to `c11bf89` using `git merge --ff-only origin/main`.
-3. To update the shared `test` branch on GitHub:
-   ```bash
-   git checkout test
-   git merge --ff-only origin/main
-   git push origin test
-   ```
-4. **Approval Guard:** Per repository policy and AGENTS.md Rule 7, human confirmation is required prior to pushing updates to shared remote branches. Once approved, `origin/test` will align at `c11bf89`.
+1. PR #71 has been reviewed and merged into `test`, establishing the frozen November 1 readiness baseline.
+2. A release PR is prepared targeting base `main` from head `test`:
+   - Title: `chore(release): promote SwiftDrop November 1 readiness baseline`
+   - Content: Phase 4A readiness tracker, onboarding runbook, QA ownership protocols.
+3. **Approval Gate:** The release PR remains open for human review and merge through GitHub. `main` is never pushed to directly or auto-merged.
 
 ---
 
@@ -168,7 +164,8 @@ cd frontend && pnpm test --run && pnpm typecheck && pnpm lint
 
 ### 5.1 Clean-Clone QA Handoff (Owner: Eric `@EricPraveen`, Issue #17)
 **Milestone Acceptance Item:** `L10`  
-**Current Status:** UNVERIFIED (Platform dry-run passed; awaiting independent reproduction).
+**Current Status:** PENDING INDEPENDENT VERIFICATION  
+**Official Handoff Comment:** [Issue #17 Comment](https://github.com/Suthankan1/swiftdrop/issues/17#issuecomment-6312161904) posted on 2026-10-21.
 
 #### Executable Peer QA Checklist for Eric:
 1. Clone fresh repository on clean workstation: `git clone -b test https://github.com/Suthankan1/swiftdrop.git`
@@ -189,7 +186,8 @@ cd frontend && pnpm test --run && pnpm typecheck && pnpm lint
 
 ### 5.2 Independent Security QA Handoff (Owner: Vibhushan `@Vibhushan-2003`, Issue #18)
 **Milestone Acceptance Items:** `L06`, `L07`, `L08`  
-**Current Status:** PLATFORM SELF-VERIFIED (36 PASS, 0 FAIL, 4 BLOCKED; awaiting independent verification).
+**Current Status:** PLATFORM SELF-VERIFIED (36 PASS, 0 FAIL, 4 BLOCKED); INDEPENDENT QA PENDING  
+**Official Handoff Comment:** [Issue #18 Comment](https://github.com/Suthankan1/swiftdrop/issues/18#issuecomment-6312165950) posted on 2026-10-21.
 
 #### Executable Security Verification Checklist for Vibhushan:
 1. Ensure full stack is running (`check-readiness.sh` reports 13/13 PASS).
@@ -242,18 +240,58 @@ frontend/src/app/router/routes.tsx
 3. **No Duplicate OIDC Code:** Role teams must **never** create separate Keycloak login clients or duplicate auth providers. All role views consume the shared `useAuth()` hook.
 4. **No Staff Self-Elevation:** Keycloak public registration assigns solely the `CUSTOMER` role. Courier, Dispatcher, and Admin accounts must be provisioned directly by an administrator.
 
-### 6.3 Handoff Tasks for Role Teams
-Each team will create a feature branch from `test` and add their minimal role landing page:
-- **Merchant Pair (Issue #9):** Add `frontend/src/features/merchant/pages/MerchantPage.tsx`, wire `/merchant` in `routes.tsx` under `<ProtectedRoute role="MERCHANT" />`, display merchant business status (`PENDING` / `APPROVED`).
-- **Courier Pair (Issue #15):** Add `frontend/src/features/courier/pages/CourierPage.tsx`, wire `/courier` under `<ProtectedRoute role="COURIER" />`, display assigned deliveries placeholder.
-- **Dispatcher/Admin Pair (Issue #16):** Add `frontend/src/features/dispatcher/pages/DispatcherPage.tsx` (`/dispatcher`) and `frontend/src/features/admin/pages/AdminPage.tsx` (`/admin`) under respective guards.
+### 6.3 Handoff Blueprint & Tasks for Role Teams
+Each functional team creates a small feature branch from `test` to introduce their role entry page without touching core auth infrastructure.
+
+#### Implementation Pattern:
+1. **Component Location:**
+   - Merchant: `frontend/src/features/merchant/pages/MerchantPage.tsx`
+   - Courier: `frontend/src/features/courier/pages/CourierPage.tsx`
+   - Dispatcher: `frontend/src/features/dispatcher/pages/DispatcherPage.tsx`
+   - Admin: `frontend/src/features/admin/pages/AdminPage.tsx`
+
+2. **Route Registration (`frontend/src/app/router/routes.tsx`):**
+   ```tsx
+   <Route element={<ProtectedRoute role="MERCHANT" />}><Route path="merchant" element={<MerchantPage />} /></Route>
+   <Route element={<ProtectedRoute role="COURIER" />}><Route path="courier" element={<CourierPage />} /></Route>
+   <Route element={<ProtectedRoute role="DISPATCHER" />}><Route path="dispatcher" element={<DispatcherPage />} /></Route>
+   <Route element={<ProtectedRoute role="ADMIN" />}><Route path="admin" element={<AdminPage />} /></Route>
+   ```
+
+3. **Navigation Integration (`frontend/src/auth/AuthPages.tsx`):**
+   In `LoginPage`, display links conditionally based on role:
+   ```tsx
+   {auth.snapshot.roles.includes('MERCHANT') && <Link to="/merchant">Merchant space</Link>}
+   {auth.snapshot.roles.includes('COURIER') && <Link to="/courier">Courier space</Link>}
+   {auth.snapshot.roles.includes('DISPATCHER') && <Link to="/dispatcher">Dispatcher space</Link>}
+   {auth.snapshot.roles.includes('ADMIN') && <Link to="/admin">Admin space</Link>}
+   ```
+
+4. **Component Template Reusing Shared UI:**
+   ```tsx
+   import { useAuth } from '../../../auth/context'
+   export function MerchantPage() {
+     const { snapshot, logout } = useAuth()
+     return (
+       <div className="page-container">
+         <h1>Merchant Portal</h1>
+         <p>Signed in as {snapshot.status === 'authenticated' ? snapshot.subject : ''}</p>
+         <button onClick={() => { void logout() }}>Sign out</button>
+       </div>
+     )
+   }
+   ```
+
+5. **Testing Pattern:**
+   Use `renderWithAuth(<MerchantPage />)` from `frontend/src/test/authFixture.tsx` to test unauthenticated redirection, role denial, and authenticated rendering.
 
 ---
 
 ## 7. November 1 Academic Report Readiness Matrix (Issue #19)
 
 **Academic Report Lead:** HarithKeshan (`@Harithkeshan`, Issue #19)  
-**Architecture & Platform Sign-Off:** Suthankan1 ([`docs/team/PLATFORM_SIGNOFF_NOV01.md`](../team/PLATFORM_SIGNOFF_NOV01.md))
+**Architecture & Platform Sign-Off:** Suthankan1 ([`docs/team/PLATFORM_SIGNOFF_NOV01.md`](../team/PLATFORM_SIGNOFF_NOV01.md))  
+**Official Handoff Comment:** [Issue #19 Comment](https://github.com/Suthankan1/swiftdrop/issues/19#issuecomment-6312174255) posted on 2026-10-21.
 
 ### 7.1 Report Section Readiness
 
