@@ -18,6 +18,31 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## Issue #8 Merchant Approval-State & Tenant Authorization Provider — 2026-10-21
+
+Primary Implementer: **Thuvarahan (@thuvarahan-t)**; branch `feat/nov10-merchant-approval-tenant-auth`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts ownership), **HarithKeshan (@Harithkeshan)** (approval policy), **Eric (@EricPraveen)** (Merchant UI consumer), **Vibhushan (@Vibhushan-2003)** (independent security QA).
+
+Delivered minimal merchant approval-state representation, in-process provider interfaces, and fail-closed tenant authorization boundary for Accounts Service:
+- **Approval Lifecycle Model:** Introduced `MerchantStatus` (`PENDING`, `APPROVED`, `SUSPENDED`, `REJECTED`). Authentication via Keycloak establishes identity only; registration defaults to non-operational pending status and cannot self-elevate to approved or staff status.
+- **PostgreSQL Persistence & Immutability:** Accounts owns the `merchants` table and Flyway migration `V2__create_merchants.sql`. Unique constraints enforce 1-to-1 binding between Keycloak subject and tenant, and trigger `merchant_identity_immutable` prevents tampering with tenant identity or subject binding on UPDATE.
+- **Provider Interfaces Implemented:**
+  - `MerchantApprovalProvider`: In-process provider resolving `MerchantStatus` by tenant ID or Keycloak subject (`getApprovalStatus`, `isApproved`).
+  - `MerchantTenantAuthorizationProvider`: Evaluates tenant authorization (`authorizeTenantAccess`, `requireTenantAccess`, `requireApprovedTenantAccess`, `resolveMerchantForIdentity`).
+- **Fail-Closed Security & Tenant Isolation:**
+  - Merchant A cannot access Merchant B resources (rejected with `TenantAccessDeniedException` -> RFC 7807 403 Forbidden).
+  - Unauthenticated requests rejected with 401 Unauthorized.
+  - Non-merchant/customer roles attempting tenant access rejected with 403 Forbidden.
+  - Nonexistent merchant IDs return RFC 7807 404 Not Found.
+  - Operations requiring approval fail closed (`MerchantNotApprovedException` -> 403 Forbidden) if status is PENDING, SUSPENDED, or REJECTED.
+  - Admin role permitted tenant inspection for onboarding review/audit.
+- **Current User Profile Integration:** `GET /api/v1/users/me` resolves the caller's bound merchant profile and returns server-controlled state (`merchantId`, `businessName`, `registrationNumber`, `status`) for `MERCHANT` role, while returning `null` for `CUSTOMER`.
+- **Protected REST Seams:** `GET /api/v1/merchants/me`, `GET /api/v1/merchants/{merchantId}`, `GET /api/v1/merchants/{merchantId}/status`.
+- **Validation Evidence:**
+  - Accounts unit/MVC/security suite: **79 tests PASS** (35 new tests added, 0 failures, 0 skips).
+  - Gateway tests: **19 tests PASS**.
+  - Frontend suite: **80 tests PASS**.
+
 ## Issue #18 Independent Security End-to-End QA Verification — 2026-10-21
 
 Independent QA Lead: **Vibhushan (@Vibhushan-2003)**; branch `tests/issue-18-independent-security-qa`, targeting `test` (based on `origin/test` commit `b974af0`).
