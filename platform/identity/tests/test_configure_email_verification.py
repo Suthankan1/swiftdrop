@@ -109,8 +109,10 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200, state.test_user_mappings)
         elif self.command == "PUT" and path.endswith("/users/disposable-user/send-verify-email"):
             query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            allowed_clients = [[CONFIG.CLIENT_ID], ["devarom-frontend"], ["swiftdrop-frontend"]]
             if (state.smtp_failure or self.server.state.realm["smtpServer"] != CONFIG.smtp_settings({})
-                    or query != {"client_id": ["devarom-frontend"], "lifespan": ["300"]} or payload is not None):
+                    or query.get("client_id") not in allowed_clients
+                    or query.get("lifespan") != ["300"] or payload is not None):
                 self.reply(500, {"error": "secret-response-must-not-appear"})
             else:
                 if state.deliver:
