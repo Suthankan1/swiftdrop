@@ -169,8 +169,8 @@ export class AuthSession {
 export function getAuthConfig(): OidcConfig {
   const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173'
   const url = (import.meta.env.VITE_KEYCLOAK_URL || import.meta.env.VITE_KEYCLOAK_ORIGIN || 'http://localhost:8090').replace(/\/$/, '')
-  const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'devarom'
-  const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'devarom-frontend'
+  const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'swiftdrop'
+  const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'swiftdrop-frontend'
   const redirectUri = import.meta.env.VITE_AUTH_REDIRECT_URI || `${origin}/auth/callback`
   const postLogoutRedirectUri = import.meta.env.VITE_AUTH_POST_LOGOUT_URI || import.meta.env.VITE_AUTH_POST_LOGOUT_REDIRECT_URI || `${origin}/`
   return { url, realm, clientId, redirectUri, postLogoutRedirectUri }

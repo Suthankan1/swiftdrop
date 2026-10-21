@@ -52,15 +52,16 @@ devarom:
   cors:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   jwt:
-    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/devarom}
-    jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}
-    audience: ${JWT_AUDIENCE:devarom-api}
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/swiftdrop}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}
+    audience: ${JWT_AUDIENCE:swiftdrop-api}
 
 swiftdrop:
   cors:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   jwt:
-    issuer-uri: ${KEYCLOAK_ISSUER_URI:${devarom.jwt.issuer-uri:http://localhost:8090/realms/devarom}}
-    jwk-set-uri: ${KEYCLOAK_JWKS_URI:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/devarom/protocol/openid-connect/certs}}
-    audience: ${JWT_AUDIENCE:${devarom.jwt.audience:devarom-api}}
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:${devarom.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}}
+    audience: ${JWT_AUDIENCE:${devarom.jwt.audience:swiftdrop-api}}
+
 

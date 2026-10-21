@@ -147,8 +147,8 @@ Refs #37 · Implementation Author: **Suthankan1** · Reviewers: **Sinthuha**, **
 
 Accounts Service now independently validates Keycloak Bearer JWTs as an OAuth2 Resource Server:
 - **Cryptographic Signature Verification:** `NimbusJwtDecoder` independently verifies JWT signatures against trusted Keycloak JWKS (`/protocol/openid-connect/certs`).
-- **Composed Token Validation:** Validates exact issuer (`KEYCLOAK_ISSUER_URI`), required API audience (`JWT_AUDIENCE=devarom-api`), timestamps (expiration, not-before with default clock skew), and non-blank subject (`sub <= 255` characters).
-- **Application Role Mapping:** `KeycloakRoleExtractor` extracts authoritative roles from `roles` and `realm_access.roles` claims, strictly filtering to the five approved SwiftDrop roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`). Unrecognized roles, client-supplied headers, and Keycloak default/internal roles (`default-roles-devarom`, `offline_access`, `uma_authorization`) are safely ignored.
+- **Composed Token Validation:** Validates exact issuer (`KEYCLOAK_ISSUER_URI`), required API audience (`JWT_AUDIENCE=swiftdrop-api`), timestamps (expiration, not-before with default clock skew), and non-blank subject (`sub <= 255` characters).
+- **Application Role Mapping:** `KeycloakRoleExtractor` extracts authoritative roles from `roles` and `realm_access.roles` claims, strictly filtering to the five approved SwiftDrop roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`). Unrecognized roles, client-supplied headers, and Keycloak default/internal roles (`default-roles-swiftdrop`, `default-roles-devarom`, `offline_access`, `uma_authorization`) are safely ignored.
 - **Trusted Identity Provider:** `SecurityContextCurrentIdentityProvider` extracts validated identity attributes (`subject`, `email`, `fullName`, and approved `roles`) exclusively from the authenticated Spring Security `Jwt` principal. HTTP headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameters are never trusted.
 - **HTTP Security Policy:**
   - Stateless session management (`SessionCreationPolicy.STATELESS`), CSRF disabled for stateless API.

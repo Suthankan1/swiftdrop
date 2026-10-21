@@ -17,8 +17,8 @@ function mockClient(options?: {
   const authenticated = options?.authenticated ?? false
   return {
     authServerUrl: options?.url ?? 'http://localhost:8090',
-    realm: options?.realm ?? 'devarom',
-    clientId: options?.clientId ?? 'devarom-frontend',
+    realm: options?.realm ?? 'swiftdrop',
+    clientId: options?.clientId ?? 'swiftdrop-frontend',
     authenticated,
     token: authenticated ? 'synthetic-access-jwt' : undefined,
     tokenParsed: authenticated ? { sub: 'synthetic-sub-001', exp: 9999999999 } : undefined,
@@ -49,26 +49,26 @@ describe('OIDC Adapter Multi-Environment Configuration', () => {
     vi.unstubAllEnvs()
   })
 
-  it('1. Safe default resolves working legacy devarom configuration without env overrides', () => {
+  it('1. Safe default resolves canonical SwiftDrop configuration without env overrides', () => {
     const config = getAuthConfig()
     expect(config.url).toBe('http://localhost:8090')
-    expect(config.realm).toBe('devarom')
-    expect(config.clientId).toBe('devarom-frontend')
+    expect(config.realm).toBe('swiftdrop')
+    expect(config.clientId).toBe('swiftdrop-frontend')
     expect(config.redirectUri).toContain('/auth/callback')
     expect(config.postLogoutRedirectUri).toMatch(/\/$/)
   })
 
-  it('2. Target SwiftDrop configuration is resolved when VITE_* variables are set', () => {
+  it('2. Legacy configuration is supported when VITE_* variables are explicitly set', () => {
     vi.stubEnv('VITE_KEYCLOAK_URL', 'http://localhost:8090')
-    vi.stubEnv('VITE_KEYCLOAK_REALM', 'swiftdrop')
-    vi.stubEnv('VITE_KEYCLOAK_CLIENT_ID', 'swiftdrop-frontend')
+    vi.stubEnv('VITE_KEYCLOAK_REALM', 'devarom')
+    vi.stubEnv('VITE_KEYCLOAK_CLIENT_ID', 'devarom-frontend')
     vi.stubEnv('VITE_AUTH_REDIRECT_URI', 'http://localhost:5173/auth/callback')
     vi.stubEnv('VITE_AUTH_POST_LOGOUT_REDIRECT_URI', 'http://localhost:5173/')
 
     const config = getAuthConfig()
     expect(config.url).toBe('http://localhost:8090')
-    expect(config.realm).toBe('swiftdrop')
-    expect(config.clientId).toBe('swiftdrop-frontend')
+    expect(config.realm).toBe('devarom')
+    expect(config.clientId).toBe('devarom-frontend')
     expect(config.redirectUri).toBe('http://localhost:5173/auth/callback')
     expect(config.postLogoutRedirectUri).toBe('http://localhost:5173/')
   })

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Validates that the access JWT contains the required Devarom API audience claim ("devarom-api").
+ * Validates that the access JWT contains the required SwiftDrop API audience claim ("swiftdrop-api").
  */
 public class AudienceValidator implements OAuth2TokenValidator<Jwt> {
 
