@@ -18,6 +18,25 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## SwiftDrop Phase 4B Team Kickoff, QA Handoff & Release Prep — 2026-10-21
+
+Owner **Suthankan1**; branch `chore/nov1-phase4b-handoff`, based on `origin/test` (`0d44d15`).
+Phase 4B coordinates team onboarding, independent QA handoffs, and release preparation:
+- **Collaborator Access:** Verified 7 active members and 2 pending invitations (`@thuvarahan-t`, `@Vibhushan-2003`).
+- **Independent Clean-Clone QA (Issue #17):** Handoff instructions posted to [Issue #17](https://github.com/Suthankan1/swiftdrop/issues/17#issuecomment-6312161904) for Eric (@EricPraveen). Acceptance criterion L10 remains PENDING independent execution.
+- **Independent Security QA (Issue #18):** Handoff instructions posted to [Issue #18](https://github.com/Suthankan1/swiftdrop/issues/18#issuecomment-6312165950) for Vibhushan (@Vibhushan-2003). Acceptance criteria L06, L07, and L08 remain PLATFORM SELF-VERIFIED (36 PASS / 0 FAIL / 4 BLOCKED), with independent peer verification PENDING.
+- **Academic Report Handoff (Issue #19):** Evidence and diagram package posted to [Issue #19](https://github.com/Suthankan1/swiftdrop/issues/19#issuecomment-6312174255) for HarithKeshan (@Harithkeshan). Strict separation of IMPLEMENTED vs PLANNED features documented.
+- **Five-Role UI Route Blueprint:** Documented route guards, component location, and test pattern for missing role views (`/merchant`, `/courier`, `/dispatcher`, `/admin`) reusing existing `ProtectedRoute` and `useAuth()`.
+- **Release Preparation:** Branch divergence confirmed (`0d44d15` vs `c11bf89`); working tree diff is strictly documentation; zero code conflicts.
+
+## SwiftDrop Phase 4A Milestone Readiness Tracker — 2026-10-21
+
+Owner **Suthankan1**; branch `chore/nov1-team-onboarding-readiness`, merged into `test` as PR #71 (`0d44d15`).
+Phase 4A delivered the comprehensive November 1 Milestone Readiness & Team Onboarding Tracker:
+- **Milestone Tracker Published:** Created `docs/milestones/NOV_01_READINESS_TRACKER.md` with full toolchain prerequisites, clean clone runbook, service startup instructions, and live demo script.
+- **Milestone Scope Alignment:** Updated `docs/milestones/NOV_01.md` with direct references to the active tracker.
+- **Team Onboarding Runbook:** Standardized step-by-step local workstation setup across Java 21, Node 24, Docker Compose, Keycloak, PostgreSQL, Gateway, Accounts, and React SPA.
+
 ## SwiftDrop Phase 3C Complete Technical Rebranding — 2026-10-21
 
 Owner **Suthankan1**; branch `refactor/swiftdrop-complete-technical-rebrand`, based on `origin/test` (`39a1f1c`).
