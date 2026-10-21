@@ -2,7 +2,7 @@
 
 > **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
 
-**Module:** Security & Architecture · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #47 (Phase C)](https://github.com/Suthankan1/devarom/issues/47) · **Architecture Baseline:** SwiftDrop v1.3
+**Module:** Security & Architecture · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #47 (Phase C)](https://github.com/Suthankan1/swiftdrop/issues/47) · **Architecture Baseline:** SwiftDrop v1.3
 
 ---
 

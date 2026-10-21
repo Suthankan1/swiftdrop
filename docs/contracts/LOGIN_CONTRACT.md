@@ -1,8 +1,8 @@
 # November 1 Login Integration Contract & Baseline Freeze
 
-**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/devarom/issues/1) · **Architecture Baseline:** SwiftDrop v1.3
+**Status:** Technical integration baseline proposed for team review · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #1](https://github.com/Suthankan1/swiftdrop/issues/1) · **Architecture Baseline:** SwiftDrop v1.3
 
-> **Authentication ownership update (Oct 15):** Suthankan1 owns all frontend identity/OIDC login/signup/session UI and shared backend JWT/security integration ([#36](https://github.com/Suthankan1/devarom/issues/36), [#37](https://github.com/Suthankan1/devarom/issues/37)). Customer team owns shared SPA shell and Accounts business profiles, **not** login/client/security implementation. Role UI teams build role landing pages using the common auth provider; Vibhushan independently verifies security. See [team ownership](../team/OWNERSHIP.md). This human-requested reassignment still needs pair acknowledgement.
+> **Authentication ownership update (Oct 15):** Suthankan1 owns all frontend identity/OIDC login/signup/session UI and shared backend JWT/security integration ([#36](https://github.com/Suthankan1/swiftdrop/issues/36), [#37](https://github.com/Suthankan1/swiftdrop/issues/37)). Customer team owns shared SPA shell and Accounts business profiles, **not** login/client/security implementation. Role UI teams build role landing pages using the common auth provider; Vibhushan independently verifies security. See [team ownership](../team/OWNERSHIP.md). This human-requested reassignment still needs pair acknowledgement.
 
 > **Contract-first principle:** This document freezes the authentication scope, backend/frontend toolchain baseline, identity flows, minimal REST contract, local development port registry, and team responsibilities for the November 1 deliverable. No application code, scaffolding, or configurations are generated in this task.
 
@@ -19,7 +19,7 @@ All future Spring Initializr project generation and frontend scaffolding across 
 | **Spring Cloud** | **2025.1.3** (*Oakwood* release train) | Verified officially compatible with Spring Boot 4.0.x and 4.1.x lines. Used **only** in applications requiring Cloud components (`services/api-gateway/`). Core business services do not bundle Spring Cloud unnecessarily. |
 | **Build Tool** | **Apache Maven** | Standardized across all backend services; wrapper scripts (`mvnw`) generated per service by owners. |
 | **Packaging** | **JAR** | Executable standalone microservice containers. |
-| **Java Group ID** | `com.devarom` | Standard package namespace (e.g., `com.devarom.accountsservice`, `com.devarom.apigateway`). |
+| **Java Group ID** | `com.swiftdrop` | Standard package namespace (e.g., `com.swiftdrop.accountsservice`, `com.swiftdrop.apigateway`). |
 | **Frontend Framework** | **React + TypeScript + Vite** | Current Node.js LTS, `pnpm` package manager default; single SPA with role-based routing. |
 | **Persistence** | **PostgreSQL 16+** | Separate logical database per service; Flyway migrations owned by individual services. |
 | **Identity Provider** | **Keycloak 26.8.1** (pinned) | Standalone identity provider container with separate identity PostgreSQL database (`keycloak_db`). Sanitized realm defined in `platform/identity/realm-swiftdrop.json` (canonical `swiftdrop` realm; migrated live instance preserves internal ID). |

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link, Navigate, Outlet } from 'react-router'
 import { useAuth } from './context'
 import { FeedbackState } from '../components/ui/FeedbackState'
-import type { DevaromRole } from './contracts'
+import type { SwiftDropRole } from './contracts'
 const messages = {
   cancelled: 'Sign-in was cancelled. You can try again.',
   'invalid-callback': 'Sign-in could not be verified. Please start again.',
@@ -34,7 +34,7 @@ export function LogoutPage() {
   return <div className="page-container"><FeedbackState title="Signed out">Local session cleared. If the identity provider is unavailable, close its session separately.</FeedbackState><Link to="/login">Return to sign-in</Link></div>
 }
 /** UX boundary only. Every backend must independently authorize the actor. */
-export function ProtectedRoute({ role }: { role?: DevaromRole }) {
+export function ProtectedRoute({ role }: { role?: SwiftDropRole }) {
   const { snapshot } = useAuth()
   if (snapshot.status === 'loading') return <FeedbackState title="Checking session" tone="loading">Please wait.</FeedbackState>
   if (snapshot.status !== 'authenticated') return <Navigate to="/login" replace />

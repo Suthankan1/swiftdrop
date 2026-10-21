@@ -1,10 +1,11 @@
 # SwiftDrop — Keycloak Identity & OIDC Foundation
 
-**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #2](https://github.com/Suthankan1/devarom/issues/2) · **Architecture Baseline:** SwiftDrop v1.3
+**Module:** Platform & Security · **Owner:** Suthankan1 · **Target Milestone:** November 1, 2026 · **Issue:** [Refs #2](https://github.com/Suthankan1/swiftdrop/issues/2) · **Architecture Baseline:** SwiftDrop v1.3
 
-This directory contains the reproducible Keycloak identity foundation for the SwiftDrop delivery platform. It defines the `devarom` realm, public OpenID Connect (OIDC) client for the React Single Page Application (SPA), role-based access control (RBAC) definitions, claims mapping for Spring Security Resource Servers, and Google OAuth 2.0 identity federation brokering.
+This directory contains the reproducible Keycloak identity foundation for the SwiftDrop delivery platform. It defines the canonical `swiftdrop` realm (`realm-swiftdrop.json`), public OpenID Connect (OIDC) client (`swiftdrop-frontend`) for the React Single Page Application (SPA), audience (`swiftdrop-api`), custom branded login theme (`swiftdrop`), role-based access control (RBAC) definitions, claims mapping for Spring Security Resource Servers, and Google OAuth 2.0 identity federation brokering.
 
-Phase 1 updates visible product text and the existing wordmark text only. Realm `devarom`, public client `devarom-frontend`, API audience `devarom-api`, theme directory `devarom`, SMTP sender address and Google broker redirect remain unchanged. Existing realm data is not re-imported or recreated; persisted users and subject IDs are preserved. Fresh imports use SwiftDrop display labels; applying those display labels to an existing realm requires a targeted administrative update, never a volume reset.
+> [!NOTE]
+> **Phase 3C Canonical Alignment:** The canonical configuration for fresh installations is [`realm-swiftdrop.json`](realm-swiftdrop.json) with loginTheme `swiftdrop`. Existing running containers preserve their internal realm ID (`devarom`) to ensure continuous subject UUID and database profile immutability without data loss. Legacy [`realm-devarom.json`](realm-devarom.json) and theme directory `themes/devarom` are preserved for historical audit provenance and live migration safety.
 
 ---
 
@@ -19,9 +20,9 @@ Phase 1 updates visible product text and the existing wordmark text only. Realm 
 
 ---
 
-## 2. Realm Architecture (`devarom`)
+## 2. Realm Architecture (`swiftdrop`)
 
-The realm is defined in [`realm-devarom.json`](realm-devarom.json) as a sanitized, version-controlled configuration with zero hardcoded passwords or sensitive secrets.
+The canonical realm is defined in [`realm-swiftdrop.json`](realm-swiftdrop.json) (with legacy baseline retained in [`realm-devarom.json`](realm-devarom.json)) as a sanitized, version-controlled configuration with zero hardcoded passwords or sensitive secrets.
 
 ### 2.1 Five Core Application Roles
 Keycloak manages authentication and realm roles (`realm_access.roles`). SwiftDrop defines five core business roles:
@@ -233,7 +234,7 @@ platform slice; this task does not migrate storage.
 
 ## 8. Custom Branded Login Theme (`platform/identity/themes/devarom/login`)
 
-**Issue:** [Refs #44](https://github.com/Suthankan1/devarom/issues/44) · **Theme Name:** `devarom` · **Parent Theme:** `keycloak.v2`
+**Issue:** [Refs #44](https://github.com/Suthankan1/swiftdrop/issues/44) · **Theme Name:** `devarom` · **Parent Theme:** `keycloak.v2`
 
 A fully responsive, accessible, and professionally branded Keycloak login, registration, and error recovery theme matching the SwiftDrop React Single Page Application design language.
 

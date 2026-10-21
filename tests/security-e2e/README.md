@@ -48,7 +48,7 @@ The test harness runs against the live local development stack:
 docker compose -f platform/identity/docker-compose.identity.yml up -d
 
 # 2. Start Accounts PostgreSQL container (mapped to host port 5438)
-docker start devarom-accounts-postgres
+docker start swiftdrop-accounts-postgres 2>/dev/null || docker start devarom-accounts-postgres
 ```
 
 ### 3.2 Start Backend Microservices
@@ -187,7 +187,7 @@ To reproduce and independently sign off on these security tests:
 2. Ensure Docker containers are running:
    ```bash
    docker ps
-   # Verify devarom-keycloak (8090), devarom-mailpit (8025), and devarom-accounts-postgres (5438)
+   # Verify swiftdrop-keycloak/devarom-keycloak (8090), swiftdrop-mailpit/devarom-mailpit (8025), and swiftdrop-accounts-postgres/devarom-accounts-postgres (5438)
    ```
 3. Start Accounts Service and API Gateway in separate terminals as described in Section 3.
 4. Run the orchestrator:

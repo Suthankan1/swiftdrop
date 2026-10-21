@@ -1,8 +1,8 @@
 import Keycloak from 'keycloak-js'
-import type { AuthIntegration, AuthSnapshot, DevaromRole } from './contracts'
+import type { AuthIntegration, AuthSnapshot, SwiftDropRole } from './contracts'
 
 export type AuthProblem = 'cancelled' | 'invalid-callback' | 'provider-unavailable' | 'session-expired' | null
-const roles: readonly DevaromRole[] = ['CUSTOMER', 'MERCHANT', 'COURIER', 'DISPATCHER', 'ADMIN']
+const roles: readonly SwiftDropRole[] = ['CUSTOMER', 'MERCHANT', 'COURIER', 'DISPATCHER', 'ADMIN']
 const anonymous: AuthSnapshot = { status: 'unauthenticated', subject: null, roles: [] }
 export type SessionState = { snapshot: AuthSnapshot; problem: AuthProblem }
 

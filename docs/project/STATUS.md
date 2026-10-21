@@ -9,6 +9,7 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 | SwiftDrop v1.3 design | **Proposed baseline** | `docs/architecture/BASELINE.md` and 20 supplied editable diagrams |
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
+| GitHub repository | **Official rename complete (`Suthankan1/swiftdrop`); Git remotes and documentation updated (Phase 3B)** | Merged PR #65 into `test`, release PR #66 into `main`; repository renamed; remote verified at `https://github.com/Suthankan1/swiftdrop.git` |
 | Spring Boot services | **API Gateway & Accounts canonical defaults aligned to SwiftDrop; independent JWT security verified** | `services/api-gateway/`: 19 tests passed; Accounts `services/accounts-service/`: 44 unit/MVC/integration tests passed (63 total); OAuth2 Resource Server independently validates SwiftDrop JWTs (`swiftdrop-api` audience), roles, and profile persistence |
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 70 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
@@ -16,6 +17,38 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 | CI/CD, Compose, Kubernetes/AI | **Local container startup & full-stack readiness verified (PR #53, Refs #17, #19)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py`; Kubernetes/AI remain bonuses |
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
+
+## SwiftDrop Phase 3C Complete Technical Rebranding — 2026-10-21
+
+Owner **Suthankan1**; branch `refactor/swiftdrop-complete-technical-rebrand`, based on `origin/test` (`39a1f1c`).
+Phase 3C completes the technical naming migration (`Devarom` -> `SwiftDrop`) across all active codebases, Maven coordinates, Java packages, Keycloak login themes, container naming conventions, application metadata, test fixtures, and developer runbooks:
+- **Java Packages Migrated:** `com.devarom.*` -> `com.swiftdrop.*` across `services/api-gateway` (11 files) and `services/accounts-service` (23 files).
+- **Maven Group ID:** `<groupId>com.swiftdrop</groupId>` standardized in both `pom.xml` files with updated project metadata and SCM URLs pointing to `https://github.com/Suthankan1/swiftdrop.git`.
+- **Frontend Branding:** `@swiftdrop/frontend` in `package.json`, `SwiftDropRole` enum introduced with `DevaromRole` alias. All 70 unit tests, typecheck, lint, and build PASS.
+- **Keycloak Login Theme:** Created `platform/identity/themes/swiftdrop` with custom CSS, dual-class support (`.swiftdrop-*` and `.devarom-*`), SVGs, and messages. Updated canonical `realm-swiftdrop.json` to `"loginTheme": "swiftdrop"`. Applied theme dynamically to running Keycloak container via `apply-theme.sh`.
+- **Docker Naming Strategy:** Dual-mode design implemented. Fresh installations use canonical `swiftdrop-keycloak`, `swiftdrop-mailpit`, `swiftdrop-accounts-postgres`, and volume `swiftdrop-accounts-postgres-data`. Running environments preserve `devarom-*` containers and volumes via parameterized compose and automatic container discovery in scripts (`start-local.sh`, `check-readiness.sh`, `run-security-e2e.sh`, `backup-restore-identity.py`). Zero data loss.
+- **Full Regression Validation:**
+  - Gateway: 19 unit & routing tests PASS, package JAR created.
+  - Accounts: 44 unit & PostgreSQL integration tests PASS (63 total), package JAR created.
+  - Frontend: 70 unit tests PASS, typecheck, lint, build PASS.
+  - Identity: 14/14 static invariant checks PASS, all live container smoke checks PASS.
+  - Security E2E: 36 PASS, 0 FAIL, 4 BLOCKED (retained per missing teammate endpoint baseline).
+  - Demo Smoke: Scenarios A, B, C, D all PASS.
+- **Audit Documentation:** Completed `docs/branding/PHASE_3_TECHNICAL_REBRAND_AUDIT.md`.
+
+## SwiftDrop Phase 3B Post-GitHub-Rename Cleanup & Verification — 2026-10-21
+
+Owner **Suthankan1**; branch `chore/swiftdrop-repository-links`, based on `origin/test` (`97742bf`).
+Phase 3B completes the repository migration following the official GitHub rename from `Suthankan1/devarom` to `Suthankan1/swiftdrop`:
+- Canonical remote URL verified: `https://github.com/Suthankan1/swiftdrop.git`.
+- Release PR #66 merged to `main` (`8961ea2`).
+- `test` branch is at `97742bf` (2 commits behind `main` due to release merge PR #66, with 0 test-only commits diverging).
+- Documentation updated: `README.md`, `CLEAN_CLONE_RUNBOOK.md`, `GIT_WORKFLOW.md`, `PLATFORM_HANDOFF_NOV01.md`, `PHASE_2_FINAL_SIGNOFF.md`, `STATUS.md`.
+- Clone instructions canonicalized to `git clone -b test https://github.com/Suthankan1/swiftdrop.git`.
+- Team Git workflow instructions documented for local remote migration: `git remote set-url origin https://github.com/Suthankan1/swiftdrop.git`.
+- GitHub Actions verification: `.github/workflows` is **NOT CONFIGURED** (by architectural design; CI is not yet introduced).
+- Preserved identity and application data: Zero changes to Keycloak realm storage, Docker containers (`devarom-keycloak`, `devarom-accounts-postgres`, `devarom-mailpit`), Docker volumes, PostgreSQL schemas, user UUIDs, Flyway migrations, or Java package namespace `com.devarom.*`.
+- Identity contract remains canonical: Realm `swiftdrop`, Client `swiftdrop-frontend`, Audience `swiftdrop-api`.
 
 ## SwiftDrop Phase 2 Identity Migration Finalization — 2026-10-21
 

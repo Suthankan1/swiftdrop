@@ -40,12 +40,26 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-REALM_FILE = REPO_ROOT / "platform" / "identity" / "realm-devarom.json"
+REALM_FILE = REPO_ROOT / "platform" / "identity" / "realm-swiftdrop.json"
+if not REALM_FILE.exists():
+    REALM_FILE = REPO_ROOT / "platform" / "identity" / "realm-devarom.json"
 BACKUP_BASE_DIR = REPO_ROOT / ".local" / "backups" / "identity"
 PINNED_KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak:26.8.1"
 
 FORBIDDEN_PORTS = {8090, 8080, 8081, 5438, 8025, 5173}
-FORBIDDEN_CONTAINERS = {"devarom-keycloak", "devarom-accounts-postgres", "devarom-mailpit"}
+FORBIDDEN_CONTAINERS = {
+    "devarom-keycloak", "devarom-accounts-postgres", "devarom-mailpit",
+    "swiftdrop-keycloak", "swiftdrop-accounts-postgres", "swiftdrop-mailpit"
+}
+
+
+def detect_active_keycloak_container() -> str:
+    """Detects whether swiftdrop-keycloak or legacy devarom-keycloak is active."""
+    for name in ("swiftdrop-keycloak", "devarom-keycloak"):
+        res = subprocess.run(["docker", "inspect", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if res.returncode == 0:
+            return name
+    return "swiftdrop-keycloak"
 
 
 class BackupError(Exception):
@@ -134,8 +148,10 @@ class StorageInspector:
     """Inspects Docker and Keycloak runtime storage configuration."""
 
     @staticmethod
-    def inspect_live_keycloak_storage(container_name: str = "devarom-keycloak") -> Dict[str, Any]:
+    def inspect_live_keycloak_storage(container_name: Optional[str] = None) -> Dict[str, Any]:
         """Inspects Docker mounts and H2 database file presence."""
+        if container_name is None:
+            container_name = detect_active_keycloak_container()
         try:
             res = subprocess.run(
                 ["docker", "inspect", container_name],
@@ -258,11 +274,13 @@ class BackupEngine:
     @classmethod
     def execute_live_cold_backup(
         cls,
-        container_name: str = "devarom-keycloak",
+        container_name: Optional[str] = None,
         output_dir: Optional[Path] = None,
         confirm_maintenance_stop: str = "",
     ) -> Dict[str, Any]:
         """Executes a consistent cold backup from the stopped Keycloak container."""
+        if container_name is None:
+            container_name = detect_active_keycloak_container()
         # 1. Inspect container state
         storage = StorageInspector.inspect_live_keycloak_storage(container_name)
         was_running = storage.get("container_running", False)
@@ -811,7 +829,8 @@ class SafetyGateEvaluator:
     @staticmethod
     def evaluate_cutover_gate() -> Dict[str, Any]:
         """Evaluates whether live cutover is authorized and safe to execute."""
-        storage = StorageInspector.inspect_live_keycloak_storage()
+        active_container = detect_active_keycloak_container()
+        storage = StorageInspector.inspect_live_keycloak_storage(active_container)
 
         blocking_reasons: List[str] = []
         checks_detail: Dict[str, Any] = {}
@@ -821,10 +840,10 @@ class SafetyGateEvaluator:
         checks_detail["source_keycloak_running"] = {
             "type": "MACHINE_VERIFIABLE",
             "passed": source_keycloak_up,
-            "detail": f"Container 'devarom-keycloak' running: {source_keycloak_up}",
+            "detail": f"Container '{active_container}' running: {source_keycloak_up}",
         }
         if not source_keycloak_up:
-            blocking_reasons.append("[MACHINE-VERIFIABLE] Source Keycloak container 'devarom-keycloak' is not running.")
+            blocking_reasons.append(f"[MACHINE-VERIFIABLE] Source Keycloak container '{active_container}' is not running.")
 
         # 2. Machine-verifiable: Check for verified cold backups in .local
         backups = []
@@ -877,8 +896,12 @@ class SafetyGateEvaluator:
 
         # 5. Machine-verifiable: Target service readiness
         # Evaluated via presence of target test suites in repo
-        gateway_contract_test = REPO_ROOT / "services" / "api-gateway" / "src" / "test" / "java" / "com" / "devarom" / "apigateway" / "SwiftDropTargetContractGatewayTest.java"
-        accounts_contract_test = REPO_ROOT / "services" / "accounts-service" / "src" / "test" / "java" / "com" / "devarom" / "accountsservice" / "SwiftDropTargetContractAccountsTest.java"
+        gateway_contract_test = REPO_ROOT / "services" / "api-gateway" / "src" / "test" / "java" / "com" / "swiftdrop" / "apigateway" / "SwiftDropTargetContractGatewayTest.java"
+        if not gateway_contract_test.exists():
+            gateway_contract_test = REPO_ROOT / "services" / "api-gateway" / "src" / "test" / "java" / "com" / "devarom" / "apigateway" / "SwiftDropTargetContractGatewayTest.java"
+        accounts_contract_test = REPO_ROOT / "services" / "accounts-service" / "src" / "test" / "java" / "com" / "swiftdrop" / "accountsservice" / "SwiftDropTargetContractAccountsTest.java"
+        if not accounts_contract_test.exists():
+            accounts_contract_test = REPO_ROOT / "services" / "accounts-service" / "src" / "test" / "java" / "com" / "devarom" / "accountsservice" / "SwiftDropTargetContractAccountsTest.java"
         frontend_config_test = REPO_ROOT / "frontend" / "src" / "auth" / "session_config.test.ts"
         target_services_ready = gateway_contract_test.exists() and accounts_contract_test.exists() and frontend_config_test.exists()
         checks_detail["target_services_ready"] = {

@@ -151,8 +151,7 @@ A case-insensitive search across the repository confirms that legacy `devarom` r
 | **Docker Container Names** | `devarom-keycloak`, `devarom-accounts-postgres`, `devarom-mailpit` | Renaming container names would trigger volume disassociation and risk destroying existing H2/PostgreSQL databases |
 | **Docker Volume Names** | `devarom-accounts-postgres-data` | Persistent local database volume storing Accounts customer profiles |
 | **Keycloak Internal Realm ID**| `"id": "devarom"` in database and import | Immutable Keycloak internal UUID/id; realm name is `swiftdrop`; changing internal ID destroys key bindings |
-| **Custom Theme Directory** | `platform/identity/themes/devarom` | Theme directory registered under Keycloak SPI; UI copy and templates display SwiftDrop branding |
-| **GitHub Repository Remote** | `https://github.com/Suthankan1/devarom.git` | Scheduled as a separate admin task requiring coordination with all 9 teammates |
+| **GitHub Repository Remote** | `https://github.com/Suthankan1/swiftdrop.git` | Completed in Phase 3B (renamed from `Suthankan1/devarom`; remotes, runbooks, and docs updated) |
 | **Historical Documentation** | Previous PR logs, commit SHAs, Phase 1/2A/2B/2D reports | Preserves immutable provenance and historical integrity |
 
 **Zero unresolved active configuration references remain.** No active runtime code, startup script, or default configuration property requires the legacy `devarom` realm.
@@ -171,14 +170,14 @@ A case-insensitive search across the repository confirms that legacy `devarom` r
 ## 9. Next Steps
 
 1. **Submit Pull Request to `test`:**
-   - Head branch: `fix/swiftdrop-phase2-finalization`
+   - Head branch: `fix/swiftdrop-phase2-finalization` (Merged via PR #65; promoted to `main` via PR #66)
    - Base branch: `test`
    - Reviewers: Sinthuha (Accounts), Gajanthan (Frontend), Vibhushan (Security QA), Eric (Clean-Clone QA).
-2. **Independent Peer QA (Issue #17 / L10):**
+2. **GitHub Repository Rename & Cleanup (Phase 3B — Completed):**
+   - Repository renamed by owner to `Suthankan1/swiftdrop`; Phase 3B completes remote updates, verification, and documentation cleanup.
+3. **Independent Peer QA (Issue #17 / L10):**
    - Teammate Eric (@EricPraveen) executes clean-clone runbook on an independent developer workstation.
-3. **Independent Security Review (Issue #18 / L06–L08):**
+4. **Independent Security Review (Issue #18 / L06–L08):**
    - QA owner Vibhushan (@Vibhushan-2003) independently confirms security test execution results.
-4. **GitHub Repository Rename:**
-   - Team/admin schedules rename of `Suthankan1/devarom` to `Suthankan1/swiftdrop` following the runbook in `docs/branding/PHASE_2_MIGRATION.md`.
 5. **November 1 Milestone Deliverable:**
    - Assemble final system architecture report and deliver working initial login demonstration.

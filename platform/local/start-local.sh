@@ -34,18 +34,31 @@ fi
 
 # 2. Start Keycloak and Mailpit Containers
 echo "[1/4] Starting Keycloak and Mailpit containers..."
-if docker ps -a --format '{{.Names}}' | grep -qx "devarom-keycloak"; then
-  echo "  Existing 'devarom-keycloak' container detected (preserving internal database and state)..."
-  if ! docker ps --format '{{.Names}}' | grep -qx "devarom-keycloak"; then
-    echo "  Starting stopped 'devarom-keycloak' container..."
-    docker start devarom-keycloak >/dev/null
+KC_CONTAINER=""
+if docker ps -a --format '{{.Names}}' | grep -qx "swiftdrop-keycloak"; then
+  KC_CONTAINER="swiftdrop-keycloak"
+elif docker ps -a --format '{{.Names}}' | grep -qx "devarom-keycloak"; then
+  KC_CONTAINER="devarom-keycloak"
+fi
+
+if [ -n "${KC_CONTAINER}" ]; then
+  echo "  Existing '${KC_CONTAINER}' container detected (preserving internal database and state)..."
+  if ! docker ps --format '{{.Names}}' | grep -qx "${KC_CONTAINER}"; then
+    echo "  Starting stopped '${KC_CONTAINER}' container..."
+    docker start "${KC_CONTAINER}" >/dev/null
   else
-    echo "  'devarom-keycloak' is already running."
+    echo "  '${KC_CONTAINER}' is already running."
   fi
   # Ensure mailpit is also running
-  if docker ps -a --format '{{.Names}}' | grep -qx "devarom-mailpit"; then
-    if ! docker ps --format '{{.Names}}' | grep -qx "devarom-mailpit"; then
-      docker start devarom-mailpit >/dev/null
+  MP_CONTAINER=""
+  if docker ps -a --format '{{.Names}}' | grep -qx "swiftdrop-mailpit"; then
+    MP_CONTAINER="swiftdrop-mailpit"
+  elif docker ps -a --format '{{.Names}}' | grep -qx "devarom-mailpit"; then
+    MP_CONTAINER="devarom-mailpit"
+  fi
+  if [ -n "${MP_CONTAINER}" ]; then
+    if ! docker ps --format '{{.Names}}' | grep -qx "${MP_CONTAINER}"; then
+      docker start "${MP_CONTAINER}" >/dev/null
     fi
   else
     docker compose -f "${REPO_ROOT}/platform/identity/docker-compose.identity.yml" \
@@ -75,7 +88,10 @@ discover_postgres_port() {
   fi
   if command -v docker >/dev/null 2>&1; then
     local mapped
-    mapped=$(docker port devarom-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+    mapped=$(docker port swiftdrop-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+    if [ -z "${mapped}" ]; then
+      mapped=$(docker port devarom-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+    fi
     if [ -n "${mapped}" ]; then
       echo "${mapped}"
       return
@@ -92,17 +108,24 @@ PG_PORT="$(discover_postgres_port)"
 PG_PASSWORD="${ACCOUNTS_DB_PASSWORD:-accounts_dev_password}"
 PG_USER="${ACCOUNTS_DB_USERNAME:-accounts_app}"
 
-if docker ps -a --format '{{.Names}}' | grep -qx "devarom-accounts-postgres"; then
-  echo "  Starting existing 'devarom-accounts-postgres' container..."
-  docker start devarom-accounts-postgres >/dev/null
+PG_CONTAINER=""
+if docker ps -a --format '{{.Names}}' | grep -qx "swiftdrop-accounts-postgres"; then
+  PG_CONTAINER="swiftdrop-accounts-postgres"
+elif docker ps -a --format '{{.Names}}' | grep -qx "devarom-accounts-postgres"; then
+  PG_CONTAINER="devarom-accounts-postgres"
+fi
+
+if [ -n "${PG_CONTAINER}" ]; then
+  echo "  Starting existing '${PG_CONTAINER}' container..."
+  docker start "${PG_CONTAINER}" >/dev/null
 else
-  echo "  Creating dedicated 'devarom-accounts-postgres' container on port ${PG_PORT}..."
-  docker run -d --name devarom-accounts-postgres \
+  echo "  Creating dedicated 'swiftdrop-accounts-postgres' container on port ${PG_PORT}..."
+  docker run -d --name swiftdrop-accounts-postgres \
     -e POSTGRES_USER="${PG_USER}" \
     -e POSTGRES_DB=accounts_db \
     -e POSTGRES_PASSWORD="${PG_PASSWORD}" \
     -p "127.0.0.1:${PG_PORT}:5432" \
-    -v devarom-accounts-postgres-data:/var/lib/postgresql/data \
+    -v swiftdrop-accounts-postgres-data:/var/lib/postgresql/data \
     postgres:16-alpine >/dev/null
 fi
 echo "  [OK] PostgreSQL container ready on port ${PG_PORT}."
