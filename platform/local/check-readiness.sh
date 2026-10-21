@@ -118,17 +118,17 @@ echo ""
 # ------------------------------------------------------------------------------
 echo -e "${BOLD}[2/4] Checking Container Infrastructure Services...${NC}"
 
-# Keycloak IdP (Port 8090)
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8090}"
+KEYCLOAK_REALM="${KEYCLOAK_REALM:-swiftdrop}"
 if lsof -i :8090 -sTCP:LISTEN >/dev/null 2>&1; then
-  OIDC_DISCOVERY=$(curl -s --connect-timeout 3 "${KEYCLOAK_URL}/realms/devarom/.well-known/openid-configuration" || true)
+  OIDC_DISCOVERY=$(curl -s --connect-timeout 3 "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration" || true)
   if echo "${OIDC_DISCOVERY}" | grep -q '"issuer":'; then
-    pass "Keycloak Container is listening on :8090 and realm 'devarom' OIDC discovery succeeded"
+    pass "Keycloak Container is listening on :8090 and realm '${KEYCLOAK_REALM}' OIDC discovery succeeded"
   else
-    warn "Keycloak is listening on port 8090, but realm 'devarom' OIDC discovery did not return expected issuer. Ensure realm import completed."
+    warn "Keycloak is listening on port 8090, but realm '${KEYCLOAK_REALM}' OIDC discovery did not return expected issuer. Ensure realm import completed."
   fi
 else
-  fail "Keycloak Container is NOT listening on port 8090. Start via: docker compose -f platform/identity/docker-compose.identity.yml up -d"
+  fail "Keycloak Container is NOT listening on port 8090. Start via: ./platform/local/start-local.sh"
 fi
 
 # Mailpit SMTP & UI (Port 8025)

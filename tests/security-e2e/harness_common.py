@@ -185,8 +185,8 @@ class SyntheticJwtBuilder:
         kid: str = "untrusted-test-key",
     ) -> str:
         now = int(time.time())
-        resolved_issuer = issuer if issuer is not None else os.getenv("KEYCLOAK_ISSUER_URI", "http://localhost:8090/realms/devarom")
-        resolved_audience = audience if audience is not None else os.getenv("JWT_AUDIENCE", "devarom-api")
+        resolved_issuer = issuer if issuer is not None else os.getenv("KEYCLOAK_ISSUER_URI", "http://localhost:8090/realms/swiftdrop")
+        resolved_audience = audience if audience is not None else os.getenv("JWT_AUDIENCE", "swiftdrop-api")
         claims: Dict[str, Any] = {}
         if resolved_issuer:
             claims["iss"] = resolved_issuer
@@ -223,7 +223,7 @@ class KeycloakAdminClient:
 
     def __init__(self, keycloak_url: str = "http://localhost:8090", realm: Optional[str] = None):
         self.keycloak_url = keycloak_url.rstrip("/")
-        self.realm = realm or os.getenv("KEYCLOAK_REALM", "devarom")
+        self.realm = realm or os.getenv("KEYCLOAK_REALM", "swiftdrop")
         self.realm_admin_url = f"{self.keycloak_url}/admin/realms/{self.realm}"
         self.http = Session(self.keycloak_url)
         self.admin_token: Optional[str] = None
@@ -286,7 +286,7 @@ class KeycloakAdminClient:
         last_name: str = "TestUser",
     ) -> Dict[str, Any]:
         username = f"{username_prefix}-{secrets.token_hex(4)}"
-        email = f"{username}@devarom.test"
+        email = f"{username}@swiftdrop.test"
         password = generate_secure_password()
         payload = {
             "username": username,
@@ -344,8 +344,8 @@ class OidcPkceClient:
         client_id: Optional[str] = None,
     ):
         self.keycloak_url = (keycloak_url or os.environ.get("KEYCLOAK_URL") or "http://localhost:8090").rstrip("/")
-        self.realm = realm or os.environ.get("KEYCLOAK_REALM") or "devarom"
-        self.client_id = client_id or os.environ.get("KEYCLOAK_CLIENT_ID") or "devarom-frontend"
+        self.realm = realm or os.environ.get("KEYCLOAK_REALM") or "swiftdrop"
+        self.client_id = client_id or os.environ.get("KEYCLOAK_CLIENT_ID") or "swiftdrop-frontend"
         self.realm_url = f"{self.keycloak_url}/realms/{self.realm}"
 
     def login(self, username: str, password: str) -> Dict[str, Any]:
