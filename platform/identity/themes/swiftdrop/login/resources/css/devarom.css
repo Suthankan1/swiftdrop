@@ -1,0 +1,1324 @@
+/* ==============================================================================
+   SwiftDrop Platform — Keycloak Login & Registration Theme Stylesheet
+   Design Language: React SPA Design Tokens (frontend/src/styles/global.css)
+   Target Runtime: Keycloak 26.8.1 (PatternFly v5 base, Quarkus runtime)
+   Accessibility: WCAG 2.1 AA Compliant (Contrast, Focus Indicators, Semantics)
+   ============================================================================== */
+
+:root {
+  --color-ink: #173f36;
+  --color-teal: #20594a;
+  --color-teal-hover: #1b493d;
+  --color-accent: #d9ed95;
+  --color-paper: #f7f7ef;
+  --color-card: #fcfcf7;
+  --color-border: #dce0d2;
+  --color-muted: #536b63;
+  --color-error: #b91c1c;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-focus: rgba(32, 89, 74, 0.25);
+  --color-white: #ffffff;
+  --color-shadow: rgba(23, 63, 54, 0.05);
+
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* PatternFly v5 Overrides */
+  --pf-v5-global--FontFamily--sans-serif: var(--font-family-sans);
+  --pf-v5-global--primary-color--100: var(--color-teal);
+  --pf-v5-global--primary-color--200: var(--color-teal-hover);
+  --pf-v5-global--BorderColor--100: var(--color-border);
+  --pf-v5-global--Color--100: var(--color-ink);
+  --pf-v5-global--Color--200: var(--color-muted);
+  --pf-v5-global--BackgroundColor--100: var(--color-card);
+  --pf-v5-global--BackgroundColor--200: var(--color-paper);
+}
+
+/* Base Reset & Background */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-sans) !important;
+  color: var(--color-ink);
+  background-color: var(--color-paper) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.devarom-theme-body,
+.login-pf body {
+  background-color: var(--color-paper) !important;
+  background-image:
+    radial-gradient(at 100% 0%, #edf3e1 0px, transparent 55%),
+    radial-gradient(at 0% 100%, #e9eedb 0px, transparent 55%) !important;
+  background-attachment: fixed !important;
+  background-size: cover !important;
+  min-height: 100vh;
+}
+
+/* Accessible skip-link */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  transform: translateY(-160%);
+  padding: 10px 18px;
+  background: var(--color-ink);
+  color: #ffffff;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  transition: transform 0.15s ease-in-out;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Layout Reset & Centering */
+.pf-v5-c-login,
+.login-pf {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+  padding: 24px 16px !important;
+  box-sizing: border-box !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+}
+
+.pf-v5-c-login__container,
+.devarom-login-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  margin: 0 auto !important;
+  grid-template-columns: none !important;
+  grid-template-areas: none !important;
+  gap: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Dedicated wider container for registration page on desktop */
+@media (min-width: 577px) {
+  body[data-page-id="login-register"] .pf-v5-c-login__container,
+  body[data-page-id="login-register"] .devarom-login-container,
+  body[data-page-id="login-register"] .pf-v5-c-login__main,
+  body[data-page-id="login-register"] .devarom-card-main {
+    max-width: 620px !important;
+  }
+}
+
+/* Header & Brand */
+.pf-v5-c-login__header,
+.devarom-login-header {
+  width: 100% !important;
+  text-align: center !important;
+  margin-bottom: 16px !important;
+  padding: 0 !important;
+}
+
+.devarom-brand-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.devarom-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none !important;
+  color: var(--color-ink) !important;
+  transition: transform 0.15s ease;
+}
+
+.devarom-brand-link:hover {
+  transform: translateY(-1px);
+}
+
+.devarom-brand-link:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.devarom-brand-mark {
+  width: 24px;
+  height: 25px;
+  display: flex;
+  gap: 2.5px;
+  transform: skewY(-24deg);
+  transform-origin: left center;
+}
+
+.devarom-brand-mark span {
+  width: 5.5px;
+  background: var(--color-ink);
+  border-radius: 1px;
+}
+
+.devarom-brand-mark span:nth-child(1) {
+  height: 18px;
+  margin-top: 7px;
+}
+
+.devarom-brand-mark span:nth-child(2) {
+  height: 25px;
+}
+
+.devarom-brand-mark span:nth-child(3) {
+  height: 18px;
+}
+
+.devarom-brand-title {
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -1.2px;
+  line-height: 1;
+  color: var(--color-ink);
+}
+
+.devarom-brand-period {
+  color: #778b48;
+}
+
+/* Card Main Container */
+.pf-v5-c-login__main,
+.devarom-card-main {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 24px var(--color-shadow) !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  box-sizing: border-box !important;
+  overflow: hidden;
+}
+
+.pf-v5-c-login__main-header,
+.devarom-card-header {
+  border-top: none !important;
+  display: block !important;
+  width: 100% !important;
+  padding: 30px 36px 10px 36px !important;
+  margin: 0 !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
+
+.devarom-card-title,
+#kc-page-title {
+  display: block !important;
+  width: 100% !important;
+  font-size: 23px !important;
+  font-weight: 700 !important;
+  color: var(--color-ink) !important;
+  letter-spacing: -0.5px !important;
+  line-height: 1.25 !important;
+  margin: 0 0 4px 0 !important;
+  text-align: center !important;
+  word-break: normal !important;
+  white-space: normal !important;
+}
+
+.devarom-card-subtitle {
+  display: block !important;
+  width: 100% !important;
+  font-size: 14px !important;
+  color: var(--color-muted) !important;
+  margin: 0 !important;
+  font-weight: 450 !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+}
+
+.pf-v5-c-login__main-body,
+.devarom-card-body {
+  padding: 0 36px 30px 36px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Hide redundant required fields subtitle */
+.devarom-required-fields {
+  display: none !important;
+}
+
+/* Forms & Wrapper constraints */
+.pf-v5-c-form,
+#kc-form,
+#kc-form-wrapper,
+#kc-form-login {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Form Groups & Labels */
+.pf-v5-c-form__group {
+  margin-bottom: 12px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.pf-v5-c-form__group-label {
+  padding-bottom: 4px !important;
+}
+
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  color: var(--color-ink) !important;
+  letter-spacing: -0.1px !important;
+}
+
+.pf-v5-c-form__label-required {
+  color: var(--color-error) !important;
+  margin-left: 2px !important;
+  font-size: 13px !important;
+}
+
+/* Form Inputs */
+.pf-v5-c-form-control {
+  border-radius: 6px !important;
+  border: 1px solid var(--color-border) !important;
+  background-color: #ffffff !important;
+  color: var(--color-ink) !important;
+  font-size: 14px !important;
+  min-height: 44px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-v5-c-form-control input {
+  font-family: inherit !important;
+  font-size: 14px !important;
+  color: var(--color-ink) !important;
+  padding: 8px 12px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.pf-v5-c-form-control:hover {
+  border-color: #aab5a0 !important;
+}
+
+.pf-v5-c-form-control:focus-within,
+.pf-v5-c-form-control.pf-m-focus {
+  border-color: var(--color-teal) !important;
+  box-shadow: 0 0 0 3px var(--color-focus) !important;
+  outline: none !important;
+}
+
+/* Input Groups (Password toggle) */
+.pf-v5-c-input-group {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  align-items: stretch !important;
+  box-sizing: border-box !important;
+}
+
+.pf-v5-c-input-group__item.pf-m-fill {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.pf-v5-c-form-control__toggle-icon,
+.pf-v5-c-button.pf-m-control {
+  color: var(--color-muted) !important;
+  border: 1px solid var(--color-border) !important;
+  border-left: none !important;
+  border-top-right-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+  background: #ffffff !important;
+  padding: 0 12px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+}
+
+.pf-v5-c-button.pf-m-control:hover {
+  color: var(--color-ink) !important;
+  background: #f7f9f3 !important;
+}
+
+/* Remember me & Forgot Password Bar */
+.pf-v5-c-form__helper-text {
+  margin-top: 6px !important;
+}
+
+.pf-v5-c-helper-text {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin-top: 6px !important;
+}
+
+.pf-v5-c-check {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.pf-v5-c-check__input {
+  accent-color: var(--color-teal) !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+.pf-v5-c-check__label {
+  font-size: 13px !important;
+  color: var(--color-ink) !important;
+  cursor: pointer;
+}
+
+/* Primary Action Buttons */
+#kc-login,
+#kc-submit,
+.pf-v5-c-button.pf-m-primary,
+input[type="submit"].pf-v5-c-button {
+  min-height: 44px !important;
+  background: var(--color-teal) !important;
+  color: #ffffff !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.5 !important;
+  width: 100% !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease !important;
+  margin-top: 8px !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+}
+
+#kc-login:hover,
+#kc-submit:hover,
+.pf-v5-c-button.pf-m-primary:hover {
+  background: var(--color-teal-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+#kc-login:active,
+#kc-submit:active,
+.pf-v5-c-button.pf-m-primary:active {
+  transform: translateY(0) !important;
+}
+
+#kc-login:focus-visible,
+#kc-submit:focus-visible,
+.pf-v5-c-button:focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 3px !important;
+}
+
+/* Secondary Button */
+.pf-v5-c-button.pf-m-secondary {
+  border: 1px solid var(--color-border) !important;
+  background: transparent !important;
+  color: var(--color-ink) !important;
+  border-radius: 6px !important;
+  min-height: 44px !important;
+  font-weight: 550 !important;
+  font-size: 13px !important;
+  width: 100% !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  transition: background 0.15s, transform 0.15s !important;
+  box-sizing: border-box !important;
+}
+
+.pf-v5-c-button.pf-m-secondary:hover {
+  background: #edf0e2 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Social Login Divider */
+.devarom-social-divider,
+.kc-login-divider {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin: 18px 0 14px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.devarom-social-divider::before,
+.devarom-social-divider::after,
+.kc-login-divider::before,
+.kc-login-divider::after {
+  content: "" !important;
+  flex: 1 !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.devarom-social-divider span,
+.kc-login-divider span {
+  font-size: 12px !important;
+  color: var(--color-muted) !important;
+  text-transform: lowercase !important;
+  letter-spacing: 0.2px !important;
+  white-space: nowrap !important;
+  font-weight: 500 !important;
+}
+
+/* Social Identity Providers Section */
+.devarom-social-providers,
+#kc-social-providers {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.devarom-social-list,
+#kc-social-providers ul,
+.pf-v5-c-login__main-body #kc-social-providers ul {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.devarom-social-item,
+#kc-social-providers li {
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Google Sign-in Button — Centered, SaaS Standard, Fully Aligned */
+.devarom-social-btn,
+#social-google,
+a#social-google.pf-v5-c-button,
+.pf-v5-c-button[href*="google"] {
+  min-height: 46px !important;
+  height: 46px !important;
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+  color: #1f2937 !important;
+  font-size: 14px !important;
+  font-weight: 550 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 16px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  cursor: pointer !important;
+}
+
+.devarom-social-btn:hover,
+#social-google:hover,
+a#social-google.pf-v5-c-button:hover {
+  background: #f8fafc !important;
+  border-color: #9ca3af !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+.devarom-social-btn:active,
+#social-google:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.devarom-social-btn:focus-visible,
+#social-google:focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 2px !important;
+}
+
+.devarom-social-icon,
+#social-google img,
+#social-google picture,
+#social-google svg {
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+.devarom-social-text,
+#social-google span,
+#social-google .pf-v5-u-m-auto {
+  color: #1f2937 !important;
+  margin: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  flex: 0 0 auto !important;
+  font-size: 14px !important;
+  font-weight: 550 !important;
+  letter-spacing: -0.1px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-align: center !important;
+  display: inline-block !important;
+}
+
+/* Links (Registration, Forgot Password, Back to Login) */
+a {
+  color: var(--color-teal) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  transition: color 0.15s !important;
+}
+
+a:hover {
+  color: var(--color-teal-hover) !important;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 3px !important;
+  border-radius: 2px !important;
+}
+
+/* Registration Prompt Container (Login Page) */
+.devarom-card-footer-band,
+.pf-v5-c-login__main-footer-band {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.devarom-info-band,
+#kc-info {
+  margin-top: 14px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid var(--color-border) !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  text-align: center !important;
+  font-size: 13px !important;
+  color: var(--color-muted) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#kc-info-wrapper {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  width: 100% !important;
+}
+
+#kc-registration-container,
+#kc-registration {
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+
+#kc-registration span,
+#kc-info-wrapper span {
+  font-size: 13px !important;
+}
+
+#kc-registration a,
+#kc-info a {
+  font-weight: 600 !important;
+  margin-left: 4px !important;
+}
+
+/* Registration Form Two-Column Grid */
+@media (min-width: 577px) {
+  #kc-register-form {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px 12px !important;
+    margin-top: 4px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group {
+    margin-bottom: 0 !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* First & Last Name side-by-side on desktop */
+  #kc-register-form > .pf-v5-c-form__group:has(#firstName) {
+    order: 1;
+    grid-column: 1 !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#lastName) {
+    order: 2;
+    grid-column: 2 !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#email) {
+    order: 3;
+    grid-column: 1 / -1 !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#username) {
+    order: 4;
+    grid-column: 1 / -1 !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#password) {
+    order: 5;
+    grid-column: 1 / -1 !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#password-confirm) {
+    order: 6;
+    grid-column: 1 / -1 !important;
+  }
+
+  #kc-register-form > #kc-form-buttons {
+    order: 7;
+    grid-column: 1 / -1 !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+  }
+
+  #kc-register-form > .pf-v5-c-login__main-footer-band {
+    order: 8;
+    grid-column: 1 / -1 !important;
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+    border-top: 1px solid var(--color-border) !important;
+    text-align: center !important;
+    width: 100% !important;
+  }
+}
+
+#kc-register-form .pf-v5-c-login__main-footer-band-item {
+  text-align: center !important;
+  width: 100% !important;
+}
+
+/* Helper & Feedback Text */
+.pf-v5-c-form__helper-text {
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  color: var(--color-muted) !important;
+}
+
+.pf-v5-c-helper-text__item.pf-m-error,
+.kc-feedback-text.pf-m-error,
+span.pf-m-error {
+  color: var(--color-error) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* Alert Notification Banners */
+.pf-v5-c-alert.devarom-alert {
+  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.pf-v5-c-alert.pf-m-danger {
+  background: var(--color-error-bg) !important;
+  border: 1px solid var(--color-error-border) !important;
+  color: var(--color-error) !important;
+}
+
+.pf-v5-c-alert.pf-m-danger .pf-v5-c-alert__title {
+  color: var(--color-error) !important;
+  font-size: 13px !important;
+  font-weight: 550 !important;
+}
+
+.pf-v5-c-alert.pf-m-success {
+  background: #f0fdf4 !important;
+  border: 1px solid #bbf7d0 !important;
+  color: #166534 !important;
+}
+
+.pf-v5-c-alert.pf-m-warning {
+  background: #fefce8 !important;
+  border: 1px solid #fef08a !important;
+  color: #854d0e !important;
+}
+
+.pf-v5-c-alert.pf-m-info {
+  background: #f0fdfa !important;
+  border: 1px solid #99f6e4 !important;
+  color: #115e59 !important;
+}
+
+.devarom-alert-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Bottom Page Footer */
+.devarom-page-bottom-footer {
+  margin-top: 16px !important;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.devarom-page-bottom-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Dark Mode Palette (.pf-v5-theme-dark) */
+.pf-v5-theme-dark {
+  --color-ink: #e8efe9;
+  --color-paper: #0f1f1a;
+  --color-card: #152c25;
+  --color-border: #23473c;
+  --color-muted: #8ca398;
+  --color-accent: #c4dc7c;
+  --color-focus: rgba(217, 237, 149, 0.3);
+  --color-shadow: rgba(0, 0, 0, 0.3);
+}
+
+.pf-v5-theme-dark body.devarom-theme-body,
+.pf-v5-theme-dark.login-pf body {
+  background-color: var(--color-paper) !important;
+  background-image:
+    radial-gradient(at 100% 0%, #173229 0px, transparent 60%),
+    radial-gradient(at 0% 100%, #132720 0px, transparent 60%) !important;
+}
+
+.pf-v5-theme-dark .devarom-brand-title {
+  color: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark .devarom-brand-mark span {
+  background: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-form-control,
+.pf-v5-theme-dark .pf-v5-c-button.pf-m-control {
+  background-color: #1a352d !important;
+  border-color: var(--color-border) !important;
+  color: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-form-control input {
+  color: #e8efe9 !important;
+}
+
+.pf-v5-theme-dark .devarom-social-btn,
+.pf-v5-theme-dark a#social-google.pf-v5-c-button,
+.pf-v5-theme-dark #social-google {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #1f2937 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+.pf-v5-theme-dark .devarom-social-btn:hover,
+.pf-v5-theme-dark a#social-google.pf-v5-c-button:hover,
+.pf-v5-theme-dark #social-google:hover {
+  background: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+}
+
+.pf-v5-theme-dark .devarom-social-text,
+.pf-v5-theme-dark #social-google span {
+  color: #1f2937 !important;
+}
+
+.pf-v5-theme-dark a {
+  color: #c4dc7c !important;
+}
+
+.pf-v5-theme-dark a:hover {
+  color: #ffffff !important;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 576px) {
+  .pf-v5-c-login,
+  .login-pf {
+    padding: 16px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .pf-v5-c-login__container,
+  .devarom-login-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+  }
+
+  .pf-v5-c-login__main,
+  .devarom-card-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .pf-v5-c-login__main-header,
+  .devarom-card-header {
+    padding: 20px 16px 8px 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .pf-v5-c-login__main-body,
+  .devarom-card-body {
+    padding: 0 16px 18px 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .devarom-brand-title {
+    font-size: 24px;
+  }
+
+  .devarom-card-title,
+  #kc-page-title {
+    font-size: 19px !important;
+  }
+
+  #kc-register-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group {
+    width: 100% !important;
+    grid-column: auto !important;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#firstName) {
+    order: 1;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#lastName) {
+    order: 2;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#email) {
+    order: 3;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#username) {
+    order: 4;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#password) {
+    order: 5;
+  }
+
+  #kc-register-form > .pf-v5-c-form__group:has(#password-confirm) {
+    order: 6;
+  }
+
+  #kc-register-form > #kc-form-buttons {
+    order: 7;
+  }
+
+  #kc-register-form > .pf-v5-c-login__main-footer-band {
+    order: 8;
+  }
+}
+
+@media (max-width: 360px) {
+  .pf-v5-c-login,
+  .login-pf {
+    padding: 12px 8px !important;
+  }
+
+  .pf-v5-c-login__main-header,
+  .devarom-card-header {
+    padding: 16px 14px 6px 14px !important;
+  }
+
+  .pf-v5-c-login__main-body,
+  .devarom-card-body {
+    padding: 0 14px 16px 14px !important;
+  }
+
+  .devarom-brand-title {
+    font-size: 22px;
+  }
+
+  .devarom-card-title,
+  #kc-page-title {
+    font-size: 18px !important;
+  }
+}
+/* Native verification/info/error pages reuse the shared SwiftDrop card. */
+.instruction,
+#kc-info-message,
+.devarom-alert-text {
+  overflow-wrap: anywhere;
+}
+
+#kc-verify-email-form .instruction {
+  line-height: 1.6;
+  margin-block: 0 1rem;
+}
+
+/* ==============================================================================
+   Keycloak TOTP Authenticator-App MFA Styling (Phase B)
+   ============================================================================== */
+
+/* Setup Steps Container */
+ol#kc-totp-settings,
+#kc-totp-settings {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 0 20px 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+#kc-totp-settings > li {
+  background: var(--color-paper) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  padding: 14px 16px !important;
+  box-sizing: border-box !important;
+}
+
+#kc-totp-settings > li > p {
+  margin: 0 0 8px 0 !important;
+  font-size: 14px !important;
+  font-weight: 550 !important;
+  color: var(--color-ink) !important;
+  line-height: 1.4 !important;
+}
+
+#kc-totp-settings > li > p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Supported Apps Pills */
+ul#kc-totp-supported-apps,
+#kc-totp-supported-apps {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 8px 0 0 0 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+#kc-totp-supported-apps > li {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 20px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--color-teal) !important;
+  line-height: 1.2 !important;
+}
+
+/* QR Code Section */
+.kc-qr-code,
+.pf-v5-c-login__main-body .kc-qr-code {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 12px 0 6px 0 !important;
+  gap: 10px !important;
+}
+
+#kc-totp-secret-qr-code {
+  background: #ffffff !important;
+  padding: 12px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  max-width: 190px !important;
+  max-height: 190px !important;
+  width: 100% !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+  display: block !important;
+}
+
+/* Manual Mode Toggle Links */
+#mode-manual,
+#mode-barcode {
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  color: var(--color-teal) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  cursor: pointer !important;
+  transition: color 0.15s ease !important;
+}
+
+#mode-manual:hover,
+#mode-barcode:hover {
+  color: var(--color-ink) !important;
+}
+
+/* Manual Secret Key Display */
+#kc-totp-secret-key {
+  display: block !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 2px !important;
+  color: var(--color-ink) !important;
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 6px !important;
+  padding: 10px 12px !important;
+  text-align: center !important;
+  word-break: break-all !important;
+  user-select: all !important;
+  -webkit-user-select: all !important;
+  margin: 8px 0 !important;
+}
+
+/* Manual Configuration Parameters */
+#kc-totp-settings ul:not(#kc-totp-supported-apps) {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 8px 0 0 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+#kc-totp-type,
+#kc-totp-algorithm,
+#kc-totp-digits,
+#kc-totp-period,
+#kc-totp-counter {
+  font-size: 13px !important;
+  color: var(--color-ink) !important;
+  font-weight: 500 !important;
+}
+
+/* TOTP Form & Inputs */
+#kc-totp-settings-form,
+#kc-otp-login-form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Large, Centered 6-Digit Verification Code Inputs */
+input#totp,
+input#otp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 6px !important;
+  text-align: center !important;
+  height: 48px !important;
+  border-radius: 8px !important;
+  color: var(--color-ink) !important;
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  padding: 4px 8px !important;
+  box-sizing: border-box !important;
+}
+
+input#totp:focus,
+input#otp:focus {
+  border-color: var(--color-teal) !important;
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 1px !important;
+}
+
+input#userLabel {
+  height: 42px !important;
+  font-size: 14px !important;
+  border-radius: 8px !important;
+  color: var(--color-ink) !important;
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+/* TOTP Input Error Messages */
+#input-error-otp-code,
+#input-error-otp-label,
+#input-error-container-otp {
+  font-size: 13px !important;
+  color: #dc2626 !important;
+  font-weight: 500 !important;
+  margin-top: 4px !important;
+  display: block !important;
+}
+
+/* Other Sessions Checkbox */
+#logout-sessions {
+  accent-color: var(--color-teal) !important;
+}
+
+/* Multi-Credential Selection on OTP Challenge */
+.pf-v5-c-login-otp-list,
+div[id^="kc-otp-credential-"] {
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 8px !important;
+  background: var(--color-card) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.pf-v5-c-login-otp-list:hover,
+div[id^="kc-otp-credential-"]:hover {
+  border-color: var(--color-teal) !important;
+  background: var(--color-paper) !important;
+}
+
+div[id^="kc-otp-credential-"].pf-m-selected {
+  border-color: var(--color-teal) !important;
+  background: rgba(32, 89, 74, 0.08) !important;
+  box-shadow: 0 0 0 1px var(--color-teal) !important;
+}
+
+/* Dark Mode Overrides for TOTP */
+.pf-v5-theme-dark #kc-totp-settings > li {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.pf-v5-theme-dark #kc-totp-supported-apps > li {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #a7f3d0 !important;
+}
+
+/* QR Code MUST stay white background in dark mode for scanner contrast */
+.pf-v5-theme-dark #kc-totp-secret-qr-code {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.pf-v5-theme-dark #kc-totp-secret-key {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #e5e7eb !important;
+}
+
+.pf-v5-theme-dark input#totp,
+.pf-v5-theme-dark input#otp,
+.pf-v5-theme-dark input#userLabel {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f9fafb !important;
+}
+
+/* Mobile Responsive Optimization for TOTP (390px, 360px) */
+@media (max-width: 480px) {
+  #kc-totp-secret-qr-code {
+    max-width: 170px !important;
+    max-height: 170px !important;
+    padding: 10px !important;
+  }
+
+  #kc-totp-settings > li {
+    padding: 12px 14px !important;
+  }
+
+  #kc-totp-secret-key {
+    font-size: 13px !important;
+    letter-spacing: 1px !important;
+    padding: 8px 10px !important;
+  }
+
+  input#totp,
+  input#otp {
+    font-size: 18px !important;
+    letter-spacing: 4px !important;
+    height: 44px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  #kc-totp-secret-qr-code {
+    max-width: 150px !important;
+    max-height: 150px !important;
+    padding: 8px !important;
+  }
+
+  #kc-totp-settings > li {
+    padding: 10px 12px !important;
+  }
+
+  #kc-totp-secret-key {
+    font-size: 12px !important;
+    letter-spacing: 0.5px !important;
+    padding: 6px 8px !important;
+  }
+
+  input#totp,
+  input#otp {
+    font-size: 16px !important;
+    letter-spacing: 3px !important;
+    height: 42px !important;
+  }
+}
+

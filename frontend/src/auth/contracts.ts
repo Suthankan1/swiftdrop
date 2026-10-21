@@ -1,10 +1,12 @@
-/** Integration contract for #36. No identity provider is implemented by #6. */
-export type DevaromRole = 'CUSTOMER' | 'MERCHANT' | 'COURIER' | 'DISPATCHER' | 'ADMIN'
+/** Integration contract for #36. Canonical role type for SwiftDrop platform. */
+export type SwiftDropRole = 'CUSTOMER' | 'MERCHANT' | 'COURIER' | 'DISPATCHER' | 'ADMIN'
+/** Preserved alias for backward compatibility. */
+export type DevaromRole = SwiftDropRole
 
 export type AuthSnapshot =
   | { status: 'loading'; subject: null; roles: readonly [] }
   | { status: 'unauthenticated'; subject: null; roles: readonly [] }
-  | { status: 'authenticated'; subject: string; roles: readonly DevaromRole[] }
+  | { status: 'authenticated'; subject: string; roles: readonly SwiftDropRole[] }
 
 export interface AuthIntegration {
   snapshot: AuthSnapshot

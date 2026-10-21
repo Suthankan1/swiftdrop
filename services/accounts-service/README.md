@@ -10,14 +10,14 @@ No shared frontend, Gateway, identity deployment or ownership files are changed.
 
 ## Scope and structure
 
-- `src/main/java/com/devarom/accountsservice/identity/`: internal trusted identity
+- `src/main/java/com/swiftdrop/accountsservice/identity/`: internal trusted identity
   value and current-identity provider interface; neither verifies JWTs.
 - `profile/`: read-only JPA entity, repository, transactional profile use case,
   response DTO, controller and sanitized domain/authentication problem responses.
 - `security/ProfileSecurityConfiguration.java`: temporary fail-closed HTTP policy.
 - `src/main/resources/db/migration/V1__create_account_profiles.sql`: Accounts-owned
   PostgreSQL table, uniqueness/check constraints and identity immutability trigger.
-- `src/test/java/com/devarom/accountsservice/`: unit/MVC contract/security tests
+- `src/test/java/com/swiftdrop/accountsservice/`: unit/MVC contract/security tests
   and real Testcontainers PostgreSQL integration tests (`*IT`, Maven Failsafe).
 
 Only Accounts accesses `accounts_db`. Keycloak owns identity/passwords and its
@@ -48,10 +48,11 @@ Alternatively, start this dedicated local development PostgreSQL container
 read -s 'POSTGRES_PASSWORD?Accounts local database password: '; echo
 export POSTGRES_PASSWORD
 # Uses its own named volume; never remove/reinitialize another developer's volume.
-docker run -d --name devarom-accounts-postgres \
+docker run -d --name swiftdrop-accounts-postgres \
   -e POSTGRES_USER=accounts_app -e POSTGRES_DB=accounts_db -e POSTGRES_PASSWORD \
-  -p 127.0.0.1:5432:5432 -v devarom-accounts-postgres-data:/var/lib/postgresql/data \
+  -p 127.0.0.1:5432:5432 -v swiftdrop-accounts-postgres-data:/var/lib/postgresql/data \
   postgres:16-alpine
+# Note: For existing environments with devarom-accounts-postgres, existing container and volume are retained.
 export ACCOUNTS_DB_URL=jdbc:postgresql://localhost:5432/accounts_db
 export ACCOUNTS_DB_USERNAME=accounts_app
 export ACCOUNTS_DB_PASSWORD="$POSTGRES_PASSWORD"

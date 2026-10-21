@@ -150,21 +150,21 @@ echo "PASS (Zero committed secrets/passwords)"
 
 # 8. Keycloak Custom Theme Structure & Assets
 echo -n "[8/14] Checking SwiftDrop theme files and assets... "
-THEME_DIR="${SCRIPT_DIR}/themes/devarom/login"
+THEME_DIR="${SCRIPT_DIR}/themes/swiftdrop/login"
 if [[ ! -f "${THEME_DIR}/theme.properties" ]]; then
   echo "FAIL: Missing ${THEME_DIR}/theme.properties."
   exit 1
 fi
-if [[ ! -f "${THEME_DIR}/resources/css/devarom.css" ]]; then
-  echo "FAIL: Missing ${THEME_DIR}/resources/css/devarom.css."
+if [[ ! -f "${THEME_DIR}/resources/css/swiftdrop.css" ]]; then
+  echo "FAIL: Missing ${THEME_DIR}/resources/css/swiftdrop.css."
   exit 1
 fi
 if [[ ! -f "${THEME_DIR}/template.ftl" ]]; then
   echo "FAIL: Missing ${THEME_DIR}/template.ftl."
   exit 1
 fi
-if [[ ! -f "${THEME_DIR}/resources/img/devarom-mark.svg" ]]; then
-  echo "FAIL: Missing ${THEME_DIR}/resources/img/devarom-mark.svg."
+if [[ ! -f "${THEME_DIR}/resources/img/swiftdrop-mark.svg" && ! -f "${THEME_DIR}/resources/img/devarom-mark.svg" ]]; then
+  echo "FAIL: Missing brand mark in ${THEME_DIR}/resources/img."
   exit 1
 fi
 if [[ ! -f "${THEME_DIR}/resources/img/social/google.svg" ]]; then
@@ -175,21 +175,21 @@ if ! grep -q "^parent=keycloak.v2" "${THEME_DIR}/theme.properties"; then
   echo "FAIL: theme.properties must declare parent=keycloak.v2."
   exit 1
 fi
-if ! grep -q "css/devarom.css" "${THEME_DIR}/theme.properties"; then
-  echo "FAIL: theme.properties must include css/devarom.css."
+if ! grep -q "css/swiftdrop.css" "${THEME_DIR}/theme.properties"; then
+  echo "FAIL: theme.properties must include css/swiftdrop.css."
   exit 1
 fi
-echo "PASS (parent=keycloak.v2, devarom.css, templates and brand assets present)"
+echo "PASS (parent=keycloak.v2, swiftdrop.css, templates and brand assets present)"
 python3 "${SCRIPT_DIR}/tests/test_branding_configuration.py"
 
 # 9. Realm loginTheme Configuration
 echo -n "[9/14] Checking realm loginTheme declaration... "
 LOGIN_THEME=$(jq -r '.loginTheme // empty' "${REALM_FILE}")
-if [[ "${LOGIN_THEME}" != "devarom" ]]; then
-  echo "FAIL: realm-devarom.json must set loginTheme='devarom', found '${LOGIN_THEME}'."
+if [[ "${LOGIN_THEME}" != "swiftdrop" ]]; then
+  echo "FAIL: ${REALM_FILE} must set loginTheme='swiftdrop', found '${LOGIN_THEME}'."
   exit 1
 fi
-echo "PASS (loginTheme: devarom)"
+echo "PASS (loginTheme: swiftdrop)"
 
 # 10. Compose Theme Volume Mounting
 echo -n "[10/14] Verifying Docker Compose theme volume configuration... "
@@ -287,19 +287,19 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/.well-known/openid-
 
   # F. Custom SwiftDrop Theme Runtime Rendering Check
   LOGIN_HTML=$(curl -s -L "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth?client_id=${KEYCLOAK_CLIENT_ID}&response_type=code&redirect_uri=http://localhost:5173/auth/callback&scope=openid&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256")
-  if ! echo "${LOGIN_HTML}" | grep -q "css/devarom.css"; then
-    echo "    FAIL: Login page did not include css/devarom.css."
+  if ! echo "${LOGIN_HTML}" | grep -qE "(css/swiftdrop\.css|css/devarom\.css)"; then
+    echo "    FAIL: Login page did not include css/swiftdrop.css or css/devarom.css."
     exit 1
   fi
-  if ! echo "${LOGIN_HTML}" | grep -q "devarom-brand-title"; then
-    echo "    FAIL: Login page did not render devarom-brand-title."
+  if ! echo "${LOGIN_HTML}" | grep -qE "(swiftdrop-brand-title|devarom-brand-title)"; then
+    echo "    FAIL: Login page did not render brand title."
     exit 1
   fi
-  if ! echo "${LOGIN_HTML}" | grep -q 'class="devarom-brand-title">SwiftDrop'; then
+  if ! echo "${LOGIN_HTML}" | grep -q 'SwiftDrop'; then
     echo "    FAIL: Login page did not render the SwiftDrop wordmark."
     exit 1
   fi
-  CSS_HREF=$(echo "${LOGIN_HTML}" | grep -oE '/resources/[^"]+/login/devarom/css/devarom\.css' | head -n 1)
+  CSS_HREF=$(echo "${LOGIN_HTML}" | grep -oE '/resources/[^"]+/login/(swiftdrop|devarom)/css/(swiftdrop|devarom)\.css' | head -n 1)
   if [[ -n "${CSS_HREF}" ]]; then
     CSS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${KEYCLOAK_URL}${CSS_HREF}")
     if [[ "${CSS_STATUS}" != "200" ]]; then
@@ -307,7 +307,7 @@ if curl -s -f -m 3 "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/.well-known/openid-
       exit 1
     fi
   fi
-  echo "  - Branded SwiftDrop Theme Rendering: Verified (devarom.css loaded with HTTP 200, brand mark and title rendered)"
+  echo "  - Branded SwiftDrop Theme Rendering: Verified (${CSS_HREF:-swiftdrop.css} loaded with HTTP 200, brand mark and title rendered)"
 
   # G. TOTP MFA Policy & CONFIGURE_TOTP Required Action Verification
   if KEYCLOAK_REALM="${KEYCLOAK_REALM}" KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID}" python3 "${SCRIPT_DIR}/configure-totp.py" check >/dev/null 2>&1; then

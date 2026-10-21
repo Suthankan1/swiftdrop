@@ -178,7 +178,7 @@ class DemoSmokeRunner:
                 "password-confirm": password,
             }
             submit_resp = reg_session.submit_form(reg_page, "kc-register-form", reg_form_data)
-            assert "css/devarom.css" in submit_resp.body or submit_resp.status == 200
+            assert "css/swiftdrop.css" in submit_resp.body or "css/devarom.css" in submit_resp.body or submit_resp.status == 200
             self.disposable_users.append(username)
             self.log_step("Submit customer registration form (Keycloak required action triggered)")
 

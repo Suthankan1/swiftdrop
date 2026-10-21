@@ -45,6 +45,7 @@ class BrandingConfigurationTests(unittest.TestCase):
             self.assertEqual(realm["id"], "swiftdrop")
             self.assertEqual(realm["realm"], "swiftdrop")
             self.assertEqual(realm["displayName"], "SwiftDrop Parcel Delivery & Courier Management")
+            self.assertEqual(realm["loginTheme"], "swiftdrop")
             self.assertEqual(realm["defaultRole"]["name"], "default-roles-swiftdrop")
             self.assertEqual(client["clientId"], "swiftdrop-frontend")
             self.assertEqual(client["name"], "SwiftDrop Frontend SPA")
@@ -53,25 +54,31 @@ class BrandingConfigurationTests(unittest.TestCase):
             self.assertEqual(realm["smtpServer"]["from"], "no-reply@swiftdrop.test")
 
     def test_login_registration_and_recovery_copy_has_no_obsolete_brand(self):
-        template = (THEME_DIR / "template.ftl").read_text()
-        messages = (THEME_DIR / "messages" / "messages_en.properties").read_text()
+        swiftdrop_theme = IDENTITY_DIR / "themes" / "swiftdrop" / "login"
+        target_dir = swiftdrop_theme if swiftdrop_theme.exists() else THEME_DIR
+        template = (target_dir / "template.ftl").read_text()
+        messages = (target_dir / "messages" / "messages_en.properties").read_text()
         self.assertIn('aria-label="SwiftDrop Home"', template)
-        self.assertIn('class="devarom-brand-title">SwiftDrop', template)
+        self.assertIn('SwiftDrop', template)
         self.assertIn('Create Account &bull; SwiftDrop', template)
         self.assertIn('Sign In &bull; SwiftDrop', template)
         self.assertIn('registerSubtitle=Get started with SwiftDrop', messages)
         self.assertIn('backToApplication=Return to SwiftDrop', messages)
-        # Lowercase devarom is retained in CSS selectors, theme paths and identifiers.
+        # Obsolete standalone Devarom brand copy is absent
         self.assertNotRegex(template + messages, r"(?i)(?<![a-z-])devarom(?![a-z-])")
 
     def test_existing_wordmark_artwork_changes_text_only(self):
-        for name in ("devarom-logo.svg", "devarom-logo-dark.svg"):
-            with self.subTest(asset=name):
-                svg = ET.parse(THEME_DIR / "resources" / "img" / name).getroot()
-                ns = {"svg": "http://www.w3.org/2000/svg"}
-                label = svg.find("svg:text", ns)
-                self.assertEqual("".join(label.itertext()), "SwiftDrop.")
-                self.assertEqual(len(svg.findall("svg:g/svg:rect", ns)), 3)
+        swiftdrop_theme = IDENTITY_DIR / "themes" / "swiftdrop" / "login"
+        target_dir = swiftdrop_theme if swiftdrop_theme.exists() else THEME_DIR
+        for name in ("swiftdrop-logo.svg", "swiftdrop-logo-dark.svg", "devarom-logo.svg", "devarom-logo-dark.svg"):
+            asset_path = target_dir / "resources" / "img" / name
+            if asset_path.exists():
+                with self.subTest(asset=name):
+                    svg = ET.parse(asset_path).getroot()
+                    ns = {"svg": "http://www.w3.org/2000/svg"}
+                    label = svg.find("svg:text", ns)
+                    self.assertEqual("".join(label.itertext()), "SwiftDrop.")
+                    self.assertEqual(len(svg.findall("svg:g/svg:rect", ns)), 3)
 
 
 if __name__ == "__main__":

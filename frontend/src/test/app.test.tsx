@@ -116,7 +116,7 @@ describe('shared application routes', () => {
 
   it('provides a not-found experience and a way home', async () => {
     const user = userEvent.setup()
-    renderRoute('/not-a-real-devarom-page')
+    renderRoute('/not-a-real-swiftdrop-page')
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/couldn.t be found/i)
     await user.click(screen.getByRole('link', { name: /back to home/i }))

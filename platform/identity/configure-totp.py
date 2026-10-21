@@ -146,7 +146,7 @@ def read_state(api):
     realm = api.request("GET", REALM_PATH)
     action = api.request("GET", ACTION_PATH)
     if (not isinstance(realm, dict) or realm.get("realm") not in (REALM, "devarom", "swiftdrop") or not realm.get("id")
-            or realm.get("registrationAllowed") is not True or realm.get("loginTheme") != "devarom"
+            or realm.get("registrationAllowed") is not True or realm.get("loginTheme") not in ("swiftdrop", "devarom")
             or not isinstance(action, dict) or action.get("alias") != "CONFIGURE_TOTP"
             or action.get("providerId") != "CONFIGURE_TOTP"):
         raise ConfigurationError("Expected SwiftDrop realm baseline differs; no changes applied.")

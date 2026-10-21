@@ -160,7 +160,10 @@ discover_postgres_port() {
   fi
   if command -v docker >/dev/null 2>&1; then
     local mapped
-    mapped=$(docker port devarom-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+    mapped=$(docker port swiftdrop-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+    if [ -z "${mapped}" ]; then
+      mapped=$(docker port devarom-accounts-postgres 5432 2>/dev/null | head -n 1 | awk -F: '{print $NF}' || true)
+    fi
     if [ -n "${mapped}" ]; then
       echo "${mapped}"
       return
@@ -174,10 +177,14 @@ discover_postgres_port() {
 }
 
 PG_PORT="$(discover_postgres_port)"
+PG_CONTAINER="swiftdrop-accounts-postgres"
+if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "devarom-accounts-postgres"; then
+  PG_CONTAINER="devarom-accounts-postgres"
+fi
 if lsof -i ":${PG_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
-  pass "PostgreSQL container (devarom-accounts-postgres) is listening on port ${PG_PORT}"
+  pass "PostgreSQL container (${PG_CONTAINER}) is listening on port ${PG_PORT}"
 else
-  fail "PostgreSQL container is NOT listening on port ${PG_PORT}. Start via: docker start devarom-accounts-postgres"
+  fail "PostgreSQL container is NOT listening on port ${PG_PORT}. Start via: docker start ${PG_CONTAINER}"
 fi
 
 echo ""
