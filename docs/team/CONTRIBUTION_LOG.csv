@@ -1,13 +1,17 @@
 member_name,team,issue_or_PR,feature_or_diagram,estimated_effort_to_agree,actual_work_evidence_link,peer_reviewer,status,review_date
-Gajanthan,Customer,#7,Review OIDC sequence Accounts ERD and login evidence mapping,5h,docs/reviews/NOV_07_OIDC_ACCOUNTS_LOGIN_REVIEW.md,Sinthuha / Suthankan1 / Vibhushan,Review submitted,2026-10-22
-Sinthuha,Customer,TBD,TBD,TBD,Not started,TBD,Planned,TBD
-Eric,Merchant,#9,Merchant Role Protected Landing & Approval-State UI,5h,PR #80 (merged commit 466b1fb),Thuvarahan / Suthankan1 / Gajanthan,Merged,2026-10-22
-Eric,Merchant,#17,Independent Clean-Clone Login Setup Reproduction & Setup Fixes (L10),5h,PR targeting test,Suthankan1 / Vibhushan / Thuvarahan,Ready for Review,2026-10-22
-Thuvarahan,Merchant,TBD,TBD,TBD,Not started,TBD,Planned,TBD
-Abhinaya,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
-Vibhushan,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
-Pushmitha,Dispatcher/Admin,#13,Dispatcher/Admin use-case and assignment design review (Figures 04/08),5h issue estimate (not recorded time),https://github.com/Suthankan1/swiftdrop/pull/83,Harithkeshan / Vibhushan-2003 / Gajanthan23 / Suthankan1 / thuvarahan-t (review requested),PR open - independent review pending,2026-10-22
-HarithKeshan,Dispatcher/Admin,TBD,TBD,TBD,Not started,TBD,Planned,TBD
+Gajanthan,Customer,#7,Review OIDC sequence Accounts ERD and login evidence mapping,5h issue estimate,PR #82 (merged commit e6fd107),Sinthuha / Suthankan1 / Vibhushan,Merged,2026-10-22
+Sinthuha,Customer,#5 #7,Accounts & Pricing logical ERD domain review and profile co-review,5h issue estimate,docs/reviews/NOV_07_OIDC_ACCOUNTS_LOGIN_REVIEW.md & PR #43 / #45 / #86 co-review,Suthankan1 / Thuvarahan / Gajanthan,Review completed,2026-10-22
+Eric,Merchant,#9,Merchant Role Protected Landing & Approval-State UI,5h issue estimate,PR #80 (merged commit 466b1fb),Thuvarahan / Suthankan1 / Gajanthan,Merged,2026-10-22
+Eric,Merchant,#17,Independent Clean-Clone Login Setup Reproduction & Setup Fixes (L10),5h issue estimate,PR #85 (merged commit 1d4a951),Suthankan1 / Vibhushan / Thuvarahan,Merged,2026-10-22
+Thuvarahan,Merchant,#8,Merchant business approval & tenant authorization provider,5h issue estimate,PR #78 (merged commit f5cf48c),Eric / Suthankan1 / Sinthuha,Merged,2026-10-22
+Thuvarahan,Merchant,#10,Communications ERD & merchant webhook integration review,5h issue estimate,PR #79 (merged commit 4c1fba4),Eric / Suthankan1 / Abhinaya,Merged,2026-10-22
+Abhinaya,Courier,#11,Courier use cases status flows and proof policy review,5h issue estimate,PR #74 (merged commit b974af0),Vibhushan / Suthankan1 / Thuvarahan,Merged,2026-10-22
+Abhinaya,Courier,#15,Guarded Courier role landing & shift guard UI,5h issue estimate,PR #75 (merged commit 6d6d7c2),Vibhushan / Pushmitha / Suthankan1,Merged,2026-10-22
+Vibhushan,Courier,#12,Delivery operations ERD & parcel lifecycle review (Figures 14/17),5h issue estimate,PR #77 (merged commit 060aea1),Abhinaya / Suthankan1 / Pushmitha,Merged,2026-10-22
+Vibhushan,Courier (QA Security),#18,Independent security test suite execution & audit (36 PASS / 0 FAIL / 4 BLOCKED),5h issue estimate,PR #76 (merged commit 826d6bd),Suthankan1 / HarithKeshan / Eric,Merged,2026-10-22
+Pushmitha,Dispatcher/Admin,#13,Dispatcher/Admin use-case and assignment design review (Figures 04/08),5h issue estimate,PR #83 (merged commit 692a35e),HarithKeshan / Vibhushan / Suthankan1,Merged,2026-10-22
+HarithKeshan,Dispatcher/Admin,#14,Staff profile read models & controlled provisioning (V3 migration),7h issue estimate,PR #86 (merged commit 91510c0),Suthankan1 / Pushmitha / Vibhushan,Merged,2026-10-22
+HarithKeshan,Dispatcher/Admin,#19,Assemble reviewed Nov 1 academic report contribution matrix & handoff,7h issue estimate,docs/nov19-reviewed-report (PR targeting test),Suthankan1 / Team (All 9),Ready for Review,2026-10-22
 Suthankan1,Platform / Security / cross-module slices,#1,Nov 1 Login Integration Contract & Baseline Freeze,4h,PR #34 (merged commit 4ad722a),HarithKeshan,Merged,2026-10-15
 Suthankan1,Platform / Security / cross-module slices,#2,Keycloak OIDC & Role Foundation,5h,PR #35 (merged commit c993204),HarithKeshan / Gajanthan / Sinthuha,Merged,2026-10-15
 Suthankan1,Platform / Security / cross-module slices,#36 #37,Centralize Authentication Ownership to Platform Lead,2h,PR #38 (merged commit c20bb5e),Team,Merged,2026-10-15
@@ -26,4 +30,4 @@ Suthankan1,Platform / Security / cross-module slices,#47,Email OTP Threat Model 
 Suthankan1,Platform / Security / cross-module slices,#17 #19,Nov 1 Demo Readiness & Full-Stack Clean-Clone Runbook,5h,PR #53 (merged commit 882c65e),Eric / HarithKeshan / Vibhushan,Merged,2026-10-20
 Suthankan1,Platform / Security / cross-module slices,#36 #18,Automated Keycloak Google Broker Verification & Live Probe,5h,PR #54 (merged commit d2f9b08),Gajanthan / Vibhushan,Merged,2026-10-20
 Suthankan1,Platform / Security / cross-module slices,#36 #18,Verified Real Google Login & Logout Evidence (L03 PASS),4h,PR #55 (merged commit bf875a0),Gajanthan / Vibhushan (Peer review pending),Merged,2026-10-20
-Pushmitha,Dispatcher/Admin,#16,Protected Dispatcher and Admin role landing shells with denial/navigation/session tests,5h issue estimate (not recorded time),https://github.com/Suthankan1/swiftdrop/commit/fca90f6e853f8da593fbb7977e63e70893ffc3ee,Harithkeshan / Gajanthan23 / Suthankan1 (review pending),UI tested - provider E2E blocked on #14,2026-10-22
+Pushmitha,Dispatcher/Admin,#16,Protected Dispatcher and Admin role landing shells with route tests,5h issue estimate,PR #84 (merged commit 9b8a647),HarithKeshan / Gajanthan / Suthankan1,Merged,2026-10-22
