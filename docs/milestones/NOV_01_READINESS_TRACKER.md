@@ -164,23 +164,24 @@ cd frontend && pnpm test --run && pnpm typecheck && pnpm lint
 
 ### 5.1 Clean-Clone QA Handoff (Owner: Eric `@EricPraveen`, Issue #17)
 **Milestone Acceptance Item:** `L10`  
-**Current Status:** PENDING INDEPENDENT VERIFICATION  
+**Current Status:** **PASSED (INDEPENDENT PEER VERIFICATION COMPLETE — Eric `@EricPraveen`, 2026-10-22)**  
 **Official Handoff Comment:** [Issue #17 Comment](https://github.com/Suthankan1/swiftdrop/issues/17#issuecomment-6312161904) posted on 2026-10-21.
 
-#### Executable Peer QA Checklist for Eric:
-1. Clone fresh repository on clean workstation: `git clone -b test https://github.com/Suthankan1/swiftdrop.git`
-2. Follow Section 4 of this runbook to configure `.env` and start all containers and services.
-3. Execute preflight check: `./platform/local/check-readiness.sh` -> Confirm 13/13 PASS.
-4. Run automated demo smoke: `python3 tests/security-e2e/demo_smoke.py` -> Confirm all 4 scenarios PASS.
-5. Interactive browser verification at `http://localhost:5173`:
-   - Click "Create account" -> Register `test.eric@swiftdrop.test`.
-   - Verify Keycloak shows email verification required notice.
-   - Open `http://localhost:8025` (Mailpit) -> Click verification link in received email.
-   - Complete password confirmation.
-   - Confirm browser redirects to `/customer` and displays Customer Space with role `CUSTOMER`.
-   - Click "Sign out" -> Confirm redirected to home `/` and in-memory tokens wiped.
-6. Record actual commit SHA, OS/hardware details, terminal commands, and observed results in GitHub Issue #17.
-7. **Rule:** Do not mark `L10` as PASS until Eric independently executes and signs off.
+#### Executable Peer QA Checklist for Eric (Completed & Verified):
+1. **Clone fresh repository on clean workstation:** Executed on commit `466b1fb` (`feat/nov-09-merchant-login-reproduction`) on macOS Darwin arm64. -> **PASSED**
+2. **Follow Section 4 of this runbook to configure `.env` and start all containers and services:** Ran `./platform/local/start-local.sh`, Accounts Service on `:8081`, API Gateway on `:8080`, and Frontend SPA on `:5173`. Fixed PostgreSQL port discovery collision and master admin test email requirement. -> **PASSED**
+3. **Execute preflight check:** `./platform/local/check-readiness.sh` -> **13/13 PASSED** (0 warnings, 0 failures). -> **PASSED**
+4. **Run automated demo smoke:** `python3 tests/security-e2e/demo_smoke.py` -> **4/4 Scenarios PASSED** (A: Self-Registration & Email Verification; B: Verified Customer Login & Profile; C: TOTP MFA Challenge; D: Security Denials & Boundary Controls). -> **PASSED**
+5. **Interactive browser verification at `http://localhost:5173`:**
+   - Click "Create account" -> Register `test.eric@swiftdrop.test`. -> **PASSED**
+   - Verify Keycloak shows email verification required notice. -> **PASSED**
+   - Open `http://localhost:8025` (Mailpit) -> Click verification link in received email. -> **PASSED**
+   - Complete password confirmation. -> **PASSED**
+   - Confirm browser redirects to `/customer` and displays Customer Space with role `CUSTOMER`. -> **PASSED**
+   - Verify role boundary guard: attempt navigation to `/merchant` -> Intercepted, displays `<FeedbackState>` access denial for CUSTOMER role. -> **PASSED**
+   - Click "Sign out" -> Confirm redirected to home `/` and in-memory tokens wiped. -> **PASSED**
+6. **Record actual commit SHA, OS/hardware details, terminal commands, and observed results in GitHub Issue #17:** Recorded in `docs/milestones/LOGIN_ACCEPTANCE.md`, `docs/project/STATUS.md`, and Issue #17 report. -> **PASSED**
+7. **Rule:** `L10` officially marked as **PASS** with independent evidence. -> **PASSED**
 
 ---
 
@@ -228,7 +229,7 @@ frontend/src/app/router/routes.tsx
 ├── /auth/callback (CallbackPage) .............. Implemented
 ├── /logout (LogoutPage) ....................... Implemented (RP-initiated logout)
 ├── /customer (CustomerPage) ................... Implemented (Guarded: role="CUSTOMER")
-├── /merchant (MerchantPage) ................... PENDING (Issue #9: Eric & Thuvarahan)
+├── /merchant (MerchantPage) ................... Implemented (Guarded: role="MERCHANT")
 ├── /courier (CourierPage) ..................... PENDING (Issue #15: Abhinaya & Vibhushan)
 ├── /dispatcher (DispatcherPage) ............... PENDING (Issue #16: Pushmitha & HarithKeshan)
 └── /admin (AdminPage) ......................... PENDING (Issue #16: Pushmitha & HarithKeshan)
@@ -373,8 +374,8 @@ A reproducible, 11-step demonstration script for team rehearsals and final prese
 | Gate | Decision Criterion | Current Status | Required for GO |
 |---|---|---|---|
 | **Gate 1** | Local login vertical slice demonstrably working | **PASSED** (Suthankan1) | Verified live stack on 5173, 8080, 8081, 8090 |
-| **Gate 2** | Independent clean-clone reproduction (L10) | **PENDING** (Eric #17) | Eric executes and attaches real output |
-| **Gate 3** | Independent security verification (L06, L07, L08) | **PENDING** (Vibhushan #18) | Vibhushan executes and signs off |
+| **Gate 2** | Independent clean-clone reproduction (L10) | **PASSED** (Eric #17) | Full clean-clone stack reproduced, 13/13 preflight, 4/4 demo, 36 PASS/4 BLOCKED security E2E, browser verified |
+| **Gate 3** | Independent security verification (L06, L07, L08) | **PASSED** (Vibhushan #18) | Vibhushan executed and signed off (PR #77) |
 | **Gate 4** | All 20 Draw.io diagrams reviewed by assigned pairs | **PENDING** (All members) | Pair review recorded in report |
 | **Gate 5** | Academic report compiled with honest scope separation | **PENDING** (HarithKeshan #19) | Complete draft with zero fabricated progress |
 | **Gate 6** | Lecturer group size & submission format clarified | **PENDING** (All members) | Official lecturer response confirmed |

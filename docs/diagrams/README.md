@@ -10,6 +10,8 @@ These **20 editable `.drawio`** files were originally copied unchanged from the 
 - **Scope:** Diagrams are **architecture targets**. Kubernetes/Helm figure 19 and Compose figure 20 do **not** mean deployed infrastructure.
 - **Consistency:** Current product labels use **SwiftDrop**. Original source provenance and the proposed `devarom` namespace in figure 19 remain legacy identifiers; the namespace is deferred to the technical migration review. If business scope/protocol changes, update ADR/contracts and only the affected diagrams.
 
+**Issue #13 review (2026-10-22):** Figures **04/08** clarify controlled Admin powers, authorized provider reads, manual assignment and guarded failure/refresh/stop paths. See [Dispatcher/Admin review](../reviews/DISPATCHER_ADMIN_REVIEW.md) for coverage, validation and unresolved policy. Both editable sources and matching SVGs are updated together; other figures retain their existing exports and review ownership.
+
 | ID | Diagram / SVG preview | Editable source | Suggested reviewer |
 |---|---|---|---|
 | 01 | [Customer use cases](rendered/01_customer_use_cases.svg) | [Edit](editable/01_customer_use_cases.drawio) | Customer pair |

@@ -36,12 +36,24 @@ pnpm lint
 |---|---|
 | `/` | Public landing page and shared responsive navigation |
 | `/customer` | Customer role entry; redirects anonymous sessions to login, reads real profile through Gateway |
+| `/merchant` | Merchant role entry; guarded for `MERCHANT` role, presents approval states (Pending, Approved, Rejected, Suspended, Unknown) and merchant business details |
+| `/courier` | Courier role entry; guarded for `COURIER` role with denial feedback |
+| `/dispatcher` | Dispatcher-only landing; shared auth/logout, unavailable staff profile until #14; no operational commands |
+| `/admin` | Admin-only landing; controlled-access information, unavailable staff profile until #14; no provisioning/approval/pricing controls |
 | `/login` | Keycloak login, Google broker and registration entries; authenticated role navigation |
 | `/auth/callback` | Single adapter-managed code exchange; scrub callback parameters and return to login/session page |
 | `/logout` | Clear local session and POST to Keycloak end-session |
 | `*` | Not-found page with a route home |
 
-The header links only to public entries. Hiding navigation never enforces authorization; Gateway and each business service must independently enforce it.
+The header includes role-aware Merchant, Courier, Dispatcher and Admin links for authenticated users with the corresponding roles. Shared navigation remains available on `/login`, so staff can discover their entry without changing the Platform-owned callback. Hiding navigation never enforces authorization; Gateway and each business service must independently enforce it.
+
+### Dispatcher/Admin landing boundary — Issue #16
+
+`features/dispatcher/pages/DispatcherPage.tsx` and `features/admin/pages/AdminPage.tsx` are distinct guarded entry pages. Both reuse `useAuth()` and `auth.logout()`, plus the shared `StaffProfileUnavailable` presentation. Loading, anonymous redirect, wrong-role denial and expired-session feedback come from the existing shared auth/route components. Admin alone does not grant Dispatcher entry, or vice versa; multiple genuine roles retain both links. The responsive header can wrap when several role links are visible.
+
+Issue #14 is open and no staff-read controller/DTO/Gateway route is merged. **API path consumed by these pages: none.** They make no profile request, create no private query/cache and show no identity data or invented metrics. The existing generic `/api/v1/users/me` is not substituted for staff-provider acceptance. There is no artificial profile-loading/retry/ready state for an absent provider. Integration must wait for HarithKeshan's reviewed endpoint, response/denial contract and Platform-approved token/refresh integration; `profileFetch` currently permits only the generic `/users/me` GET.
+
+The 2026-10-22 frontend run passed **143 tests in 12 files**, TypeScript, lint and production build. Tests use synthetic auth contexts and prove React behavior, not genuine JWT/backend authorization. No browser is connected in this environment, so visual browser/mobile checks, real staff sign-in and Gateway/direct-Accounts reads were not performed. Full #16/L05/L07 staff acceptance remains blocked on #14 and controlled test identities. See [milestone evidence](../docs/milestones/LOGIN_ACCEPTANCE.md#issue-16-dispatcheradmin-ui-evidence--2026-10-22).
 
 ## Source layout
 
@@ -53,6 +65,8 @@ src/
   components/ui/        Reusable feedback and application error boundary
   features/public/      Landing and not-found pages
   features/customer/    Profile page, presentation component, DTOs and API adapter
+  features/merchant/    Merchant landing page, approval-state UI, business profile and API helpers
+  features/courier/     Guarded courier landing page
   styles/               Shared CSS tokens, components and responsive layout
   test/                 Setup, synthetic fixtures and application/security tests
 ```

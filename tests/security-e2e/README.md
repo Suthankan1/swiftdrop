@@ -4,8 +4,8 @@
 
 **Task:** Issue #18 (`[NOV-14] Prove JWT, cross-role and resource-owner denial end to end`)
 **Platform & Auth Owner:** Suthankan1
-**Temporary QA Execution Owner:** Suthankan1 (Platform Self-Verification)
-**Original Intended QA Owner:** Vibhushan (@Vibhushan-2003) (Independent Review Pending)
+**Independent QA Verification Lead:** Vibhushan (@Vibhushan-2003) (Completed 2026-10-21)
+**Platform & Auth Author:** Suthankan1
 **Target Integration Branch:** `test`
 **Architecture Baseline:** SwiftDrop v1.3
 
@@ -18,9 +18,10 @@ This test harness provides reproducible, automated end-to-end security verificat
 2. **L07 — Cross-Role Authorization Denial:** Authenticated tokens lacking approved SwiftDrop application roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`) are rejected with HTTP 403 Forbidden. Public self-registration is strictly confined to the `CUSTOMER` role, preventing self-elevation to staff privileges. Unimplemented staff operations are verified as default-denied and documented as blocked dependencies.
 3. **L08 — Resource-Owner & Tenant Isolation:** Using authentic Keycloak-issued tokens for distinct synthetic users (Customer A and Customer B), the suite proves that Customer A receives only Customer A's persisted profile, Customer B receives only Customer B's persisted profile, and client-forged identity headers (`X-User-Id`, `X-Keycloak-Sub`, `X-Roles`, `X-User-Email`) and query parameter injections are strictly stripped/ignored without leaking cross-user data.
 
-> **Temporary QA Ownership & Self-Verification Disclosure:**
-> The original Issue #18 independent QA owner, Vibhushan (@Vibhushan-2003), is temporarily unavailable. Suthankan1 has taken over execution of the remaining security verification tasks.
-> Because Suthankan1 also owns the authentication implementation, this work is strictly classified as **PLATFORM SELF-VERIFICATION**, not independent peer QA. Independent peer review remains pending and will be performed later when another member is available. Vibhushan has not executed or approved these test runs.
+> **Independent QA Sign-Off (2026-10-21):**
+> Formal independent security verification was executed by Vibhushan (@Vibhushan-2003) on 2026-10-21 on branch `tests/issue-18-independent-security-qa` against commit `b974af0`.
+> Result: **36 PASSED, 0 FAILED, 4 BLOCKED** (retained per downstream provider endpoint availability).
+> Acceptance items **L06**, **L07**, and **L08** are formally verified by independent peer review. See full evidence in [`docs/milestones/ISSUE_18_INDEPENDENT_SECURITY_QA_REPORT.md`](../../docs/milestones/ISSUE_18_INDEPENDENT_SECURITY_QA_REPORT.md).
 
 ---
 

@@ -40,7 +40,7 @@ main:focus { outline: none; }
 .brand-mark span:nth-child(1) { height: 23px; margin-top: 8px; }
 .brand-mark span:nth-child(2) { height: 31px; }
 .brand-mark span:nth-child(3) { height: 23px; }
-.main-navigation { display: flex; align-items: center; gap: 32px; }
+.main-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 32px; }
 .nav-link { font-size: 14px; text-decoration: none; font-weight: 500; padding-block: 12px; position: relative; }
 .nav-link[aria-current='page']::after { content: ''; height: 3px; width: 16px; border-radius: 2px; background: var(--color-teal); bottom: 1px; left: 0; position: absolute; }
 .nav-link span { margin-left: 6px; }
@@ -150,6 +150,37 @@ main:focus { outline: none; }
 .customer-page-header > p { max-width: 600px; }
 .customer-page .profile-grid { margin-top: 30px; }
 .customer-page .card p { font-size: 13px; line-height: 1.8; }
+.courier-page { padding-block: 57px 80px; }
+.courier-page .page-heading > .muted { max-width: 620px; font-size: 15px; }
+.courier-page .profile-grid { margin-top: 30px; }
+.courier-note p { font-size: 13px; }
+.merchant-page { padding-block: 57px 80px; }
+.merchant-page .page-heading > .muted { max-width: 620px; font-size: 15px; }
+.merchant-page .profile-grid { margin-top: 30px; }
+.merchant-note p { font-size: 13px; }
+.merchant-note .button { margin-top: 10px; }
+.staff-page { padding-block: 57px 80px; }
+.staff-heading { margin-bottom: 30px; }
+.staff-heading > .muted { max-width: 620px; font-size: 15px; }
+.staff-note p { font-size: 13px; }
+.staff-note h3 { margin-block: 28px 12px; font-size: 16px; }
+.staff-note .button { margin-top: 10px; }
+.admin-policy { border-top: 4px solid var(--color-teal); }
+.approval-banner { margin-block: 18px 24px; padding: 20px 22px; border-radius: 8px; border: 1px solid var(--color-border); }
+.approval-banner .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.approval-banner h3 { font-size: 16px; margin: 0; font-weight: 600; }
+.approval-banner p { margin: 0; font-size: 13px; line-height: 1.7; }
+.approval-banner .approval-notice { margin-top: 8px; font-size: 12px; opacity: 0.9; }
+.approval-banner a { text-decoration: underline; font-weight: 500; }
+.approval-banner-pending { background: #fafaf0; border-color: #dcdcc8; }
+.approval-banner-approved { background: #f0f7f2; border-color: #b8dec4; color: #154d2f; }
+.approval-banner-rejected { background: #fdf2f2; border-color: #f0c0c0; color: #8a2020; }
+.approval-banner-suspended { background: #fdf6ec; border-color: #f3d19e; color: #8a5314; }
+.approval-banner-unknown { background: #f7f7f4; border-color: #dce0d2; }
+.badge-pending { background: #eaeade; color: #5a5a40; }
+.badge-approved { background: #d7eedd; color: #1b6338; }
+.badge-rejected { background: #fadede; color: #8a1f1f; }
+.badge-suspended { background: #faeacc; color: #7f4b00; }
 .profile-avatar { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: #e9eedb; color: var(--color-teal); font-size: 22px; }
 .state-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #e9eedb; color: var(--color-teal); margin-bottom: 24px; }
 .not-found-page { padding-block: 65px 100px; text-align: center; }
@@ -216,6 +247,8 @@ main:focus { outline: none; }
   .profile-grid { grid-template-columns: 1fr; }
   .profile-details { gap: 20px; }
   .customer-page { padding-block: 38px 50px; }
+  .courier-page { padding-block: 38px 50px; }
+  .merchant-page { padding-block: 38px 50px; }
   .card, .state-panel { padding: 26px 22px; }
   .state-panel h2 { font-size: 23px; }
 }

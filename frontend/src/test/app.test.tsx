@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { anonymousAuth, TestProviders as AppProviders } from './authFixture'
 import type { AuthContextValue } from '../auth/context'
+import type { SwiftDropRole } from '../auth/contracts'
 import { AppRoutes } from '../app/router/routes'
 import { AppErrorBoundary } from '../components/ui/AppErrorBoundary'
 import { customerFixture } from './fixtures'
@@ -22,7 +23,7 @@ describe('shared application routes', () => {
     expect(entry.head.textContent).not.toMatch(/devarom/i)
   })
 
-  it.each(['/', '/login', '/customer', '/auth/callback', '/missing-page'])('uses current branding at %s', (path) => {
+  it.each(['/', '/login', '/customer', '/merchant', '/courier', '/dispatcher', '/admin', '/auth/callback', '/missing-page'])('uses current branding at %s', (path) => {
     const { container } = renderRoute(path)
 
     expect(screen.getByRole('link', { name: 'SwiftDrop home' })).toHaveAttribute('href', '/')
@@ -132,5 +133,68 @@ describe('shared application routes', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/couldn.t display this page/i)
     expect(screen.getByRole('link', { name: /return home/i })).toHaveAttribute('href', '/')
     expect(screen.queryByText(/synthetic test-only render failure/i)).not.toBeInTheDocument()
+  })
+
+  it('shows Merchant navigation only to an authenticated Merchant', () => {
+    const merchantAuth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'merchant-test-sub', roles: ['MERCHANT'] },
+    }
+    const { unmount } = renderRoute('/', merchantAuth)
+    expect(
+      within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /merchant space/i }),
+    ).toHaveAttribute('href', '/merchant')
+    unmount()
+
+    renderRoute('/', anonymousAuth)
+    expect(
+      within(screen.getByRole('navigation', { name: /main navigation/i })).queryByRole('link', { name: /merchant space/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each<{ roles: readonly SwiftDropRole[] }>([
+    { roles: [] }, { roles: ['CUSTOMER'] }, { roles: ['MERCHANT'] }, { roles: ['COURIER'] },
+    { roles: ['DISPATCHER'] }, { roles: ['ADMIN'] }, { roles: ['DISPATCHER', 'ADMIN'] },
+    { roles: ['CUSTOMER', 'MERCHANT', 'COURIER', 'DISPATCHER', 'ADMIN'] },
+  ])('scopes both staff navigation entries to authenticated roles $roles', ({ roles }) => {
+    const auth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'synthetic-navigation-subject', roles },
+    }
+    renderRoute('/login', auth)
+    const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))
+    for (const [role, label, path] of [
+      ['DISPATCHER', 'Dispatcher space', '/dispatcher'], ['ADMIN', 'Admin space', '/admin'],
+    ] as const) {
+      if (roles.includes(role)) expect(nav.getByRole('link', { name: new RegExp(label) })).toHaveAttribute('href', path)
+      else expect(nav.queryByRole('link', { name: new RegExp(label) })).not.toBeInTheDocument()
+    }
+  })
+
+  it.each(['unauthenticated', 'loading'] as const)('hides both staff navigation entries while %s', (status) => {
+    renderRoute('/', { ...anonymousAuth, snapshot: { status, subject: null, roles: [] } })
+    const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))
+    expect(nav.queryByRole('link', { name: /dispatcher space/i })).not.toBeInTheDocument()
+    expect(nav.queryByRole('link', { name: /admin space/i })).not.toBeInTheDocument()
+  })
+
+  it('keeps both genuine staff roles navigable through the existing mobile menu', async () => {
+    const user = userEvent.setup()
+    renderRoute('/login', {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'synthetic-multi-role', roles: ['DISPATCHER', 'ADMIN'] },
+    })
+    const toggle = screen.getByRole('button', { name: 'Open navigation' })
+    await user.click(toggle)
+    await user.keyboard('{Escape}')
+    expect(toggle).toHaveFocus()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    for (const [label, heading] of [['Dispatcher space', 'Dispatcher workspace'], ['Admin space', 'Administration workspace']] as const) {
+      await user.click(toggle)
+      await user.click(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('link', { name: new RegExp(label) }))
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    }
   })
 })
