@@ -217,3 +217,88 @@ Accounts Service now provides the minimal merchant approval-state representation
   - Operations requiring approval fail closed with `MerchantNotApprovedException` (403 Forbidden) if status is `PENDING`, `SUSPENDED`, or `REJECTED`.
 - **Integrated Profile Resolution:** `GET /api/v1/users/me` automatically populates the frozen `merchantProfile` contract (`merchantId`, `businessName`, `registrationNumber`, `status`) when an authenticated `MERCHANT` has a bound merchant record, and returns `null` for `CUSTOMER` actors.
 - **REST Seams:** `GET /api/v1/merchants/me`, `GET /api/v1/merchants/{merchantId}`, `GET /api/v1/merchants/{merchantId}/status` guarded by OAuth2 Resource Server and tenant authorization.
+
+## Staff Profile Foundation & Controlled Provisioning — Issue #14
+
+Refs #14 · Author: **HarithKeshan** (Dispatcher/Admin Backend Lead) · Reviewers: **Sinthuha**, **Suthankan1**, **Abhinaya**, **Pushmitha**.
+
+Accounts Service now provides the minimal staff business profile foundation, read models, repository, and controlled provisioning contract required for `COURIER`, `DISPATCHER`, and `ADMIN` operational workspaces:
+
+### 1. Staff Profile Data Ownership & Role Distinctions
+- **Data Owner:** Accounts & Partners Service owns the `staff_profiles` domain model and persistence. Keycloak remains the authoritative source for authenticated realm roles.
+- **Three Supported Staff Roles:**
+  - `COURIER`: Field logistics personnel assigned to delivery zones for pickup and drop-off operations.
+  - `DISPATCHER`: Operational coordinators monitoring unassigned parcel queues and assigning workloads.
+  - `ADMIN`: Platform administrators managing merchant approvals, system configuration, and staff onboarding.
+- **Role Decoupling:** Authentication verifies who the caller is via Keycloak; the business profile records domain-specific operational attributes (`staffId`, `department`, `assignedZone`, `businessStatus`).
+
+### 2. Database Schema & Migration (`V3__create_staff_profiles.sql`)
+- **Table:** `staff_profiles`
+  - `id`: UUID primary key (immutable).
+  - `account_profile_id`: Optional UUID foreign key referencing `account_profiles(id)`.
+  - `keycloak_sub`: Immutable Keycloak subject reference (VARCHAR(255), UNIQUE, non-blank check constraint).
+  - `staff_id`: Unique employee/staff identifier (VARCHAR(50), UNIQUE, non-blank check constraint, e.g. `STF-2026-0042`).
+  - `staff_role`: VARCHAR(30) with check constraint `CHECK (staff_role IN ('COURIER', 'DISPATCHER', 'ADMIN'))`.
+  - `department`: VARCHAR(100), non-blank check constraint (e.g. `FIELD_LOGISTICS`, `DISPATCH_OPERATIONS`, `PLATFORM_ADMINISTRATION`).
+  - `assigned_zone`: Optional VARCHAR(100) (e.g. `ZONE-WEST-COLOMBO` for couriers).
+  - `status`: VARCHAR(30) with check constraint `CHECK (status IN ('ACTIVE', 'SUSPENDED', 'INACTIVE'))`.
+  - `created_at`: TIMESTAMP WITH TIME ZONE NOT NULL.
+  - `updated_at`: TIMESTAMP WITH TIME ZONE NOT NULL.
+- **Identity Immutability Trigger (`staff_identity_immutable`):** Enforces at the PostgreSQL engine level that `id` and `keycloak_sub` cannot be altered on `UPDATE`. Status and operational assignments may be updated by authorized processes.
+
+### 3. API Read Contract (`GET /api/v1/staff/me` and `GET /api/v1/staff/profile`)
+- **Endpoints:**
+  - Primary: `GET /api/v1/staff/me`
+  - Alias: `GET /api/v1/staff/profile`
+- **Method:** `GET`
+- **Security:** Requires Keycloak Bearer JWT with `COURIER`, `DISPATCHER`, or `ADMIN` role.
+- **Headers:**
+  - `Authorization: Bearer <keycloak-jwt>`
+  - `Accept: application/json`
+- **Response Headers:** `Cache-Control: no-store`
+- **Response Shape (200 OK):**
+```json
+{
+  "profileId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "staffId": "STF-2026-0042",
+  "keycloakSub": "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f",
+  "displayName": "Kamal Perera",
+  "email": "courier.kamal@swiftdrop.test",
+  "phoneNumber": "+94771122334",
+  "role": "COURIER",
+  "department": "FIELD_LOGISTICS",
+  "assignedZone": "ZONE-WEST-COLOMBO",
+  "businessStatus": "ACTIVE",
+  "status": "ACTIVE",
+  "createdAt": "2026-10-18T08:30:00Z",
+  "updatedAt": "2026-10-18T08:30:00Z"
+}
+```
+- **Error Responses (RFC 7807 ProblemDetail):**
+  - `401 Unauthorized`: Missing, expired, or invalid Bearer token.
+  - `403 Forbidden`: Caller lacks a staff role (`CUSTOMER` or `MERCHANT`), role mismatch between JWT and profile, or staff profile is `SUSPENDED`/`INACTIVE`.
+  - `404 Not Found`: Authenticated staff identity does not have a provisioned business profile in Accounts.
+
+### 4. Controlled Staff Provisioning Business Contract
+- **No Public Self-Registration:** Public registration remains strictly customer-only. Staff identities cannot self-assign `COURIER`, `DISPATCHER`, or `ADMIN` roles.
+- **Authorized Provisioning Workflow:**
+  1. **Administrative Identity Creation:** An authorized administrator creates the user identity in Keycloak or validates an institutional employee directory.
+  2. **Role Assignment:** Keycloak administrator assigns the appropriate realm role (`COURIER`, `DISPATCHER`, or `ADMIN`).
+  3. **Accounts Business Profile Provisioning:** Accounts receives the authorized provisioning command (`ProvisionStaffCommand`) containing `keycloakSub`, `staffId`, `role`, `department`, and `assignedZone`.
+  4. **Validation & Uniqueness:** Accounts validates that `keycloakSub` and `staffId` are globally unique, and initializes the business profile in `ACTIVE` status.
+  5. **Self-Read Resolution:** When the staff member signs in, `GET /api/v1/staff/me` resolves the provisioned business profile.
+  6. **Unprovisioned/Mismatched Access Denial:** If a staff member logs in without an Accounts business profile, they receive 404 Not Found. If their Keycloak token role disagrees with their registered profile role, access is denied (403 Forbidden).
+- **Deferred Operations:** A public or unauthenticated staff creation REST endpoint is strictly avoided. Future administrative bulk-import or UI-driven provisioning will connect directly through the validated internal service method with audit logging.
+
+### 5. Frontend Consumer Integration Handoff
+- **Courier Landing (`frontend/src/features/courier/` — Abhinaya):**
+  - Endpoint: `GET /api/v1/staff/me`
+  - Guard: `ProtectedRoute role="COURIER"`
+  - Display fields: `displayName`, `staffId`, `department`, `assignedZone`, `businessStatus`.
+  - Missing-profile handling: If `GET /api/v1/staff/me` returns 404, present a secure "Staff Profile Not Yet Provisioned — Contact Operations" notice.
+- **Dispatcher & Admin Landings (`frontend/src/features/dispatcher/` and `features/admin/` — Pushmitha):**
+  - Endpoint: `GET /api/v1/staff/me`
+  - Guard: `ProtectedRoute role="DISPATCHER"` or `ProtectedRoute role="ADMIN"`
+  - Display fields: `displayName`, `staffId`, `department`, `businessStatus`.
+  - Isolation: Courier-specific fields like `assignedZone` may be null for Dispatcher/Admin.
