@@ -1,0 +1,122 @@
+# ==============================================================================
+# SwiftDrop Platform — Business Services Dependencies Stack (Issue #91)
+# Provisions Apache Kafka in KRaft mode, isolated PostgreSQL business databases
+# (pricing_db, delivery_db, communications_db), and private S3 object storage.
+# Safe, isolated, and non-destructive: does not touch Accounts DB or Keycloak.
+# ==============================================================================
+
+name: swiftdrop-dependencies
+
+networks:
+  dependencies-net:
+    name: swiftdrop-dependencies-net
+    driver: bridge
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Apache Kafka in KRaft Mode (Single Broker Development Node)
+  # ----------------------------------------------------------------------------
+  kafka:
+    image: apache/kafka:4.2.1
+    container_name: ${KAFKA_CONTAINER_NAME:-swiftdrop-kafka}
+    ports:
+      - "127.0.0.1:${KAFKA_PORT:-9092}:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,EXTERNAL://127.0.0.1:${KAFKA_PORT:-9092}'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-4L622nShTUiAnsYh0-X41w}
+    volumes:
+      - swiftdrop-kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+    networks:
+      - dependencies-net
+
+  # Idempotent Topic Provisioner (Runs after Kafka is healthy and exits cleanly)
+  kafka-init:
+    image: apache/kafka:4.2.1
+    container_name: swiftdrop-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: [ "/bin/sh", "/init-kafka.sh" ]
+    volumes:
+      - ./init-kafka.sh:/init-kafka.sh:ro
+    restart: "no"
+    networks:
+      - dependencies-net
+
+  # ----------------------------------------------------------------------------
+  # 2. Business PostgreSQL Database Server (Pricing, Delivery, Communications)
+  # ----------------------------------------------------------------------------
+  business-postgres:
+    image: postgres:16-alpine
+    container_name: ${BUSINESS_DB_CONTAINER_NAME:-swiftdrop-business-postgres}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      PRICING_DB_PASSWORD: ${PRICING_DB_PASSWORD:-pricing_dev_password}
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD:-delivery_dev_password}
+      COMMUNICATIONS_DB_PASSWORD: ${COMMUNICATIONS_DB_PASSWORD:-communications_dev_password}
+    ports:
+      - "127.0.0.1:${BUSINESS_DB_PORT:-5439}:5432"
+    volumes:
+      - swiftdrop-business-postgres-data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - dependencies-net
+
+  # ----------------------------------------------------------------------------
+  # 3. Private S3-Compatible Object Storage (MinIO)
+  # ----------------------------------------------------------------------------
+  minio:
+    image: cleanstart/minio:latest
+    container_name: ${MINIO_CONTAINER_NAME:-swiftdrop-minio}
+    user: "0:0"
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-swiftdrop_storage_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_dev_password}
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - swiftdrop-minio-data:/data
+    healthcheck:
+      test: ["CMD", "/usr/bin/wget", "-q", "-O", "-", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    networks:
+      - dependencies-net
+
+volumes:
+  swiftdrop-kafka-data:
+    name: swiftdrop-kafka-data
+  swiftdrop-business-postgres-data:
+    name: swiftdrop-business-postgres-data
+  swiftdrop-minio-data:
+    name: swiftdrop-minio-data
