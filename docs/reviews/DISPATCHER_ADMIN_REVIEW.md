@@ -16,6 +16,8 @@ The feature branch starts at `origin/test` **`4c1fba46740b38f5cbc1834025e10c952c
 
 Before submission, `test` advanced to **`466b1fbb91f32d83c34a2da38ac6c5e655e224b1`** (Merchant PR #80; `main...test` **1 / 14**). The unpushed review commit was rebased onto it, preserving both Merchant and Dispatcher status/contribution entries. Application changes from #80 are baseline work, outside this PR's diff.
 
+After [review PR #83](https://github.com/Suthankan1/swiftdrop/pull/83) opened, OIDC/Accounts review #82 advanced `test` to **`e6fd1077bad73b2d4868cb5b7caf83cad8f2c56c`** (`main...test` **1 / 16**). That baseline was merged normally into this feature branch, preserving its review/status/contribution changes and leaving the published history intact. The original review commit is **`4915ea7f43579885fad8dd2fd0e8d4b0fd368580`**; final integration evidence is in PR #83.
+
 | Actual acceptance criterion | Review evidence | Acceptance state |
 |---|---|---|
 | Use cases/activity agree with Courier rules and one active assignment per parcel | Sections 3–6; corrected Figures 04/08; Figure 17 comparison | Documented; Courier/Delivery review pending |
@@ -149,7 +151,7 @@ Environment: Windows/PowerShell, Python 3.14, portable official Draw.io Desktop 
 | Draw.io `--export --format svg --size page --theme light --embed-svg-fonts false --output <matching-preview> <source>` for 04/08 | Both sources loaded and exported successfully to their matching SVG paths |
 | Draw.io PNG export and separate SVG rasterization / visual inspection | Labels, actors, editable connectors, decisions, merge/retry routing, final nodes and notes readable; source and SVG content agree. Native Draw.io SVG compatibility-warning fallback can appear in converters that lack SVG extensibility support; use Draw.io export for report conversion as the diagram README advises |
 | Temporary Python XML/diagram checks | Draw.io and SVG XML parse; Figure 04 **30/30**, Figure 08 **47/47** source/rendered cell IDs; every label matches, endpoints resolve, nodes stay within canvas; original IDs/figure numbers retained |
-| Temporary Python Markdown check | **142** relative links/anchors across changed Markdown files resolve; **0** errors |
+| Temporary Python Markdown check | **145** relative links/anchors across changed Markdown files resolve; **0** errors |
 | Contribution CSV parse | Nine columns per row; one #13 owner entry; estimate explicitly distinct from recorded time; peer review pending |
 | Changed-file secret-pattern scan and manual diff scope review | No private-key, GitHub-token or AWS access-key pattern found; no credentials, executable source, schema, binaries or temporary artifacts in the change. This is not a full secret-scanner certification |
 | `git diff --check` | Passed |
@@ -162,7 +164,7 @@ Application build/tests were **not run**: no executable project source is change
 
 **Figure 08 caption:** Planned manual courier assignment: authorized GraphQL/gRPC reads precede a REST command to Delivery. Provider authorization, eligibility and parcel concurrency/active-assignment checks protect the local assignment commit. Empty/unavailable reads and denied/conflicting commands do not create assignments. Assignment remains separate from parcel status; acceptance/timeout/reassignment and notification policy are explicitly unresolved.
 
-Report sections 2/4/5/6/10 should use these captions, the corrected [04](../diagrams/rendered/04_dispatcher_admin_use_cases.svg) and [08](../diagrams/rendered/08_assignment_activity.svg) previews, findings and decisions above, and the [contribution register](../team/CONTRIBUTION_LOG.csv). Issue #19 receives the PR/commit links after publication. Cross-module owners retain their diagrams/business rules and must review affected dependencies; requested review is not recorded approval.
+Report sections 2/4/5/6/10 should use these captions, the corrected [04](../diagrams/rendered/04_dispatcher_admin_use_cases.svg) and [08](../diagrams/rendered/08_assignment_activity.svg) previews, findings and decisions above, and the [contribution register](../team/CONTRIBUTION_LOG.csv). [PR #83](https://github.com/Suthankan1/swiftdrop/pull/83) supplies the review/commit evidence for Issue #19. Cross-module owners retain their diagrams/business rules and must review affected dependencies; requested review is not recorded approval.
 
 The bounded review is ready for **independent review**, not automatic closure of Issue #13. Remaining tasks: Courier/Delivery validate Figure 08 and DA-01/DA-03 (including F13-05); HarithKeshan validate Figure 04/captions and DA-02; Platform validate service/security boundaries; Communications review DA-04; report owner integrates accepted text/figures/contribution evidence into NOV-19. No auto-merge or final report submission is authorized by this artifact.
 
