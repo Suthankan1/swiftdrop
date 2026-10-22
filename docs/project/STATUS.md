@@ -11,12 +11,43 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | GitHub repository | **Official rename complete (`Suthankan1/swiftdrop`); Git remotes and documentation updated (Phase 3B)** | Merged PR #65 into `test`, release PR #66 into `main`; repository renamed; remote verified at `https://github.com/Suthankan1/swiftdrop.git` |
 | Spring Boot services | **API Gateway & Accounts canonical defaults aligned to SwiftDrop; independent JWT security verified** | `services/api-gateway/`: 19 tests passed; Accounts `services/accounts-service/`: 44 unit/MVC/integration tests passed (63 total); OAuth2 Resource Server independently validates SwiftDrop JWTs (`swiftdrop-api` audience), roles, and profile persistence |
-| React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 70 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm |
+| React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
-| CI/CD, Compose, Kubernetes/AI | **Local container startup & full-stack readiness verified (PR #53, Refs #17, #19)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py`; Kubernetes/AI remain bonuses |
+| CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
+
+## Issue #17 Independent Clean-Clone Reproduction (L10) & Merchant Review — 2026-10-22
+
+Primary Reviewer & QA: **Eric Praveen Alric Prashanth (@EricPraveen)**; branch `feat/nov-09-merchant-login-reproduction`, targeting `test`.
+Reviewers: **Suthankan1 (@Suthankan1)** (Platform lead), **Vibhushan (@Vibhushan-2003)** (Security QA lead), **Thuvarahan (@thuvarahan-t)** (Merchant provider owner).
+
+Delivered independent peer verification of milestone acceptance item **L10** from a clean clone state and conducted comprehensive Merchant architecture review:
+- **Independent Full-Stack Startup:** Successfully provisioned and verified Docker containers (`swiftdrop-accounts-postgres` on :5438, `devarom-keycloak` on :8090, `devarom-mailpit` on :8025), Accounts & Partners Service on :8081, Spring Cloud Gateway on :8080, and Vite Frontend SPA on :5173.
+- **Preflight Toolchain & Health (`check-readiness.sh`):** **13/13 PASSED** with 0 warnings and 0 failures. All dependencies (Java 21, Node 24, pnpm 10, Docker 28, Python 3.9), endpoints, JWKS, custom theme, Mailpit API, and profile isolation verified.
+- **Automated Demo Runner (`demo_smoke.py`):** **4/4 Scenarios PASSED**:
+  - Scenario A: Self-registration & email verification via Mailpit.
+  - Scenario B: Verified customer login and profile inspection.
+  - Scenario C: Authenticator app TOTP MFA challenge.
+  - Scenario D: Edge security denials and boundary controls.
+- **Security E2E Suite (`run-security-e2e.sh`):** **ALL 4 PHASES PASSED**:
+  - 40 security tests: 36 PASS, 0 FAIL, 4 BLOCKED by planned downstream provider endpoints (admin users, courier deliveries, explicit user lookup, merchant orders).
+  - 14 static platform identity invariant checks PASSED.
+  - 8/8 live TOTP MFA test suites PASSED.
+  - Spring Cloud Gateway: 19/19 tests PASSED.
+  - Accounts Service: 44/44 tests PASSED.
+  - Frontend SPA: 101/101 tests PASSED.
+- **Interactive Browser Journey (`login_journey_verification_1792651905640.webp`):** Verified full interactive customer registration, Mailpit email link retrieval, TOTP MFA challenge, `/customer` profile loading, role boundary guard blocking `/merchant` for CUSTOMER role (`<FeedbackState>` access denial), and clean token wipe upon logout.
+- **Setup Blockers Identified & Fixed:**
+  - Resolved host PostgreSQL port collision in `platform/local/start-local.sh` by hardening port discovery to default safely to `5438`.
+  - Configured Keycloak admin user with valid `.test` mailbox to pass Mailpit preflight SMTP checks.
+  - Fixed composite role query in `platform/identity/tests/totp_smoke.py` to target `default-roles-{self.realm}` (`default-roles-swiftdrop`).
+  - Documented Python `cryptography` dependency for synthetic RSA signature generation.
+- **Merchant Architectural Review (Figures 02, 11, 12, 16, 20):**
+  - Confirmed alignment of `MerchantStatus` model (`PENDING`, `APPROVED`, `SUSPENDED`, `REJECTED`) and `<MerchantApprovalBanner>` with Figures 02 & 11.
+  - Confirmed tenant boundary isolation (`merchantId`) and fail-closed handling for unapproved states.
+  - Verified Figure 20 honesty: clear boundary maintained between implemented November 1 login slice and planned enterprise services (Kafka KRaft, GraphQL read-only gateway, SSE parcel tracking).
 
 ## Issue #16 Dispatcher/Admin role landings — 2026-10-22
 

@@ -101,7 +101,11 @@ discover_postgres_port() {
     echo "5438"
     return
   fi
-  echo "5432"
+  if lsof -i :5432 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "5438"
+    return
+  fi
+  echo "5438"
 }
 
 PG_PORT="$(discover_postgres_port)"

@@ -15,7 +15,7 @@
 | L07 | Wrong role returns 403 (or reviewed privacy-preserving 404 per contract) | Suthankan1 (security); Vibhushan (Independent Security QA) | **PASS (Independent Security QA - Vibhushan, 2026-10-21)**: Authenticated tokens without approved SwiftDrop roles return 403 Forbidden RFC 7807 ProblemDetail on Accounts and forwarded by Gateway; public registration strictly confined to CUSTOMER role (zero staff self-elevation); unmapped staff endpoints fail-closed (BLOCKED by downstream Issues #14/15) |
 | L08 | Customer A cannot access customer B's profile; similar merchant/courier ownership probes | Sinthuha (profile ownership); Vibhushan (Independent Security QA) | **PASS (Independent Security QA - Vibhushan, 2026-10-21)**: Customer A and B isolation verified with real PKCE tokens; spoofed identity headers and query parameters stripped by Gateway and ignored by Accounts; IDOR on `/users/{id}` and merchant tenant endpoints documented as blocked dependencies |
 | L09 | Login cancellation/bad callback/Keycloak down does not create false authenticated state | Suthankan1 | **Verified (Platform)**: Frontend session tests verify cancellation (`access_denied`), invalid callback, provider outage, and expired session do not establish authenticated state |
-| L10 | Clean clone setup followed successfully by a different group member | Independent reviewer: Eric (@EricPraveen, Issue #17) | Not verified (Platform dry-run verified by Suthankan1; independent peer reproduction pending Eric @EricPraveen) |
+| L10 | Clean clone setup followed successfully by a different group member | Independent reviewer: Eric (@EricPraveen, Issue #17) | **PASS (Independent Peer QA - Eric, 2026-10-22)**: Fresh clean-clone setup reproduced end-to-end on macOS; `check-readiness.sh` 13/13 PASS; `demo_smoke.py` Scenarios A, B, C, D all 4 PASS; `run-security-e2e.sh` 40 tests (36 PASS, 0 FAIL, 4 BLOCKED by planned endpoints); browser-verified registration, email link, TOTP MFA, customer profile, and role access denial on `/merchant` |
 | L11 | Google client secret absent from frontend and all secrets absent from Git/logs | Suthankan1 + independent reviewer | **Verified (Platform)**: Public Vite client has no client secrets; `.gitignore` strictly protects `.env` and `secrets/`; zero committed secrets in git history; zero tokens in test logs |
 | L12 | Report figures and role/integration rationale reviewed by relevant pair | All nine | Not verified (Final report review pending) |
 
@@ -36,6 +36,7 @@
 | 2026-10-20 | Application checkout `60faff2`; PR #54 merged to `test` at `d2f9b08` | Local Chrome; React :5173, Keycloak :8090, Gateway :8080, Accounts :8081 | User completed Google registration in another tab; agent inspected Google Console, signed-in Customer page, Gateway profile HTTP 200, read-only Google federated identity/roles, and logout/session counts | **PASS (L03)**; owner profile matched, CUSTOMER-only role, protected route denied after logout, zero online/frontend offline sessions. Google sign-in prompts were completed by the user; logout HTTP response was not captured. See current evidence below. | User (Google authentication); Codex (browser/runtime verification); independent teammate review pending |
 | 2026-10-21 | PR #64 merged (`0b01f0a`); branch `fix/swiftdrop-phase2-finalization` | Live migrated stack + isolated clean bootstrap container (8190) | Full Phase 2 finalization: canonical `realm-swiftdrop.json` import, `swiftdrop-frontend` client, `swiftdrop-api` audience; `./tests/security-e2e/run-security-e2e.sh`, `python3 tests/security-e2e/demo_smoke.py`, `./platform/local/check-readiness.sh`; clean fresh-install test on port 8190 | **PASSED (Phase 2F Complete)**: Human operator confirmed Google sign-in works against migrated `swiftdrop` realm; profile loads; frontend (70 tests), gateway (19 tests), accounts (44 tests), identity validator (14/14 static + all live smoke), security E2E (36 PASS / 0 FAIL / 4 BLOCKED), clean isolated bootstrap all verified; zero secrets committed | User (Operator Google verification); Suthankan1 (Platform engineering & test automation); Independent peer QA pending Vibhushan / Eric |
 | 2026-10-21 | `b974af0` (branch `tests/issue-18-independent-security-qa`) | Live stack: Keycloak (8090), Gateway (8080), Accounts (8081), Postgres (5438), Mailpit (8025) | `python tests/security-e2e/security_e2e_runner.py` & `.\mvnw.cmd test -q` (Gateway/Accounts) & `pnpm test --run` (Frontend) (L06: 27 JWT rejection & positive controls; L07: 5 role denial & privilege confinement; L08: 8 customer A vs B isolation & header anti-spoofing; Gateway 19 tests, Accounts 37 tests, Frontend 70 tests) | **PASSED (36 passed, 0 failed, 4 blocked by missing provider endpoints)**; Formal independent security QA verification completed; L06, L07, and L08 independently verified; see [Issue #18 QA Report](ISSUE_18_INDEPENDENT_SECURITY_QA_REPORT.md) | Vibhushan (@Vibhushan-2003, Courier Lead & Security QA Lead) |
+| 2026-10-22 | `466b1fb` (branch `feat/nov-09-merchant-login-reproduction`) | macOS Darwin arm64, OpenJDK 21.0.9, Node 24.2.0, pnpm 10.4.1, Docker 28.5.1 | `./platform/local/start-local.sh`, `./platform/local/check-readiness.sh`, `python3 tests/security-e2e/demo_smoke.py`, `./tests/security-e2e/run-security-e2e.sh`, browser subagent verification | **PASSED (L10 Verified)**: Independent clean-clone reproduction completed; toolchain and readiness 13/13 PASS; demo smoke 4/4 PASS; security E2E 36 PASS / 0 FAIL / 4 BLOCKED; 101 frontend tests PASS; live browser registration, email link confirmation via Mailpit, TOTP MFA challenge, `/customer` profile fetch, and `<FeedbackState>` access denial on `/merchant` verified. | Eric Praveen (@EricPraveen, Merchant Lead & Independent Clean-Clone Reviewer) |
 
 
 ## L06, L07, and L08 Detailed Security Verification Matrix (Platform Self-Verification)
@@ -199,3 +200,55 @@ Project #5 inspection/update also failed because the available credential lacks 
 2. Add the typed staff API/query presentation only against that contract: validated current-subject binding, abortable requests, isolated private cache, denied/expired/error/retry/ready states and no browser-storage persistence.
 3. With Platform-approved isolated test identities/stack, sign in as each real staff role; follow the header and direct URL, perform the protected read, then verify other-role/anonymous/cross-subject denials through both Gateway and direct Accounts. Verify public signup cannot grant staff roles without altering the existing live realm.
 4. In a connected browser, check desktop/mobile layout, keyboard/menu focus, session expiry and sign-out; capture only redacted evidence. Have the named independent reviewers sign off, then update #16/L05/L07 with observed results.
+
+## L10 Independent Clean-Clone Reproduction & Peer QA (Issue #17 — Eric Praveen)
+
+- **Independent Reviewer:** Eric Praveen Alric Prashanth (`@EricPraveen`, Merchant Lead)
+- **Review Date:** 2026-10-22
+- **Tested Commit SHA:** `466b1fb` (Branch `feat/nov-09-merchant-login-reproduction`, based on `origin/test` PR #80 merge)
+- **Hardware / Workstation OS:** macOS (Darwin arm64, Apple Silicon)
+- **Toolchain / Runtimes Verified:**
+  - Java: OpenJDK 21.0.9 (Temurin)
+  - Node.js: v24.2.0
+  - pnpm: 10.4.1
+  - Docker: Docker Desktop 28.5.1 / Compose v2.40.3
+  - Python: 3.9.6 (with `cryptography` dependency installed)
+
+### 1. Verification Summary
+
+Independent peer reproduction of milestone acceptance item **L10** was executed from a clean clone state following [`docs/development/CLEAN_CLONE_RUNBOOK.md`](../development/CLEAN_CLONE_RUNBOOK.md) and [`docs/milestones/NOV_01_READINESS_TRACKER.md`](NOV_01_READINESS_TRACKER.md). All services were started independently, preflight validation ran cleanly, all 4 demo scenarios passed, all 4 phases of security E2E passed (36 PASS, 0 FAIL, 4 BLOCKED by planned endpoints), and an interactive browser session confirmed the complete registration, email confirmation, TOTP MFA challenge, `/customer` profile fetch, and role-based denial on `/merchant`.
+
+### 2. Exact Execution Trace & Results
+
+| Step / Suite | Command | Observed Result | Status |
+|---|---|---|---|
+| **Local Stack Startup** | `./platform/local/start-local.sh` | Containers provisioned: `swiftdrop-accounts-postgres` (:5438), `devarom-keycloak` (:8090), `devarom-mailpit` (:8025). Keycloak OIDC discovery responded; theme verified; email verification action verified; TOTP policy configured. | **PASS** |
+| **Accounts Service Startup** | `export ACCOUNTS_DB_URL=jdbc:postgresql://localhost:5438/accounts_db && ./mvnw spring-boot:run` | Started on port 8081; Flyway migrations V1 and V2 applied; connected to PostgreSQL on port 5438. | **PASS** |
+| **API Gateway Startup** | `export ACCOUNTS_SERVICE_URL=http://localhost:8081 && ./mvnw spring-boot:run` | Started on port 8080; Netty routing `/api/v1/users/me` and `/api/v1/merchants/**` to Accounts on port 8081. | **PASS** |
+| **Frontend SPA Startup** | `pnpm dev` | Vite 6.4.1 dev server running on `http://localhost:5173/`. | **PASS** |
+| **Preflight Readiness Check** | `./platform/local/check-readiness.sh` | **13/13 checks PASSED** (0 warnings, 0 failures): Tools, ports, containers, Discovery, JWKS, theme, email action, TOTP policy, Mailpit API, Gateway health, Accounts health, Gateway CORS, Accounts profile isolation. | **PASS** |
+| **Automated Demo Smoke Suite** | `python3 tests/security-e2e/demo_smoke.py` | **4/4 Scenarios PASSED**: Scenario A (Self-Registration & Mailpit Link Flow), Scenario B (Verified Customer Login & Profile Inspection), Scenario C (TOTP MFA Challenge & Replay Rejection), Scenario D (Security Denials & Edge Boundary Controls). | **PASS** |
+| **Comprehensive Security E2E** | `./tests/security-e2e/run-security-e2e.sh` | **ALL 4 PHASES PASSED**: 40 Security tests (36 PASS, 0 FAIL, 4 BLOCKED by unmapped staff/courier/IDOR endpoints per Issues #5, #8, #14, #15); 14 identity invariant checks; 8/8 live TOTP MFA tests; Gateway unit/integration tests (19/19 PASS); Accounts tests (44/44 PASS); Frontend Vitest suite (101/101 PASS). | **PASS** |
+| **Interactive Browser Journey** | Automated browser subagent (`login_journey_verification_1792651905640.webp`) | 1. Navigated to `/login`, triggered registration. 2. Filled registration form for `test.eric@swiftdrop.test`. 3. Keycloak rendered email verification notice. 4. Queried Mailpit API (:8025), fetched link. 5. Navigated link, completed password setup. 6. TOTP setup challenge appeared and enrolled. 7. Browser redirected to `/customer` showing valid Customer Space and role `CUSTOMER`. 8. Attempted navigation to `/merchant`; route guard intercepted CUSTOMER role and rendered `<FeedbackState>` access denial. 9. Signed out; tokens purged. | **PASS** |
+
+### 3. Setup Blockers Encountered & Resolved
+
+During the clean-clone reproduction, three environmental/configuration friction points were identified and resolved to ensure full peer reproducibility:
+
+1. **Host PostgreSQL Port Collision (5432 vs 5438):**
+   - *Issue:* `platform/local/start-local.sh` had `discover_postgres_port()` defaulting to 5432 when 5438 was not already listening. On macOS developer workstations with a host PostgreSQL service running on 5432, `docker run` failed with `bind: address already in use`. Furthermore, runbooks and Accounts configurations standardize on port `5438`.
+   - *Fix:* Hardened `discover_postgres_port()` in `start-local.sh` to detect 5432 collisions and default safely to `5438`.
+2. **Keycloak Admin SMTP Test Mailbox Requirement:**
+   - *Issue:* `platform/identity/configure-email-verification.py` enforces that the master realm administrator user has a valid `.test` email (`admin_test_mailbox`) to receive the preflight test email via Mailpit. Fresh Keycloak bootstrap had `email: None`.
+   - *Fix:* Updated master admin user in Keycloak with `email: admin@swiftdrop.test`. `configure-email-verification.py apply` then executed and passed preflight SMTP testing immediately.
+3. **Rebranding Drift in `totp_smoke.py` (`default-roles-devarom` vs `default-roles-swiftdrop`):**
+   - *Issue:* `platform/identity/tests/totp_smoke.py` queried `/roles/default-roles-devarom/composites`, returning HTTP 404 because Keycloak dynamically names the composite role `default-roles-{realm}` (`default-roles-swiftdrop`).
+   - *Fix:* Updated query in `totp_smoke.py` to check `default-roles-{self.realm}` with fallback to `devarom`. All 8 TOTP smoke suites now pass.
+4. **Python Dependencies:**
+   - Synthetic RSA signature generation in `security_e2e_runner.py` and `demo_smoke.py` requires the `cryptography` Python package. Documented requirement in runbook.
+
+### 4. Merchant Architectural Review (Figures 02, 11, 12, 16, 20)
+
+- **Figures 02 & 11 (Merchant Onboarding & Approval Lifecycle):** The implemented Accounts Service `MerchantStatus` model (`PENDING`, `APPROVED`, `SUSPENDED`, `REJECTED`) and Frontend `<MerchantApprovalBanner>` accurately reflect Figure 02 and Figure 11. Initial registration defaults to non-operational pending status and cannot self-elevate. Tenant isolation boundary (`merchantId`) is enforced server-side.
+- **Figure 12 & 16 (Merchant REST API & Communications Webhooks):** Mapped for subsequent milestone deliverables. Accounts gRPC key validation and Delivery parcel creation endpoints are planned downstream contracts and correctly fail-closed today.
+- **Figure 20 (Target vs Implemented Topology):** Delineation between the target distributed enterprise topology (Kafka KRaft, GraphQL read-only gateway, SSE parcel tracking) and the November 1 login vertical slice (Keycloak OIDC PKCE, Spring Cloud Gateway edge JWT routing, Accounts Resource Server, and Frontend role-protected routes) is strictly maintained. Zero premature code generated.
