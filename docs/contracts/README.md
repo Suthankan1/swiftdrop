@@ -1,13 +1,21 @@
-# Contract-first collaboration (no implementation files yet)
+# Contract-First Integration Baseline (v1.0 Frozen)
 
-This folder describes review and compatibility requirements; **no real `.proto`, OpenAPI, GraphQL schema, Kafka JSON schema or generated clients have been created in this starter**. When teams implement the appropriate slice, agree contract PRs first and then place versioned machine-readable files in the repository `contracts/` tree.
+This directory provides the architectural integration contracts and guidelines for the SwiftDrop enterprise parcel delivery platform.
 
-| Contract | Guidance | Future machine-readable location |
-|---|---|---|
-| Login & Auth (Nov 1) | [Login & Auth Contract](LOGIN_CONTRACT.md) | Identity integration, OIDC PKCE, JWT validation, port registry, and minimal Gateway-Accounts route |
-| External REST | [REST](REST.md) | `contracts/rest/` OpenAPI and HTTP error conventions |
-| Read-only GraphQL | [GraphQL](GRAPHQL.md) | `contracts/graphql/` schema files |
-| Internal gRPC | [gRPC](GRPC.md) | `contracts/grpc/` versioned `.proto` files |
-| Async business events | [Kafka](KAFKA.md) | `contracts/events/` event schemas/example payloads (synthetic only) |
+In accordance with **Issue [#88 (N10-P01)](https://github.com/Suthankan1/swiftdrop/issues/88)**, the authoritative, machine-readable contracts have been frozen in the root [`contracts/`](../../contracts/) directory, supported by the [Runtime Decision Register](../architecture/RUNTIME_DECISION_REGISTER.md) and the [Service Interface Matrix](SERVICE_INTERFACE_MATRIX.md).
 
-**Change protocol:** PR opened by owner → consumer reviewer signs off → schema validation/backward compatibility → implementation + tests → update diagrams/docs. Never allow separately generated callers and servers to guess the same field names. Proposed URI/topic examples are **not already frozen**.
+| Contract Category | Architectural Guidance | Frozen Machine-Readable Location | Status |
+|---|---|---|---|
+| **Login & Identity** | [Login & Auth Contract](LOGIN_CONTRACT.md) | Verified in `platform/identity/realm-swiftdrop.json` & `services/accounts-service` | **VERIFIED PASS (Nov 1)** |
+| **External REST APIs** | [REST Contracts Guide](REST.md) | [`contracts/rest/`](../../contracts/rest/) (OpenAPI 3.0.3 for Pricing, Delivery, Accounts, Communications) | **FROZEN (Issue #88)** |
+| **Read-Only GraphQL** | [GraphQL Query API Guide](GRAPHQL.md) | [`contracts/graphql/schema.graphql`](../../contracts/graphql/schema.graphql) (Read-only SDL for Dashboards) | **FROZEN (Issue #88)** |
+| **Internal gRPC / Protobuf** | [gRPC Architecture Plan](GRPC.md) | [`contracts/grpc/README.md`](../../contracts/grpc/README.md) (Package namespaces, RPC specs, handoff to Issue [#92](https://github.com/Suthankan1/swiftdrop/issues/92)) | **SPEC FROZEN (Issue #88)** |
+| **Async Business Events** | [Kafka Reliability Guide](KAFKA.md) | [`contracts/events/`](../../contracts/events/) (`parcel.status.changed.v1` JSON Schema & Example) | **FROZEN (Issue #88)** |
+
+---
+
+## Change Management Protocol
+
+1. **Contract-First Rule:** No developer or AI agent shall implement microservice controllers, DTOs, or database schemas that conflict with the frozen contracts in `contracts/`.
+2. **Backward Compatibility:** All future updates to contracts must remain backward-compatible within major versions (v1). Breaking field changes require an ADR and team lead approval.
+3. **Validation Gate:** All contract PRs must pass `@redocly/cli lint`, `graphql-schema-linter`, and `jsonschema` verification.

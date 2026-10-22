@@ -1,0 +1,21 @@
+{
+  "eventId": "a7c2b489-7e3f-42a1-b842-83b6f2d91e04",
+  "eventType": "parcel.status.changed.v1",
+  "schemaVersion": "1.0.0",
+  "aggregateId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "aggregateType": "PARCEL",
+  "aggregateVersion": 3,
+  "occurredAt": "2026-10-23T14:30:00Z",
+  "correlationId": "f04c6328-7651-419b-b0b3-f094593f669e",
+  "producer": "delivery-operations",
+  "payload": {
+    "parcelId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "trackingNumber": "SWD-20261023-A1B2C3",
+    "oldStatus": "PICKED_UP",
+    "newStatus": "IN_TRANSIT",
+    "reason": null,
+    "merchantId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "courierSub": "c56a4180-65aa-42ec-a945-5fd21dec0538",
+    "cityOrZone": "Western Province Hub"
+  }
+}

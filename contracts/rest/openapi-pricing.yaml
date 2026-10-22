@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: SwiftDrop Pricing & Zones REST API
+  version: 1.0.0
+  description: |
+    External REST contract for the Pricing & Zones bounded context.
+    Pricing owns zone definitions, calculation algorithms, rate versions, and quote expiry.
+    Delivery Operations consumes these quotes and snapshots the agreed fee.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api.swiftdrop.com
+    description: Production API Gateway
+  - url: http://localhost:8080
+    description: Local API Gateway
+
+security:
+  - BearerAuth: []
+  - {}
+
+paths:
+  /api/v1/quotes:
+    post:
+      summary: Request a delivery pricing quote
+      description: |
+        Calculates delivery fee based on origin/destination zones, chargeable weight, and parcel size category.
+        Returns a time-limited quote (valid for 15 minutes) with an immutable quote ID and rate version.
+      operationId: calculateQuote
+      security:
+        - BearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+      responses:
+        '201':
+          description: Quote successfully calculated and persisted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+        '400':
+          description: Invalid request parameters (e.g. weight out of bounds)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '422':
+          description: Unprocessable zone or routing combination
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/quotes/{quoteId}:
+    get:
+      summary: Retrieve an existing pricing quote
+      description: Returns quote details and current validity/expiry status.
+      operationId: getQuoteById
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: quoteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Quote details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+        '404':
+          description: Quote not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/zones:
+    get:
+      summary: List supported delivery zones and rate tables
+      description: Returns active operational zones and standard transit time expectations.
+      operationId: listZones
+      security:
+        - BearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: List of active zones
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZoneListResponse'
+        '400':
+          description: Bad request
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak issued Access Token.
+
+  schemas:
+    QuoteRequest:
+      type: object
+      required:
+        - pickupZone
+        - dropoffZone
+        - weightKg
+        - lengthCm
+        - widthCm
+        - heightCm
+      properties:
+        pickupZone:
+          type: string
+          example: "ZONE_1"
+          description: Origin pricing zone code (e.g., ZONE_1, ZONE_2, ZONE_3).
+        dropoffZone:
+          type: string
+          example: "ZONE_2"
+          description: Destination pricing zone code.
+        weightKg:
+          type: number
+          format: double
+          minimum: 0.01
+          maximum: 30.00
+          example: 2.50
+          description: Physical weight in kilograms (max 2 decimal places).
+        lengthCm:
+          type: integer
+          minimum: 1
+          maximum: 150
+          example: 30
+          description: Length in centimeters.
+        widthCm:
+          type: integer
+          minimum: 1
+          maximum: 150
+          example: 20
+          description: Width in centimeters.
+        heightCm:
+          type: integer
+          minimum: 1
+          maximum: 150
+          example: 15
+          description: Height in centimeters.
+
+    QuoteResponse:
+      type: object
+      required:
+        - quoteId
+        - rateVersion
+        - pickupZone
+        - dropoffZone
+        - weightKg
+        - volumetricWeightKg
+        - chargeableWeightKg
+        - sizeCategory
+        - baseFeeMinorUnits
+        - weightSurchargeMinorUnits
+        - totalAmountMinorUnits
+        - currency
+        - createdAt
+        - expiresAt
+        - isExpired
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        rateVersion:
+          type: string
+          example: "RATE-2026-V1"
+        pickupZone:
+          type: string
+          example: "ZONE_1"
+        dropoffZone:
+          type: string
+          example: "ZONE_2"
+        weightKg:
+          type: number
+          format: double
+          example: 2.50
+        volumetricWeightKg:
+          type: number
+          format: double
+          example: 1.80
+          description: Calculated as (length * width * height) / 5000.
+        chargeableWeightKg:
+          type: number
+          format: double
+          example: 2.50
+          description: max(weightKg, volumetricWeightKg).
+        sizeCategory:
+          type: string
+          enum: [SMALL, MEDIUM, LARGE, OVERSIZED]
+          example: "MEDIUM"
+        baseFeeMinorUnits:
+          type: integer
+          example: 35000
+          description: Base fee in integer minor units (e.g. 350.00 LKR = 35000).
+        weightSurchargeMinorUnits:
+          type: integer
+          example: 15000
+          description: Tiered weight surcharge in integer minor units.
+        totalAmountMinorUnits:
+          type: integer
+          example: 50000
+          description: Total fee in integer minor units (e.g., 500.00 LKR).
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          example: "LKR"
+          description: ISO 4217 three-letter currency code.
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-10-23T14:00:00Z"
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2026-10-23T14:15:00Z"
+          description: Fixed 15 minutes validity window.
+        isExpired:
+          type: boolean
+          example: false
+
+    ZoneListResponse:
+      type: object
+      required:
+        - activeRateVersion
+        - zones
+      properties:
+        activeRateVersion:
+          type: string
+          example: "RATE-2026-V1"
+        zones:
+          type: array
+          items:
+            $ref: '#/components/schemas/ZoneItem'
+
+    ZoneItem:
+      type: object
+      required:
+        - zoneCode
+        - name
+        - description
+        - standardTransitHours
+      properties:
+        zoneCode:
+          type: string
+          example: "ZONE_1"
+        name:
+          type: string
+          example: "Colombo Municipal District"
+        description:
+          type: string
+          example: "Intra-city delivery covering Colombo postal codes 1 through 15."
+        standardTransitHours:
+          type: integer
+          example: 24
