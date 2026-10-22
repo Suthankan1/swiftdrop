@@ -1,0 +1,443 @@
+openapi: 3.0.3
+info:
+  title: SwiftDrop Accounts & Partners REST API
+  version: 1.0.0
+  description: |
+    Authoritative REST contract for Accounts & Partners bounded context.
+    Accounts owns user business profiles, merchant organization onboarding and approval state,
+    and merchant machine API key credential issuance/revocation.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api.swiftdrop.com
+    description: Production API Gateway
+  - url: http://localhost:8080
+    description: Local API Gateway
+
+security:
+  - BearerAuth: []
+  - {}
+
+paths:
+  /api/v1/users/me:
+    get:
+      summary: Get current authenticated user profile
+      description: |
+        Returns the business profile and verified role claims for the calling subject.
+        If the database profile row does not yet exist on first login, JIT provisioning creates it.
+      operationId: getCurrentUserProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Verified user profile and roles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserProfileResponse'
+        '401':
+          description: Missing or invalid JWT bearer token
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants:
+    post:
+      summary: Register a new merchant tenant organization
+      description: |
+        Submits merchant business enrollment.
+        Binds the authenticated user's Keycloak subject to the new merchant tenant.
+        Newly created merchants default to PENDING status and cannot create delivery orders until approved.
+      operationId: registerMerchant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantRegistrationRequest'
+      responses:
+        '201':
+          description: Merchant tenant registered with PENDING approval status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantProfileResponse'
+        '400':
+          description: Validation error or malformed body
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Registration number already exists or user already owns a merchant
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants/{id}:
+    get:
+      summary: Get merchant tenant details
+      description: |
+        Returns merchant profile and current approval status (PENDING, APPROVED, SUSPENDED, REJECTED).
+        Enforces tenant isolation: accessible only by merchant owner or admin.
+      operationId: getMerchantById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Merchant profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantProfileResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller does not own this merchant tenant
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Merchant tenant not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants/{id}/approve:
+    post:
+      summary: Approve a pending merchant enrollment
+      description: |
+        Administrative command transitioning merchant from PENDING to APPROVED status.
+        Requires ADMIN role.
+      operationId: approveMerchant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Merchant approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantProfileResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - ADMIN role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Merchant not in PENDING status
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants/{id}/api-keys:
+    post:
+      summary: Generate a scoped machine-to-machine API key
+      description: |
+        Issues a new scoped API key for automated merchant system order integration.
+        The full plaintext secret is displayed ONCE in the response and is never stored or returned again.
+        Only a secure cryptographic hash is persisted in accounts_db.
+      operationId: generateApiKey
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+      responses:
+        '201':
+          description: API key generated (plaintext displayed once)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCreatedResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller does not own this merchant
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+    get:
+      summary: List active API keys for merchant
+      description: Returns metadata (key ID, prefix, scopes, created/expiration dates) for active keys. Plaintext is never exposed.
+      operationId: listApiKeys
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of API key metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyListResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CurrentUserProfileResponse:
+      type: object
+      required:
+        - id
+        - keycloakSub
+        - email
+        - fullName
+        - phoneNumber
+        - roles
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "e6fd1077-bad7-3b2d-4868-cb5b7caf83ca"
+        keycloakSub:
+          type: string
+          example: "c56a4180-65aa-42ec-a945-5fd21dec0538"
+        email:
+          type: string
+          format: email
+          example: "customer@example.com"
+        fullName:
+          type: string
+          example: "Sinthuha Nadesan"
+        phoneNumber:
+          type: string
+          example: "+94770001122"
+        roles:
+          type: array
+          items:
+            type: string
+          example: ["CUSTOMER"]
+        merchantProfile:
+          $ref: '#/components/schemas/MerchantProfileResponse'
+        createdAt:
+          type: string
+          format: date-time
+
+    MerchantRegistrationRequest:
+      type: object
+      required:
+        - businessName
+        - registrationNumber
+      properties:
+        businessName:
+          type: string
+          minLength: 3
+          maxLength: 255
+          example: "Lanka Retail Holdings Ltd"
+        registrationNumber:
+          type: string
+          minLength: 3
+          maxLength: 100
+          example: "PV-109923"
+
+    MerchantProfileResponse:
+      type: object
+      required:
+        - id
+        - keycloakSub
+        - businessName
+        - registrationNumber
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        keycloakSub:
+          type: string
+        businessName:
+          type: string
+          example: "Lanka Retail Holdings Ltd"
+        registrationNumber:
+          type: string
+          example: "PV-109923"
+        status:
+          type: string
+          enum: [PENDING, APPROVED, SUSPENDED, REJECTED]
+          example: "PENDING"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateApiKeyRequest:
+      type: object
+      required:
+        - name
+        - scopes
+      properties:
+        name:
+          type: string
+          example: "Production Warehouse Order Integration"
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: ["parcels:create", "parcels:read", "webhooks:manage"]
+          example: ["parcels:create", "parcels:read"]
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 90
+          example: 90
+
+    ApiKeyCreatedResponse:
+      type: object
+      required:
+        - keyId
+        - name
+        - keyPrefix
+        - plaintextKey
+        - scopes
+        - createdAt
+        - expiresAt
+      properties:
+        keyId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        keyPrefix:
+          type: string
+          example: "swd_live_7a8b"
+        plaintextKey:
+          type: string
+          description: Plaintext secret token. Stored ONLY once in response.
+          example: "swd_live_7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d"
+        scopes:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    ApiKeyListResponse:
+      type: object
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeySummaryItem'
+
+    ApiKeySummaryItem:
+      type: object
+      required:
+        - keyId
+        - name
+        - keyPrefix
+        - scopes
+        - createdAt
+        - expiresAt
+        - isRevoked
+      properties:
+        keyId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        keyPrefix:
+          type: string
+          example: "swd_live_7a8b"
+        scopes:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        isRevoked:
+          type: boolean
+          example: false

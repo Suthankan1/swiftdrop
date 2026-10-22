@@ -1,0 +1,212 @@
+"""
+SwiftDrop Read-Only Composite Query API — GraphQL SDL v1.0
+Exposed via Spring Cloud Gateway at /graphql.
+Authoritative data resolved exclusively via internal gRPC to Accounts, Pricing, and Delivery services.
+Direct database access, GraphQL Mutations, and GraphQL Subscriptions are strictly prohibited.
+"""
+schema {
+  query: Query
+}
+
+type Query {
+  """
+  Customer dashboard summary: scoped strictly to the authenticated Keycloak subject.
+  Requires role: CUSTOMER.
+  """
+  customerDashboard: CustomerDashboard!
+
+  """
+  Merchant dashboard summary: scoped to the authenticated merchant tenant.
+  Requires role: MERCHANT and approved tenant status in Accounts.
+  """
+  merchantDashboard: MerchantDashboard!
+
+  """
+  Courier operational dashboard: active and historical deliveries assigned to caller.
+  Requires role: COURIER.
+  """
+  courierDashboard: CourierDashboard!
+
+  """
+  Dispatcher operational queue: unassigned parcels, active courier workloads.
+  Requires role: DISPATCHER or ADMIN.
+  """
+  dispatcherDashboard(pagination: PaginationInput): DispatcherDashboard!
+
+  """
+  System administrative summary: platform overview, merchant onboarding queue, delivery outcome totals.
+  Requires role: ADMIN.
+  """
+  adminDashboard: AdminDashboard!
+
+  """
+  Bounded delivery performance and status statistics (Platform slice).
+  Requires role: DISPATCHER or ADMIN.
+  """
+  deliveryStats(filter: DeliveryStatsFilterInput): DeliveryStatsSummary!
+
+  """
+  Public, redacted parcel tracking view.
+  Open to unauthenticated users; strictly excludes recipient contact details and proof URLs.
+  """
+  publicTracking(trackingNumber: String!): PublicTrackingView
+}
+
+input PaginationInput {
+  page: Int = 0
+  size: Int = 20
+}
+
+input DeliveryStatsFilterInput {
+  startDate: String
+  endDate: String
+  zone: String
+  status: ParcelStatus
+}
+
+type PageInfo {
+  currentPage: Int!
+  pageSize: Int!
+  totalElements: Int!
+  totalPages: Int!
+  hasNext: Boolean!
+}
+
+enum ParcelStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+}
+
+enum MerchantStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+type CustomerDashboard {
+  userId: ID!
+  activeDeliveriesCount: Int!
+  completedDeliveriesCount: Int!
+  recentParcels: [CustomerParcelSummary!]!
+}
+
+type CustomerParcelSummary {
+  parcelId: ID!
+  trackingNumber: String!
+  currentStatus: ParcelStatus!
+  amountMinorUnits: Int!
+  currency: String!
+  recipientCity: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type MerchantDashboard {
+  merchantId: ID!
+  businessName: String!
+  status: MerchantStatus!
+  totalOrdersCount: Int!
+  activeOrdersCount: Int!
+  deliveredOrdersCount: Int!
+  failedOrdersCount: Int!
+  recentOrders: [MerchantOrderSummary!]!
+}
+
+type MerchantOrderSummary {
+  parcelId: ID!
+  trackingNumber: String!
+  currentStatus: ParcelStatus!
+  weightKg: Float!
+  feeMinorUnits: Int!
+  currency: String!
+  createdAt: String!
+  lastStatusUpdate: String!
+}
+
+type CourierDashboard {
+  courierSub: ID!
+  activeAssignedCount: Int!
+  todayDeliveredCount: Int!
+  todayFailedCount: Int!
+  assignedParcels: [CourierParcelItem!]!
+}
+
+type CourierParcelItem {
+  parcelId: ID!
+  trackingNumber: String!
+  currentStatus: ParcelStatus!
+  pickupAddress: String!
+  dropoffAddress: String!
+  recipientName: String
+  recipientPhone: String
+  assignedAt: String!
+  version: Int!
+}
+
+type DispatcherDashboard {
+  unassignedParcels: [UnassignedParcelItem!]!
+  pageInfo: PageInfo!
+  availableCouriers: [CourierWorkloadSummary!]!
+}
+
+type UnassignedParcelItem {
+  parcelId: ID!
+  trackingNumber: String!
+  pickupZone: String!
+  dropoffZone: String!
+  weightKg: Float!
+  sizeCategory: String!
+  createdAt: String!
+  version: Int!
+}
+
+type CourierWorkloadSummary {
+  courierSub: ID!
+  fullName: String!
+  activeAssignmentsCount: Int!
+  maxCapacity: Int!
+  eligible: Boolean!
+}
+
+type AdminDashboard {
+  pendingMerchantsCount: Int!
+  totalParcelsCount: Int!
+  activeParcelsCount: Int!
+  terminalSuccessRate: Float!
+  recentPendingMerchants: [PendingMerchantItem!]!
+}
+
+type PendingMerchantItem {
+  merchantId: ID!
+  businessName: String!
+  registrationNumber: String!
+  submittedAt: String!
+}
+
+type DeliveryStatsSummary {
+  totalCount: Int!
+  deliveredCount: Int!
+  failedCount: Int!
+  inTransitCount: Int!
+  createdCount: Int!
+  averageDeliveryHours: Float
+}
+
+type PublicTrackingView {
+  trackingNumber: String!
+  currentStatus: ParcelStatus!
+  originCity: String!
+  destinationCity: String!
+  timeline: [PublicTrackingEvent!]!
+}
+
+type PublicTrackingEvent {
+  status: ParcelStatus!
+  occurredAt: String!
+  location: String
+}

@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.swiftdrop.com/events/parcel.status.changed.v1.schema.json",
+  "title": "ParcelStatusChangedEventV1",
+  "description": "Domain event published by Delivery Operations transactional outbox when a parcel undergoes an authoritative status transition.",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "aggregateId",
+    "aggregateType",
+    "aggregateVersion",
+    "occurredAt",
+    "correlationId",
+    "producer",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for this domain event instance (used for consumer deduplication)."
+    },
+    "eventType": {
+      "type": "string",
+      "const": "parcel.status.changed.v1",
+      "description": "Constant domain event type identifier."
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the event envelope and payload schema (major version 1)."
+    },
+    "aggregateId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID of the parcel aggregate root (corresponds to Kafka partition key)."
+    },
+    "aggregateType": {
+      "type": "string",
+      "const": "PARCEL",
+      "description": "Root aggregate entity type."
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing version of the parcel aggregate at the time of this transition."
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp recording when the status transition was committed."
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "Trace or correlation identifier propagated from the incoming command request."
+    },
+    "producer": {
+      "type": "string",
+      "const": "delivery-operations",
+      "description": "Authoritative service producing this lifecycle event."
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "parcelId",
+        "trackingNumber",
+        "oldStatus",
+        "newStatus"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "parcelId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Authoritative parcel UUID."
+        },
+        "trackingNumber": {
+          "type": "string",
+          "pattern": "^SWD-[0-9]{8}-[A-Z0-9]{4,8}$",
+          "description": "Human-readable public tracking number (e.g., SWD-20261023-A1B2)."
+        },
+        "oldStatus": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "CREATED",
+            "PICKED_UP",
+            "IN_TRANSIT",
+            "OUT_FOR_DELIVERY"
+          ],
+          "description": "Previous lifecycle state (null if initial CREATED transition)."
+        },
+        "newStatus": {
+          "type": "string",
+          "enum": [
+            "CREATED",
+            "PICKED_UP",
+            "IN_TRANSIT",
+            "OUT_FOR_DELIVERY",
+            "DELIVERED",
+            "FAILED"
+          ],
+          "description": "Authoritative new lifecycle status."
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "RECIPIENT_UNAVAILABLE",
+            "INCORRECT_ADDRESS",
+            "REFUSED_BY_RECIPIENT",
+            "PARCEL_DAMAGED",
+            "FORCE_MAJEURE",
+            "CANCELLED_BY_SENDER",
+            "PICKUP_FAILED_SENDER_ABSENT"
+          ],
+          "description": "Mandatory failure reason code when newStatus is FAILED; null otherwise."
+        },
+        "merchantId": {
+          "type": ["string", "null"],
+          "format": "uuid",
+          "description": "Opaque tenant identifier if booked by a commercial merchant; null for direct retail customers."
+        },
+        "courierSub": {
+          "type": ["string", "null"],
+          "description": "Keycloak subject of the assigned courier who performed the transition; null if transition was system or customer triggered."
+        },
+        "cityOrZone": {
+          "type": ["string", "null"],
+          "description": "Coarse geographic location or hub name for tracking display (zero street-level PII)."
+        }
+      }
+    }
+  }
+}

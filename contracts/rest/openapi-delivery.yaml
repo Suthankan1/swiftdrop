@@ -1,0 +1,725 @@
+openapi: 3.0.3
+info:
+  title: SwiftDrop Delivery Operations REST API
+  version: 1.0.0
+  description: |
+    Authoritative REST contract for the Delivery Operations bounded context.
+    Delivery owns parcel lifecycle states, assignments, status audit history,
+    proof metadata, fee snapshots, and transactional outbox event publication.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api.swiftdrop.com
+    description: Production API Gateway
+  - url: http://localhost:8080
+    description: Local API Gateway
+
+security:
+  - BearerAuth: []
+  - {}
+
+paths:
+  /api/v1/parcels:
+    post:
+      summary: Book a new parcel delivery
+      description: |
+        Books a delivery using an accepted, unexpired quote snapshot from Pricing & Zones.
+        Caller identity is extracted from the authenticated JWT subject (CUSTOMER role).
+        Idempotent retries are supported via the Idempotency-Key header.
+      operationId: bookParcel
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Unique idempotency key to prevent duplicate booking on network retry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookParcelRequest'
+      responses:
+        '201':
+          description: Parcel booked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParcelDetailResponse'
+        '400':
+          description: Malformed payload or validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Quote already consumed or version conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '422':
+          description: Quote expired or rate version deactivated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/parcels/{parcelId}:
+    get:
+      summary: Retrieve full parcel details
+      description: |
+        Returns authoritative parcel details, current lifecycle status, and fee snapshot.
+        Enforces resource ownership: accessible only by parcel creator, assigned courier, or dispatcher/admin.
+      operationId: getParcelById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parcelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Authoritative parcel details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParcelDetailResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller does not own parcel or hold required role
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Parcel not found (or privacy-preserving denial)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/tracking/{trackingNumber}:
+    get:
+      summary: Public redacted parcel tracking view
+      description: |
+        Unauthenticated tracking endpoint for senders and recipients.
+        Returns lifecycle status, city/zone checkpoints, and timestamps.
+        Strictly redacts recipient full street address, customer phone numbers, driver identities, and proof URLs.
+      operationId: getPublicTracking
+      security: []
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^SWD-[0-9]{8}-[A-Z0-9]{4,8}$"
+            example: "SWD-20261023-A1B2C3"
+      responses:
+        '200':
+          description: Redacted tracking summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTrackingResponse'
+        '404':
+          description: Tracking number not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/assignments:
+    post:
+      summary: Assign an eligible courier to a parcel
+      description: |
+        Dispatches an unassigned parcel in CREATED state to an eligible courier.
+        Requires DISPATCHER or ADMIN role.
+        Enforces optimistic locking (expectedVersion) and single active assignment per parcel.
+      operationId: assignCourier
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignCourierRequest'
+      responses:
+        '200':
+          description: Courier assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentResponse'
+        '400':
+          description: Ineligible courier or invalid state
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - DISPATCHER or ADMIN role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Concurrency conflict (parcel version mismatch or already assigned)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/parcels/{parcelId}/status:
+    patch:
+      summary: Transition parcel lifecycle status
+      description: |
+        Updates parcel lifecycle state along the forward state machine:
+        CREATED -> PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY -> DELIVERED (terminal) or FAILED (terminal).
+        Requires COURIER role matching the currently active assignment.
+        Enforces optimistic locking (expectedVersion).
+        Commits status update, history append, and transactional outbox event atomically.
+      operationId: updateParcelStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parcelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+      responses:
+        '200':
+          description: Status transition committed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParcelStatusChangeResponse'
+        '400':
+          description: Missing mandatory failure reason or proof reference
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller is not the assigned courier
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Optimistic lock failure or terminal state immutability violation
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '422':
+          description: Illegal state transition (backward or skipped stage)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchant/parcels:
+    post:
+      summary: Create parcel delivery via secured merchant API
+      description: |
+        Automated order placement for approved merchant organizations.
+        Authenticated via scoped API key (X-API-Key) or Bearer JWT.
+        Delivery validates tenant approval in Accounts before committing the parcel.
+      operationId: createMerchantParcel
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantBookParcelRequest'
+      responses:
+        '201':
+          description: Merchant order accepted and queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParcelDetailResponse'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Merchant status is not APPROVED (e.g., PENDING or SUSPENDED)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Idempotency digest mismatch or duplicate order
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/parcels/{parcelId}/proof:
+    post:
+      summary: Ingest proof of delivery metadata
+      description: |
+        Assigned courier submits evidence metadata (recipient name, signature object key, delivery note, photo key).
+        Stored in private S3/MinIO bucket; zero public URLs.
+      operationId: uploadProofMetadata
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parcelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadProofRequest'
+      responses:
+        '201':
+          description: Proof metadata recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProofResponse'
+        '400':
+          description: Invalid proof parameters
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - only assigned courier may submit proof
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/parcels/{parcelId}/receipt:
+    get:
+      summary: Download official delivery receipt
+      description: |
+        Generates/fetches the official PDF delivery receipt (Platform extra slice).
+        Available to parcel creator, merchant sender, or recipient after completion.
+      operationId: getDeliveryReceipt
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parcelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF delivery receipt stream
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - unauthorized to download this receipt
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Receipt not available or parcel not completed
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    BookParcelRequest:
+      type: object
+      required:
+        - quoteId
+        - pickupAddress
+        - dropoffAddress
+        - recipientName
+        - recipientPhone
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        pickupAddress:
+          type: string
+          example: "123 Galle Road, Colombo 03"
+        dropoffAddress:
+          type: string
+          example: "45 Kandy Road, Gampaha"
+        recipientName:
+          type: string
+          example: "Nimal Perera"
+        recipientPhone:
+          type: string
+          example: "+94771234567"
+        deliveryNotes:
+          type: string
+          example: "Leave at security desk if recipient unavailable."
+
+    MerchantBookParcelRequest:
+      type: object
+      required:
+        - quoteId
+        - pickupAddress
+        - dropoffAddress
+        - recipientName
+        - recipientPhone
+        - merchantReference
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        pickupAddress:
+          type: string
+        dropoffAddress:
+          type: string
+        recipientName:
+          type: string
+        recipientPhone:
+          type: string
+        merchantReference:
+          type: string
+          example: "ORDER-2026-9981"
+        deliveryNotes:
+          type: string
+
+    AssignCourierRequest:
+      type: object
+      required:
+        - parcelId
+        - courierSub
+        - expectedVersion
+      properties:
+        parcelId:
+          type: string
+          format: uuid
+        courierSub:
+          type: string
+          description: Keycloak subject string identifying the eligible courier.
+          example: "c56a4180-65aa-42ec-a945-5fd21dec0538"
+        expectedVersion:
+          type: integer
+          description: Optimistic lock version matching PARCELS.version.
+          example: 1
+
+    AssignmentResponse:
+      type: object
+      required:
+        - assignmentId
+        - parcelId
+        - courierSub
+        - active
+        - assignedAt
+        - assignedBy
+        - newParcelVersion
+      properties:
+        assignmentId:
+          type: string
+          format: uuid
+        parcelId:
+          type: string
+          format: uuid
+        courierSub:
+          type: string
+        active:
+          type: boolean
+          example: true
+        assignedAt:
+          type: string
+          format: date-time
+        assignedBy:
+          type: string
+        newParcelVersion:
+          type: integer
+          example: 2
+
+    UpdateStatusRequest:
+      type: object
+      required:
+        - newStatus
+        - expectedVersion
+      properties:
+        newStatus:
+          type: string
+          enum: [PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, FAILED]
+          example: "PICKED_UP"
+        expectedVersion:
+          type: integer
+          example: 2
+        note:
+          type: string
+          example: "Package collected from sender warehouse."
+        reason:
+          type: string
+          enum:
+            - RECIPIENT_UNAVAILABLE
+            - INCORRECT_ADDRESS
+            - REFUSED_BY_RECIPIENT
+            - PARCEL_DAMAGED
+            - FORCE_MAJEURE
+            - CANCELLED_BY_SENDER
+            - PICKUP_FAILED_SENDER_ABSENT
+          description: Mandatory when newStatus is FAILED.
+        proofId:
+          type: string
+          format: uuid
+          description: Mandatory when newStatus is DELIVERED.
+
+    ParcelStatusChangeResponse:
+      type: object
+      required:
+        - parcelId
+        - trackingNumber
+        - previousStatus
+        - currentStatus
+        - stateVersion
+        - updatedParcelVersion
+        - occurredAt
+      properties:
+        parcelId:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+        previousStatus:
+          type: string
+        currentStatus:
+          type: string
+        stateVersion:
+          type: integer
+          example: 3
+        updatedParcelVersion:
+          type: integer
+          example: 3
+        occurredAt:
+          type: string
+          format: date-time
+
+    UploadProofRequest:
+      type: object
+      required:
+        - photoObjectKey
+      properties:
+        recipientName:
+          type: string
+          example: "K. Silva"
+        photoObjectKey:
+          type: string
+          example: "proofs/2026/10/23/f47ac10b_signature.png"
+        deliveryNote:
+          type: string
+          example: "Handed directly to recipient at front gate."
+
+    ProofResponse:
+      type: object
+      required:
+        - proofId
+        - parcelId
+        - uploadedBySub
+        - uploadedAt
+      properties:
+        proofId:
+          type: string
+          format: uuid
+        parcelId:
+          type: string
+          format: uuid
+        uploadedBySub:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+
+    ParcelDetailResponse:
+      type: object
+      required:
+        - parcelId
+        - trackingNumber
+        - createdBySub
+        - currentStatus
+        - version
+        - weightKg
+        - dimensions
+        - amountMinorUnits
+        - currency
+        - rateVersion
+        - pickupAddress
+        - dropoffAddress
+        - createdAt
+      properties:
+        parcelId:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+          example: "SWD-20261023-A1B2C3"
+        createdBySub:
+          type: string
+        merchantId:
+          type: string
+          format: uuid
+          nullable: true
+        currentStatus:
+          type: string
+          example: "CREATED"
+        version:
+          type: integer
+          example: 1
+        weightKg:
+          type: number
+          format: double
+          example: 2.50
+        dimensions:
+          type: string
+          example: "30x20x15"
+        amountMinorUnits:
+          type: integer
+          example: 50000
+        currency:
+          type: string
+          example: "LKR"
+        rateVersion:
+          type: string
+          example: "RATE-2026-V1"
+        pickupAddress:
+          type: string
+        dropoffAddress:
+          type: string
+        activeCourierSub:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    PublicTrackingResponse:
+      type: object
+      required:
+        - trackingNumber
+        - currentStatus
+        - timeline
+      properties:
+        trackingNumber:
+          type: string
+          example: "SWD-20261023-A1B2C3"
+        currentStatus:
+          type: string
+          example: "IN_TRANSIT"
+        originCity:
+          type: string
+          example: "Colombo"
+        destinationCity:
+          type: string
+          example: "Gampaha"
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingTimelineItem'
+
+    TrackingTimelineItem:
+      type: object
+      required:
+        - status
+        - occurredAt
+      properties:
+        status:
+          type: string
+          example: "PICKED_UP"
+        occurredAt:
+          type: string
+          format: date-time
+        cityOrZone:
+          type: string
+          example: "Western Province Sorting Hub"
