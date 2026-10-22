@@ -19,7 +19,7 @@ Verify your host environment meets the pinned SwiftDrop baseline before starting
 | **Java Platform** | **Java 21 LTS** | `java -version` | Recommended: OpenJDK 21 LTS (`export JAVA_HOME=$(/usr/libexec/java_home -v 21)` on macOS) |
 | **Node.js** | **Node 24 LTS** (or 20+) | `node --version` | Pinned in `.node-version` (v24.21.0) |
 | **pnpm** | **12.4+ / 12.11.2** | `pnpm --version` | Installed globally or enabled via `corepack enable` |
-| **Python 3** | **3.10+** (tested on 3.14) | `python3 --version` | Standard library (`urllib`, `unittest`, `json`, `hashlib`, `hmac`) |
+| **Python 3** | **3.10+** (tested on 3.14) | `python3 --version` | Standard library + `pip install cryptography` (for synthetic RSA test signatures in security E2E) |
 
 ### Host Port Allocation
 Ensure the following ports are available on `localhost`:

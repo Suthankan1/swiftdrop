@@ -517,7 +517,10 @@ class TotpSmoke:
 
             # 7. Role Isolation on Self-Registration
             report("[7/8] Verifying public self-registration assigns only CUSTOMER role...")
-            default_roles = self.admin("/roles/default-roles-devarom/composites")
+            try:
+                default_roles = self.admin(f"/roles/default-roles-{self.realm}/composites")
+            except Exception:
+                default_roles = self.admin("/roles/default-roles-devarom/composites")
             composite_names = {r.get("name") for r in (default_roles or [])}
             check("CUSTOMER" in composite_names, "Default composite role must include CUSTOMER")
             for priv in PRIVILEGED_ROLES:
