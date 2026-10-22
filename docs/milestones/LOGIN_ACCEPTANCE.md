@@ -10,7 +10,7 @@
 | L02 | Local customer sign-up/login, linked profile by Keycloak `sub`, no business password storage | Suthankan1 (identity UI); Sinthuha (profile data) | **Verified (Platform)**: Keycloak OIDC PKCE registration/login exchanges code, Accounts JIT creates profile row bound to `keycloak_sub`; password stored only in Keycloak |
 | L03 | Real Google login: Keycloak broker, S256 PKCE, correct callback/state/nonce | Suthankan1 (implementation); Gajanthan (UI review) | **PASS (2026-10-20; user-completed authentication, agent-observed result)**: Authorized Google account linked through the enabled Keycloak Google broker; Customer page showed the matching owner profile with CUSTOMER-only role and Gateway `GET /api/v1/users/me` returned HTTP 200. Sign out returned home; protected `/customer` redirected to `/login`; read-only Keycloak checks found zero online or frontend offline sessions. Earlier PKCE/state/nonce checks remain recorded below; independent teammate review pending. |
 | L04 | Logout and expired token/session behavior documented/tested | Suthankan1 | **Verified (Platform)**: RP-initiated logout clears Keycloak SSO and redirects to `http://localhost:5173/`; expired tokens rejected with 401 and cleared from in-memory state |
-| L05 | Five roles have appropriate role entry pages; user cannot self-grant staff | Role UI pairs (entry views); Suthankan1 (auth guard/roles) | **Partially verified (Platform)**: Self-registration privilege confinement strictly verified (CUSTOMER role only, zero staff roles); role landing pages for Courier/Dispatcher/Admin open under Issues #9, #15, #16 |
+| L05 | Five roles have appropriate role entry pages; user cannot self-grant staff | Role UI pairs (entry views); Suthankan1 (auth guard/roles) | **Partial**: Existing Platform provisioning evidence retained. Dispatcher/Admin #16 landing/denial/navigation/session behavior implemented and unit-tested on 2026-10-22; real staff reads/login/browser verification still BLOCKED on #14 and controlled identities. Other role evidence remains separately recorded; see the #16 evidence below |
 | L06 | No token returns 401, invalid/expired JWT is rejected | Suthankan1 (implementation); Vibhushan (Independent Security QA) | **PASS (Independent Security QA - Vibhushan, 2026-10-21)**: 27 automated tests passing across Gateway (8080) and Accounts (8081); missing/malformed/unsigned/untrusted/wrong-iss/wrong-aud/expired/not-yet-valid tokens rejected with 401 RFC 7807 ProblemDetail; verified on commit `b974af0` |
 | L07 | Wrong role returns 403 (or reviewed privacy-preserving 404 per contract) | Suthankan1 (security); Vibhushan (Independent Security QA) | **PASS (Independent Security QA - Vibhushan, 2026-10-21)**: Authenticated tokens without approved SwiftDrop roles return 403 Forbidden RFC 7807 ProblemDetail on Accounts and forwarded by Gateway; public registration strictly confined to CUSTOMER role (zero staff self-elevation); unmapped staff endpoints fail-closed (BLOCKED by downstream Issues #14/15) |
 | L08 | Customer A cannot access customer B's profile; similar merchant/courier ownership probes | Sinthuha (profile ownership); Vibhushan (Independent Security QA) | **PASS (Independent Security QA - Vibhushan, 2026-10-21)**: Customer A and B isolation verified with real PKCE tokens; spoofed identity headers and query parameters stripped by Gateway and ignored by Accounts; IDOR on `/users/{id}` and merchant tenant endpoints documented as blocked dependencies |
@@ -150,3 +150,52 @@ The following was the pending checklist at PR #54. The current run below records
 | Logout and protected route | Agent clicked Sign out, observed the public home page, then confirmed `/customer` redirected to `/login`. Subsequent read-only Keycloak checks found zero online sessions and zero offline sessions for `devarom-frontend`. The logout HTTP response was not captured because browser network events were truncated on navigation; server-session absence corroborates the observed logout result. | **PASS** |
 
 The prior automated PKCE, state/nonce and negative-control results above remain historical and were not rerun for this documentation update. No screenshots, personal profile values, account/session IDs, raw admin responses, secrets, tokens or OTPs are included. Independent peer reproduction and review remain separate pending work.
+
+## Issue #16 Dispatcher/Admin UI evidence — 2026-10-22
+
+**Owner:** Pushmitha (@pushmitha20). **Independent review:** pending HarithKeshan (role/provider policy), Gajanthan (SPA/navigation) and Platform (auth integration boundary). **Implementation commit:** `fca90f6e853f8da593fbb7977e63e70893ffc3ee`. **Base test:** `692a35e905fc4af0f529eff79489e6d1230ea1a6`; feature branch `feat/issue-16-dispatcher-admin-landing`. Evidence is from the implementation author/agent, not independent human QA.
+
+The SPA implements separate `/dispatcher` and `/admin` entry views with exact-role `ProtectedRoute` guards and authenticated header links, including navigation from `/login` and users with multiple genuine roles. It reuses the existing auth context, session loading/expiry/denial feedback and logout. Shared auth/Keycloak code, Customer/Merchant/Courier pages, backend security, roles and provider contracts are unchanged. No business dashboard or operational controls are implemented.
+
+### Staff provider status and data boundary
+
+Issue #14 is open, has no implementation PR in its timeline/search results, and no staff provider/controller/DTO or Gateway staff route exists in the inspected `test`. **Actual API consumed by these pages: none.** They show `Staff profile unavailable` and no staff identity, metrics or private records. The generic `/api/v1/users/me` read is not substituted as evidence for the missing staff contract. The pages do not retrieve tokens, fetch profiles or store/cache staff responses. Provider-dependent loading/ready/error/retry states will follow the approved #14 contract; adding artificial loading or a retry of a nonexistent endpoint would misrepresent readiness.
+
+### Actual frontend checks
+
+Final validation environment: Windows/PowerShell, **Node 24.21.0**, **pnpm 12.11.2** in `frontend/`. The shell initially provided Node 24.16.0; all five required commands were rerun successfully with a temporary official Node 24.21.0 archive verified against Node's SHA-256 manifest. The runtime override applies only to the validation process; no machine installation or repository toolchain/lockfile was changed.
+
+| Command / check (from `frontend/`) | Observed result |
+|---|---|
+| `pnpm install --frozen-lockfile` | Passed with pnpm 12.11.2; lockfile unchanged. Initial sandbox store-lock access failed; the authorized run with store access succeeded |
+| `pnpm typecheck` | Passed, 0 TypeScript errors after correcting test parameter types |
+| `pnpm test --run` | **12 files passed; 143 tests passed; 0 failed.** Includes 14 tests per new staff page and shared role/navigation tests. Initial sandbox Vite spawn failed; the authorized run with required process permissions succeeded |
+| `pnpm lint` | Passed, 0 ESLint errors |
+| `pnpm build` | Passed, TypeScript + Vite production build; generated `dist/` is ignored and uncommitted |
+| `git diff --check` / staged scope review | Passed; no credentials, auth implementation, backend source or lockfile change |
+
+Test fixtures supply synthetic auth contexts only. Assertions cover anonymous/direct URL redirects; shared loading; exact positive role; Customer/Merchant/Courier/other-staff/no-role denial; no provider/token requests; logout delegation; removal of content/navigation on session expiry or role loss; URL/browser flags cannot grant entry; both genuine staff-role links remain discoverable; mobile menu follow/Escape/focus behavior; no fabricated metrics or actionable administration controls. Unit tests do not validate JWT signatures, actual provisioning, server session termination or backend authorization.
+
+### Browser and backend acceptance blockers
+
+No browser is connected to this environment (`cua.getState()` returned no browsers/apps). **No actual browser demo, visual desktop/mobile check, real staff login or screenshots were captured.** No Keycloak realm, credentials or staff role mappings were changed. CSS reuses the responsive profile grid and shared navigation; browser layout verification remains pending.
+
+| Acceptance check | Current state / prerequisite |
+|---|---|
+| Real Dispatcher/Admin sign-in -> correct landing -> protected staff read | **BLOCKED**: #14 provider/approved Gateway route and controlled real test identities; no browser connected |
+| Real Customer/Merchant/Courier API denial, plus anonymous 401 | **BLOCKED** for staff provider: no implemented protected endpoint to probe; React denial tests are not server 403 proof |
+| Direct Accounts and Gateway positive/negative controls | **BLOCKED** on #14 contract/routing and isolated test stack; no backend E2E run performed by #16 |
+| Cross-subject response rejection, valid DTO, 401/403/404/invalid JSON/5xx/loading/retry/ready UI | **BLOCKED** until the reviewed staff path/DTO/error semantics exist; never call guessed `/staff/profile` |
+| No self-granted staff privilege | UI offers no role/provisioning controls; existing Platform evidence retained. **No fresh live registration/provisioning test run** for #16 |
+| Real logout/expiry and independent human/mobile QA | **NOT RUN** here; only shared-action delegation and guard response to synthetic session changes tested |
+
+L05 has additional frontend coverage; full five-role entry/read acceptance is **not PASS** from these tests. Existing L07 evidence for implemented routes remains intact, while staff-specific positive/negative backend checks remain **BLOCKED**. Issue #16 must remain open until its actual acceptance criteria are verified.
+
+Project #5 inspection/update also failed because the available credential lacks `read:project`/project write scope; no Projects connector or connected browser can supply access. Current board status is unverified and unchanged. Once access is available, set **In Review** if supported while the UI PR awaits review; do not mark Done.
+
+### Next integration and safe demo steps (not executed)
+
+1. HarithKeshan merges #14's reviewed read-only staff DTO/endpoint and denial contract in Accounts; Platform confirms Gateway routing and the approved token/refresh adapter. The current `profileFetch` accepts only `GET /api/v1/users/me`; do not silently extend it for a guessed path.
+2. Add the typed staff API/query presentation only against that contract: validated current-subject binding, abortable requests, isolated private cache, denied/expired/error/retry/ready states and no browser-storage persistence.
+3. With Platform-approved isolated test identities/stack, sign in as each real staff role; follow the header and direct URL, perform the protected read, then verify other-role/anonymous/cross-subject denials through both Gateway and direct Accounts. Verify public signup cannot grant staff roles without altering the existing live realm.
+4. In a connected browser, check desktop/mobile layout, keyboard/menu focus, session expiry and sign-out; capture only redacted evidence. Have the named independent reviewers sign off, then update #16/L05/L07 with observed results.

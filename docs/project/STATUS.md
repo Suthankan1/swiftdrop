@@ -18,6 +18,14 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## Issue #16 Dispatcher/Admin role landings — 2026-10-22
+
+Pushmitha (@pushmitha20), branch `feat/issue-16-dispatcher-admin-landing`, targeting `test`: distinct `/dispatcher` and `/admin` pages, exact-role `ProtectedRoute` guards, role-aware shared navigation, responsive staff cards, shared logout and honest staff-profile unavailability. No shared authentication implementation or other role page was changed. Admin alone cannot enter Dispatcher space, and Dispatcher alone cannot enter Admin space.
+
+Implementation commit: `fca90f6e853f8da593fbb7977e63e70893ffc3ee`; base `test`: `692a35e905fc4af0f529eff79489e6d1230ea1a6`. Windows/Node 24.21.0/pnpm 12.11.2: frozen install, typecheck, **12 Vitest files / 143 tests passed, 0 failed**, ESLint (0 errors) and production build passed. Synthetic auth-context tests cover direct URL denials, all other roles, no provider requests, session/role loss, URL/browser flag rejection, multi-role navigation and shared logout. These are UI tests, not real token/backend security evidence.
+
+**Issue #14 remains open with no merged staff provider. API consumed: none.** No staff DTO/endpoint, basic `/me` workaround, query cache, fake identity or business metric is introduced. Real staff sign-in/positive reads, backend cross-role/anonymous/subject denials through Gateway and direct Accounts, profile error/retry/ready states and live provisioning evidence are **BLOCKED**, not passing. No browser is connected, so browser/mobile demos/screenshots were not captured. Project #5 read/update is blocked by missing project scope. See [#16 evidence and next integration step](../milestones/LOGIN_ACCEPTANCE.md#issue-16-dispatcheradmin-ui-evidence--2026-10-22). Independent HarithKeshan/Gajanthan/Platform review and full Issue #16 acceptance remain pending.
+
 ## Issue #7 OIDC Sequence, Accounts ERD & Master Login Evidence Review — 2026-10-22
 
 Lead Architectural Reviewer: **Gajanthan (@Gajanthan23)** (Customer Lead FE & Customer Feature Steward); branch `docs/nov07-oidc-erd-evidence`, targeting `test`.  
