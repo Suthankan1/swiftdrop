@@ -18,6 +18,18 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## Issue #7 OIDC Sequence, Accounts ERD & Master Login Evidence Review — 2026-10-22
+
+Lead Architectural Reviewer: **Gajanthan (@Gajanthan23)** (Customer Lead FE & Customer Feature Steward); branch `docs/nov07-oidc-erd-evidence`, targeting `test`.  
+Reviewers: **Sinthuha (@Sinthuha-n)** (Customer Lead BE & Accounts DB Steward), **Suthankan1 (@Suthankan1)** (Platform Lead, shared OIDC auth, Gateway & Accounts JWT), **Vibhushan (@Vibhushan-2003)** (Security QA Lead, Issue #18), **HarithKeshan (@Harithkeshan)** (Academic report assembly, Issue #19), **Eric (@EricPraveen)** (Clean-clone reproduction, Issue #17).
+
+Delivered comprehensive Customer pair architectural review of the OIDC login sequence, Accounts database ERD vs. actual schema, and master login acceptance evidence mapping for the November 1 milestone:
+- **OIDC Login Sequence Review (Figure 13):** Traced complete 12-step local customer registration/login flow and brokered Google OIDC authentication flow. Corrected obsolete wording in Figure 13 note claiming Google login is "planned, not verified" — now formally verified PASS (L03) with user-completed Google sign-in, profile load (HTTP 200), CUSTOMER role confinement, and clean logout with zero sessions. Auth tokens are stored strictly in browser memory, with immediate address-bar URL sanitization (`history.replaceState`).
+- **Accounts Database ERD Review (Figure 15):** Compared conceptual ERD against Flyway migrations (`V1__create_account_profiles.sql`, `V2__create_merchants.sql`) and JPA entities. Rigorously verified table renames (`account_profiles`, `merchants`), UUID PKs (`gen_random_uuid()`), and database triggers enforcing immutable identity (`account_identity_immutable`, `merchant_identity_immutable`). Documented architectural justification for the intentional elimination of `ROLES` and `USER_ROLES` tables from PostgreSQL: Keycloak is single source of truth; roles are extracted statelessly from signed JWT claims (`realm_access.roles`) into `TrustedIdentity`. Documented that operational courier data lives in Delivery Operations rather than `accounts_db`.
+- **Master Login Acceptance Evidence Mapping:** Mapped all 12 acceptance criteria (L01–L12) to requirements, application components, automated test harnesses, evidence records, observed results, and blockers. L01, L02, L03, L04, L06, L08, L09, and L11 verified PASS; L05 partially verified (CUSTOMER registration confined; staff role views in progress); L07 verified for existing endpoints and fail-closed for unmapped endpoints; L10 pending Eric's clean-clone reproduction; L12 in progress with review package.
+- **Security & Privacy Hygiene:** Zero secrets or bearer tokens in Git, logs, or address bar. Confirmed public Vite bundle contains zero client secrets.
+- **Deliverable:** Created [`docs/reviews/NOV_07_OIDC_ACCOUNTS_LOGIN_REVIEW.md`](../reviews/NOV_07_OIDC_ACCOUNTS_LOGIN_REVIEW.md), updated [`docs/architecture/OPEN_DECISIONS.md`](../architecture/OPEN_DECISIONS.md) with `DEC-ACC-01`, and prepared report captions for Issue #19. Zero application code or security changes (strictly design review).
+
 ## Issue #9 Merchant Role Landing and Approval-State UI — 2026-10-22
 
 Primary Implementer: **Eric Praveen Alric Prashanth (@EricPraveen)**; branch `feat/nov-08-merchant-approval-ui`, targeting `test`.

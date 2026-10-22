@@ -1,5 +1,5 @@
 member_name,team,issue_or_PR,feature_or_diagram,estimated_effort_to_agree,actual_work_evidence_link,peer_reviewer,status,review_date
-Gajanthan,Customer,TBD,TBD,TBD,Not started,TBD,Planned,TBD
+Gajanthan,Customer,#7,Review OIDC sequence Accounts ERD and login evidence mapping,5h,docs/reviews/NOV_07_OIDC_ACCOUNTS_LOGIN_REVIEW.md,Sinthuha / Suthankan1 / Vibhushan,Review submitted,2026-10-22
 Sinthuha,Customer,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Eric,Merchant,#9,Merchant Role Protected Landing & Approval-State UI,5h,PR targeting test,Thuvarahan / Suthankan1 / Gajanthan,Ready for Review,2026-10-22
 Thuvarahan,Merchant,TBD,TBD,TBD,Not started,TBD,Planned,TBD
