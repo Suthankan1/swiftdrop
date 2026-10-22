@@ -19,6 +19,9 @@ jobs:
     name: Secret & Credential Scanning (Gitleaks)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
 
     steps:
       - name: Checkout repository with full history
@@ -50,8 +53,6 @@ jobs:
         uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 24.21.0
-          cache: 'pnpm'
-          cache-dependency-path: 'frontend/pnpm-lock.yaml'
 
       - name: Run frontend dependency audit
         run: pnpm --dir frontend audit --audit-level=high
