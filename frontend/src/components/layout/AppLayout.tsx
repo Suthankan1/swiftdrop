@@ -33,6 +33,12 @@ function MainNavigation() {
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('COURIER') && (
             <NavLink to="/courier" className="nav-link" onClick={() => setMenuOpen(false)}>Courier space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
+          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('DISPATCHER') && (
+            <NavLink to="/dispatcher" className="nav-link" onClick={() => setMenuOpen(false)}>Dispatcher space <span aria-hidden="true">&#8599;</span></NavLink>
+          )}
+          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && (
+            <NavLink to="/admin" className="nav-link" onClick={() => setMenuOpen(false)}>Admin space <span aria-hidden="true">&#8599;</span></NavLink>
+          )}
         </nav>
         <span className="header-note"><span aria-hidden="true" /> A new way forward</span>
       </div>
