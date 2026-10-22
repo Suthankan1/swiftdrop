@@ -193,10 +193,10 @@ def validate_graphql_sdl() -> Dict[str, Any]:
         raise ContractValidationError(f"GraphQL schema validation errors: {[str(e) for e in errors]}")
 
     # Enforce Read-Only constraint
-    if schema.mutation_type is not None:
+    if schema.mutation_type is not None or "Mutation" in schema.type_map:
         raise ContractValidationError("VIOLATION: GraphQL schema contains Mutation types! SwiftDrop GraphQL API must be strictly READ-ONLY.")
 
-    if schema.subscription_type is not None:
+    if schema.subscription_type is not None or "Subscription" in schema.type_map:
         raise ContractValidationError("VIOLATION: GraphQL schema contains Subscription types! SwiftDrop uses SSE for live updates, not GraphQL subscriptions.")
 
     query_fields = list(schema.query_type.fields.keys()) if schema.query_type else []
