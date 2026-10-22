@@ -210,3 +210,9 @@ type PublicTrackingEvent {
   occurredAt: String!
   location: String
 }
+
+# INTENTIONAL NEGATIVE TEST: Deliberate mutation type definition to verify CI gate rejection
+type Mutation {
+  deleteParcelIntentionalFailure(parcelId: ID!): Boolean
+}
+
