@@ -18,6 +18,24 @@ Last documentation update: **2026-10-21**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## Issue #9 Merchant Role Landing and Approval-State UI — 2026-10-22
+
+Primary Implementer: **Eric Praveen Alric Prashanth (@EricPraveen)**; branch `feat/nov-08-merchant-approval-ui`, targeting `test`.
+Reviewers: **Thuvarahan (@thuvarahan-t)** (Merchant provider owner), **Gajanthan (@gajan250)** (Customer/Frontend SPA owner), **Suthankan1 (@Suthankan1)** (Platform lead).
+
+Delivered protected merchant landing page and approval-state UI adhering strictly to existing design system and backend contracts:
+- **Canonical Route Registration:** Wired `/merchant` inside `frontend/src/app/router/routes.tsx` using `<ProtectedRoute role="MERCHANT" />`. Non-merchant and unauthenticated sessions fail closed and redirect without issuing backend profile requests.
+- **Approval-State UI (`MerchantApprovalBanner`):** Grounded in Accounts Service `MerchantStatus` enum (`PENDING`, `APPROVED`, `SUSPENDED`, `REJECTED`) and Contract 1:
+  - `PENDING`: Explains administrative verification in progress; locks commercial dispatching, batch order entry, and webhook API access; provides expected verification timeline (1–2 business days).
+  - `APPROVED`: Displays active and verified status; unlocks operational capabilities overview.
+  - `REJECTED` / `DENIED`: Displays registration rejection notification with support appeal guidance (`support@swiftdrop.test`).
+  - `SUSPENDED`: Displays operational hold notice and support contact instructions.
+  - `UNKNOWN` / Missing: Provides safe fallback without crashing.
+- **Account Context & Details (`MerchantProfile`):** Displays verified fields from `CurrentUserProfile` and `merchantProfile` (`businessName`, `registrationNumber`, `merchantId`, `fullName`, `email`, `phoneNumber`, `keycloakSub`, `createdAt`). Displays empty state if `merchantProfile` is null.
+- **Security & Cross-Tenant IDOR Guards:** Enforces `keycloakSub` match against authenticated actor context; mismatches fail closed with `AccountsError('forbidden')` without rendering profile details.
+- **Navigation Integration:** Conditionally renders "Merchant space" nav link in `AppLayout` only for authenticated `MERCHANT` sessions.
+- **Verification:** 10 Vitest test suites (101 tests passed), zero lint errors (`eslint .`), strict TypeScript check (`tsc -b`), and production build (`vite build`) passing cleanly.
+
 ## Issue #10 Communications ERD, Merchant Integration & Reliability Review — 2026-10-21
 
 Lead Architectural Reviewer: **Thuvarahan (@thuvarahan-t)**; branch `docs/nov11-communications-merchant-review`, targeting `test`.

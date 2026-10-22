@@ -36,6 +36,8 @@ pnpm lint
 |---|---|
 | `/` | Public landing page and shared responsive navigation |
 | `/customer` | Customer role entry; redirects anonymous sessions to login, reads real profile through Gateway |
+| `/merchant` | Merchant role entry; guarded for `MERCHANT` role, presents approval states (Pending, Approved, Rejected, Suspended, Unknown) and merchant business details |
+| `/courier` | Courier role entry; guarded for `COURIER` role with denial feedback |
 | `/login` | Keycloak login, Google broker and registration entries; authenticated role navigation |
 | `/auth/callback` | Single adapter-managed code exchange; scrub callback parameters and return to login/session page |
 | `/logout` | Clear local session and POST to Keycloak end-session |
@@ -53,6 +55,8 @@ src/
   components/ui/        Reusable feedback and application error boundary
   features/public/      Landing and not-found pages
   features/customer/    Profile page, presentation component, DTOs and API adapter
+  features/merchant/    Merchant landing page, approval-state UI, business profile and API helpers
+  features/courier/     Guarded courier landing page
   styles/               Shared CSS tokens, components and responsive layout
   test/                 Setup, synthetic fixtures and application/security tests
 ```

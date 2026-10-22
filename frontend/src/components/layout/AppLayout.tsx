@@ -27,6 +27,9 @@ function MainNavigation() {
         <nav id="main-navigation" className={`main-navigation${menuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
           <NavLink end to="/" className="nav-link" onClick={() => setMenuOpen(false)}>Home</NavLink>
           <NavLink to="/customer" className="nav-link" onClick={() => setMenuOpen(false)}>Customer space <span aria-hidden="true">↗</span></NavLink>
+          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('MERCHANT') && (
+            <NavLink to="/merchant" className="nav-link" onClick={() => setMenuOpen(false)}>Merchant space <span aria-hidden="true">&#8599;</span></NavLink>
+          )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('COURIER') && (
             <NavLink to="/courier" className="nav-link" onClick={() => setMenuOpen(false)}>Courier space <span aria-hidden="true">&#8599;</span></NavLink>
           )}

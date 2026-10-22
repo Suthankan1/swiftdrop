@@ -1,7 +1,7 @@
 member_name,team,issue_or_PR,feature_or_diagram,estimated_effort_to_agree,actual_work_evidence_link,peer_reviewer,status,review_date
 Gajanthan,Customer,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Sinthuha,Customer,TBD,TBD,TBD,Not started,TBD,Planned,TBD
-Eric,Merchant,TBD,TBD,TBD,Not started,TBD,Planned,TBD
+Eric,Merchant,#9,Merchant Role Protected Landing & Approval-State UI,5h,PR targeting test,Thuvarahan / Suthankan1 / Gajanthan,Ready for Review,2026-10-22
 Thuvarahan,Merchant,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Abhinaya,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Vibhushan,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
