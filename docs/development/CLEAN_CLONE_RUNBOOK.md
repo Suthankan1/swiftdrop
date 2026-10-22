@@ -29,6 +29,9 @@ Ensure the following ports are available on `localhost`:
 - `8090` — Keycloak 26.8.1 Container
 - `8025` — Mailpit Development SMTP Web UI (`1025` internal SMTP)
 - `5438` (or `5432`) — Dedicated PostgreSQL 16 Alpine container for Accounts Service
+- `5439` — Dedicated PostgreSQL 16 Alpine container for Business Services (Pricing, Delivery, Communications)
+- `9092` — Apache Kafka KRaft Broker
+- `9000` / `9001` — Private Object Storage S3 API / Console (MinIO)
 
 ---
 
@@ -189,6 +192,26 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 *Serves the SPA on `http://localhost:5173`.*
+
+---
+
+### Step 6: Start Business Microservices Dependencies (Issue #91)
+
+For developers working on Pricing & Zones, Delivery Operations, or Communications microservices, start Kafka KRaft, Business PostgreSQL, and Private S3 storage:
+
+```bash
+./platform/dependencies/start-dependencies.sh
+```
+
+Run readiness validation:
+```bash
+./platform/dependencies/check-dependencies.sh
+```
+
+Run automated smoke & persistence test suite:
+```bash
+./platform/dependencies/smoke-dependencies.sh
+```
 
 ---
 
