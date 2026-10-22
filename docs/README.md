@@ -8,6 +8,7 @@
 | Security | [Authentication](security/AUTHENTICATION.md), [authorization matrix](security/AUTHORIZATION_MATRIX.md), [threat review](security/THREAT_REVIEW.md) |
 | People and timeline | [Owners](team/OWNERSHIP.md), [November 1](milestones/NOV_01.md), [roadmap](milestones/ROADMAP.md) |
 | Diagrams | [20 editable diagrams and SVG previews](diagrams/README.md) |
+| Dispatcher/Admin design review | [Issue #13 use cases, assignment workflow and report handoff](reviews/DISPATCHER_ADMIN_REVIEW.md) |
 | SwiftDrop rebranding | [Phase 1 impact audit](branding/PHASE_1_AUDIT.md), [Phase 2 technical migration proposal](branding/PHASE_2_MIGRATION.md), [verification](branding/VALIDATION.md) |
 | Starter generation | [Spring Initializr + Vite planning only](development/STARTER_GENERATION_GUIDE.md) |
 | Delivery | [PR workflow](development/GIT_WORKFLOW.md), [definition of done](development/DEFINITION_OF_DONE.md) |

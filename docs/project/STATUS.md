@@ -2,7 +2,7 @@
 
 > **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
 
-Last documentation update: **2026-10-21**. This file describes the **starter artifact**, not unknown external repositories.
+Last documentation update: **2026-10-22**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
@@ -47,6 +47,10 @@ Delivered protected merchant landing page and approval-state UI adhering strictl
 - **Security & Cross-Tenant IDOR Guards:** Enforces `keycloakSub` match against authenticated actor context; mismatches fail closed with `AccountsError('forbidden')` without rendering profile details.
 - **Navigation Integration:** Conditionally renders "Merchant space" nav link in `AppLayout` only for authenticated `MERCHANT` sessions.
 - **Verification:** 10 Vitest test suites (101 tests passed), zero lint errors (`eslint .`), strict TypeScript check (`tsc -b`), and production build (`vite build`) passing cleanly.
+
+## Issue #13 Dispatcher/Admin design review — 2026-10-22
+
+Pushmitha (@pushmitha20): [review artifact](../reviews/DISPATCHER_ADMIN_REVIEW.md), corrected editable/SVG Figures 04/08, scoped role/use-case narratives, assignment/concurrency exception walkthroughs and NOV-19 captions/contribution evidence prepared. **Independent review pending; Issue #13 remains open.** Courier/Delivery, report and Platform owners must review the cross-module findings and DA-01–DA-04 decisions; no policy approval or runtime assignment feature is claimed. GitHub Project #5 status could not be read/updated because the available credential lacks project scope; board status is unverified.
 
 ## Issue #10 Communications ERD, Merchant Integration & Reliability Review — 2026-10-21
 
