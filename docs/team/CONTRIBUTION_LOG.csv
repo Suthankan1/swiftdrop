@@ -5,7 +5,7 @@ Eric,Merchant,#9,Merchant Role Protected Landing & Approval-State UI,5h,PR targe
 Thuvarahan,Merchant,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Abhinaya,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Vibhushan,Courier,TBD,TBD,TBD,Not started,TBD,Planned,TBD
-Pushmitha,Dispatcher/Admin,TBD,TBD,TBD,Not started,TBD,Planned,TBD
+Pushmitha,Dispatcher/Admin,#13,Dispatcher/Admin use-case and assignment design review (Figures 04/08),5h issue estimate (not recorded time),https://github.com/Suthankan1/swiftdrop/blob/docs/dispatcher-admin-usecase-review/docs/reviews/DISPATCHER_ADMIN_REVIEW.md,Harithkeshan / Vibhushan-2003 / Gajanthan23 / Suthankan1 (review pending),Prepared for independent review,2026-10-22
 HarithKeshan,Dispatcher/Admin,TBD,TBD,TBD,Not started,TBD,Planned,TBD
 Suthankan1,Platform / Security / cross-module slices,#1,Nov 1 Login Integration Contract & Baseline Freeze,4h,PR #34 (merged commit 4ad722a),HarithKeshan,Merged,2026-10-15
 Suthankan1,Platform / Security / cross-module slices,#2,Keycloak OIDC & Role Foundation,5h,PR #35 (merged commit c993204),HarithKeshan / Gajanthan / Sinthuha,Merged,2026-10-15
