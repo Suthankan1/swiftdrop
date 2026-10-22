@@ -40,7 +40,7 @@ main:focus { outline: none; }
 .brand-mark span:nth-child(1) { height: 23px; margin-top: 8px; }
 .brand-mark span:nth-child(2) { height: 31px; }
 .brand-mark span:nth-child(3) { height: 23px; }
-.main-navigation { display: flex; align-items: center; gap: 32px; }
+.main-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 32px; }
 .nav-link { font-size: 14px; text-decoration: none; font-weight: 500; padding-block: 12px; position: relative; }
 .nav-link[aria-current='page']::after { content: ''; height: 3px; width: 16px; border-radius: 2px; background: var(--color-teal); bottom: 1px; left: 0; position: absolute; }
 .nav-link span { margin-left: 6px; }
@@ -159,6 +159,13 @@ main:focus { outline: none; }
 .merchant-page .profile-grid { margin-top: 30px; }
 .merchant-note p { font-size: 13px; }
 .merchant-note .button { margin-top: 10px; }
+.staff-page { padding-block: 57px 80px; }
+.staff-heading { margin-bottom: 30px; }
+.staff-heading > .muted { max-width: 620px; font-size: 15px; }
+.staff-note p { font-size: 13px; }
+.staff-note h3 { margin-block: 28px 12px; font-size: 16px; }
+.staff-note .button { margin-top: 10px; }
+.admin-policy { border-top: 4px solid var(--color-teal); }
 .approval-banner { margin-block: 18px 24px; padding: 20px 22px; border-radius: 8px; border: 1px solid var(--color-border); }
 .approval-banner .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .approval-banner h3 { font-size: 16px; margin: 0; font-weight: 600; }
