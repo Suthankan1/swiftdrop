@@ -22,7 +22,7 @@ describe('shared application routes', () => {
     expect(entry.head.textContent).not.toMatch(/devarom/i)
   })
 
-  it.each(['/', '/login', '/customer', '/auth/callback', '/missing-page'])('uses current branding at %s', (path) => {
+  it.each(['/', '/login', '/customer', '/merchant', '/auth/callback', '/missing-page'])('uses current branding at %s', (path) => {
     const { container } = renderRoute(path)
 
     expect(screen.getByRole('link', { name: 'SwiftDrop home' })).toHaveAttribute('href', '/')
@@ -132,5 +132,22 @@ describe('shared application routes', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/couldn.t display this page/i)
     expect(screen.getByRole('link', { name: /return home/i })).toHaveAttribute('href', '/')
     expect(screen.queryByText(/synthetic test-only render failure/i)).not.toBeInTheDocument()
+  })
+
+  it('shows Merchant navigation only to an authenticated Merchant', () => {
+    const merchantAuth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'merchant-test-sub', roles: ['MERCHANT'] },
+    }
+    const { unmount } = renderRoute('/', merchantAuth)
+    expect(
+      within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /merchant space/i }),
+    ).toHaveAttribute('href', '/merchant')
+    unmount()
+
+    renderRoute('/', anonymousAuth)
+    expect(
+      within(screen.getByRole('navigation', { name: /main navigation/i })).queryByRole('link', { name: /merchant space/i }),
+    ).not.toBeInTheDocument()
   })
 })

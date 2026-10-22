@@ -228,7 +228,7 @@ frontend/src/app/router/routes.tsx
 ├── /auth/callback (CallbackPage) .............. Implemented
 ├── /logout (LogoutPage) ....................... Implemented (RP-initiated logout)
 ├── /customer (CustomerPage) ................... Implemented (Guarded: role="CUSTOMER")
-├── /merchant (MerchantPage) ................... PENDING (Issue #9: Eric & Thuvarahan)
+├── /merchant (MerchantPage) ................... Implemented (Guarded: role="MERCHANT")
 ├── /courier (CourierPage) ..................... PENDING (Issue #15: Abhinaya & Vibhushan)
 ├── /dispatcher (DispatcherPage) ............... PENDING (Issue #16: Pushmitha & HarithKeshan)
 └── /admin (AdminPage) ......................... PENDING (Issue #16: Pushmitha & HarithKeshan)
