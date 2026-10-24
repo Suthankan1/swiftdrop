@@ -45,7 +45,17 @@ Performs non-destructive preflight validation across 4 domains:
 
 ---
 
-## 3. Detailed Startup & Demonstration Runbook
+## 3. Business Microservices Dependencies (Issue #91)
+
+For developers working on Pricing & Zones, Delivery Operations, or Communications services, start the Kafka KRaft, Business PostgreSQL, and Private S3 storage stack:
+```bash
+./platform/dependencies/start-dependencies.sh
+```
+See the complete [Business Dependencies Documentation](../dependencies/README.md).
+
+---
+
+## 4. Detailed Startup & Demonstration Runbook
 
 For complete clean-clone instructions, manual browser verification, peer QA handoff, and troubleshooting, see:
 - [Clean-Clone Runbook](../../docs/development/CLEAN_CLONE_RUNBOOK.md)

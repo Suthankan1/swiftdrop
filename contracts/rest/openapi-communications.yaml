@@ -1,0 +1,378 @@
+openapi: 3.0.3
+info:
+  title: SwiftDrop Communications REST API
+  version: 1.0.0
+  description: |
+    Authoritative REST contract for the Communications bounded context.
+    Communications owns webhook subscriptions, signed webhook delivery jobs,
+    retry backoff engines, delivery outcome logs, and customer notifications.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api.swiftdrop.com
+    description: Production API Gateway
+  - url: http://localhost:8080
+    description: Local API Gateway
+
+security:
+  - BearerAuth: []
+  - {}
+
+paths:
+  /api/v1/merchants/webhooks:
+    post:
+      summary: Register a new webhook endpoint subscription
+      description: |
+        Registers an external HTTPS callback destination for parcel lifecycle events.
+        Enforces TLS 1.2+ HTTPS transport (plain http:// and internal/private IP space are rejected).
+        Returns the subscription and an HMAC-SHA256 signing secret for payload verification.
+      operationId: createWebhookSubscription
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWebhookSubscriptionRequest'
+      responses:
+        '201':
+          description: Subscription created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscriptionCreatedResponse'
+        '400':
+          description: Validation failure (e.g. non-HTTPS URL or invalid event type)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - MERCHANT role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+    get:
+      summary: List registered webhook subscriptions
+      description: Returns active and deactivated webhook endpoints registered by the calling merchant tenant.
+      operationId: listWebhookSubscriptions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscriptionListResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants/webhooks/{subscriptionId}:
+    get:
+      summary: Get webhook subscription details
+      description: Returns configuration and operational status of a specific webhook subscription.
+      operationId: getWebhookSubscriptionById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscriptionResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller does not own this subscription
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Subscription not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+    delete:
+      summary: Deactivate or remove a webhook subscription
+      description: Deactivates delivery jobs to this webhook endpoint.
+      operationId: deleteWebhookSubscription
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Subscription deactivated
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Subscription not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants/webhooks/{subscriptionId}/deliveries:
+    get:
+      summary: Inspect webhook delivery execution outcomes and retry logs
+      description: |
+        Returns delivery history across attempts for this endpoint.
+        Exposes HTTP response status codes, latencies, attempt counts, and error summaries.
+        Third-party response bodies are intentionally omitted to prevent data leakage.
+      operationId: listWebhookDeliveries
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paged delivery logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryLogListResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Subscription not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateWebhookSubscriptionRequest:
+      type: object
+      required:
+        - httpsUrl
+        - allowedEventTypes
+      properties:
+        httpsUrl:
+          type: string
+          format: uri
+          pattern: "^https://.+"
+          example: "https://warehouse.example.com/api/v1/swiftdrop-callbacks"
+          description: Secure HTTPS destination (TLS 1.2+). Non-HTTPS and private IPs are rejected.
+        allowedEventTypes:
+          type: array
+          items:
+            type: string
+            enum:
+              - "parcel.status.changed.v1"
+          example: ["parcel.status.changed.v1"]
+          description: Domain event types subscribed to.
+
+    WebhookSubscriptionResponse:
+      type: object
+      required:
+        - subscriptionId
+        - merchantId
+        - httpsUrl
+        - allowedEventTypes
+        - active
+        - createdAt
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        httpsUrl:
+          type: string
+          example: "https://warehouse.example.com/api/v1/swiftdrop-callbacks"
+        allowedEventTypes:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+
+    WebhookSubscriptionCreatedResponse:
+      type: object
+      required:
+        - subscriptionId
+        - merchantId
+        - httpsUrl
+        - allowedEventTypes
+        - hmacSigningSecret
+        - active
+        - createdAt
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        httpsUrl:
+          type: string
+        allowedEventTypes:
+          type: array
+          items:
+            type: string
+        hmacSigningSecret:
+          type: string
+          description: |
+            Shared secret for verifying X-SwiftDrop-Signature header.
+            Displayed ONCE upon creation. Must be kept confidential by merchant.
+          example: "swd_whsec_example_secret_for_local_testing_only"
+        active:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+
+    WebhookSubscriptionListResponse:
+      type: object
+      required:
+        - subscriptions
+      properties:
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookSubscriptionResponse'
+
+    WebhookDeliveryLogListResponse:
+      type: object
+      required:
+        - deliveries
+        - totalElements
+      properties:
+        totalElements:
+          type: integer
+          example: 42
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookDeliveryItem'
+
+    WebhookDeliveryItem:
+      type: object
+      required:
+        - deliveryId
+        - eventId
+        - parcelId
+        - status
+        - attemptCount
+        - lastAttemptAt
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        parcelId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, SUCCESS, FAILED, EXHAUSTED]
+          example: "SUCCESS"
+        attemptCount:
+          type: integer
+          example: 1
+        lastAttemptAt:
+          type: string
+          format: date-time
+        lastHttpStatusCode:
+          type: integer
+          example: 200
+        lastResponseTimeMs:
+          type: integer
+          example: 142
+        errorSummary:
+          type: string
+          nullable: true
+          example: null

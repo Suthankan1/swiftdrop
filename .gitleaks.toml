@@ -1,0 +1,23 @@
+# SwiftDrop Gitleaks Secret Scanner Configuration
+# Reference: https://github.com/gitleaks/gitleaks
+
+title = "SwiftDrop Gitleaks Configuration"
+
+[extend]
+# Extends standard default Gitleaks detection rules
+
+[allowlist]
+description = "Global allowlist for synthetic test fixtures and documentation examples"
+paths = [
+  '''^\.gitleaks\.toml$''',
+  '''^frontend/src/test/.*''',
+  '''^services/.*/src/test/.*''',
+  '''^tests/security-e2e/.*''',
+  '''^platform/identity/tests/.*''',
+  '''^docs/.*''',
+  '''^contracts/.*'''
+]
+regexes = [
+  '''synthetic-[a-f0-9\-]+''',
+  '''mock-[a-f0-9\-]+'''
+]

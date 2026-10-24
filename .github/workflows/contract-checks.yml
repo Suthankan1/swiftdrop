@@ -1,0 +1,61 @@
+name: SwiftDrop Contract Checks
+
+on:
+  pull_request:
+    branches: [test, main]
+  push:
+    branches: [test]
+  workflow_dispatch:
+
+concurrency:
+  group: contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract-validation:
+    name: Contract Validation & Compatibility Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 24.21.0
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Install contract testing dependencies
+        run: pip install pyyaml jsonschema graphql-core
+
+      - name: Lint OpenAPI 3.0.3 contracts (Redocly CLI)
+        run: npx -y @redocly/cli lint contracts/rest/openapi-*.yaml
+
+      - name: Run contract validation & backward compatibility suite
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            BASE_REF="origin/test"
+          fi
+          echo "Comparing contract compatibility against base reference: $BASE_REF"
+          python3 tests/contracts/validate_contracts.py --check-compatibility --base-ref="$BASE_REF" --output-json=contract-validation-report.json
+
+      - name: Upload contract validation report
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: contract-validation-report
+          path: contract-validation-report.json
+          retention-days: 7

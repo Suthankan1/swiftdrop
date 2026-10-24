@@ -4,6 +4,9 @@ export type { CurrentUserProfile, MerchantProfile }
 
 export type MerchantApprovalStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJECTED' | 'UNKNOWN'
 
+export * from './webhookContracts'
+export * from './webhooks'
+
 /**
  * Normalizes raw backend status into canonical domain states.
  * Accounts Service MerchantStatus enum: PENDING, APPROVED, SUSPENDED, REJECTED.
