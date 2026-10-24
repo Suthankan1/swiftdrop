@@ -29,6 +29,9 @@ python3 tests/contracts/validate_contracts.py --mode=graphql
 # Kafka domain events & negative payloads
 python3 tests/contracts/validate_contracts.py --mode=kafka
 
+# Delivery outbox event contract & schema invariants (Issue #31)
+python3 tests/contracts/test_outbox_contract.py
+
 # Protobuf gate inspection
 python3 tests/contracts/validate_contracts.py --mode=protobuf
 ```
