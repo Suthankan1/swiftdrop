@@ -1,0 +1,34 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: communications-service
+  datasource:
+    url: ${COMMUNICATIONS_DB_URL}
+    username: ${COMMUNICATIONS_DB_USERNAME}
+    password: ${COMMUNICATIONS_DB_PASSWORD}
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    clean-disabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+server.error:
+  include-message: never
+  include-stacktrace: never
+  include-binding-errors: never
