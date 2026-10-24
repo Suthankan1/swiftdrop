@@ -302,3 +302,50 @@ Accounts Service now provides the minimal staff business profile foundation, rea
   - Guard: `ProtectedRoute role="DISPATCHER"` or `ProtectedRoute role="ADMIN"`
   - Display fields: `displayName`, `staffId`, `department`, `businessStatus`.
   - Isolation: Courier-specific fields like `assignedZone` may be null for Dispatcher/Admin.
+
+## Merchant API Credential Lifecycle — Issue #22
+
+Refs #22 · Author: **Thuvarahan** (Merchant Backend Lead) · Reviewers: **Sinthuha** (Accounts DB & provider boundaries), **Vibhushan** (Delivery contract & independent security QA), **Eric** (Merchant UI consumer — #120), **Suthankan1** (Platform coordination).
+
+Accounts Service provides the authoritative Merchant API Key lifecycle, persistence, one-way SHA-256 hashing, tenant ownership verification, approval state enforcement, and metadata management:
+
+### 1. Architectural Decisions & Security Invariants
+- **Machine Credential Approach:** Scoped API keys with prefix `swd_live_` and 32 characters of high-entropy Base62 random bytes (`DEC-MER-01`, [ADR-0010](../../docs/architecture/adr/ADR-0010-merchant-credential-lifecycle.md)). Example: `swd_live_7xK9mP2vL8wQ4zR1tY6uI0oA5sD3fG8h`.
+- **Zero Plaintext Storage:** Plaintext API key secrets are returned **strictly once** upon generation (`ApiKeyCreatedResponse`) and never stored. Accounts persists only the lowercase hex SHA-256 digest (`DEC-MER-02`).
+- **Constant-Time Verification:** Key validation uses constant-time digest comparison (`MessageDigest.isEqual`) to eliminate timing side-channel attacks.
+- **Strict Tenant Confinement:** A merchant can manage only their own keys. Resolves merchant tenant from authenticated Keycloak `sub`. Cross-tenant attempts fail closed with RFC 7807 403 Forbidden (`TENANT_ACCESS_DENIED`).
+- **Approval State Gate:** Machine credentials can only be issued to and validated for merchants in `APPROVED` business status. `PENDING`, `SUSPENDED`, or `REJECTED` merchants fail closed (`MERCHANT_NOT_APPROVED` -> 403 Forbidden) (`DEC-MER-03`).
+- **Active Key Limit & Rotation:** Up to 3 active keys allowed concurrently to support zero-downtime key rotation before revoking older keys (`DEC-MER-04`). Issuing a 4th active key returns `409 Conflict` (`API_KEY_LIMIT_EXCEEDED`).
+- **Durable Revocation:** Revoking a key persists `revoked_at = NOW()`. Revocation is idempotent (`204 No Content`). Subsequent verification calls reject revoked keys (`401 Unauthorized`).
+- **Confidentiality Headers:** All responses emit `Cache-Control: no-store`. ProblemDetail errors sanitize sensitive values.
+
+### 2. Database Schema & Migration (`V4__create_merchant_api_keys.sql`)
+- **Table:** `merchant_api_keys`
+  - `id`: UUID PRIMARY KEY (immutable).
+  - `merchant_id`: UUID NOT NULL, REFERENCES `merchants(id)` ON DELETE RESTRICT.
+  - `name`: VARCHAR(100) NOT NULL.
+  - `key_prefix`: VARCHAR(16) NOT NULL (e.g. `swd_live_7xK9`).
+  - `key_digest`: VARCHAR(64) NOT NULL UNIQUE (SHA-256 lowercase hex).
+  - `scopes`: VARCHAR(255) NOT NULL (comma-separated, e.g. `parcels:create,parcels:read`).
+  - `expires_at`: TIMESTAMP WITH TIME ZONE NOT NULL.
+  - `revoked_at`: TIMESTAMP WITH TIME ZONE NULL.
+  - `created_at`: TIMESTAMP WITH TIME ZONE NOT NULL.
+- **Indexes:**
+  - `idx_merchant_api_keys_merchant_id` on `(merchant_id)`.
+  - `idx_merchant_api_keys_key_prefix` on `(key_prefix)`.
+- **Identity & Digest Immutability Trigger:** `merchant_api_key_immutable` enforces at the PostgreSQL engine level that `id`, `merchant_id`, `key_digest`, and `created_at` cannot be updated.
+
+### 3. REST API Contract
+- `POST /api/v1/merchants/{id}/api-keys`: Creates key, returns plaintext secret once (`201 Created`).
+- `GET /api/v1/merchants/{id}/api-keys`: Lists active/expired/revoked key metadata without secrets or digests (`200 OK`).
+- `DELETE /api/v1/merchants/{id}/api-keys/{keyId}`: Idempotently revokes key (`204 No Content`).
+- `POST /api/v1/merchants/{id}/api-keys/{keyId}/revoke`: Alias for revocation (`204 No Content`).
+
+### 4. Internal In-Process Validation Interface
+- `MerchantApiKeyValidator.validateKey(String rawApiKey, String requiredScope)`:
+  - Validates key format (`swd_live_...`).
+  - Computes SHA-256 digest and performs constant-time comparison against persisted record.
+  - Verifies merchant business status is `APPROVED`.
+  - Verifies key is neither expired nor revoked.
+  - Verifies granted scopes contain the required operation scope.
+  - Serves as the internal foundation for gRPC `AccountsInternalService.ValidateMerchantKeyDigest` (`IF-GRPC-02`).

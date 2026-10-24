@@ -1,5 +1,9 @@
 package com.swiftdrop.accountsservice.merchant;
 
+import com.swiftdrop.accountsservice.merchant.credential.ApiKeyLimitExceededException;
+import com.swiftdrop.accountsservice.merchant.credential.ApiKeyNotFoundException;
+import com.swiftdrop.accountsservice.merchant.credential.InvalidApiKeyRequestException;
+import com.swiftdrop.accountsservice.merchant.credential.InvalidApiKeyScopeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,6 +28,26 @@ public class MerchantProblemHandler {
     @ExceptionHandler(MerchantNotFoundException.class)
     ProblemDetail handleMerchantNotFound(MerchantNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ApiKeyNotFoundException.class)
+    ProblemDetail handleApiKeyNotFound(ApiKeyNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ApiKeyLimitExceededException.class)
+    ProblemDetail handleApiKeyLimitExceeded(ApiKeyLimitExceededException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidApiKeyScopeException.class)
+    ProblemDetail handleInvalidApiKeyScope(InvalidApiKeyScopeException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidApiKeyRequestException.class)
+    ProblemDetail handleInvalidApiKeyRequest(InvalidApiKeyRequestException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
