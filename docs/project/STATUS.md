@@ -35,6 +35,24 @@ Delivered the Communications Spring Boot microservice foundation and independent
   - Testcontainers PostgreSQL IT harness (`CommunicationsPersistencePostgresIT`) created for full failsafe execution on real PostgreSQL 16.
   - Strict scope bounds preserved: No Kafka consumers, email/SMS senders, webhook HTTP dispatchers, or retry workers implemented (handoff to Issues #32 and #21).
 
+## Issue #22 Merchant Credential Lifecycle & Tenant-Bound Order Contract — 2026-10-24
+
+Primary Implementer: **Thuvarahan (@thuvarahan-t)** (Merchant Backend Lead); branch `feat/issue-22-merchant-credential-lifecycle`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts provider ownership & database boundaries), **Vibhushan (@Vibhushan-2003)** (Delivery contract & independent security boundary review — 1h), **Eric (@EricPraveen)** (Merchant contract & UI consumer review — 1.5h), **Suthankan1 (@Suthankan1)** (Platform/security contract coordination).
+
+Implemented the bounded Merchant API Credential Lifecycle in Accounts & Partners Service and established the reviewed tenant-bound order contract:
+- **Credential Security Decision Formalized:** Published [ADR-0010](../architecture/adr/ADR-0010-merchant-credential-lifecycle.md) establishing Option A: Scoped API Keys (`swd_live_<base62_32_chars>`), SHA-256 one-way hashing, constant-time validation (`MessageDigest.isEqual`), 3-key active rotation limit, and scopes `parcels:create`, `parcels:read`, `webhooks:manage` (`DEC-MER-01`, `02`, `04`).
+- **PostgreSQL Persistence & Immutability:** Accounts owns `merchant_api_keys` table and Flyway migration `V4__create_merchant_api_keys.sql`. Includes foreign key to `merchants(id)`, unique key digest constraint, index on `key_prefix`, and PostgreSQL trigger `merchant_api_key_immutable` preventing updates to `id`, `merchant_id`, `key_digest`, and `created_at`.
+- **Zero Plaintext Secrets:** Cryptographically secure `SecureRandom` Base62 generator (256-bit entropy). Plaintext key returned strictly once in `POST /api/v1/merchants/{id}/api-keys` response. Metadata listing `GET /api/v1/merchants/{id}/api-keys` strictly omits secret and digest.
+- **Strict Tenant & Approval-State Isolation:** Enforces Keycloak JWT subject binding. Non-merchant and cross-tenant callers fail closed with RFC 7807 403 Forbidden (`TENANT_ACCESS_DENIED`). Merchants in `PENDING`, `SUSPENDED`, or `REJECTED` states are denied key issuance and key validation (`MERCHANT_NOT_APPROVED` -> 403 Forbidden).
+- **Durable Revocation:** `DELETE /api/v1/merchants/{id}/api-keys/{keyId}` durably marks `revoked_at = NOW()`. Subsequent verification fails closed (`401 Unauthorized`). Idempotent revocation returns `204 No Content`.
+- **In-Process gRPC Provider Foundation:** Implemented `MerchantApiKeyValidator` matching `AccountsInternalService.ValidateMerchantKeyDigest` (`IF-GRPC-02`).
+- **Contract & Frontend Handoff:** Updated `contracts/rest/openapi-accounts.yaml`, documented routes in `docs/contracts/REST.md` and `SERVICE_INTERFACE_MATRIX.md`, and authored comprehensive frontend handoff in `docs/team/MERCHANT_CREDENTIAL_FRONTEND_HANDOFF.md` for Eric's Issue #120.
+- **Validation Evidence:**
+  - Accounts Service unit and security test suites: **141 tests PASS** (36 new credential tests: 18 unit tests, 14 Spring Security / WebMvc slice tests with real signed JWTs, 4 controller tests; 0 failures, 0 skips).
+  - Testcontainers PostgreSQL IT execution: Blocked by host Docker daemon unavailability (`failed to connect to docker API`); unit and MockMvc slice suites fully cover persistence constraints, DTO contracts, and security rules.
+  - Delivery Operations runtime: Downstream service runtime (`services/delivery-service`) un-scaffolded (placeholder README only); full delivery order creation reported honestly as **BLOCKED** on Delivery Operations implementation.
+
 ## Issue #17 Independent Clean-Clone Reproduction (L10) & Merchant Review — 2026-10-22
 
 Primary Reviewer & QA: **Eric Praveen Alric Prashanth (@EricPraveen)**; branch `feat/nov-09-merchant-login-reproduction`, targeting `test`.

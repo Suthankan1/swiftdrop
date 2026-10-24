@@ -12,6 +12,9 @@ REST is the public **command and simple read interface**, not an internal catch-
 | Courier assignment | `POST /api/v1/assignments` | Delivery | dispatcher role, eligibility and concurrency |
 | Courier update | `PATCH /api/v1/parcels/{parcelId}/status` | Delivery | *assigned* courier, state machine, version and proof |
 | Merchant create order | `POST /api/v1/merchant/parcels` | Delivery (merchant credential checked via Accounts) | approved merchant tenant, scoped key, idempotency |
+| Merchant create API key | `POST /api/v1/merchants/{id}/api-keys` | Accounts | approved merchant tenant, scopes, one-time reveal secret |
+| Merchant list API keys | `GET /api/v1/merchants/{id}/api-keys` | Accounts | approved merchant tenant, metadata only (no secrets/digests) |
+| Merchant revoke API key | `DELETE /api/v1/merchants/{id}/api-keys/{keyId}` | Accounts | approved merchant tenant, durable revocation (also `POST .../revoke`) |
 | Merchant register | `POST /api/v1/merchants` | Accounts | controlled pending state |
 | Merchant approve | `POST /api/v1/merchants/{id}/approve` | Accounts | admin role and audit |
 | Receipt | `GET /api/v1/parcels/{id}/receipt` | Delivery | owner/authorized recipient; no public proof link |

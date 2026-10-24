@@ -63,7 +63,7 @@ class StaffProfilePostgresIT {
     void flywayMigration_succeeds() {
         var info = flyway.info().current();
         assertThat(info).isNotNull();
-        assertThat(info.getVersion().getVersion()).isEqualTo("3");
+        assertThat(Integer.parseInt(info.getVersion().getVersion())).isGreaterThanOrEqualTo(3);
 
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.tables WHERE table_name = 'staff_profiles'",
