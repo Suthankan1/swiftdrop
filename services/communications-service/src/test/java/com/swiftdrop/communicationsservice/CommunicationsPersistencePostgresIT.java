@@ -31,6 +31,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -127,7 +128,22 @@ class CommunicationsPersistencePostgresIT {
         ConsumedEvent readbackA = consumedEventRepository.findByIdConsumerNameAndIdEventId(consumerA, eventId).orElseThrow();
         assertThat(readbackA.getParcelId()).isEqualTo(parcelId);
 
-        // Duplicate for Consumer A fails
+        // Duplicate INSERT for Consumer A fails at database composite primary key constraint
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO consumed_events (consumer_name, event_id, event_type, version, parcel_id, received_at) VALUES (?, ?, ?, ?, ?, ?)",
+                consumerA, eventId, "parcel.status.changed.v1", 1, parcelId, Timestamp.from(Instant.now())))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // Application-level persistence service also rejects duplicate events
+        NotificationJob dupJob = new NotificationJob(
+                UUID.randomUUID(),
+                eventId,
+                "recip-dup",
+                parcelId,
+                NotificationChannel.EMAIL,
+                "dup@test.test",
+                "TEST"
+        );
         ConsumedEvent dupEventA = new ConsumedEvent(
                 new ConsumedEventId(consumerA, eventId),
                 "parcel.status.changed.v1",
@@ -136,8 +152,8 @@ class CommunicationsPersistencePostgresIT {
                 null,
                 Instant.now()
         );
-        assertThatThrownBy(() -> consumedEventRepository.saveAndFlush(dupEventA))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> durableJobPersistenceService.persistInboxAndNotification(dupEventA, dupJob))
+                .isInstanceOf(DuplicateEventException.class);
 
         // Independent Consumer B can safely process the SAME event ID
         ConsumedEvent eventB = new ConsumedEvent(
