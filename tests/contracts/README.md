@@ -32,6 +32,9 @@ python3 tests/contracts/validate_contracts.py --mode=kafka
 # Delivery guarded status transition & history contract (Issue #23)
 python3 tests/contracts/test_delivery_status_contract.py
 
+# Delivery outbox event contract & schema invariants (Issue #31)
+python3 tests/contracts/test_outbox_contract.py
+
 # Protobuf gate inspection
 python3 tests/contracts/validate_contracts.py --mode=protobuf
 ```
