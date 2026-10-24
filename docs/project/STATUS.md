@@ -18,6 +18,23 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 
 When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
 
+## Issue #96 Communications Service Foundation & Durable Job Schema — 2026-10-24
+
+Primary Implementer: **Thuvarahan (@thuvarahan-t)** (Communications / Backend Lead); branch `feat/n10-b16-communications-foundation`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts/data ownership & persistence review), **Suthankan1 (@Suthankan1)** (Platform/integration architecture review).
+
+Delivered the Communications Spring Boot microservice foundation and independently owned durable job schema:
+- **Application Foundation:** Scaffolded Communications Service in `services/communications-service/` using pinned Java 21 LTS and Spring Boot 4.1.1. Package root `com.swiftdrop.communicationsservice`.
+- **Independent Database & Schema Ownership (`communications_db`):** Flyway V1 migration `V1__create_communications_schema.sql` establishes the 5 service-owned tables: `consumed_events`, `notifications`, `webhook_subscriptions`, `webhook_deliveries`, and `webhook_attempts`. Zero cross-service database access, shared tables, or foreign keys to Accounts or Delivery.
+- **Durable Deduplication & Invariants:** `consumed_events` enforces composite PK `(consumer_name, event_id)` enabling independent consumer groups to process identical events without key conflicts. `notifications` enforces `(event_id, recipient_sub, channel)` uniqueness; `webhook_deliveries` enforces `(subscription_id, event_id)` uniqueness. `webhook_subscriptions` enforces HTTPS-only endpoints (`^https://`).
+- **Atomic Transaction Boundary (`DurableJobPersistenceService`):** Created the transaction service providing atomic persistence of inbox receipts and durable notification/webhook jobs (`persistInboxAndNotification`, `persistInboxAndWebhookDeliveries`). Rolls back atomically on constraint violations; raises `DuplicateEventException` on replayed events. Ready for Kafka consumer handoff under Issue #32.
+- **Fail-Closed Configuration & Health:** Requires `COMMUNICATIONS_DB_URL`, `COMMUNICATIONS_DB_USERNAME`, `COMMUNICATIONS_DB_PASSWORD`. Startup fails immediately if database configuration is missing or invalid. Exposes `/actuator/health` check without credentials.
+- **Automated Validation Evidence:**
+  - Communications Service unit and slice test suites: **19 tests PASS** (0 failures, 0 skips).
+  - Tests verify atomic commit, transaction rollback, composite PK deduplication, Flyway V1 schema constraints, entity lifecycle callbacks, and missing datasource startup failure.
+  - Testcontainers PostgreSQL IT harness (`CommunicationsPersistencePostgresIT`) created for full failsafe execution on real PostgreSQL 16.
+  - Strict scope bounds preserved: No Kafka consumers, email/SMS senders, webhook HTTP dispatchers, or retry workers implemented (handoff to Issues #32 and #21).
+
 ## Issue #17 Independent Clean-Clone Reproduction (L10) & Merchant Review — 2026-10-22
 
 Primary Reviewer & QA: **Eric Praveen Alric Prashanth (@EricPraveen)**; branch `feat/nov-09-merchant-login-reproduction`, targeting `test`.
