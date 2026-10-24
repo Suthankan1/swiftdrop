@@ -1,7 +1,9 @@
+import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { AccountsError, createAccountsApi } from '../api/merchant'
 import { MerchantProfile, type MerchantProfileState } from '../components/MerchantProfile'
+import { MerchantNav } from '../components/MerchantNav'
 
 export function MerchantPage() {
   const auth = useAuth()
@@ -52,6 +54,8 @@ export function MerchantPage() {
         </p>
       </header>
 
+      <MerchantNav />
+
       <div className="profile-grid">
         <MerchantProfile state={state} />
 
@@ -60,6 +64,12 @@ export function MerchantPage() {
           <p className="muted">
             Batch order dispatching, shipping labels, and real-time webhook tracking will arrive in the upcoming delivery milestone.
           </p>
+          <Link
+            to="/merchant/webhooks"
+            className="button button-secondary"
+          >
+            Webhook Subscriptions ↗
+          </Link>
           <button
             className="button button-secondary"
             type="button"
@@ -78,6 +88,7 @@ export function MerchantPage() {
           )}
         </aside>
       </div>
+
     </div>
   )
 }
