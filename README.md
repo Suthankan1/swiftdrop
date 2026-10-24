@@ -4,18 +4,12 @@
 
 > **Current state:** The initial login slice includes the React SPA, Keycloak, API Gateway and Accounts Service. Local/Google login evidence and remaining independent review work are recorded in [project status](docs/project/STATUS.md). Delivery, Pricing, Communications, GraphQL, gRPC, Kafka and SSE remain design targets.
 
-The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on **2026-10-20** by the project owner.
-- **Official project:** SwiftDrop
-- **GitHub rename:** completed (`https://github.com/Suthankan1/swiftdrop.git`)
-- **Phase 1 visible branding:** complete
-- **Phase 2 identity migration:** complete
-- **Phase 3 technical rebrand:** complete (Java `com.swiftdrop.*`, Maven `com.swiftdrop`, theme `swiftdrop`, canonical containers `swiftdrop-*`)
-- **Current identity realm:** `swiftdrop`
-- **Current OIDC client:** `swiftdrop-frontend`
-- **Current JWT audience:** `swiftdrop-api`
-- **Current login theme:** `swiftdrop`
+## Current identity configuration
 
-See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md), [Phase 2 migration record](docs/branding/PHASE_2_MIGRATION.md), [Phase 2 final signoff](docs/branding/PHASE_2_FINAL_SIGNOFF.md), and [Phase 3 technical rebrand audit](docs/branding/PHASE_3_TECHNICAL_REBRAND_AUDIT.md).
+- **Keycloak realm:** `swiftdrop`
+- **OIDC client:** `swiftdrop-frontend`
+- **JWT audience:** `swiftdrop-api`
+- **Login theme:** `swiftdrop`
 
 ## Read first
 
@@ -24,7 +18,7 @@ See the [rename impact audit](docs/branding/PHASE_1_AUDIT.md), [Phase 2 migratio
 3. [November 1 milestone](docs/milestones/NOV_01.md) — report and **working initial logins**, with proof to collect.
 4. [Login integration contract](docs/contracts/LOGIN_CONTRACT.md) — frozen versions, port registry, and minimal REST/OIDC contract.
 5. [Architecture baseline](docs/architecture/BASELINE.md) and [protocol matrix](docs/architecture/PROTOCOL_MATRIX.md).
-6. [Diagrams](docs/diagrams/README.md) — **20 editable Draw.io files and regenerated SVG previews**, derived from the group's design pack with current branding.
+6. [Diagrams](docs/diagrams/README.md) — **20 editable Draw.io files and regenerated SVG previews** for the hybrid v1.3 design.
 7. [AI agent instructions](AGENTS.md) and [prompt playbook](docs/ai/PROMPT_PLAYBOOK.md).
 8. [Open decisions](docs/architecture/OPEN_DECISIONS.md) — not everything in the diagrams is an approved implementation contract.
 
@@ -59,8 +53,6 @@ Use the official repository (`https://github.com/Suthankan1/swiftdrop.git`). Cre
 - [Module boundaries](docs/architecture/DATA_OWNERSHIP.md)
 - [November 1 evidence register](docs/milestones/LOGIN_ACCEPTANCE.md)
 
-## Important provenance
+## Design baseline
 
-Diagrams derive from the team's uploaded **Devarom November 1 Design Package**. Phase 1 changes current diagram labels to SwiftDrop without changing the v1.3 design. The latest hybrid v1.3 design supersedes older REST-only/RabbitMQ references. The academic assignment is the requirement source; architectural choices are **team design decisions**, not all prescribed by the lecturer. Original report PDFs/PNGs and generator scripts are **deliberately excluded** from this repository. Historical PRs, test records, source package names and immutable links retain their original wording.
-
-**Administrative open item:** the assignment says 10 students; the team has 9. Confirm permission with the lecturer. Do not invent a final submission date/year or claim that test evidence already exists.
+The latest hybrid v1.3 design supersedes older REST-only/RabbitMQ references. The academic assignment is the requirement source; architectural choices are **team design decisions**. Original report PDFs/PNGs and generator scripts are **deliberately excluded** from this repository. Historical PRs, test records, source package names and immutable links retain their original wording. Submission dates and test results must be supported by authoritative sources or recorded evidence.
