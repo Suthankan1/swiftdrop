@@ -460,4 +460,54 @@ class StatusTransitionServiceTest {
         assertThat(response.stateVersion()).isEqualTo(2L);
         verify(statusHistoryRepository).save(any(StatusHistory.class));
     }
+
+    @Test
+    @DisplayName("14. Outbox event is created and saved when outboxEventRepository is provided")
+    void testOutboxEventCreatedAndPersisted() {
+        com.swiftdrop.deliveryservice.outbox.OutboxEventRepository outboxRepo = mock(com.swiftdrop.deliveryservice.outbox.OutboxEventRepository.class);
+        com.swiftdrop.deliveryservice.outbox.OutboxEventFactory outboxFactory = new com.swiftdrop.deliveryservice.outbox.OutboxEventFactory();
+
+        StatusTransitionService serviceWithOutbox = new StatusTransitionService(
+                parcelRepository,
+                statusHistoryRepository,
+                courierAssignmentContract,
+                outboxRepo,
+                outboxFactory
+        );
+
+        Parcel parcel = createParcel(ParcelStatus.CREATED, 1L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(parcelRepository.saveAndFlush(any(Parcel.class))).thenAnswer(invocation -> {
+            Parcel p = invocation.getArgument(0);
+            p.setVersion(2L);
+            return p;
+        });
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+
+        UpdateStatusRequest request = new UpdateStatusRequest(
+                ParcelStatus.PICKED_UP,
+                1L,
+                "Picked up by courier",
+                null,
+                null
+        );
+
+        serviceWithOutbox.updateStatus(
+                parcelId,
+                request,
+                courierSub,
+                List.of("ROLE_COURIER")
+        );
+
+        ArgumentCaptor<com.swiftdrop.deliveryservice.outbox.OutboxEvent> outboxCaptor =
+                ArgumentCaptor.forClass(com.swiftdrop.deliveryservice.outbox.OutboxEvent.class);
+        verify(outboxRepo).save(outboxCaptor.capture());
+
+        com.swiftdrop.deliveryservice.outbox.OutboxEvent savedEvent = outboxCaptor.getValue();
+        assertThat(savedEvent.getAggregateId()).isEqualTo(parcelId);
+        assertThat(savedEvent.getAggregateVersion()).isEqualTo(2L);
+        assertThat(savedEvent.getTopic()).isEqualTo("parcel.lifecycle.v1");
+        assertThat(savedEvent.getPartitionKey()).isEqualTo(parcelId.toString());
+        assertThat(savedEvent.getStatus()).isEqualTo(com.swiftdrop.deliveryservice.outbox.OutboxStatus.PENDING);
+    }
 }
