@@ -25,10 +25,13 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -142,6 +145,36 @@ class S3ProofObjectStorageTest {
                 new ByteArrayInputStream(new byte[]{1, 2}), 3, "image/example")))
                 .isInstanceOf(InvalidProofObjectException.class)
                 .hasMessage("Proof content did not match its declared length");
+    }
+
+    @Test
+    void transmitsOnlyDeclaredBytesAndLeavesTheCallerOwnedStreamOpen() throws IOException {
+        AtomicBoolean callerStreamClosed = new AtomicBoolean();
+        InputStream callerStream = new FilterInputStream(
+                new ByteArrayInputStream(new byte[]{1, 2, 3})) {
+            @Override
+            public void close() throws IOException {
+                callerStreamClosed.set(true);
+                super.close();
+            }
+        };
+        byte[][] stored = new byte[1][];
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenAnswer(invocation -> {
+                    RequestBody body = invocation.getArgument(1);
+                    try (InputStream requestStream = body.contentStreamProvider().newStream()) {
+                        stored[0] = requestStream.readAllBytes();
+                    }
+                    return PutObjectResponse.builder().build();
+                });
+
+        storage.store(new ProofObjectUpload(callerStream, 2, "application/octet-stream"));
+
+        assertThat(stored[0]).containsExactly(1, 2);
+        assertThat(callerStreamClosed).isFalse();
+        assertThat(callerStream.read()).isEqualTo(3);
+        callerStream.close();
+        assertThat(callerStreamClosed).isTrue();
     }
 
     @Test

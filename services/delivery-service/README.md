@@ -298,4 +298,10 @@ Run focused tests from `services/delivery-service`:
 ```
 
 Real MinIO verification requires the approved local dependency stack and uniquely generated synthetic objects. It is
-not represented as passing unless that stack is actually available during verification.
+not represented as passing unless that stack is actually available during verification. The opt-in
+`S3ProofObjectStorageMinioIT` requires `SWIFTDROP_MINIO_IT_ENABLED=true` plus the backend-only `S3_ENDPOINT`,
+`SWIFTDROP_STORAGE_BUCKET`, `SWIFTDROP_STORAGE_REGION`, `SWIFTDROP_STORAGE_ACCESS_KEY`, and
+`SWIFTDROP_STORAGE_SECRET_KEY` settings. It refuses non-loopback endpoints and buckets other than the approved
+`swiftdrop-pod`, uses only random synthetic content, verifies anonymous denial and conditional non-overwrite behavior,
+and deletes only the exact object it created. If the approved provider or application credentials are absent, the real
+provider test is reported as skipped rather than passed.
