@@ -349,3 +349,62 @@ Accounts Service provides the authoritative Merchant API Key lifecycle, persiste
   - Verifies key is neither expired nor revoked.
   - Verifies granted scopes contain the required operation scope.
   - Serves as the internal foundation for gRPC `AccountsInternalService.ValidateMerchantKeyDigest` (`IF-GRPC-02`).
+
+## Pending Merchant Enrollment Command — Issue #97
+
+Refs #97 · Author: **Thuvarahan** (Merchant Backend Lead) · Reviewers: **Sinthuha** (Accounts DB & business service), **Harithkeshan** (Merchant/Admin boundary), **Eric** (Merchant UI consumer — #120), **Suthankan1** (Platform identity coordination).
+
+Accounts & Partners Service provides the self-service business merchant enrollment command, trusted identity binding, server-controlled approval state lifecycle, and conflict/concurrency safety:
+
+### 1. Architectural Decisions & Security Invariants
+- **Reachable CUSTOMER Enrollment:** Authenticated users holding only the `CUSTOMER` role can enroll as a merchant via `POST /api/v1/merchants` without requiring a pre-existing `MERCHANT` role or duplicate Keycloak signup flow (`N10-WF07`).
+- **Verified Identity Binding:** Caller's Keycloak subject (`sub`) is extracted securely from the verified Spring Security `SecurityContext` via `CurrentIdentityProvider.currentIdentity()`. Never accepts identity or tenant ownership from request body or unverified headers.
+- **Trusted Profile Resolution:** Reuses the verified `AccountProfile` association via `AccountProfileRepository.findByKeycloakSub`. If absent on initial login/enrollment, executes JIT provisioning via conflict-safe `insertIfAbsent`.
+- **Server-Enforced PENDING State:** Every newly enrolled merchant begins strictly in `MerchantStatus.PENDING`. No client-controlled approval or role claims are permitted.
+- **Strict JSON Input Policy:** `MerchantRegistrationRequest` rejects client-supplied privileged/ownership fields (`merchantId`, `id`, `accountProfileId`, `keycloakSub`, `status`, `approved`, `roles`, `ADMIN`, `MERCHANT`, `createdAt`, `updatedAt`, `ownerId`) with HTTP 400 Bad Request ProblemDetail.
+- **Duplicate Prevention & Concurrency Safety:**
+  - Single merchant per user: Rejects enrollment if caller already owns a tenant (HTTP 409 Conflict).
+  - Business registration uniqueness: Rejects duplicate `registrationNumber` across tenants (HTTP 409 Conflict).
+  - Database engine uniqueness: Uniqueness constraints `uq_merchants_keycloak_sub` and `uq_merchants_registration_number` protect against concurrent race conditions, cleanly mapped to 409 Conflict while letting general persistence errors propagate without masking.
+- **Same-Subject Pending Status Retrieval:**
+  - Authenticated CUSTOMER callers can inspect their own pending tenant status via `GET /api/v1/merchants/{merchantId}/status` and retrieve their bound tenant via `GET /api/v1/merchants/me`.
+  - Cross-tenant status probes and unauthorized operations fail closed with HTTP 403 Forbidden.
+- **Privileged Operation Gates Preserved:** Privileged tenant actions (such as API credential generation or dispatch operations) require `APPROVED` status via `requireApprovedTenantAccess` and `MERCHANT` role, failing closed for PENDING merchants.
+- **Confidentiality:** Returns `Cache-Control: no-store` on all responses containing identity or merchant state.
+
+### 2. REST API Contract & Handoff for Frontend (#120 — Eric Praveen)
+- **Enrollment Endpoint:** `POST /api/v1/merchants`
+  - **Headers:** `Authorization: Bearer <access-token>`, `Content-Type: application/json`
+  - **Request Body:**
+    ```json
+    {
+      "businessName": "Lanka Retail Holdings Ltd",
+      "registrationNumber": "PV-109923"
+    }
+    ```
+  - **Validation:** `businessName` (3-255 characters, not blank), `registrationNumber` (3-100 characters, not blank).
+  - **Response (`201 Created`):**
+    ```json
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "keycloakSub": "c56a4180-65aa-42ec-a945-5fd21dec0538",
+      "businessName": "Lanka Retail Holdings Ltd",
+      "registrationNumber": "PV-109923",
+      "status": "PENDING",
+      "createdAt": "2026-10-25T14:40:00Z",
+      "updatedAt": "2026-10-25T14:40:00Z"
+    }
+    ```
+  - **Cache Header:** `Cache-Control: no-store`
+  - **Status Retrieval:** `GET /api/v1/merchants/me` or `GET /api/v1/merchants/{id}/status`
+  - **Error Responses:**
+    - `400 Bad Request`: Validation failure or prohibited fields present.
+    - `401 Unauthorized`: Missing or invalid bearer token.
+    - `403 Forbidden`: Non-customer/non-admin caller attempting enrollment, or cross-tenant access attempt.
+    - `409 Conflict`: Caller already owns a merchant tenant or registration number already registered.
+
+### 3. Integration Status & Pending Boundaries
+- **Issue #8 & #88:** Merged baseline reused directly (merchant status enum, database schema V2, tenant authorization).
+- **Issue #107 (Platform Role Reconciliation — Suthankan1):** In accordance with architecture boundaries, initial enrollment creates PENDING merchant state only and does not self-grant the Keycloak `MERCHANT` role. Role synchronization triggers upon administrative approval.
+- **Issue #121 (Admin Approval/Suspend — Thuvarahan):** Admin operations transition status from `PENDING` to `APPROVED` or `REJECTED`. Not claimed or implemented in #97.
+- **Issue #120 (Merchant Enrollment UI — Eric Praveen):** REST contract, validation rules, status path, and error semantics ready for React form integration.

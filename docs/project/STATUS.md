@@ -10,11 +10,42 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | GitHub repository | **Official rename complete (`Suthankan1/swiftdrop`); Git remotes and documentation updated (Phase 3B)** | Merged PR #65 into `test`, release PR #66 into `main`; repository renamed; remote verified at `https://github.com/Suthankan1/swiftdrop.git` |
-| Spring Boot services | **API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Delivery Foundation Verified (Issue #126)** | `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, Keycloak role gates, merchant machine `X-API-Key` authentication & authorization, case-insensitive header sanitization, bounded in-memory rate limiting, payload size enforcement, and SSE connection concurrency policy verified |
+| Spring Boot services | **Pending Merchant Enrollment Command IMPLEMENTED (Issue #97); API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Delivery Foundation Verified (Issue #126)** | `services/accounts-service/`: 174 tests passed (0 failures); `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, merchant enrollment command (`POST /api/v1/merchants`), CUSTOMER role gate, verified subject binding, PENDING status lifecycle, strict JSON rejection, and concurrency safety verified |
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
 | GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
+
+## Issue #97 Pending Merchant Enrollment Command — 2026-10-25
+
+Primary Implementer: **Thuvarahan (@thuvarahan-t)** (Merchant / Backend); branch `feat/n10-wf07-merchant-enrollment`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts Business Service & Database Owner), **Harithkeshan (@Harithkeshan)** (Merchant/Admin Boundary Reviewer), **Eric Praveen (@EricPraveen)** (Merchant Frontend Contract Handoff), **Suthankan1 (@Suthankan1)** (Platform Identity Coordination).
+
+Delivered tenant-bound, secure merchant enrollment command inside Accounts & Partners Service, adhering strictly to SwiftDrop v1.3 architecture and OpenAPI contract:
+- **CUSTOMER Reachable Enrollment (`POST /api/v1/merchants`):**
+  - Updated Spring Security filter chain (`ProfileSecurityConfiguration`) enabling newly authenticated users with `CUSTOMER` role to submit merchant enrollment without a pre-existing `MERCHANT` role or second Keycloak signup.
+  - Fail-closed security matcher ensures general `/api/v1/merchants/**` routes continue to require `MERCHANT` or `ADMIN`.
+- **Verified Identity & Account Profile Binding:**
+  - Authenticated subject is resolved strictly from the verified JWT via `CurrentIdentityProvider.currentIdentity()`. Never accepts user identity or tenant ownership from request JSON or unverified headers.
+  - Reuses trusted `AccountProfileRepository` to bind the merchant tenant to the owning account profile, leveraging existing conflict-safe `insertIfAbsent` JIT provisioning when absent.
+- **Server-Controlled PENDING Approval Lifecycle:**
+  - Initial merchant enrollment strictly forces `MerchantStatus.PENDING`. No client-controlled approval, roles, or order execution capabilities are granted.
+  - Privileged merchant actions (e.g. API credential generation under Issue #22) remain fail-closed via `requireApprovedTenantAccess`.
+- **Strict Input Validation & Prohibited Field Rejection:**
+  - DTO `MerchantRegistrationRequest` validated with Jakarta Bean Validation (`@NotBlank`, `@Size`).
+  - Strict Jackson deserializer (`MerchantRegistrationRequestDeserializer`) rejects client-supplied privileged/ownership fields (`merchantId`, `id`, `accountProfileId`, `keycloakSub`, `status`, `approved`, `roles`, `ADMIN`, `MERCHANT`, `createdAt`, `updatedAt`, `ownerId`) with HTTP 400 Bad Request ProblemDetail.
+- **Duplicate Prevention & Concurrency Safety:**
+  - Evaluates single-merchant-per-owner constraint (`findByKeycloakSub`) and registration number uniqueness (`findByRegistrationNumber`), returning RFC 7807 409 Conflict.
+  - Database engine constraints `uq_merchants_keycloak_sub` and `uq_merchants_registration_number` protect against concurrent request races, mapped cleanly to HTTP 409 while letting general persistence errors propagate without masking.
+- **Same-Subject Pending Status Retrieval:**
+  - `MerchantAuthorizationService` provides same-subject pending read exception allowing authenticated `CUSTOMER` owners to check their own pending tenant status via `GET /api/v1/merchants/{merchantId}/status` and retrieve their record via `GET /api/v1/merchants/me`.
+  - Probes across tenant boundaries fail closed with HTTP 403 Forbidden.
+- **Automated Validation Evidence:**
+  - Automated Accounts test suite: **174 tests PASS** (0 failures, 0 skips, 0 errors).
+  - Unit tests: `MerchantRegistrationRequestTest` (9 PASS), `MerchantEnrollmentServiceTest` (11 PASS), `MerchantControllerTest` (8 PASS), `MerchantAuthorizationServiceTest` (22 PASS).
+  - Security slice tests: `MerchantHttpSecurityTest` (16 PASS) verifying CUSTOMER access, 401 unauthenticated, 403 cross-tenant/unauthorized roles, 400 prohibited fields, 409 conflicts.
+  - Testcontainers PostgreSQL IT harness (`MerchantEnrollmentPostgresIT`) created for full failsafe verification against real PostgreSQL 16 Alpine and Flyway migrations.
+
 
 ## Issue #106 Gateway Business-Edge Authentication & Abuse Policy — 2026-10-25
 

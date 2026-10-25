@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class MerchantControllerTest {
@@ -24,6 +27,7 @@ class MerchantControllerTest {
     private CurrentIdentityProvider identityProvider;
     private MerchantTenantAuthorizationProvider tenantProvider;
     private MerchantApprovalProvider approvalProvider;
+    private MerchantEnrollmentService enrollmentService;
     private MockMvc mvc;
 
     private final UUID merchantId = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -42,10 +46,11 @@ class MerchantControllerTest {
         identityProvider = mock(CurrentIdentityProvider.class);
         tenantProvider = mock(MerchantTenantAuthorizationProvider.class);
         approvalProvider = mock(MerchantApprovalProvider.class);
+        enrollmentService = mock(MerchantEnrollmentService.class);
 
         when(identityProvider.currentIdentity()).thenReturn(merchantIdentity);
 
-        var controller = new MerchantController(identityProvider, tenantProvider, approvalProvider);
+        var controller = new MerchantController(identityProvider, tenantProvider, approvalProvider, enrollmentService);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new MerchantProblemHandler())
                 .build();
@@ -146,5 +151,75 @@ class MerchantControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("status").value("PENDING"))
                 .andExpect(jsonPath("approved").value(false));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/merchants returns 201 Created and MerchantProfileResponse")
+    void registerMerchantReturns201() throws Exception {
+        var newMerchantId = UUID.randomUUID();
+        var response = new MerchantProfileResponse(
+                newMerchantId, "keycloak-sub-merchant",
+                "Lanka Retail Holdings Ltd", "PV-109923",
+                MerchantStatus.PENDING, Instant.now(), Instant.now()
+        );
+        when(enrollmentService.enrollMerchant(eq(merchantIdentity), any())).thenReturn(response);
+
+        String requestJson = """
+                {
+                    "businessName": "Lanka Retail Holdings Ltd",
+                    "registrationNumber": "PV-109923"
+                }
+                """;
+
+        mvc.perform(post("/api/v1/merchants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("id").value(newMerchantId.toString()))
+                .andExpect(jsonPath("keycloakSub").value("keycloak-sub-merchant"))
+                .andExpect(jsonPath("businessName").value("Lanka Retail Holdings Ltd"))
+                .andExpect(jsonPath("registrationNumber").value("PV-109923"))
+                .andExpect(jsonPath("status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/merchants returns 409 Conflict ProblemDetail on duplicate enrollment")
+    void registerMerchantReturns409OnConflict() throws Exception {
+        when(enrollmentService.enrollMerchant(eq(merchantIdentity), any()))
+                .thenThrow(new MerchantConflictException("Authenticated user already owns a merchant tenant"));
+
+        String requestJson = """
+                {
+                    "businessName": "Lanka Retail Holdings Ltd",
+                    "registrationNumber": "PV-109923"
+                }
+                """;
+
+        mvc.perform(post("/api/v1/merchants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("status").value(409))
+                .andExpect(jsonPath("title").value("Conflict"))
+                .andExpect(jsonPath("detail").value("Authenticated user already owns a merchant tenant"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/merchants returns 400 Bad Request on invalid input")
+    void registerMerchantReturns400OnInvalidInput() throws Exception {
+        String invalidJson = """
+                {
+                    "businessName": "  ",
+                    "registrationNumber": "1"
+                }
+                """;
+
+        mvc.perform(post("/api/v1/merchants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("status").value(400))
+                .andExpect(jsonPath("title").value("Bad Request"));
     }
 }

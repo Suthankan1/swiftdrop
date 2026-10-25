@@ -16,6 +16,12 @@ public interface MerchantRepository extends Repository<Merchant, UUID> {
 
     Optional<Merchant> findByAccountProfileId(UUID accountProfileId);
 
+    Optional<Merchant> findByRegistrationNumber(String registrationNumber);
+
+    boolean existsByKeycloakSub(String keycloakSub);
+
+    boolean existsByRegistrationNumber(String registrationNumber);
+
     boolean existsByIdAndStatus(UUID id, MerchantStatus status);
 
     Merchant save(Merchant merchant);
