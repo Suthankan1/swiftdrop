@@ -24,5 +24,9 @@ public interface MerchantRepository extends Repository<Merchant, UUID> {
 
     boolean existsByIdAndStatus(UUID id, MerchantStatus status);
 
+    java.util.List<Merchant> findByStatusOrderByCreatedAtAsc(MerchantStatus status);
+
+    long countByStatus(MerchantStatus status);
+
     Merchant save(Merchant merchant);
 }

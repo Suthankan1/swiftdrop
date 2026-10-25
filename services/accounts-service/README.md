@@ -408,3 +408,62 @@ Accounts & Partners Service provides the self-service business merchant enrollme
 - **Issue #107 (Platform Role Reconciliation — Suthankan1):** In accordance with architecture boundaries, initial enrollment creates PENDING merchant state only and does not self-grant the Keycloak `MERCHANT` role. Role synchronization triggers upon administrative approval.
 - **Issue #121 (Admin Approval/Suspend — Thuvarahan):** Admin operations transition status from `PENDING` to `APPROVED` or `REJECTED`. Not claimed or implemented in #97.
 - **Issue #120 (Merchant Enrollment UI — Eric Praveen):** REST contract, validation rules, status path, and error semantics ready for React form integration.
+
+---
+
+## gRPC Internal Service & Accounts Eligibility / Scoped Profiles — Issue #109 (N10-B05)
+
+Refs #109 · Author: **Gajanthan23** · Port: **9081** (default) · Status: **IMPLEMENTED & FULLY TESTED**
+
+Accounts Service hosts the authoritative server-side gRPC implementation of `swiftdrop.accounts.v1.AccountsInternalService`, providing low-latency, zero-cross-database-join queries for **Delivery Operations**, **GraphQL Query API**, and **Communications Service**.
+
+### 1. Operations Implemented
+
+| Operation | Interface ID | Primary Consumers | Purpose & Invariants |
+|---|---|---|---|
+| `CheckAccountEligibility` | `IF-GRPC-07` | Delivery Operations, GraphQL Query API | Authoritative verification of account, approved merchant, or active courier/staff eligibility. Rejection reasons: `ELIGIBLE`, `ACCOUNT_NOT_FOUND`, `MERCHANT_PENDING`, `MERCHANT_SUSPENDED`, `STAFF_INACTIVE`, `ROLE_MISMATCH`. |
+| `GetScopedProfileSummary` | `IF-GRPC-08` | GraphQL Query API, Delivery Operations | Returns minimal profile projection with server-side field scoping (`MINIMAL`, `CUSTOMER`, `MERCHANT`, `STAFF`, `COURIER`). PII (email, private contact) is strictly omitted for unauthorized or cross-tenant callers. |
+| `GetBatchProfileSummaries` | `IF-GRPC-09` | GraphQL Query API, Delivery Operations | Bounded batch profile resolution. Request bounded to at most 50 subjects. Restricted to administrative or operational actors (`DISPATCHER`, `ADMIN`). |
+| `GetAvailableCouriersSummary` | `IF-GRPC-10` | Delivery Operations, GraphQL Query API | Bounded paginated list of active, eligible couriers with optional zone filtering. Page size bounded between 1 and 50 (default 20). Restricted to `DISPATCHER` or `ADMIN`. |
+| `CheckCourierEligibility` | `IF-GRPC-01` | Delivery Operations | Frozen baseline courier eligibility verification. |
+| `ValidateMerchantKeyDigest` | `IF-GRPC-02` | Delivery Operations | Frozen baseline merchant API key SHA-256 digest validation with constant-time equality check. |
+| `ResolveRecipientContact` | `IF-GRPC-03` | Communications Service | Frozen baseline recipient notification contact resolver (email, phone). |
+| `GetPendingMerchantsSummary` | `IF-GRPC-06` | GraphQL Query API | Frozen baseline admin pending-merchant queue with deterministic pagination. |
+
+### 2. Security & Anti-Spoofing Architecture
+
+Enforced via `SwiftDropGrpcServerSecurityInterceptor` and `AccountsInternalServiceImpl`:
+- **Caller Service Authentication:** Each call requires an internal service token (`x-swiftdrop-service-token`) issued by Keycloak with audience `swiftdrop-internal`. Unauthenticated calls fail with gRPC `UNAUTHENTICATED`.
+- **Actor Delegation:** Requests acting on behalf of a human principal require verified delegation metadata (`x-swiftdrop-actor-token`, `x-swiftdrop-actor-sub`, `x-swiftdrop-actor-roles`).
+- **Strict Anti-Spoofing:** A non-admin/non-dispatcher caller (e.g. `CUSTOMER` or `COURIER`) attempting to pass an arbitrary subject string in `CheckAccountEligibility` or `GetScopedProfileSummary` is rejected with gRPC `PERMISSION_DENIED`. Cross-subject queries fail closed.
+- **Server-Side Field Scoping:** Field visibility is strictly computed server-side:
+  - `MINIMAL` scope: Only `subject`, `full_name`, `role`, `status` are populated. Email is **never** returned, even for self.
+  - `CUSTOMER` scope: Email is populated **only** if the caller is the verified account owner (`sub == actorSub`) or has `ADMIN` role.
+  - `COURIER` / `STAFF` scope: Returns `assignedZone`, `staffId`, `department`. Internal staff emails are never leaked to non-admin actors.
+  - Passwords, hashes, Keycloak secrets, and MFA tokens are **never** present in any gRPC protobuf contract.
+
+### 3. Configuration & Ports
+
+| Property | Environment Variable | Default | Description |
+|---|---|---|---|
+| `grpc.server.port` | `ACCOUNTS_GRPC_PORT` | `9081` | Dedicated gRPC server listen port |
+| `grpc.server.enabled` | `ACCOUNTS_GRPC_ENABLED` | `true` | Toggles the gRPC server lifecycle |
+
+### 4. Build & Testing
+
+- **Protobuf Compilation:**
+  ```bash
+  cd shared/proto-contracts
+  ./mvnw clean install
+  ```
+- **Automated gRPC Tests:**
+  `AccountsInternalServiceGrpcTest` executes 27 in-process unit, security, anti-spoofing, and backwards-compatibility test cases.
+  ```bash
+  cd services/accounts-service
+  ./mvnw test -Dtest=AccountsInternalServiceGrpcTest,AccountsGrpcServerLifecycleTest
+  ```
+- **Full Verification Suite:**
+  ```bash
+  cd services/accounts-service
+  ./mvnw test
+  ```

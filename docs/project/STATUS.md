@@ -14,6 +14,7 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
 | GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
+| Keycloak Role Reconciliation | **Controlled Keycloak Staff & Merchant-Role Reconciliation Adapter IMPLEMENTED (Issue #107)** | 52 automated reconciliation/security tests PASS (193 total in Accounts Service); server-only least privilege Keycloak administration; idempotent staff/merchant reconciliation; stale-retry protection; V5 durable audit schema; Spring Security admin guard (`hasRole('ADMIN')`) |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
 
 ## Issue #97 Pending Merchant Enrollment Command — 2026-10-25
@@ -45,6 +46,47 @@ Delivered tenant-bound, secure merchant enrollment command inside Accounts & Par
   - Unit tests: `MerchantRegistrationRequestTest` (9 PASS), `MerchantEnrollmentServiceTest` (11 PASS), `MerchantControllerTest` (8 PASS), `MerchantAuthorizationServiceTest` (22 PASS).
   - Security slice tests: `MerchantHttpSecurityTest` (16 PASS) verifying CUSTOMER access, 401 unauthenticated, 403 cross-tenant/unauthorized roles, 400 prohibited fields, 409 conflicts.
   - Testcontainers PostgreSQL IT harness (`MerchantEnrollmentPostgresIT`) created for full failsafe verification against real PostgreSQL 16 Alpine and Flyway migrations.
+
+## Issue #107 Controlled Keycloak Staff & Merchant-Role Reconciliation Adapter — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / IAM / Backend Lead); branch `feat/n10-p10-keycloak-role-reconciliation`, targeting `test`.
+Reviewers: **Harithkeshan (@Harithkeshan)** (Staff/Admin Business Policy), **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Thuvarahan (@thuvarahan-t)** (Merchant Domain Steward - Issues #97 & #121), **Eric Praveen (@EricPraveen)** (Merchant Frontend UI Steward - Issue #120).
+
+Delivered the controlled, least-privilege Keycloak identity administration adapter, idempotent staff and merchant role reconciliation services, partial-failure recovery with stale-grant prevention, and durable audit persistence:
+- **Server-Only Keycloak Administration Adapter (`com.swiftdrop.accountsservice.identity.keycloak`):**
+  - Implemented `KeycloakIdentityAdapter` via Java 21 `HttpClient` using standard Keycloak REST Administration APIs (`/admin/realms/{realm}/users/{id}/role-mappings/realm`).
+  - Zero browser administrative credentials: credentials are strictly server-only (`KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET`) managed via `KeycloakAdminCredentialProvider` with cached service-account access tokens and automatic token renewal.
+  - Strict allowlist enforcement: Only `COURIER`, `DISPATCHER`, `ADMIN`, and `MERCHANT` are reconcilable (`KeycloakRoleAllowlist`). Arbitrary or client-supplied role parameters are strictly rejected.
+- **Controlled Staff-Role Reconciliation (`StaffRoleReconciliationService`):**
+  - Requires authenticated `ADMIN` identity verified from JWT principal.
+  - Checks Keycloak user existence before creating domain profiles (`IdentityNotFoundException` on missing subject).
+  - Persists staff profile in `accounts_db` and synchronizes operational role in Keycloak.
+  - Enforces business status: Only `ACTIVE` staff retain privileged roles. Suspension/deactivation revokes operational roles in Keycloak immediately and enforces fail-closed authorization in Accounts.
+- **Controlled Merchant-Role Reconciliation (`MerchantRoleReconciliationService`):**
+  - Implements configurable role trigger policy (`MerchantReconciliationTriggerPolicy`):
+    - `ON_APPROVAL` (default): Pending enrollment (Issue #97) creates a `PENDING` merchant profile in Accounts but does NOT grant the `MERCHANT` role in Keycloak. When approved by an admin (Issue #121), the `MERCHANT` role is synchronized in Keycloak.
+    - `ON_ENROLLMENT`: Alternative policy where role is granted on enrollment with business access blocked until approved.
+  - Immediate role revocation on merchant suspension or rejection.
+  - Authoritative status enforcement: Accounts business endpoints enforce `status == APPROVED`, ensuring stale or unrevoked JWTs cannot perform merchant operations.
+- **Durable Audit & Stale-Grant Recovery (`ReconciliationRecoveryService`, `JpaReconciliationAuditService`):**
+  - Flyway V5 migration `V5__create_identity_reconciliation_audit.sql` creates `identity_reconciliation_audit` table with check constraints and index coverage.
+  - Audit logging with `REQUIRES_NEW` transaction propagation and automatic credential scrubbing (masks passwords, client secrets, and bearer tokens with `***`).
+  - Stale-retry protection: Retries re-read the authoritative state from Accounts. If a merchant or staff member was suspended after an earlier failure, the retry strictly enforces role revocation and never restores privileges.
+- **Protected Administrative Endpoints (`AdminReconciliationController`):**
+  - Exposes `/api/v1/admin/reconciliation/**` protected by Spring Security requiring `hasRole('ADMIN')`.
+  - Maps domain and Keycloak exceptions to RFC 7807 `ProblemDetail` via `ReconciliationProblemHandler` (503 for Keycloak unavailable, 404 for missing identity, 400 for unapproved role, 409 for duplicate profile).
+- **Integration Contract & Cross-Team Handoffs:**
+  - Published comprehensive integration specification in `docs/contracts/ROLE_RECONCILIATION_CONTRACT.md` detailing contracts for Issue #97, Issue #121, Issue #120, Harithkeshan, and Vibhushan.
+- **Automated Validation Evidence:**
+  - Automated Java test suite: **52 new tests PASS** (193 total passing in Accounts Service, 0 failures, 0 skips):
+    - `HttpKeycloakIdentityAdapterTest` (12 tests PASS)
+    - `DefaultKeycloakAdminCredentialProviderTest` (4 tests PASS)
+    - `StaffRoleReconciliationServiceTest` (7 tests PASS)
+    - `MerchantRoleReconciliationServiceTest` (6 tests PASS)
+    - `ReconciliationRecoveryServiceTest` (7 tests PASS)
+    - `JpaReconciliationAuditServiceTest` (3 tests PASS)
+    - `AdminReconciliationHttpSecurityTest` (13 tests PASS)
+  - Regression test suites preserved: `shared/security-adapter` (38/38 PASS), `platform/identity/tests` (93/93 PASS, 41 subtests).
 
 
 ## Issue #106 Gateway Business-Edge Authentication & Abuse Policy — 2026-10-25

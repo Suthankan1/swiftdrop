@@ -25,7 +25,7 @@ class ContractDescriptorAndSerializationTest {
         // Verify Accounts service descriptor
         assertThat(AccountsInternalServiceGrpc.getServiceDescriptor().getName())
                 .isEqualTo("swiftdrop.accounts.v1.AccountsInternalService");
-        assertThat(AccountsInternalServiceGrpc.getServiceDescriptor().getMethods()).hasSize(4);
+        assertThat(AccountsInternalServiceGrpc.getServiceDescriptor().getMethods()).hasSize(8);
 
         // Verify Pricing service descriptor
         assertThat(PricingInternalServiceGrpc.getServiceDescriptor().getName())

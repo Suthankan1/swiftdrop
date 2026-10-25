@@ -50,6 +50,7 @@ public class ProfileSecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/merchants/{merchantId}/status").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
                         .requestMatchers("/api/v1/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
                         .requestMatchers("/api/v1/staff/**").hasAnyRole("COURIER", "DISPATCHER", "ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt

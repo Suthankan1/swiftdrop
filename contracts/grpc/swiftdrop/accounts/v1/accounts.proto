@@ -22,6 +22,18 @@ service AccountsInternalService {
 
   // Queries bounded admin pending-merchant review summary for admin dashboard (IF-GRPC-06, Refs #121/#139).
   rpc GetPendingMerchantsSummary (PendingMerchantsSummaryRequest) returns (PendingMerchantsSummaryResponse);
+
+  // Verifies customer, merchant, or staff business eligibility with fail-closed lifecycle enforcement (#109).
+  rpc CheckAccountEligibility (AccountEligibilityRequest) returns (AccountEligibilityResponse);
+
+  // Retrieves minimal, role-scoped profile summary strictly enforcing server-side visibility (#109).
+  rpc GetScopedProfileSummary (ScopedProfileSummaryRequest) returns (ScopedProfileSummaryResponse);
+
+  // Retrieves bounded batch of scoped profile summaries (max 50 principals) (#109).
+  rpc GetBatchProfileSummaries (BatchProfileSummariesRequest) returns (BatchProfileSummariesResponse);
+
+  // Retrieves bounded, paginated list of available active couriers for dispatcher queue (#109, #135).
+  rpc GetAvailableCouriersSummary (AvailableCouriersSummaryRequest) returns (AvailableCouriersSummaryResponse);
 }
 
 // Request to verify courier eligibility.
@@ -88,4 +100,78 @@ message PendingMerchantsSummaryResponse {
   int32 page = 2; // Current 0-based page index
   int32 page_size = 3; // Bounded page size
   repeated PendingMerchantItem items = 4;
+}
+
+// Request to check general account, merchant, or staff eligibility (#109).
+message AccountEligibilityRequest {
+  string subject = 1; // Keycloak subject string (UUID format)
+  string required_role = 2; // e.g. "CUSTOMER", "MERCHANT", "COURIER", "DISPATCHER", "ADMIN" (optional)
+  string merchant_id = 3; // Optional merchant tenant UUID string
+}
+
+// Response detailing account eligibility and lifecycle status (#109).
+message AccountEligibilityResponse {
+  string subject = 1;
+  bool is_eligible = 2;
+  bool is_active = 3;
+  string status = 4; // "APPROVED", "ACTIVE", "PENDING", "SUSPENDED", "INACTIVE", "NOT_FOUND"
+  string rejection_reason = 5; // e.g. "ELIGIBLE", "ACCOUNT_NOT_FOUND", "MERCHANT_PENDING", "STAFF_INACTIVE", etc.
+  string merchant_id = 6; // UUID string if merchant
+  string business_name = 7; // Business name if merchant
+}
+
+// Request to retrieve a minimal scoped profile summary (#109).
+message ScopedProfileSummaryRequest {
+  string subject = 1; // Keycloak subject string
+  string scope = 2; // Scope constraint: "MINIMAL", "CUSTOMER", "MERCHANT", "STAFF", "COURIER"
+}
+
+// Minimal scoped profile summary response (PII/sensitive credentials strictly omitted) (#109).
+message ScopedProfileSummaryResponse {
+  string subject = 1;
+  string full_name = 2;
+  string email = 3; // Permitted only under authorized scopes, strictly omitted/empty otherwise
+  string role = 4;
+  string status = 5;
+  string merchant_id = 6; // UUID string (if merchant)
+  string business_name = 7; // (if merchant)
+  string staff_id = 8; // (if staff)
+  string department = 9; // (if staff)
+  string assigned_zone = 10; // (if courier/staff)
+}
+
+// Request for batch profile summaries with capped batch size (#109).
+message BatchProfileSummariesRequest {
+  repeated string subjects = 1; // Bounded list of subjects (max 50)
+  string scope = 2;
+}
+
+// Batch profile summaries response (#109).
+message BatchProfileSummariesResponse {
+  repeated ScopedProfileSummaryResponse items = 1;
+}
+
+// Request for available couriers summary for dispatchers (#109, #135).
+message AvailableCouriersSummaryRequest {
+  string zone_filter = 1; // Optional zone filter
+  int32 page = 2; // 0-based page index (>= 0)
+  int32 page_size = 3; // Bounded: 1 to 50, default 20
+}
+
+// Single courier summary item in available couriers queue (#109, #135).
+message CourierSummaryItem {
+  string courier_sub = 1;
+  string full_name = 2;
+  string staff_id = 3;
+  string assigned_zone = 4;
+  bool is_eligible = 5;
+  bool is_active = 6;
+}
+
+// Paginated response containing available active couriers (#109, #135).
+message AvailableCouriersSummaryResponse {
+  int32 total_count = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated CourierSummaryItem items = 4;
 }
