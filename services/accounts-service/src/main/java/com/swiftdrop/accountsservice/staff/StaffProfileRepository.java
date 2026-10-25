@@ -20,5 +20,7 @@ public interface StaffProfileRepository extends Repository<StaffProfile, UUID> {
 
     List<StaffProfile> findByRole(StaffRole role);
 
+    List<StaffProfile> findByRoleAndAssignedZone(StaffRole role, String assignedZone);
+
     StaffProfile save(StaffProfile staffProfile);
 }

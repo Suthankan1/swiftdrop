@@ -79,6 +79,14 @@ public class MerchantAuthorizationService implements MerchantApprovalProvider, M
             return TenantAuthorizationDecision.allowed(targetMerchantId, merchant.getStatus());
         }
 
+        // Same-subject pending enrollment read exception for CUSTOMER (Issue #97):
+        // An authenticated CUSTOMER can inspect their own tenant when in PENDING status.
+        if (identity.roles().contains("CUSTOMER")
+                && merchant.getKeycloakSub().equals(identity.subject())
+                && merchant.getStatus() == MerchantStatus.PENDING) {
+            return TenantAuthorizationDecision.allowed(targetMerchantId, merchant.getStatus());
+        }
+
         // Must hold the MERCHANT role
         if (!identity.roles().contains("MERCHANT")) {
             return TenantAuthorizationDecision.denied(targetMerchantId, merchant.getStatus(),
@@ -107,6 +115,13 @@ public class MerchantAuthorizationService implements MerchantApprovalProvider, M
                 .orElseThrow(() -> new MerchantNotFoundException("Merchant not found: " + targetMerchantId));
 
         if (identity.roles().contains("ADMIN")) {
+            return;
+        }
+
+        // Same-subject pending enrollment read exception for CUSTOMER (Issue #97):
+        if (identity.roles().contains("CUSTOMER")
+                && merchant.getKeycloakSub().equals(identity.subject())
+                && merchant.getStatus() == MerchantStatus.PENDING) {
             return;
         }
 

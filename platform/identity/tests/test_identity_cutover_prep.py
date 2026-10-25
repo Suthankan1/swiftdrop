@@ -7,8 +7,10 @@ import importlib
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 # Ensure platform/identity is on path
 PLATFORM_IDENTITY_DIR = Path(__file__).resolve().parent.parent
@@ -295,6 +297,308 @@ class TestGoogleCloudCallbackPrerequisite(unittest.TestCase):
         self.assertTrue(legacy.endswith("/realms/devarom/broker/google/endpoint"))
         self.assertTrue(target.endswith("/realms/swiftdrop/broker/google/endpoint"))
         self.assertNotEqual(legacy, target)
+
+
+class SyntheticDockerEnvironment:
+    """Deterministic mock for subprocess.run isolating Docker CLI process boundaries."""
+
+    def __init__(self, containers: Optional[Dict[str, Dict[str, Any]]] = None):
+        self.containers: Dict[str, Dict[str, Any]] = containers or {}
+        self.calls: List[List[str]] = []
+
+    def __call__(self, cmd: List[str], *args, **kwargs):
+        self.calls.append(list(cmd))
+        if not cmd or cmd[0] != "docker":
+            return subprocess.CompletedProcess(args=cmd, returncode=1, stdout="", stderr="Unknown command")
+
+        action = cmd[1] if len(cmd) > 1 else ""
+
+        if action == "inspect":
+            target = cmd[2] if len(cmd) > 2 else ""
+            c = self.containers.get(target)
+            if c and c.get("present", False):
+                payload = [{
+                    "State": {"Running": c.get("running", False)},
+                    "Mounts": [],
+                    "Config": {"Env": ["KC_DB_USERNAME=keycloak"]},
+                }]
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=json.dumps(payload), stderr="")
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout="", stderr=f"Error: No such object: {target}"
+            )
+
+        if action == "stop":
+            target = cmd[2] if len(cmd) > 2 else ""
+            c = self.containers.get(target)
+            if c and c.get("present", False):
+                c["running"] = False
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=target, stderr="")
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout="", stderr=f"Error: No such container: {target}"
+            )
+
+        if action == "start":
+            target = cmd[2] if len(cmd) > 2 else ""
+            c = self.containers.get(target)
+            if c and c.get("present", False):
+                c["running"] = True
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=target, stderr="")
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout="", stderr=f"Error: No such container: {target}"
+            )
+
+        if action == "cp":
+            src = cmd[2] if len(cmd) > 2 else ""
+            dest = cmd[3] if len(cmd) > 3 else ""
+            container_name = src.split(":", 1)[0]
+            c = self.containers.get(container_name)
+            if c and c.get("present", False):
+                dest_path = Path(dest)
+                h2_dir = dest_path / "h2"
+                h2_dir.mkdir(parents=True, exist_ok=True)
+                db_file = h2_dir / "keycloakdb.mv.db"
+                db_file.write_bytes(c.get("content", b"SYNTHETIC_H2_DB_CONTENT_V1"))
+                return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout="", stderr=f"Error: No such container: {container_name}"
+            )
+
+        if action == "exec":
+            target = cmd[2] if len(cmd) > 2 else ""
+            c = self.containers.get(target)
+            if c and c.get("present", False) and c.get("running", False):
+                return subprocess.CompletedProcess(
+                    args=cmd, returncode=0, stdout="keycloakdb.mv.db\n", stderr=""
+                )
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout="", stderr=f"Container {target} not running"
+            )
+
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+
+class TestColdBackupSafetyRegressionAndIsolation(unittest.TestCase):
+    """Verifies that cold-backup safety gates and container state evaluation are strictly isolated from host Docker."""
+
+    MAINTENANCE_PHRASE = "SWIFTDROP-MAINTENANCE-STOP-AUTHORIZED"
+
+    def test_unauthorized_backup_missing_confirmation_refuses_before_subprocess(self):
+        """Unauthorized attempt with missing confirmation fails closed before any Docker subprocess call."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": True},
+        })
+        with patch.object(backup_mod.subprocess, "run", docker_env):
+            with self.assertRaises(BackupError) as ctx:
+                BackupEngine.execute_live_cold_backup(confirm_maintenance_stop="")
+            self.assertIn("maintenance operation that requires explicit authorization", str(ctx.exception))
+            self.assertEqual(len(docker_env.calls), 0, "No subprocess calls allowed for unauthorized backup")
+
+    def test_unauthorized_backup_wrong_confirmation_refuses_before_subprocess(self):
+        """Unauthorized attempt with incorrect phrase fails closed before any Docker subprocess call."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": True},
+        })
+        with patch.object(backup_mod.subprocess, "run", docker_env):
+            with self.assertRaises(BackupError) as ctx:
+                BackupEngine.execute_live_cold_backup(confirm_maintenance_stop="UNAUTHORIZED-KEY")
+            self.assertIn("maintenance operation that requires explicit authorization", str(ctx.exception))
+            self.assertEqual(len(docker_env.calls), 0, "No subprocess calls allowed for unauthorized backup")
+
+    def test_authorized_canonical_keycloak_running_lifecycle(self):
+        """Canonical swiftdrop-keycloak running executes stop, cold copy, verification, and restart."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": True, "content": b"H2_CANONICAL_RUNNING_DATA"},
+            "devarom-keycloak": {"present": False, "running": False},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                res = BackupEngine.execute_live_cold_backup(
+                    output_dir=out_dir,
+                    confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                )
+            self.assertTrue(res["checksum_verified"])
+            self.assertEqual(res["status"], "VALID")
+            self.assertEqual(res["metadata"]["container_name"], "swiftdrop-keycloak")
+
+            # Verify subprocess call sequence: stop -> cp -> start
+            called_actions = [c[1] for c in docker_env.calls if len(c) > 1 and c[0] == "docker"]
+            self.assertIn("stop", called_actions)
+            self.assertIn("cp", called_actions)
+            self.assertIn("start", called_actions)
+            stop_idx = called_actions.index("stop")
+            cp_idx = called_actions.index("cp")
+            start_idx = called_actions.index("start")
+            self.assertTrue(stop_idx < cp_idx < start_idx, "Expected stop -> cp -> start ordering")
+
+    def test_authorized_canonical_keycloak_stopped_lifecycle(self):
+        """Canonical swiftdrop-keycloak stopped copies H2 storage without stopping or restarting."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": False, "content": b"H2_CANONICAL_STOPPED_DATA"},
+            "devarom-keycloak": {"present": False, "running": False},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                res = BackupEngine.execute_live_cold_backup(
+                    output_dir=out_dir,
+                    confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                )
+            self.assertTrue(res["checksum_verified"])
+            self.assertEqual(res["status"], "VALID")
+            called_actions = [c[1] for c in docker_env.calls if len(c) > 1 and c[0] == "docker"]
+            self.assertNotIn("stop", called_actions, "Stopped container must not receive stop signal")
+            self.assertIn("cp", called_actions)
+            self.assertNotIn("start", called_actions, "Previously stopped container must not be restarted")
+
+    def test_authorized_canonical_keycloak_absent_fails_closed(self):
+        """Canonical swiftdrop-keycloak absent fails closed without creating backup or copying."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": False, "running": False},
+            "devarom-keycloak": {"present": False, "running": False},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                with self.assertRaises(BackupError) as ctx:
+                    BackupEngine.execute_live_cold_backup(
+                        output_dir=out_dir,
+                        confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                    )
+                self.assertIn("not accessible", str(ctx.exception))
+            self.assertFalse(out_dir.exists(), "Backup directory must not be created on absent container")
+
+    def test_authorized_legacy_keycloak_running_lifecycle(self):
+        """Legacy devarom-keycloak running executes stop, cold copy, verification, and restart."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": False, "running": False},
+            "devarom-keycloak": {"present": True, "running": True, "content": b"H2_LEGACY_RUNNING_DATA"},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                res = BackupEngine.execute_live_cold_backup(
+                    output_dir=out_dir,
+                    confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                )
+            self.assertTrue(res["checksum_verified"])
+            self.assertEqual(res["status"], "VALID")
+            self.assertEqual(res["metadata"]["container_name"], "devarom-keycloak")
+
+            called_actions = [c[1] for c in docker_env.calls if len(c) > 1 and c[0] == "docker"]
+            self.assertIn("stop", called_actions)
+            self.assertIn("cp", called_actions)
+            self.assertIn("start", called_actions)
+
+    def test_authorized_legacy_keycloak_stopped_lifecycle(self):
+        """Legacy devarom-keycloak stopped copies H2 storage without stopping or restarting."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": False, "running": False},
+            "devarom-keycloak": {"present": True, "running": False, "content": b"H2_LEGACY_STOPPED_DATA"},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                res = BackupEngine.execute_live_cold_backup(
+                    output_dir=out_dir,
+                    confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                )
+            self.assertTrue(res["checksum_verified"])
+            self.assertEqual(res["status"], "VALID")
+            called_actions = [c[1] for c in docker_env.calls if len(c) > 1 and c[0] == "docker"]
+            self.assertNotIn("stop", called_actions)
+            self.assertIn("cp", called_actions)
+            self.assertNotIn("start", called_actions)
+
+    def test_both_containers_exist_canonical_running_legacy_stopped(self):
+        """When canonical is running and legacy is stopped, canonical is active."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": True, "content": b"CANONICAL_ACTIVE"},
+            "devarom-keycloak": {"present": True, "running": False, "content": b"LEGACY_DORMANT"},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                res = BackupEngine.execute_live_cold_backup(
+                    output_dir=out_dir,
+                    confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                )
+            self.assertEqual(res["metadata"]["container_name"], "swiftdrop-keycloak")
+            # Verify devarom-keycloak was never stopped, copied, or started
+            targeted_containers = [c[2] for c in docker_env.calls if len(c) > 2 and c[1] in ("stop", "start")]
+            self.assertTrue(all(name == "swiftdrop-keycloak" for name in targeted_containers))
+
+    def test_both_containers_exist_canonical_stopped_legacy_running(self):
+        """When canonical is stopped and legacy is running, running legacy is active."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": False, "content": b"CANONICAL_DORMANT"},
+            "devarom-keycloak": {"present": True, "running": True, "content": b"LEGACY_ACTIVE"},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                res = BackupEngine.execute_live_cold_backup(
+                    output_dir=out_dir,
+                    confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                )
+            self.assertEqual(res["metadata"]["container_name"], "devarom-keycloak")
+            targeted_containers = [c[2] for c in docker_env.calls if len(c) > 2 and c[1] in ("stop", "start")]
+            self.assertTrue(all(name == "devarom-keycloak" for name in targeted_containers))
+
+    def test_both_containers_exist_both_running_fails_closed(self):
+        """When both canonical and legacy containers are running simultaneously, fail closed."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": True},
+            "devarom-keycloak": {"present": True, "running": True},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                with self.assertRaises(BackupError) as ctx:
+                    BackupEngine.execute_live_cold_backup(
+                        output_dir=out_dir,
+                        confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                    )
+                self.assertIn("Ambiguous active Keycloak container state", str(ctx.exception))
+            # Verify zero state-changing operations took place
+            called_actions = [c[1] for c in docker_env.calls if len(c) > 1 and c[0] == "docker"]
+            self.assertNotIn("stop", called_actions)
+            self.assertNotIn("cp", called_actions)
+
+    def test_both_containers_exist_both_stopped_prefers_canonical(self):
+        """When both canonical and legacy containers are stopped, prefer canonical swiftdrop-keycloak."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": False, "content": b"CANONICAL_STOPPED"},
+            "devarom-keycloak": {"present": True, "running": False, "content": b"LEGACY_STOPPED"},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "backup_out"
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                res = BackupEngine.execute_live_cold_backup(
+                    output_dir=out_dir,
+                    confirm_maintenance_stop=self.MAINTENANCE_PHRASE,
+                )
+            self.assertEqual(res["metadata"]["container_name"], "swiftdrop-keycloak")
+
+    def test_safety_gate_evaluation_isolated_from_developer_state(self):
+        """Safety gate evaluation with synthetic running Keycloak and empty backup dir."""
+        docker_env = SyntheticDockerEnvironment({
+            "swiftdrop-keycloak": {"present": True, "running": True},
+            "devarom-keycloak": {"present": False, "running": False},
+        })
+        with tempfile.TemporaryDirectory() as tmpdir:
+            empty_backup_dir = Path(tmpdir) / "empty_backups"
+            empty_backup_dir.mkdir()
+            os.environ["MAINTENANCE_WINDOW_APPROVED"] = "false"
+            os.environ["GOOGLE_CALLBACK_VERIFIED"] = "false"
+
+            with patch.object(backup_mod.subprocess, "run", docker_env):
+                gate = SafetyGateEvaluator.evaluate_cutover_gate(backup_base_dir=empty_backup_dir)
+
+            self.assertEqual(gate["classification"], "NO-GO")
+            self.assertTrue(gate["checks"]["source_keycloak_running"]["passed"])
+            self.assertFalse(gate["checks"]["backup_integrity"]["passed"])
+            self.assertFalse(gate["checks"]["maintenance_window_approved"]["passed"])
 
 
 if __name__ == "__main__":

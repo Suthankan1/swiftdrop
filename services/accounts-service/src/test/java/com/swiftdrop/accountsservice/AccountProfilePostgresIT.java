@@ -340,7 +340,7 @@ class AccountProfilePostgresIT {
     @Test
     void migratesCleanPostgresAndValidatesSchema() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("accounts_db");
     }
 
@@ -444,7 +444,7 @@ class AccountProfilePostgresIT {
         assertThat(columns).containsExactlyInAnyOrder("id", "keycloak_sub", "email", "full_name", "phone_number", "created_at");
         assertThat(jdbc.queryForList("""
                 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
-                """, String.class)).containsExactlyInAnyOrder("account_profiles", "merchants", "staff_profiles", "flyway_schema_history");
+                """, String.class)).containsExactlyInAnyOrder("account_profiles", "merchants", "staff_profiles", "merchant_api_keys", "identity_reconciliation_audit", "flyway_schema_history");
         assertThat(AccountProfile.class.getMethods()).noneMatch(method -> method.getName().startsWith("set"));
     }
 
