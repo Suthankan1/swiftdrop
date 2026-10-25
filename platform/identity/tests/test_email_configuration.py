@@ -104,12 +104,26 @@ def validate_compose(compose):
 
 
 class EmailConfigurationTests(unittest.TestCase):
+    temp_env_created = False
+
     @classmethod
     def setUpClass(cls):
         realm_file = IDENTITY_DIR / "realm-swiftdrop.json"
         if not realm_file.exists():
             realm_file = IDENTITY_DIR / "realm-devarom.json"
         cls.realm = json.loads(realm_file.read_text())
+
+        env_file = IDENTITY_DIR / ".env"
+        if not env_file.exists():
+            env_example = IDENTITY_DIR / ".env.example"
+            if env_example.exists():
+                content = env_example.read_text().replace(
+                    "KC_BOOTSTRAP_ADMIN_PASSWORD=",
+                    "KC_BOOTSTRAP_ADMIN_PASSWORD=test_bootstrap_pass",
+                )
+                env_file.write_text(content)
+                cls.temp_env_created = True
+
         # Capture resolved configuration in memory only: it can contain ignored .env values.
         # Never include that configuration or Docker stderr in assertion output.
         result = subprocess.run(
@@ -120,6 +134,13 @@ class EmailConfigurationTests(unittest.TestCase):
         if result.returncode:
             raise RuntimeError("Compose configuration could not be resolved; check the local identity environment")
         cls.compose = json.loads(result.stdout)
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.temp_env_created:
+            env_file = IDENTITY_DIR / ".env"
+            if env_file.exists():
+                env_file.unlink()
 
     def test_committed_email_policy_and_local_smtp(self):
         validate_realm(self.realm)

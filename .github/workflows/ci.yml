@@ -145,3 +145,40 @@ jobs:
           name: java-test-reports
           path: test-reports
           retention-days: 7
+
+  identity-tests:
+    name: Identity Unit & Configuration Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: pip install pytest
+
+      - name: Setup Identity test environment template
+        run: |
+          if [ ! -f platform/identity/.env ]; then
+            sed 's/KC_BOOTSTRAP_ADMIN_PASSWORD=/KC_BOOTSTRAP_ADMIN_PASSWORD=ci_test_password/' platform/identity/.env.example > platform/identity/.env
+          fi
+
+      - name: Run Identity unit & configuration suite
+        run: python3 -m pytest platform/identity/tests -v --junitxml=identity-test-results.xml
+
+      - name: Verify unittest runner discovery parity
+        run: python3 -m unittest discover -s platform/identity/tests -p "test_*.py" -v
+
+      - name: Upload Identity test results
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: identity-test-results
+          path: identity-test-results.xml
+          retention-days: 7
