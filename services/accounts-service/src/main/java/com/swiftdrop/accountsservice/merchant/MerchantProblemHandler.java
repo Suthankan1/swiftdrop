@@ -70,6 +70,19 @@ public class MerchantProblemHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Malformed or unauthorized request body.");
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ProblemDetail handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        String msg = ((ex.getMessage() != null ? ex.getMessage() : "") + " "
+                + (ex.getRootCause() != null && ex.getRootCause().getMessage() != null ? ex.getRootCause().getMessage() : "")).toLowerCase();
+        if (msg.contains("uq_merchants_keycloak_sub") || msg.contains("keycloak_sub")) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Authenticated user already owns a merchant tenant");
+        }
+        if (msg.contains("uq_merchants_registration_number") || msg.contains("registration_number")) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Merchant registration number already exists");
+        }
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Merchant unique constraint violated");
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
         String detail = (ex.getMessage() != null && !ex.getMessage().isBlank())
