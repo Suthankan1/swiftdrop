@@ -2,10 +2,12 @@ package com.swiftdrop.accountsservice.reconciliation;
 
 import com.swiftdrop.accountsservice.identity.keycloak.ReconciliationOutcome;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Service interface for recording and updating durable identity reconciliation audit events.
+ * Service interface for recording, querying, and updating durable identity reconciliation audit events.
  */
 public interface ReconciliationAuditService {
 
@@ -47,4 +49,14 @@ public interface ReconciliationAuditService {
                             int attemptCount,
                             String statusAfter,
                             String errorMessage);
+
+    /**
+     * Finds an audit record by its unique identifier.
+     */
+    Optional<IdentityReconciliationAudit> findById(UUID id);
+
+    /**
+     * Finds all audit records for a specific Keycloak subject ordered newest first.
+     */
+    List<IdentityReconciliationAudit> findByTargetSub(String targetSub);
 }

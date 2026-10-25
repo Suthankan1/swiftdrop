@@ -20,6 +20,12 @@ public final class KeycloakRoleAllowlist {
     public static final String ROLE_DISPATCHER = "DISPATCHER";
     public static final String ROLE_ADMIN = "ADMIN";
 
+    public static final String CUSTOMER = ROLE_CUSTOMER;
+    public static final String MERCHANT = ROLE_MERCHANT;
+    public static final String COURIER = ROLE_COURIER;
+    public static final String DISPATCHER = ROLE_DISPATCHER;
+    public static final String ADMIN = ROLE_ADMIN;
+
     public static final Set<String> RECONCILIABLE_ROLES = Set.of(
             ROLE_MERCHANT,
             ROLE_COURIER,
