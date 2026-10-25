@@ -4,6 +4,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -33,6 +34,7 @@ public class HttpKeycloakIdentityAdapter implements KeycloakIdentityAdapter {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public HttpKeycloakIdentityAdapter(KeycloakAdminProperties properties,
                                        KeycloakAdminCredentialProvider credentialProvider) {
         this(properties, credentialProvider, HttpClient.newBuilder()

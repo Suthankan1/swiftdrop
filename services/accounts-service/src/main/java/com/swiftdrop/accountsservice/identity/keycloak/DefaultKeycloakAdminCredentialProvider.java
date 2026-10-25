@@ -2,6 +2,7 @@ package com.swiftdrop.accountsservice.identity.keycloak;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -33,6 +34,7 @@ public class DefaultKeycloakAdminCredentialProvider implements KeycloakAdminCred
     private volatile Instant tokenExpiry = Instant.EPOCH;
     private final Object lock = new Object();
 
+    @Autowired
     public DefaultKeycloakAdminCredentialProvider(KeycloakAdminProperties properties) {
         this(properties, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(properties.getConnectTimeoutMs()))
