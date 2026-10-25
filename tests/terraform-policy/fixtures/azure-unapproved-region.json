@@ -1,0 +1,46 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.3",
+  "variables": {
+    "enable_azure_deployment": {
+      "value": false
+    }
+  },
+  "planned_values": {
+    "root_module": {
+      "resources": []
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "azurerm_resource_group.foreign_rg",
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "foreign_rg",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "foreign-rg",
+          "location": "australiasoutheast"
+        },
+        "after_unknown": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "azurerm": {
+        "name": "azurerm",
+        "full_name": "registry.terraform.io/hashicorp/azurerm",
+        "version_constraint": "~> 4.0"
+      }
+    },
+    "root_module": {
+      "resources": []
+    }
+  }
+}

@@ -46,3 +46,19 @@ backups/
 *.mv.db
 *.trace.db
 
+# Terraform state, cache, plan, and local var files (.terraform.lock.hcl is explicitly tracked)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfplan
+*.tfvars
+*.tfvars.json
+!*.example.tfvars
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
