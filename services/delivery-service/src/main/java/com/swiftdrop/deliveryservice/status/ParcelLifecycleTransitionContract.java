@@ -68,25 +68,25 @@ public interface ParcelLifecycleTransitionContract {
             throw new IllegalArgumentException("Target status cannot be null");
         }
         if (currentStatus.isTerminal()) {
-            throw new InvalidTransitionException(
+            throw new TerminalStateMutationException(
                     "Cannot transition from terminal state " + currentStatus + " to " + targetStatus
             );
         }
         if (!isTransitionPermitted(currentStatus, targetStatus)) {
-            throw new InvalidTransitionException(
+            throw new IllegalTransitionException(
                     "Illegal transition from " + currentStatus + " to " + targetStatus
             );
         }
         if (targetStatus == ParcelStatus.FAILED) {
             if (failureReason == null || failureReason.isBlank()) {
-                throw new InvalidTransitionException("Failure reason is mandatory when transitioning to FAILED");
+                throw new InvalidTransitionParametersException("Failure reason is mandatory when transitioning to FAILED");
             }
             if (!APPROVED_FAILURE_REASONS.contains(failureReason)) {
-                throw new InvalidTransitionException("Unapproved failure reason: " + failureReason);
+                throw new InvalidTransitionParametersException("Unapproved failure reason: " + failureReason);
             }
         }
         if (targetStatus == ParcelStatus.DELIVERED && proofId == null) {
-            throw new InvalidTransitionException("Proof of delivery (proofId) is mandatory when transitioning to DELIVERED");
+            throw new InvalidTransitionParametersException("Proof of delivery (proofId) is mandatory when transitioning to DELIVERED");
         }
     }
 }

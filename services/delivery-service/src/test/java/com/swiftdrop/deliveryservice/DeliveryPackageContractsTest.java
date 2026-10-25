@@ -131,4 +131,49 @@ class DeliveryPackageContractsTest {
         assertThat(ex.getActualVersion()).isEqualTo(4L);
         assertThat(ex.getMessage()).contains("expected version 3 but was 4");
     }
+
+    @Test
+    @DisplayName("Verify UpdateStatusRequest record contracts")
+    void testUpdateStatusRequestContract() {
+        UUID proofId = UUID.randomUUID();
+        com.swiftdrop.deliveryservice.status.dto.UpdateStatusRequest req =
+                new com.swiftdrop.deliveryservice.status.dto.UpdateStatusRequest(
+                        ParcelStatus.DELIVERED,
+                        3L,
+                        "Handed to recipient",
+                        null,
+                        proofId
+                );
+
+        assertThat(req.newStatus()).isEqualTo(ParcelStatus.DELIVERED);
+        assertThat(req.expectedVersion()).isEqualTo(3L);
+        assertThat(req.note()).isEqualTo("Handed to recipient");
+        assertThat(req.reason()).isNull();
+        assertThat(req.proofId()).isEqualTo(proofId);
+    }
+
+    @Test
+    @DisplayName("Verify ParcelStatusChangeResponse record contracts")
+    void testParcelStatusChangeResponseContract() {
+        UUID parcelId = UUID.randomUUID();
+        Instant now = Instant.now();
+        com.swiftdrop.deliveryservice.status.dto.ParcelStatusChangeResponse resp =
+                new com.swiftdrop.deliveryservice.status.dto.ParcelStatusChangeResponse(
+                        parcelId,
+                        "SWD-2026-TRK-9",
+                        "OUT_FOR_DELIVERY",
+                        "DELIVERED",
+                        4L,
+                        4L,
+                        now
+                );
+
+        assertThat(resp.parcelId()).isEqualTo(parcelId);
+        assertThat(resp.trackingNumber()).isEqualTo("SWD-2026-TRK-9");
+        assertThat(resp.previousStatus()).isEqualTo("OUT_FOR_DELIVERY");
+        assertThat(resp.currentStatus()).isEqualTo("DELIVERED");
+        assertThat(resp.stateVersion()).isEqualTo(4L);
+        assertThat(resp.updatedParcelVersion()).isEqualTo(4L);
+        assertThat(resp.occurredAt()).isEqualTo(now);
+    }
 }
