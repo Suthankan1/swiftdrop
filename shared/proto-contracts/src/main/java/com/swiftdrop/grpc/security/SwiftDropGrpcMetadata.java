@@ -48,4 +48,12 @@ public final class SwiftDropGrpcMetadata {
 
     public static final Metadata.Key<String> KEY_CORRELATION_ID =
             Metadata.Key.of(CORRELATION_ID_HEADER_KEY, Metadata.ASCII_STRING_MARSHALLER);
+
+    /**
+     * Header key carrying the cryptographically verifiable actor JWT for delegated requests.
+     */
+    public static final String ACTOR_TOKEN_HEADER_KEY = "x-swiftdrop-actor-token";
+
+    public static final Metadata.Key<String> KEY_ACTOR_TOKEN =
+            Metadata.Key.of(ACTOR_TOKEN_HEADER_KEY, Metadata.ASCII_STRING_MARSHALLER);
 }
