@@ -316,8 +316,37 @@ SUMMARY: 28 PASSED, 0 FAILED
 
 | Prerequisite Deliverable | Responsible Owner | Target Issue | Current State |
 |---|---|---|---|
-| Delivery Spring Boot foundation | Sinthuha (@Sinthuha-n) | Issue #126 | Awaiting implementation |
-| Canonical `Parcel` aggregate & booking persistence | Sinthuha (@Sinthuha-n) | Issue #20 | Awaiting implementation |
-| Single active courier assignment validation | HarithKeshan (@Harithkeshan) | Issue #24 | Awaiting implementation |
-| Guarded status transition & atomic history | Vibhushan (@Vibhushan-2003) | Issue #23 | **Stage A Complete; Ready for Stage B upon #126/#20/#24** |
-| Transactional outbox & Kafka relay | Vibhushan (@Vibhushan-2003) | Issue #31 | Stage A Complete (PR #182) |
+| Delivery Spring Boot foundation | Sinthuha (@Sinthuha-n) | Issue #126 | **MERGED & ACTIVE** |
+| Canonical `Parcel` aggregate & booking persistence | Sinthuha (@Sinthuha-n) | Issue #20 | **MERGED & ACTIVE** |
+| Single active courier assignment validation | HarithKeshan (@Harithkeshan) | Issue #24 | **OPEN (Interface ready; production bean pending)** |
+| Guarded status transition & atomic history | Vibhushan (@Vibhushan-2003) | Issue #23 | **Stage B Implementation Complete (97 Maven tests passing)** |
+| Transactional outbox & Kafka relay | Vibhushan (@Vibhushan-2003) | Issue #31 | Stage A Complete (PR #182); ready for Stage B |
+
+---
+
+## 11. Stage B Implementation Summary (Issue #23 / LATER-06)
+
+### 11.1 Executed Implementation
+1. **Existing Service Preservation:** Built directly within the existing `services/delivery-service` Maven project without rebuilding any application foundations or duplicating aggregates.
+2. **Persistence & Atomicity:**
+   - Reused canonical `Parcel` aggregate and Flyway V1 schema (`parcels` and `status_history`). Zero schema modifications required.
+   - Atomically updates parcel state and appends immutable chronological status history in a single local database transaction (`@Transactional`).
+3. **Guarded State Transitions:**
+   - Forward state machine: `CREATED -> PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY`.
+   - Terminal failure transitions: Allowed to `FAILED` only when an approved failure reason is supplied.
+   - Immutability: Terminal states (`DELIVERED`, `FAILED`) cannot be mutated; rejects with HTTP 409 Conflict.
+   - Stage skips and backward transitions reject with HTTP 422 Unprocessable Content.
+4. **Optimistic Concurrency:**
+   - Client sends `expectedVersion`.
+   - Stale versions reject with HTTP 409 Conflict and roll back fully with zero history appended.
+   - Concurrent modifications detected via JPA `@Version` optimistic locking.
+5. **Issue #24 Assignment Gate & Security:**
+   - Endpoint: `PATCH /api/v1/parcels/{parcelId}/status` secured via Keycloak Bearer JWT.
+   - Missing/invalid JWT returns 401 Unauthorized ProblemDetail.
+   - Unauthorized roles return 403 Forbidden ProblemDetail.
+   - **Fail-Closed Runtime Protection:** Since Issue #24 is currently OPEN and has no merged production provider bean, `StatusTransitionService` safely rejects courier transitions with HTTP 403 Forbidden if the assignment provider is missing or if the courier is not actively assigned. Test-only fakes are used strictly for unit and integration testing. Courier production integration is therefore marked **PARTIAL** pending Issue #24.
+6. **Automated Verification:**
+   - `mvnw clean test`: 97 tests passing (0 failures, 0 errors).
+   - `python tests/contracts/test_delivery_status_contract.py`: 28 tests passing (0 failures).
+   - `python tests/contracts/validate_contracts.py --check-compatibility --base-ref origin/test`: All gates passed with 0 breaking changes.
+
