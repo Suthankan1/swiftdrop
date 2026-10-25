@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -31,10 +32,12 @@ import java.io.IOException;
 public class ReceiptSecurityConfiguration {
 
     @Bean
+    @Order(1)
     SecurityFilterChain receiptSecurity(HttpSecurity http,
                                         JwtDecoder jwtDecoder,
                                         KeycloakJwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
         return http
+                .securityMatcher("/api/v1/parcels/*/receipt", "/actuator/health", "/actuator/health/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
