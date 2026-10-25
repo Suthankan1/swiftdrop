@@ -1,0 +1,49 @@
+# SwiftDrop Core Kubernetes Namespaces and Management Boundaries
+# Canonical Reference: docs/architecture/BASELINE.md
+# GitHub Issue: https://github.com/Suthankan1/swiftdrop/issues/175
+# Consumed by: Issues #149 (Helm) and #154 (Persistent workloads)
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-system
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    swiftdrop.io/boundary: platform-system
+    swiftdrop.io/owner: platform-team
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-apps
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    swiftdrop.io/boundary: microservices
+    swiftdrop.io/owner: application-teams
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-data
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    swiftdrop.io/boundary: persistence
+    swiftdrop.io/owner: platform-team
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-identity
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    swiftdrop.io/boundary: identity-idp
+    swiftdrop.io/owner: platform-team
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiftdrop-messaging
+  labels:
+    app.kubernetes.io/part-of: swiftdrop
+    swiftdrop.io/boundary: async-events
+    swiftdrop.io/owner: platform-team
