@@ -13,9 +13,33 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | Spring Boot services | **API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Delivery Foundation Verified (Issue #126)** | `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, Keycloak role gates, merchant machine `X-API-Key` authentication & authorization, case-insensitive header sanitization, bounded in-memory rate limiting, payload size enforcement, and SSE connection concurrency policy verified |
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
+| Email Verification & MFA Policy (Issue #47) | **Native Email Verification (PR #48) & RFC 6238 TOTP (PR #49) VERIFIED; Production Policy & ADR-0009 Finalized** | 14/14 static invariant checks PASS; 93 unit tests PASS (pytest 49 subtests, unittest parity); production policy in `docs/security/EMAIL_VERIFICATION_MFA_POLICY.md`; ADR-0009 recommendation Outcome A (no typed email OTP); handoff to #150 and #159 |
 | GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
 | Keycloak Role Reconciliation | **Controlled Keycloak Staff & Merchant-Role Reconciliation Adapter IMPLEMENTED (Issue #107)** | 52 automated reconciliation/security tests PASS (193 total in Accounts Service); server-only least privilege Keycloak administration; idempotent staff/merchant reconciliation; stale-retry protection; V5 durable audit schema; Spring Security admin guard (`hasRole('ADMIN')`) |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
+
+## Issue #47 Keycloak Email Verification, MFA Policy & Security Acceptance — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Identity & Security Lead); branch `chore/later-15-identity-mfa-acceptance`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Harithkeshan (@Harithkeshan)** (Staff/Admin Business Policy).
+
+Delivered complete verification, production policy formalization, ADR-0009 review status recording, and downstream operational handoffs for GitHub Issue #47 ([LATER-15]):
+- **Historical Implementation Verification on Current `test` SHA (`0bc41e7`):**
+  - **Phase A (Native Email Verification — PR #48, commit `b72c005`):** Verified `verifyEmail: true`, `registrationAllowed: true`, 300s token lifetime, 60s resend cooldown, branded FreeMarker `login-verify-email.ftl`, and isolated local Mailpit (`mailpit:1025`) Compose network binding without public exposure.
+  - **Phase B (Authenticator-App TOTP MFA — PR #49, commit `7ecfc33`):** Verified RFC 6238 TOTP policy (`HmacSHA1`, 6 digits, 30s period, lookahead 1, `otpPolicyCodeReusable: false` replay prevention), unenrolled customer pass-through via `conditional-user-configured`, voluntary enrollment (`kc_action=CONFIGURE_TOTP`), branded QR screens, and non-destructive loopback recovery helper (`configure-totp.py reset-user`).
+  - **Phase C (Email OTP Feasibility & ADR-0009 — PR #52, commit `169d78e`):** Maintained architectural recommendation **OUTCOME A** (Do NOT implement custom typed email OTP; retain native signed links and app TOTP). Formal status recorded as **`PROPOSED — AWAITING SECURITY/PRODUCT APPROVAL`** pending independent human signoff. Custom email OTP is strictly rejected under Issue #47.
+- **Production Email Verification & MFA Policy Formalization:**
+  - Published comprehensive policy in `docs/security/EMAIL_VERIFICATION_MFA_POLICY.md` specifying approved baseline vs proposed production settings for new registrations, existing unverified users, Google brokered identities (`trustEmail`), email change re-verification, expired link handling, failed SMTP recovery, account-enumeration privacy protections, role-based voluntary vs mandatory MFA, and lost device recovery.
+- **Production SMTP Readiness & $0 Budget Boundary:**
+  - Documented strict criteria for production external SMTP relay (SendGrid free tier / university relay), TLS 1.2+ / STARTTLS encryption, verified sender identity (`no-reply@swiftdrop...`), SPF/DKIM/DMARC alignment, server-side environment secret injection (`KC_SPI_EMAIL_DEFAULT_*`), and zero secret logging.
+- **Downstream Handoff Contracts:**
+  - Published formal acceptance handoff in `docs/handoff/ISSUE_47_TO_150_159_IDENTITY_ACCEPTANCE.md` establishing clear boundaries for **Issue #150** (production external SMTP configuration, deployment secrets, DNS/TLS cutover) and **Issue #159** (independent synthetic browser E2E tests, external mailbox delivery validation, lost device recovery acceptance).
+- **Automated Regression Verification Evidence:**
+  - `./platform/identity/validate-identity.sh`: **14/14 static invariant checks PASSED**.
+  - `python3 -m pytest platform/identity/tests -v`: **93 passed, 49 subtests passed** in 18.18s.
+  - `python3 -m unittest discover -s platform/identity/tests -p "test_*.py" -v`: **93 passed** in 18.06s (100% discovery parity across runners).
+  - Strengthened `test_totp_configuration.py` and `test_email_configuration.py` to validate both canonical `swiftdrop` and legacy `devarom` realm configurations via subtests.
+  - Live smoke tests: `LIVE SMOKE — NOT EXECUTED` (local Docker daemon offline).
 
 ## Issue #107 Controlled Keycloak Staff & Merchant-Role Reconciliation Adapter — 2026-10-25
 
@@ -126,7 +150,7 @@ Delivered the Delivery Operations Spring Boot microservice foundation, independe
 
 ## Issue #100 Shared Service JWT & Authenticated gRPC Actor Delegation Adapters — 2026-10-25
 
-Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Backend Lead); branch `feat/n10-p02-shared-jwt-grpc-delegation`, targeting `test`.  
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Backend Lead); branch `feat/n10-p02-shared-jwt-grpc-delegation`, targeting `test`.
 Reviewers: **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Harithkeshan (@Harithkeshan)** (Functional Reviewer).
 
 Delivered reusable security adapter module (`shared/security-adapter`) extending independent resource-server verification and production-grade internal gRPC authentication with cryptographic actor delegation:
@@ -263,7 +287,7 @@ Implementation commit: `fca90f6e853f8da593fbb7977e63e70893ffc3ee`; base `test`: 
 
 ## Issue #7 OIDC Sequence, Accounts ERD & Master Login Evidence Review — 2026-10-22
 
-Lead Architectural Reviewer: **Gajanthan (@Gajanthan23)** (Customer Lead FE & Customer Feature Steward); branch `docs/nov07-oidc-erd-evidence`, targeting `test`.  
+Lead Architectural Reviewer: **Gajanthan (@Gajanthan23)** (Customer Lead FE & Customer Feature Steward); branch `docs/nov07-oidc-erd-evidence`, targeting `test`.
 Reviewers: **Sinthuha (@Sinthuha-n)** (Customer Lead BE & Accounts DB Steward), **Suthankan1 (@Suthankan1)** (Platform Lead, shared OIDC auth, Gateway & Accounts JWT), **Vibhushan (@Vibhushan-2003)** (Security QA Lead, Issue #18), **HarithKeshan (@Harithkeshan)** (Academic report assembly, Issue #19), **Eric (@EricPraveen)** (Clean-clone reproduction, Issue #17).
 
 Delivered comprehensive Customer pair architectural review of the OIDC login sequence, Accounts database ERD vs. actual schema, and master login acceptance evidence mapping for the November 1 milestone:
