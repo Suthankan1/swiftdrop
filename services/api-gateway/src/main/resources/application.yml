@@ -36,6 +36,7 @@ spring:
               - Accept
               - Origin
               - X-Requested-With
+              - Idempotency-Key
             allow-credentials: true
             max-age: 3600
 
@@ -63,5 +64,21 @@ swiftdrop:
     issuer-uri: ${KEYCLOAK_ISSUER_URI:${devarom.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}
     jwk-set-uri: ${KEYCLOAK_JWKS_URI:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}}
     audience: ${JWT_AUDIENCE:${devarom.jwt.audience:swiftdrop-api}}
-
-
+  gateway:
+    rate-limit:
+      enabled: ${RATE_LIMIT_ENABLED:true}
+      public-limit-per-minute: ${RATE_LIMIT_PUBLIC_PER_MIN:60}
+      public-burst-capacity: ${RATE_LIMIT_PUBLIC_BURST:10}
+      merchant-limit-per-minute: ${RATE_LIMIT_MERCHANT_PER_MIN:120}
+      merchant-burst-capacity: ${RATE_LIMIT_MERCHANT_BURST:20}
+      unauthenticated-limit-per-minute: ${RATE_LIMIT_UNAUTH_PER_MIN:10}
+      unauthenticated-burst-capacity: ${RATE_LIMIT_UNAUTH_BURST:5}
+    payload:
+      enabled: ${PAYLOAD_LIMIT_ENABLED:true}
+      max-quote-bytes: ${MAX_QUOTE_PAYLOAD_BYTES:65536} # 64 KB
+      max-standard-bytes: ${MAX_STANDARD_PAYLOAD_BYTES:262144} # 256 KB
+      max-proof-bytes: ${MAX_PROOF_PAYLOAD_BYTES:5242880} # 5 MB
+    sse:
+      enabled: ${SSE_POLICY_ENABLED:true}
+      max-public-connections: ${SSE_MAX_PUBLIC_CONCURRENT:5}
+      max-authenticated-connections: ${SSE_MAX_AUTH_CONCURRENT:10}
