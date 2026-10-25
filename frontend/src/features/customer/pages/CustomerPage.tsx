@@ -1,10 +1,13 @@
+import { Link, useInRouterContext } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { AccountsError, createAccountsApi } from '../api/accounts'
 import { CustomerProfile, type ProfileState } from '../components/CustomerProfile'
+import { CustomerNav } from '../components/CustomerNav'
 
 export function CustomerPage() {
   const auth = useAuth()
+  const inRouter = useInRouterContext()
   const subject = auth.snapshot.subject
   const query = useQuery({
     queryKey: ['private', 'profile', subject],
@@ -27,9 +30,16 @@ export function CustomerPage() {
   return <div className="page-container customer-page">
     <header className="page-heading"><p className="eyebrow">Customer space</p><h1>A little space for<br />everything you send.</h1>
       <p className="muted">Your SwiftDrop account starts here, with your personal details kept private.</p></header>
+    <CustomerNav />
     <div className="profile-grid"><CustomerProfile state={state} />
       <aside className="card customer-note" aria-labelledby="customer-note-heading"><h2 id="customer-note-heading">Built around you.</h2>
-        <p>Booking and parcel tracking will arrive in a later release.</p><button onClick={() => { void auth.logout() }}>Sign out</button>
+        <p>Monitor your active parcels, delivery milestones, and official receipts.</p>
+        {inRouter ? (
+          <Link to="/customer/history" className="button button-secondary">View delivery history</Link>
+        ) : (
+          <a href="/customer/history" className="button button-secondary">View delivery history</a>
+        )}
+        <button onClick={() => { void auth.logout() }}>Sign out</button>
         {query.isError && <button onClick={() => { void query.refetch() }}>Retry profile</button>}
       </aside></div>
   </div>
