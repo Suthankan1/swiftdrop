@@ -744,6 +744,339 @@ class AccountsInternalServiceGrpcTest {
         assertThat(response.getEmail()).isEqualTo("alice@example.com");
         assertThat(response.getFullName()).isEqualTo("Alice Customer");
         assertThat(response.getPhoneNumber()).isEqualTo("+94771111111");
+        assertThat(response.getIsEligible()).isTrue();
+        assertThat(response.getEmailPermitted()).isTrue();
+        assertThat(response.getSmsPermitted()).isTrue();
+        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        assertThat(response.getRejectionReason()).isEqualTo("ELIGIBLE");
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact enforces EMAIL channel scoping (excludes phone number)")
+    void testResolveRecipientContact_EmailChannelScoping() {
+        AccountProfile customer = mockCustomerProfile(customerProfileId, customerSub, "alice@example.com", "Alice Customer", "+94771111111");
+        when(accountProfileRepository.findByKeycloakSub(customerSub)).thenReturn(Optional.of(customer));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        RecipientContactResponse response = stub.resolveRecipientContact(
+                RecipientContactRequest.newBuilder()
+                        .setRecipientSub(customerSub)
+                        .setPurpose("PARCEL_STATUS_UPDATE")
+                        .setChannel("EMAIL")
+                        .build()
+        );
+
+        assertThat(response.getRecipientSub()).isEqualTo(customerSub);
+        assertThat(response.getEmail()).isEqualTo("alice@example.com");
+        assertThat(response.getPhoneNumber()).isEmpty(); // Phone strictly excluded for EMAIL channel
+        assertThat(response.getFullName()).isEqualTo("Alice Customer");
+        assertThat(response.getIsEligible()).isTrue();
+        assertThat(response.getEmailPermitted()).isTrue();
+        assertThat(response.getSmsPermitted()).isFalse();
+        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        assertThat(response.getRejectionReason()).isEqualTo("ELIGIBLE");
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact enforces SMS channel scoping (excludes email address)")
+    void testResolveRecipientContact_SmsChannelScoping() {
+        AccountProfile customer = mockCustomerProfile(customerProfileId, customerSub, "alice@example.com", "Alice Customer", "+94771111111");
+        when(accountProfileRepository.findByKeycloakSub(customerSub)).thenReturn(Optional.of(customer));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        RecipientContactResponse response = stub.resolveRecipientContact(
+                RecipientContactRequest.newBuilder()
+                        .setRecipientSub(customerSub)
+                        .setPurpose("DELIVERY_NOTIFICATION")
+                        .setChannel("SMS")
+                        .build()
+        );
+
+        assertThat(response.getRecipientSub()).isEqualTo(customerSub);
+        assertThat(response.getEmail()).isEmpty(); // Email strictly excluded for SMS channel
+        assertThat(response.getPhoneNumber()).isEqualTo("+94771111111");
+        assertThat(response.getFullName()).isEqualTo("Alice Customer");
+        assertThat(response.getIsEligible()).isTrue();
+        assertThat(response.getEmailPermitted()).isFalse();
+        assertThat(response.getSmsPermitted()).isTrue();
+        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        assertThat(response.getRejectionReason()).isEqualTo("ELIGIBLE");
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact fails closed when requested channel contact is missing")
+    void testResolveRecipientContact_MissingChannelContact_FailsClosed() {
+        // Customer profile has email but empty phone number
+        AccountProfile customer = mockCustomerProfile(customerProfileId, customerSub, "alice@example.com", "Alice Customer", "");
+        when(accountProfileRepository.findByKeycloakSub(customerSub)).thenReturn(Optional.of(customer));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        // When SMS is requested but phone is missing -> fails closed
+        RecipientContactResponse response = stub.resolveRecipientContact(
+                RecipientContactRequest.newBuilder()
+                        .setRecipientSub(customerSub)
+                        .setPurpose("PARCEL_STATUS_UPDATE")
+                        .setChannel("SMS")
+                        .build()
+        );
+
+        assertThat(response.getRecipientSub()).isEqualTo(customerSub);
+        assertThat(response.getIsEligible()).isFalse();
+        assertThat(response.getSmsPermitted()).isFalse();
+        assertThat(response.getStatus()).isEqualTo("MISSING_CONTACT");
+        assertThat(response.getRejectionReason()).isEqualTo("MISSING_PHONE_CONTACT");
+        assertThat(response.getPhoneNumber()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact fails closed for disabled staff member")
+    void testResolveRecipientContact_DisabledStaff_OmitsContacts() {
+        StaffProfile suspendedCourier = new StaffProfile(
+                courierProfileId, customerProfileId, courierSub,
+                "STF-SUSP-1", StaffRole.COURIER, "Delivery", "Zone-1", StaffStatus.SUSPENDED,
+                Instant.now(), Instant.now()
+        );
+        when(staffProfileRepository.findByKeycloakSub(courierSub)).thenReturn(Optional.of(suspendedCourier));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        RecipientContactResponse response = stub.resolveRecipientContact(
+                RecipientContactRequest.newBuilder()
+                        .setRecipientSub(courierSub)
+                        .setPurpose("PARCEL_STATUS_UPDATE")
+                        .build()
+        );
+
+        assertThat(response.getRecipientSub()).isEqualTo(courierSub);
+        assertThat(response.getIsEligible()).isFalse();
+        assertThat(response.getStatus()).isEqualTo("DISABLED");
+        assertThat(response.getRejectionReason()).isEqualTo("STAFF_SUSPENDED");
+        assertThat(response.getEmail()).isEmpty();
+        assertThat(response.getPhoneNumber()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact fails closed for unapproved merchant")
+    void testResolveRecipientContact_UnapprovedMerchant_OmitsContacts() {
+        Merchant suspendedMerchant = new Merchant(
+                merchantId, customerProfileId, merchantSub,
+                "Suspended Store", "REG-SUSP", MerchantStatus.SUSPENDED,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findByKeycloakSub(merchantSub)).thenReturn(Optional.of(suspendedMerchant));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        RecipientContactResponse response = stub.resolveRecipientContact(
+                RecipientContactRequest.newBuilder()
+                        .setRecipientSub(merchantSub)
+                        .setPurpose("PARCEL_STATUS_UPDATE")
+                        .build()
+        );
+
+        assertThat(response.getRecipientSub()).isEqualTo(merchantSub);
+        assertThat(response.getIsEligible()).isFalse();
+        assertThat(response.getStatus()).isEqualTo("DISABLED");
+        assertThat(response.getRejectionReason()).isEqualTo("MERCHANT_SUSPENDED");
+        assertThat(response.getEmail()).isEmpty();
+        assertThat(response.getPhoneNumber()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact returns NOT_FOUND for unknown recipient")
+    void testResolveRecipientContact_UnknownRecipient_ReturnsNotFound() {
+        String unknownSub = UUID.randomUUID().toString();
+        when(accountProfileRepository.findByKeycloakSub(unknownSub)).thenReturn(Optional.empty());
+        when(merchantRepository.findByKeycloakSub(unknownSub)).thenReturn(Optional.empty());
+        when(staffProfileRepository.findByKeycloakSub(unknownSub)).thenReturn(Optional.empty());
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() ->
+                stub.resolveRecipientContact(RecipientContactRequest.newBuilder().setRecipientSub(unknownSub).build())
+        )
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.NOT_FOUND);
+                    assertThat(ex.getStatus().getDescription()).contains("Recipient not found");
+                });
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact rejects invalid or unauthorized purpose")
+    void testResolveRecipientContact_InvalidPurpose_Rejected() {
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() ->
+                stub.resolveRecipientContact(
+                        RecipientContactRequest.newBuilder()
+                                .setRecipientSub(customerSub)
+                                .setPurpose("UNAPPROVED_MARKETING_BLAST")
+                                .build()
+                )
+        )
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
+                    assertThat(ex.getStatus().getDescription()).contains("Unsupported or unauthorized notification purpose");
+                });
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact rejects invalid channel")
+    void testResolveRecipientContact_InvalidChannel_Rejected() {
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() ->
+                stub.resolveRecipientContact(
+                        RecipientContactRequest.newBuilder()
+                                .setRecipientSub(customerSub)
+                                .setChannel("UNSUPPORTED_PAGER")
+                                .build()
+                )
+        )
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
+                    assertThat(ex.getStatus().getDescription()).contains("Unsupported notification channel");
+                });
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact rejects blank recipientSub")
+    void testResolveRecipientContact_BlankRecipientSub_Rejected() {
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() ->
+                stub.resolveRecipientContact(RecipientContactRequest.newBuilder().setRecipientSub("   ").build())
+        )
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
+                    assertThat(ex.getStatus().getDescription()).contains("recipient_sub is required");
+                });
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact rejects unauthorized service identity (DELIVERY_SERVICE)")
+    void testResolveRecipientContact_UnauthorizedServiceCaller_Rejected() {
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.DELIVERY_SERVICE.getServiceName()));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() ->
+                stub.resolveRecipientContact(RecipientContactRequest.newBuilder().setRecipientSub(customerSub).build())
+        )
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
+                    assertThat(ex.getStatus().getDescription()).contains("is not authorized to invoke");
+                });
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact rejects unauthenticated caller")
+    void testResolveRecipientContact_UnauthenticatedCaller_Rejected() {
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel);
+
+        assertThatThrownBy(() ->
+                stub.resolveRecipientContact(RecipientContactRequest.newBuilder().setRecipientSub(customerSub).build())
+        )
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
+                });
+    }
+
+    @Test
+    @DisplayName("Issue #110: resolveRecipientContact rejects caller attempting human actor delegation")
+    void testResolveRecipientContact_ActorDelegationForbidden_Rejected() {
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN,
+                jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName()));
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, customerSub);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() ->
+                stub.resolveRecipientContact(RecipientContactRequest.newBuilder().setRecipientSub(customerSub).build())
+        )
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
+                    assertThat(ex.getStatus().getDescription()).contains("Actor delegation is forbidden on service-only operation");
+                });
     }
 
     @Test

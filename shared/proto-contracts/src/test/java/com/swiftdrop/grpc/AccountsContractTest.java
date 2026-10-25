@@ -84,7 +84,7 @@ class AccountsContractTest {
     }
 
     @Test
-    @DisplayName("ResolveRecipientContact: resolves phone and email without PII leakage in events")
+    @DisplayName("ResolveRecipientContact: resolves phone and email without PII leakage in events (IF-GRPC-03, #110)")
     void testResolveRecipientContact() {
         String recipientSub = UUID.randomUUID().toString();
         RecipientContactRequest request = RecipientContactRequest.newBuilder()
@@ -97,6 +97,41 @@ class AccountsContractTest {
         assertThat(response.getEmail()).isEqualTo("recipient@example.com");
         assertThat(response.getPhoneNumber()).isEqualTo("+94771234567");
         assertThat(response.getFullName()).isEqualTo("John Smith");
+        assertThat(response.getIsEligible()).isTrue();
+        assertThat(response.getEmailPermitted()).isTrue();
+        assertThat(response.getSmsPermitted()).isTrue();
+        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        assertThat(response.getRejectionReason()).isEqualTo("ELIGIBLE");
+    }
+
+    @Test
+    @DisplayName("ResolveRecipientContact: enforces purpose and channel scoping (EMAIL excludes phone, SMS excludes email)")
+    void testResolveRecipientContact_ChannelScoping() {
+        String recipientSub = UUID.randomUUID().toString();
+
+        // 1. EMAIL channel scope
+        RecipientContactRequest emailReq = RecipientContactRequest.newBuilder()
+                .setRecipientSub(recipientSub)
+                .setPurpose("PARCEL_STATUS_UPDATE")
+                .setChannel("EMAIL")
+                .build();
+        RecipientContactResponse emailResp = blockingStub.resolveRecipientContact(emailReq);
+        assertThat(emailResp.getEmail()).isEqualTo("recipient@example.com");
+        assertThat(emailResp.getPhoneNumber()).isEmpty();
+        assertThat(emailResp.getEmailPermitted()).isTrue();
+        assertThat(emailResp.getSmsPermitted()).isFalse();
+
+        // 2. SMS channel scope
+        RecipientContactRequest smsReq = RecipientContactRequest.newBuilder()
+                .setRecipientSub(recipientSub)
+                .setPurpose("PARCEL_STATUS_UPDATE")
+                .setChannel("SMS")
+                .build();
+        RecipientContactResponse smsResp = blockingStub.resolveRecipientContact(smsReq);
+        assertThat(smsResp.getEmail()).isEmpty();
+        assertThat(smsResp.getPhoneNumber()).isEqualTo("+94771234567");
+        assertThat(smsResp.getEmailPermitted()).isFalse();
+        assertThat(smsResp.getSmsPermitted()).isTrue();
     }
 
     @Test
@@ -228,11 +263,20 @@ class AccountsContractTest {
         @Override
         public void resolveRecipientContact(RecipientContactRequest request,
                                             StreamObserver<RecipientContactResponse> responseObserver) {
+            String channel = request.getChannel() != null ? request.getChannel().trim().toUpperCase() : "";
+            boolean includeEmail = !"SMS".equals(channel) && !"SMS_MOCK".equals(channel);
+            boolean includeSms = !"EMAIL".equals(channel);
+
             RecipientContactResponse response = RecipientContactResponse.newBuilder()
                     .setRecipientSub(request.getRecipientSub())
-                    .setEmail("recipient@example.com")
-                    .setPhoneNumber("+94771234567")
+                    .setEmail(includeEmail ? "recipient@example.com" : "")
+                    .setPhoneNumber(includeSms ? "+94771234567" : "")
                     .setFullName("John Smith")
+                    .setIsEligible(true)
+                    .setEmailPermitted(includeEmail)
+                    .setSmsPermitted(includeSms)
+                    .setStatus("ACTIVE")
+                    .setRejectionReason("ELIGIBLE")
                     .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();

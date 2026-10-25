@@ -368,7 +368,7 @@ Accounts Service hosts the authoritative server-side gRPC implementation of `swi
 | `GetAvailableCouriersSummary` | `IF-GRPC-10` | Delivery Operations, GraphQL Query API | Bounded paginated list of active, eligible couriers with optional zone filtering. Page size bounded between 1 and 50 (default 20). Restricted to `DISPATCHER` or `ADMIN`. |
 | `CheckCourierEligibility` | `IF-GRPC-01` | Delivery Operations | Frozen baseline courier eligibility verification. |
 | `ValidateMerchantKeyDigest` | `IF-GRPC-02` | Delivery Operations | Frozen baseline merchant API key SHA-256 digest validation with constant-time equality check. |
-| `ResolveRecipientContact` | `IF-GRPC-03` | Communications Service | Frozen baseline recipient notification contact resolver (email, phone). |
+| `ResolveRecipientContact` | `IF-GRPC-03` | Communications Service | Permitted notification contact resolver with channel scoping (EMAIL/SMS), purpose validation, and fail-closed lifecycle checks (Refs #110). |
 | `GetPendingMerchantsSummary` | `IF-GRPC-06` | GraphQL Query API | Frozen baseline admin pending-merchant queue with deterministic pagination. |
 
 ### 2. Security & Anti-Spoofing Architecture
@@ -377,6 +377,13 @@ Enforced via `SwiftDropGrpcServerSecurityInterceptor` and `AccountsInternalServi
 - **Caller Service Authentication:** Each call requires an internal service token (`x-swiftdrop-service-token`) issued by Keycloak with audience `swiftdrop-internal`. Unauthenticated calls fail with gRPC `UNAUTHENTICATED`.
 - **Actor Delegation:** Requests acting on behalf of a human principal require verified delegation metadata (`x-swiftdrop-actor-token`, `x-swiftdrop-actor-sub`, `x-swiftdrop-actor-roles`).
 - **Strict Anti-Spoofing:** A non-admin/non-dispatcher caller (e.g. `CUSTOMER` or `COURIER`) attempting to pass an arbitrary subject string in `CheckAccountEligibility` or `GetScopedProfileSummary` is rejected with gRPC `PERMISSION_DENIED`. Cross-subject queries fail closed.
+- **Permitted Notification Contact Lookup (`IF-GRPC-03`, Refs #110):**
+  - Exposes contact lookup strictly to `COMMUNICATIONS_SERVICE` machine identity; zero human actor delegation is permitted (`DelegationRequirement.FORBIDDEN`).
+  - Strict input validation on `recipient_sub` (non-blank, bounded <= 255 chars, control character check).
+  - Purpose validation against approved notification purposes (`PARCEL_STATUS_UPDATE`, `DELIVERY_NOTIFICATION`, `TRANSACTIONAL`, `ACCOUNT_ALERT`, `NOTIFICATION`).
+  - Channel scoping (`EMAIL`, `SMS`, `SMS_MOCK`, `ANY`): `EMAIL` channel strictly suppresses phone number; `SMS` channel strictly suppresses email.
+  - Fail-closed lifecycle checks: suspended staff or unapproved merchants yield `is_eligible = false` with non-empty `rejection_reason`. Missing requested contact channel yields `status = "MISSING_CONTACT"` and `is_eligible = false`.
+  - Zero PII in logs: recipient email or phone number is never emitted into application logs.
 - **Server-Side Field Scoping:** Field visibility is strictly computed server-side:
   - `MINIMAL` scope: Only `subject`, `full_name`, `role`, `status` are populated. Email is **never** returned, even for self.
   - `CUSTOMER` scope: Email is populated **only** if the caller is the verified account owner (`sub == actorSub`) or has `ADMIN` role.
@@ -398,7 +405,7 @@ Enforced via `SwiftDropGrpcServerSecurityInterceptor` and `AccountsInternalServi
   ./mvnw clean install
   ```
 - **Automated gRPC Tests:**
-  `AccountsInternalServiceGrpcTest` executes 27 in-process unit, security, anti-spoofing, and backwards-compatibility test cases.
+  `AccountsInternalServiceGrpcTest` executes 37 in-process unit, security, channel scoping, anti-spoofing, and backwards-compatibility test cases.
   ```bash
   cd services/accounts-service
   ./mvnw test -Dtest=AccountsInternalServiceGrpcTest,AccountsGrpcServerLifecycleTest
