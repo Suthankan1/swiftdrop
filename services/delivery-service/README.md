@@ -203,3 +203,21 @@ mvn -f services/delivery-service/pom.xml verify
 - ❌ Outbox table and Kafka background publisher relay (belongs to **Issue #31**).
 - ❌ Server-Sent Events (SSE) tracking stream handler (belongs to **Issue #26**).
 - ❌ gRPC server stubs or private gRPC service implementation (belongs to **Issue #94** / **Issue #100**).
+---
+
+## 8. LATER-02 Quote-to-Booking Foundation (Issue #20)
+
+**Owner:** Sinthuha (@Sinthuha-n) (Customer booking). Java 21 / Spring Boot 4.1.1.
+
+**Production quote-to-booking is blocked and disabled.** There is no booking controller, no registered `BookingService` bean, and no production implementation of `BookingQuoteProvider` or `BookingAuthorization`. Only health is permitted by the foundation security chain (`BookingFoundationSecurity`). Do not add a permissive adapter to make the service accept bookings.
+
+Read [LATER-02 contract/audit/handoff](../../docs/contracts/LATER_02_QUOTE_BOOKING.md) for evidence, examples, compatibility conflicts, data ownership and required Pricing decisions. Existing Pricing ValidateQuote fields and public OpenAPI contracts are preserved.
+
+### Implemented Independently:
+- Existing booking request fields with Jakarta validation and authenticated `CUSTOMER` actor extraction (`BookingActor`).
+- Required adapter seams for quote authorization (`BookingAuthorization`) and existing Pricing validation results (`BookingQuoteProvider`).
+- Internal booking result `ParcelBooking` (not the incomplete public `ParcelDetailResponse`).
+- PostgreSQL transaction spanning parcel, initial history, outbox, and stored idempotent response.
+- Concurrency-safe local key replay and one booking per quote, immutable fee/provenance, safe structured failures.
+- Initial `CREATED` / version 1 only. No assignments, notifications, Kafka relay, live tracking, merchant orders, or frontend changes.
+
