@@ -173,6 +173,10 @@ class DeliveryPersistencePostgresIT {
                 expires
         );
         idempotencyRecordRepository.saveAndFlush(record1);
+        assertThat(idempotencyRecordRepository.existsByPrincipalOrTenantAndIdempotencyKey(principal, key)).isTrue();
+        assertThat(idempotencyRecordRepository.findByPrincipalOrTenantAndIdempotencyKey(principal, key))
+                .isPresent()
+                .hasValueSatisfying(r -> assertThat(r.getRecordId()).isEqualTo(record1.getRecordId()));
 
         IdempotencyRecord record2 = new IdempotencyRecord(
                 UUID.randomUUID(),
