@@ -1,5 +1,9 @@
 server:
   port: 8081
+grpc:
+  server:
+    port: ${ACCOUNTS_GRPC_PORT:9081}
+    enabled: ${ACCOUNTS_GRPC_ENABLED:true}
 spring:
   application:
     name: accounts-service

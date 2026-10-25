@@ -46,10 +46,10 @@ public class GrpcSecurityPolicy {
     }
 
     private void registerBaselinePolicies() {
-        // IF-GRPC-01: Delivery -> Accounts CheckCourierEligibility (Actor: COURIER, DISPATCHER, ADMIN)
+        // IF-GRPC-01: Delivery / GraphQL -> Accounts CheckCourierEligibility (Actor: COURIER, DISPATCHER, ADMIN)
         register(new MethodPolicy(
                 "swiftdrop.accounts.v1.AccountsInternalService/CheckCourierEligibility",
-                Set.of(SwiftDropServiceIdentity.DELIVERY_SERVICE),
+                Set.of(SwiftDropServiceIdentity.DELIVERY_SERVICE, SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
                 DelegationRequirement.REQUIRED,
                 Set.of(SwiftDropRoles.ROLE_COURIER, SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
         ));
@@ -76,6 +76,40 @@ public class GrpcSecurityPolicy {
                 Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
                 DelegationRequirement.REQUIRED,
                 Set.of(SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Accounts CheckAccountEligibility (Actor: CUSTOMER, MERCHANT, COURIER, DISPATCHER, ADMIN, #109)
+        register(new MethodPolicy(
+                "swiftdrop.accounts.v1.AccountsInternalService/CheckAccountEligibility",
+                Set.of(SwiftDropServiceIdentity.DELIVERY_SERVICE, SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_CUSTOMER, SwiftDropRoles.ROLE_MERCHANT, SwiftDropRoles.ROLE_COURIER,
+                        SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Accounts GetScopedProfileSummary (Actor: CUSTOMER, MERCHANT, COURIER, DISPATCHER, ADMIN, #109)
+        register(new MethodPolicy(
+                "swiftdrop.accounts.v1.AccountsInternalService/GetScopedProfileSummary",
+                Set.of(SwiftDropServiceIdentity.DELIVERY_SERVICE, SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_CUSTOMER, SwiftDropRoles.ROLE_MERCHANT, SwiftDropRoles.ROLE_COURIER,
+                        SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Accounts GetBatchProfileSummaries (Actor: DISPATCHER, ADMIN, #109)
+        register(new MethodPolicy(
+                "swiftdrop.accounts.v1.AccountsInternalService/GetBatchProfileSummaries",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Accounts GetAvailableCouriersSummary (Actor: DISPATCHER, ADMIN, #109, #135)
+        register(new MethodPolicy(
+                "swiftdrop.accounts.v1.AccountsInternalService/GetAvailableCouriersSummary",
+                Set.of(SwiftDropServiceIdentity.DELIVERY_SERVICE, SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
         ));
 
         // IF-GRPC-04: Delivery -> Pricing ValidateQuote (Actor: CUSTOMER, MERCHANT, ADMIN)
