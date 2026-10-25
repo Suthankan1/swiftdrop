@@ -123,6 +123,78 @@ class AccountsContractTest {
         assertThat(item.getSubmittedAt().getSeconds()).isGreaterThan(0);
     }
 
+    @Test
+    @DisplayName("CheckAccountEligibility: verifies account eligibility for customer and merchant")
+    void testCheckAccountEligibility() {
+        String sub = UUID.randomUUID().toString();
+        AccountEligibilityRequest req = AccountEligibilityRequest.newBuilder()
+                .setSubject(sub)
+                .setRequiredRole("CUSTOMER")
+                .build();
+
+        AccountEligibilityResponse resp = blockingStub.checkAccountEligibility(req);
+
+        assertThat(resp.getSubject()).isEqualTo(sub);
+        assertThat(resp.getIsEligible()).isTrue();
+        assertThat(resp.getIsActive()).isTrue();
+        assertThat(resp.getStatus()).isEqualTo("ACTIVE");
+        assertThat(resp.getRejectionReason()).isEqualTo("ELIGIBLE");
+    }
+
+    @Test
+    @DisplayName("GetScopedProfileSummary: retrieves minimal scoped summary without private credentials")
+    void testGetScopedProfileSummary() {
+        String sub = UUID.randomUUID().toString();
+        ScopedProfileSummaryRequest req = ScopedProfileSummaryRequest.newBuilder()
+                .setSubject(sub)
+                .setScope("CUSTOMER")
+                .build();
+
+        ScopedProfileSummaryResponse resp = blockingStub.getScopedProfileSummary(req);
+
+        assertThat(resp.getSubject()).isEqualTo(sub);
+        assertThat(resp.getFullName()).isEqualTo("Jane Doe");
+        assertThat(resp.getRole()).isEqualTo("CUSTOMER");
+        assertThat(resp.getStatus()).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("GetBatchProfileSummaries: returns bounded list of summaries")
+    void testGetBatchProfileSummaries() {
+        String sub1 = UUID.randomUUID().toString();
+        String sub2 = UUID.randomUUID().toString();
+        BatchProfileSummariesRequest req = BatchProfileSummariesRequest.newBuilder()
+                .addSubjects(sub1)
+                .addSubjects(sub2)
+                .setScope("STAFF")
+                .build();
+
+        BatchProfileSummariesResponse resp = blockingStub.getBatchProfileSummaries(req);
+
+        assertThat(resp.getItemsCount()).isEqualTo(2);
+        assertThat(resp.getItems(0).getSubject()).isEqualTo(sub1);
+        assertThat(resp.getItems(1).getSubject()).isEqualTo(sub2);
+    }
+
+    @Test
+    @DisplayName("GetAvailableCouriersSummary: returns paginated couriers list for dispatcher")
+    void testGetAvailableCouriersSummary() {
+        AvailableCouriersSummaryRequest req = AvailableCouriersSummaryRequest.newBuilder()
+                .setPage(0)
+                .setPageSize(20)
+                .build();
+
+        AvailableCouriersSummaryResponse resp = blockingStub.getAvailableCouriersSummary(req);
+
+        assertThat(resp.getTotalCount()).isEqualTo(1);
+        assertThat(resp.getItemsCount()).isEqualTo(1);
+        CourierSummaryItem item = resp.getItems(0);
+        assertThat(item.getCourierSub()).isNotEmpty();
+        assertThat(item.getFullName()).isEqualTo("Jane Courier");
+        assertThat(item.getIsEligible()).isTrue();
+        assertThat(item.getIsActive()).isTrue();
+    }
+
     private static class MockAccountsService extends AccountsInternalServiceGrpc.AccountsInternalServiceImplBase {
         @Override
         public void checkCourierEligibility(CourierEligibilityRequest request,
@@ -190,6 +262,70 @@ class AccountsContractTest {
                     .addItems(item)
                     .build();
 
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void checkAccountEligibility(AccountEligibilityRequest request,
+                                            StreamObserver<AccountEligibilityResponse> responseObserver) {
+            AccountEligibilityResponse response = AccountEligibilityResponse.newBuilder()
+                    .setSubject(request.getSubject())
+                    .setIsEligible(true)
+                    .setIsActive(true)
+                    .setStatus("ACTIVE")
+                    .setRejectionReason("ELIGIBLE")
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void getScopedProfileSummary(ScopedProfileSummaryRequest request,
+                                            StreamObserver<ScopedProfileSummaryResponse> responseObserver) {
+            ScopedProfileSummaryResponse response = ScopedProfileSummaryResponse.newBuilder()
+                    .setSubject(request.getSubject())
+                    .setFullName("Jane Doe")
+                    .setRole(request.getScope().isEmpty() ? "CUSTOMER" : request.getScope())
+                    .setStatus("ACTIVE")
+                    .build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void getBatchProfileSummaries(BatchProfileSummariesRequest request,
+                                             StreamObserver<BatchProfileSummariesResponse> responseObserver) {
+            BatchProfileSummariesResponse.Builder builder = BatchProfileSummariesResponse.newBuilder();
+            for (String sub : request.getSubjectsList()) {
+                builder.addItems(ScopedProfileSummaryResponse.newBuilder()
+                        .setSubject(sub)
+                        .setFullName("User " + sub)
+                        .setRole("STAFF")
+                        .setStatus("ACTIVE")
+                        .build());
+            }
+            responseObserver.onNext(builder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void getAvailableCouriersSummary(AvailableCouriersSummaryRequest request,
+                                                StreamObserver<AvailableCouriersSummaryResponse> responseObserver) {
+            CourierSummaryItem item = CourierSummaryItem.newBuilder()
+                    .setCourierSub(UUID.randomUUID().toString())
+                    .setFullName("Jane Courier")
+                    .setStaffId("STF-2026-001")
+                    .setAssignedZone("ZONE_1")
+                    .setIsEligible(true)
+                    .setIsActive(true)
+                    .build();
+            AvailableCouriersSummaryResponse response = AvailableCouriersSummaryResponse.newBuilder()
+                    .setTotalCount(1)
+                    .setPage(request.getPage())
+                    .setPageSize(request.getPageSize() > 0 ? request.getPageSize() : 20)
+                    .addItems(item)
+                    .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }
