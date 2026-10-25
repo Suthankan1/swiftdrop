@@ -93,6 +93,19 @@ jobs:
             exit 1
           fi
 
+      - name: Build and verify shared security adapter
+        run: |
+          echo "================================================================================"
+          echo "            SWIFTDROP SHARED SECURITY ADAPTER GATE                             "
+          echo "================================================================================"
+          chmod +x shared/security-adapter/mvnw
+          if (cd shared/security-adapter && ./mvnw -B clean install); then
+            echo "✓ shared/security-adapter build, verification, and tests SUCCEEDED."
+          else
+            echo "✗ shared/security-adapter build failed."
+            exit 1
+          fi
+
       - name: Discover and verify Spring Boot microservices
         run: |
           echo "================================================================================"
@@ -149,7 +162,7 @@ jobs:
         if: always()
         run: |
           mkdir -p test-reports
-          find services -type d \( -name "surefire-reports" -o -name "failsafe-reports" \) -exec cp -r {} test-reports/ \; 2>/dev/null || true
+          find services shared -type d \( -name "surefire-reports" -o -name "failsafe-reports" \) -exec cp -r {} test-reports/ \; 2>/dev/null || true
 
       - name: Upload Java test reports
         if: always()

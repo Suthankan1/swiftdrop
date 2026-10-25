@@ -13,8 +13,43 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | Spring Boot services | **API Gateway & Accounts canonical defaults aligned to SwiftDrop; independent JWT security verified** | `services/api-gateway/`: 19 tests passed; Accounts `services/accounts-service/`: 44 unit/MVC/integration tests passed (63 total); OAuth2 Resource Server independently validates SwiftDrop JWTs (`swiftdrop-api` audience), roles, and profile persistence |
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
-| GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
+| GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
+
+## Issue #100 Shared Service JWT & Authenticated gRPC Actor Delegation Adapters — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Backend Lead); branch `feat/n10-p02-shared-jwt-grpc-delegation`, targeting `test`.  
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Harithkeshan (@Harithkeshan)** (Functional Reviewer).
+
+Delivered reusable security adapter module (`shared/security-adapter`) extending independent resource-server verification and production-grade internal gRPC authentication with cryptographic actor delegation:
+- **Reusable OAuth2 Resource Server Adapter (`com.swiftdrop.security.jwt`):**
+  - Configures Spring Security 6 resource server (`SwiftDropSecurityConfiguration`) with statelessness, CSRF disabled, default-deny boundary (`anyRequest().denyAll()`), and RFC 7807 Problem Detail handlers for 401 Unauthorized and 403 Forbidden.
+  - Reusable `AudienceValidator` (`swiftdrop-api`), `SubjectValidator` (opaque non-blank sub), and `SwiftDropJwtDecoderFactory`.
+  - Strict extraction of approved SwiftDrop business roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`) via `KeycloakRoleExtractor`. Default and internal Keycloak roles (e.g. `offline_access`, `uma_authorization`) are explicitly ignored.
+  - Exposes `ServiceSecurityCustomizer` functional hook allowing Delivery, Pricing, Communications, and GraphQL Query API to register domain-specific endpoint access rules without duplicating security boilerplate.
+- **Independent Resource Server Enforcement & Direct Service Access Defense:**
+  - Directly addressed requirement 5.B: Verified that requests to service boundaries are evaluated independently; bypass attempts with forged headers (`X-Forwarded-For`, `X-Forwarded-Host`, `X-User-Sub`) without a valid Bearer token fail closed with HTTP 401 Unauthorized (`DirectServiceSecurityTest`).
+- **Cryptographic Internal gRPC Service Authentication (`com.swiftdrop.security.service`):**
+  - Strongly typed `SwiftDropServiceIdentity` for registered microservices (`DELIVERY_SERVICE`, `PRICING_SERVICE`, `ACCOUNTS_SERVICE`, `COMMUNICATIONS_SERVICE`, `GRAPHQL_QUERY_SERVICE`, `API_GATEWAY`).
+  - Implemented `JwtServiceTokenValidator` validating `x-swiftdrop-service-token` signatures, issuer, internal audience (`swiftdrop-internal`), and expiration.
+  - Missing, expired, forged, or unapproved service callers fail closed with gRPC `Status.UNAUTHENTICATED`.
+- **Verified Actor Delegation & Spoofing Defense (`com.swiftdrop.security.grpc`):**
+  - Authoritative `GrpcSecurityPolicy` mapping every internal RPC to allowed calling services, delegation requirement (`REQUIRED`, `FORBIDDEN`, `OPTIONAL`), and required actor roles per `docs/contracts/SERVICE_INTERFACE_MATRIX.md`.
+  - `ActorDelegationValidator` strictly denies blind trust of caller-forwarded strings: requires cryptographic delegation proof via verified actor JWT (`x-swiftdrop-actor-token`) or signed delegation claims in the service token.
+  - Forged actor subjects, forged role elevation (e.g. claiming `ADMIN` with `COURIER` token), unverified forwarding headers, and cross-tenant violations are rejected with gRPC `Status.PERMISSION_DENIED`.
+  - Service-only RPCs (e.g. `ValidateMerchantKeyDigest`, `ResolveRecipientContact`) reject synthetic human impersonation; background jobs execute safely without synthetic identities.
+- **gRPC Server & Client Interceptors (`SwiftDropGrpcServerSecurityInterceptor`, `SwiftDropGrpcClientInterceptor`):**
+  - Server interceptor binds validated service identity and delegated actor to thread-isolated `SwiftDropGrpcContext` (`io.grpc.Context`), preventing static cross-talk.
+  - Client interceptor injects service token, propagates authenticated actor context from `SecurityContextHolder`, attaches correlation ID, and enforces default 2000ms deadline (`DEFAULT_DEADLINE_MS`) while preserving shorter upstream deadlines.
+- **CI & Build Integration:** Added `shared/security-adapter` gate to `.github/workflows/ci.yml`.
+- **Validation Evidence:**
+  - Automated Java test suite: **38 tests PASS** (0 failures, 0 skips, 0 errors):
+    - `JwtValidationTest` (11 tests PASS): Valid token, missing token, malformed token, invalid signature, untrusted issuer, wrong audience, expired, not yet valid, missing role, unapproved role filtering, forged forwarding headers rejection.
+    - `GrpcServiceAuthenticationTest` (7 tests PASS): Valid signed service identity, missing service token, forged service token, expired service token, wrong audience, unauthorized caller service, metadata forwarding without service token.
+    - `GrpcDelegationSpoofingTest` (10 tests PASS): Valid delegation, missing actor when required, unverified actor forwarding rejected, forged actor subject, forged role elevation rejected, non-admin denied admin RPC, admin allowed admin RPC, service-only rejects synthetic actor, background job without synthetic actor, signed delegation claims.
+    - `GrpcDeadlineAndCorrelationTest` (6 tests PASS): Default 2000ms deadline, shorter upstream deadline preservation, timeout fail-closed (`DEADLINE_EXCEEDED`), correlation ID propagation, malformed correlation sanitization, concurrent thread isolation.
+    - `DirectServiceSecurityTest` (4 tests PASS): Direct service access without token fails 401, forged gateway headers fail 401, valid token succeeds independently, insufficient role fails 403.
+  - Preserved existing passing suites: `shared/proto-contracts` (14/14 PASS), `services/api-gateway` (19/19 PASS), `services/accounts-service` (141/141 PASS), `services/communications-service` (19/19 PASS).
 
 ## Issue #92 Freeze Versioned Protobuf Contracts & Reproducible Java Generation — 2026-10-25
 
