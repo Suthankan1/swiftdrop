@@ -213,11 +213,10 @@ class DeliveryPackageContractsTest {
 
         assertThat(resp.assignmentId()).isEqualTo(assignmentId);
         assertThat(resp.parcelId()).isEqualTo(parcelId);
-        assertThat(resp.courierSub()).isEqualTo(courierSub);
+        assertThat(resp.courierSub()).isEqualTo("courier-sub-123");
         assertThat(resp.active()).isTrue();
         assertThat(resp.assignedAt()).isEqualTo(now);
         assertThat(resp.assignedBy()).isEqualTo("dispatcher-sub-999");
         assertThat(resp.newParcelVersion()).isEqualTo(2L);
-    }
     }
 }
