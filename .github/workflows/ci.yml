@@ -163,6 +163,12 @@ jobs:
       - name: Install test dependencies
         run: pip install pytest
 
+      - name: Setup Identity test environment template
+        run: |
+          if [ ! -f platform/identity/.env ]; then
+            sed 's/KC_BOOTSTRAP_ADMIN_PASSWORD=/KC_BOOTSTRAP_ADMIN_PASSWORD=ci_test_password/' platform/identity/.env.example > platform/identity/.env
+          fi
+
       - name: Run Identity unit & configuration suite
         run: python3 -m pytest platform/identity/tests -v --junitxml=identity-test-results.xml
 
