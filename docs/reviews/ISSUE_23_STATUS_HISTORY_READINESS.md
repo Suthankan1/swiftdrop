@@ -38,7 +38,7 @@ An audit of GitHub issues, open pull requests, and the current codebase on `orig
 
 | Prerequisite Issue | Title & Scope | GitHub State | Codebase Implementation Evidence | Gate Outcome |
 |---|---|---|---|---|
-| **#126 (N10-B24)** | Create Delivery App, Owned Migrations & Package Contracts | **OPEN** | Assigned to Sinthuha (@Sinthuha-n); scheduled Oct 24 – Oct 27, 2026. `services/delivery-service/` contains only `README.md`. No Spring Boot application, `pom.xml`, datasource, or Flyway migrations exist. | **BLOCKED (APP FOUNDATION ABSENT)** |
+| **#126 (N10-B24)** | Create Delivery App, Owned Migrations & Package Contracts | **DELIVERED** | Delivery Spring Boot 4.1.1 service, Flyway V1 schema (`parcels`, `status_history`, `idempotency_records`), and bounded feature package contracts delivered in PR branch `feat/n10-b24-delivery-foundation`. | **PASS (APP FOUNDATION ESTABLISHED)** |
 | **#20 (LATER-05)** | Delivery Booking & Canonical Parcel Provider | **OPEN** | Assigned to Sinthuha (@Sinthuha-n); scheduled Oct 27 – Oct 30, 2026. No `Parcel` JPA entity, repository, or booking persistence exists. | **BLOCKED (PARCEL AGGREGATE ABSENT)** |
 | **#24 (LATER-08)** | Single-Active-Courier Assignment Command | **OPEN** | Assigned to HarithKeshan (@Harithkeshan); scheduled Nov 1 – Nov 2, 2026. No `DeliveryAssignment` entity or assignment validation provider exists. | **BLOCKED (ASSIGNMENT MODEL ABSENT)** |
 | **#88 (N10-P01)** | Runtime Integration Contract Freeze | **CLOSED** | OpenAPI contracts (`contracts/rest/openapi-delivery.yaml`) and runtime registers merged in PR #101. | **PASS (CONTRACT FROZEN)** |

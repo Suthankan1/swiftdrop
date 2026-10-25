@@ -10,7 +10,7 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | GitHub repository | **Official rename complete (`Suthankan1/swiftdrop`); Git remotes and documentation updated (Phase 3B)** | Merged PR #65 into `test`, release PR #66 into `main`; repository renamed; remote verified at `https://github.com/Suthankan1/swiftdrop.git` |
-| Spring Boot services | **API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106)** | `services/api-gateway/`: 48 tests passed (0 failures); edge Keycloak JWT validation, Keycloak role gates, merchant machine `X-API-Key` authentication & authorization, case-insensitive header sanitization, bounded in-memory rate limiting, payload size enforcement, and SSE connection concurrency policy verified |
+| Spring Boot services | **API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Delivery Foundation Verified (Issue #126)** | `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, Keycloak role gates, merchant machine `X-API-Key` authentication & authorization, case-insensitive header sanitization, bounded in-memory rate limiting, payload size enforcement, and SSE connection concurrency policy verified |
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
 | GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
@@ -58,6 +58,30 @@ Delivered comprehensive business-edge authentication, role-based authorization h
     - `ApiGatewayApplicationTests`: 1 test PASS
   - Preserved shared security adapter passing suite: `shared/security-adapter` (38/38 PASS).
 
+## Issue #126 Delivery Service Foundation & Bounded Context Packages — 2026-10-25
+
+Primary Implementer: **Sinthuha (@Sinthuha-n)** / **Gajanthan (@Gajanthan23)** (Delivery / Platform Lead); branch `feat/n10-b24-delivery-foundation`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Delivery domain & courier status transition steward), **Harithkeshan (@Harithkeshan)** (Dispatcher courier assignment steward), **Suthankan1 (@Suthankan1)** (Platform / integration coordinator).
+
+Delivered the Delivery Operations Spring Boot microservice foundation, independently owned base schema, and bounded package contracts:
+- **Application Foundation:** Scaffolded Delivery Service in `services/delivery-service/` using pinned Java 21 LTS and Spring Boot 4.1.1 on port 8083. Package root `com.swiftdrop.deliveryservice`.
+- **Independent Database & Schema Ownership (`delivery_db`):** Flyway V1 migration `V1__create_delivery_schema.sql` establishes canonical parcel persistence (`parcels`), immutable chronological status transition audit log (`status_history`), and mutation de-duplication (`idempotency_records`). Zero cross-service database access, shared tables, or foreign keys to Accounts, Keycloak, or Pricing.
+- **Base Opaque Schema Boundaries:** External entities are stored strictly as opaque scalar values (`sender_sub VARCHAR(64)`, `merchant_id UUID`, `quote_id UUID`, `proof_id UUID`, `actor_sub VARCHAR(64)`). Fee snapshotting preserved (`amount_minor_units BIGINT`, `currency CHAR(3)`, `rate_version VARCHAR(32)`).
+- **Bounded Feature Package Contracts:** Established clear package responsibilities and interfaces across team members to prevent competing scaffolds:
+  - `core`: `Parcel` aggregate root entity, `ParcelStatus` enum, `ParcelRepository`.
+  - `status`: `StatusHistory` entity, `StatusHistoryRepository`, `ParcelLifecycleTransitionContract` defining forward transition permissions and terminal state immutability for Issue #23.
+  - `idempotency`: `IdempotencyRecord` entity, `IdempotencyRecordRepository`, `IdempotencyServiceContract`.
+  - `booking`: `BookingContract`, `BookParcelCommand`, `BookingResult` for Issue #20.
+  - `assignment`: `CourierAssignmentContract` for Issue #24.
+  - `proof`: `ProofMetadataContract` for Issue #29.
+  - `query`: `ParcelProjection`, `ParcelQueryService` for Issue #94 and gRPC `GetParcelInternal`.
+- **Fail-Closed Configuration & Health:** Requires `DELIVERY_DB_URL`, `DELIVERY_DB_USERNAME`, `DELIVERY_DB_PASSWORD`. Startup fails immediately if database configuration is missing or invalid. Exposes `/actuator/health` on port 8083.
+- **Automated Validation Evidence:**
+  - Delivery Service automated unit and slice test suites: **18 tests PASS** (0 failures, 0 skips).
+  - Tests verify clean Flyway V1 script discovery and constraints, zero cross-service relationships, entity lifecycles and defaults, state machine forward/backward transitions, terminal state immutability, mandatory failure reason/proof requirements, and missing datasource startup failure.
+  - Testcontainers PostgreSQL IT harness (`DeliveryPersistencePostgresIT`) created for full failsafe verification on real PostgreSQL 16 Alpine.
+  - Strict scope bounds preserved: No delivery booking business workflows, quote calculations, courier assignments, proof uploads, Kafka publishers, or gRPC stubs claimed (cleanly handed off to Issues #20, #23, #24, #29, #31, #94).
+
 ## Issue #100 Shared Service JWT & Authenticated gRPC Actor Delegation Adapters — 2026-10-25
 
 Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Backend Lead); branch `feat/n10-p02-shared-jwt-grpc-delegation`, targeting `test`.  
@@ -93,7 +117,9 @@ Delivered reusable security adapter module (`shared/security-adapter`) extending
     - `DirectServiceSecurityTest` (4 tests PASS): Direct service access without token fails 401, forged gateway headers fail 401, valid token succeeds independently, insufficient role fails 403.
   - Preserved existing passing suites: `shared/proto-contracts` (14/14 PASS), `services/api-gateway` (19/19 PASS), `services/accounts-service` (141/141 PASS), `services/communications-service` (19/19 PASS).
 
+
 ## Issue #92 Freeze Versioned Protobuf Contracts & Reproducible Java Generation — 2026-10-25
+
 
 Primary Implementer: **Gajanthan (@Gajanthan23)** (Platform / Protobuf Lead); branch `feat/n10-b01-protobuf-contracts`, targeting `test`.
 Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts/Platform steward), **Harithkeshan (@Harithkeshan)** (Pricing domain steward), **Vibhushan (@Vibhushan-2003)** (Delivery domain steward), **Thuvarahan (@thuvarahan-t)** (Communications domain steward).
