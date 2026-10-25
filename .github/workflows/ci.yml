@@ -208,3 +208,76 @@ jobs:
           name: identity-test-results
           path: identity-test-results.xml
           retention-days: 7
+
+  terraform-policy:
+    name: Terraform Static Quality & Deny-by-Default Policy Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Install policy test dependencies
+        run: pip install pyyaml pytest
+
+      - name: Setup Terraform 1.16.3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.16.3
+          terraform_wrapper: false
+
+      - name: Verify mandatory Terraform foundation and policy files
+        run: |
+          echo "================================================================================"
+          echo "         SWIFTDROP MANDATORY TERRAFORM FOUNDATION INTEGRITY CHECK               "
+          echo "================================================================================"
+          test -d platform/terraform || { echo "ERROR: platform/terraform directory missing!"; exit 1; }
+          test -f platform/terraform/versions.tf || { echo "ERROR: platform/terraform/versions.tf missing!"; exit 1; }
+          test -f platform/terraform/.terraform.lock.hcl || { echo "ERROR: platform/terraform/.terraform.lock.hcl missing!"; exit 1; }
+          test -f platform/security/azure-allowlist-policy.yaml || { echo "ERROR: platform/security/azure-allowlist-policy.yaml missing!"; exit 1; }
+          echo "✓ All mandatory Terraform foundation and policy files present."
+
+      - name: Run Terraform formatting check
+        run: terraform -chdir=platform/terraform fmt -check -recursive
+
+      - name: Initialize Terraform with backend disabled and readonly lockfile
+        run: terraform -chdir=platform/terraform init -backend=false -input=false -lockfile=readonly
+
+      - name: Run Terraform validation
+        run: terraform -chdir=platform/terraform validate -no-color
+
+      - name: Generate and validate baseline root module plan
+        run: |
+          echo "================================================================================"
+          echo "           SWIFTDROP BASELINE ROOT MODULE PLAN-ONLY VALIDATION                  "
+          echo "================================================================================"
+          terraform -chdir=platform/terraform plan -out=tfplan -input=false
+          terraform -chdir=platform/terraform show -json tfplan > platform/terraform/root-module-plan.json
+          rm -f platform/terraform/tfplan
+          python3 platform/security/validate_terraform_policy.py \
+            --policy platform/security/azure-allowlist-policy.yaml \
+            --plan platform/terraform/root-module-plan.json
+          rm -f platform/terraform/root-module-plan.json
+          echo "✓ Baseline root module plan contains 0 cloud resources and complies with strict $0 policy."
+
+      - name: Run Terraform policy & synthetic fixture test suite
+        run: python3 -m pytest tests/terraform-policy -v --junitxml=terraform-policy-results.xml
+
+      - name: Verify unittest discovery parity
+        run: python3 -m unittest discover -s tests/terraform-policy -p "test_*.py" -v
+
+      - name: Upload Terraform policy test results
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: terraform-policy-results
+          path: terraform-policy-results.xml
+          retention-days: 7
