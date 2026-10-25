@@ -243,7 +243,9 @@ jobs:
           test -f platform/terraform/versions.tf || { echo "ERROR: platform/terraform/versions.tf missing!"; exit 1; }
           test -f platform/terraform/.terraform.lock.hcl || { echo "ERROR: platform/terraform/.terraform.lock.hcl missing!"; exit 1; }
           test -f platform/security/azure-allowlist-policy.yaml || { echo "ERROR: platform/security/azure-allowlist-policy.yaml missing!"; exit 1; }
-          echo "✓ All mandatory Terraform foundation and policy files present."
+          test -f platform/security/github-oidc-trust-policy.yaml || { echo "ERROR: platform/security/github-oidc-trust-policy.yaml missing!"; exit 1; }
+          test -f docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md || { echo "ERROR: docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md missing!"; exit 1; }
+          echo "✓ All mandatory Terraform foundation, state, and policy files present."
 
       - name: Run Terraform formatting check
         run: terraform -chdir=platform/terraform fmt -check -recursive
