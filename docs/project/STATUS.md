@@ -10,11 +10,53 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | GitHub repository | **Official rename complete (`Suthankan1/swiftdrop`); Git remotes and documentation updated (Phase 3B)** | Merged PR #65 into `test`, release PR #66 into `main`; repository renamed; remote verified at `https://github.com/Suthankan1/swiftdrop.git` |
-| Spring Boot services | **API Gateway & Accounts canonical defaults aligned to SwiftDrop; independent JWT security verified** | `services/api-gateway/`: 19 tests passed; Accounts `services/accounts-service/`: 44 unit/MVC/integration tests passed (63 total); OAuth2 Resource Server independently validates SwiftDrop JWTs (`swiftdrop-api` audience), roles, and profile persistence |
+| Spring Boot services | **API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Delivery Foundation Verified (Issue #126)** | `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, Keycloak role gates, merchant machine `X-API-Key` authentication & authorization, case-insensitive header sanitization, bounded in-memory rate limiting, payload size enforcement, and SSE connection concurrency policy verified |
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
 | GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
+
+## Issue #106 Gateway Business-Edge Authentication & Abuse Policy — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Platform); branch `feat/n10-p03-gateway-edge-security`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Harithkeshan (@Harithkeshan)** (Functional Reviewer).
+
+Delivered comprehensive business-edge authentication, role-based authorization hooks, merchant machine credential validation, case-insensitive identity and gRPC internal delegation header sanitization, and bounded rate-limiting / payload / SSE connection abuse policies for Spring Cloud Gateway WebFlux:
+- **Reactive Keycloak JWT Edge Security & Role Policy Hooks (`com.swiftdrop.apigateway.security`):**
+  - Preserved verified Keycloak JWT signature, issuer URI (`/realms/swiftdrop`), required audience (`swiftdrop-api`), and lifetime verification with RFC 7807 Problem Detail responses.
+  - Implemented `KeycloakReactiveJwtAuthenticationConverter` mapping `roles` and `realm_access.roles` claims to Spring Security `ROLE_*` authorities (`ROLE_CUSTOMER`, `ROLE_MERCHANT`, `ROLE_COURIER`, `ROLE_DISPATCHER`, `ROLE_ADMIN`), filtering internal Keycloak roles.
+  - Configured explicit pathMatcher rules across approved route families (Customer booking, Courier status/proof, Dispatcher assignments, Admin approvals, GraphQL composite queries, authenticated user profile) backed by a fail-closed `.anyExchange().denyAll()` boundary.
+- **Merchant Machine Credential Validation Boundary (`com.swiftdrop.apigateway.security.merchant`):**
+  - Implemented `MerchantApiKeyAuthenticationFilter` attached at `SecurityWebFiltersOrder.AUTHENTICATION`, scoped strictly to `POST /api/v1/merchant/parcels`.
+  - Distinguishes Bearer JWT authentication from machine `X-API-Key` authentication without introducing universal bypasses.
+  - `DefaultMerchantApiKeyValidator` enforces syntax regex `^swd_live_[0-9a-zA-Z]{32}$`, constant-time candidate lookup (`MessageDigest.isEqual`), scope verification (`parcels:create`), merchant approval status (`APPROVED` vs `PENDING`/`SUSPENDED`), expiration, and revoked checks. Raw API keys are masked in logs.
+- **Hardened Client Identity & Internal gRPC Header Sanitization (`com.swiftdrop.apigateway.filter`):**
+  - `StripUntrustedHeadersGatewayFilter` case-insensitively strips caller-supplied identity headers (`X-User-Id`, `X-Roles`, `X-Tenant-Id`, `X-Keycloak-Sub`, `X-User-Email`) and all Issue #100 internal gRPC delegation headers (`x-swiftdrop-service-token`, `x-swiftdrop-actor-*`, `x-swiftdrop-correlation-id`).
+  - Strictly preserves valid `Authorization: Bearer <token>` and `Idempotency-Key` headers for downstream independent validation.
+- **Bounded In-Memory Abuse & Rate-Limiting Policy (`com.swiftdrop.apigateway.filter.ratelimit`):**
+  - Implemented `InMemoryRateLimiter` using token-bucket algorithm with bounded cardinality (max 10,000 tracked keys) and idle bucket eviction to prevent memory exhaustion from randomized caller keys.
+  - `RateLimitingGatewayFilter` enforces quotas:
+    - Public IP rate limit: 60 req/min (burst capacity 10)
+    - Verified merchant identity rate limit: 120 req/min (burst capacity 20)
+    - Unauthenticated probe limit: 10 req/min (burst capacity 5)
+  - Emits RFC 7807 Problem Detail on HTTP 429 `Too Many Requests` with standard `Retry-After` header.
+- **Payload Size Enforcement (`PayloadSizeLimitGatewayFilter`):**
+  - Enforces `Content-Length` limits: 64 KB for quotes calculation (`/api/v1/quotes`), 5 MB for courier proof uploads (`/api/v1/parcels/*/proof`), and 256 KB for standard parcel commands.
+  - Rejects oversized requests with HTTP 413 `Payload Too Large` Problem Detail before forwarding downstream.
+- **SSE Connection Policy (`SseConnectionPolicyGatewayFilter`):**
+  - Enforces connection concurrency caps: max 5 concurrent streams for public tracking SSE (`/api/v1/tracking/events`), max 10 concurrent streams for authenticated parcel SSE.
+  - Zero response body buffering; connection counters release upon disconnect (`.doFinally()`).
+- **Downstream Route Integration Handoff:**
+  - Published comprehensive handoff document `docs/handoff/ISSUE_127_GATEWAY_ROUTE_INTEGRATION.md` for @Gajanthan23 (Issue #127).
+- **Validation Evidence:**
+  - Automated Java test suite: **48 tests PASS** (0 failures, 0 skips, 0 errors):
+    - `GatewayBusinessEdgeSecurityTest`: 21 tests PASS
+    - `GatewayAbuseAndSsePolicyTest`: 8 tests PASS
+    - `ApiGatewaySecurityAndRoutingTest`: 12 tests PASS
+    - `SwiftDropTargetContractGatewayTest`: 6 tests PASS
+    - `ApiGatewayDownstreamUnavailableTest`: 1 test PASS
+    - `ApiGatewayApplicationTests`: 1 test PASS
+  - Preserved shared security adapter passing suite: `shared/security-adapter` (38/38 PASS).
 
 ## Issue #126 Delivery Service Foundation & Bounded Context Packages — 2026-10-25
 

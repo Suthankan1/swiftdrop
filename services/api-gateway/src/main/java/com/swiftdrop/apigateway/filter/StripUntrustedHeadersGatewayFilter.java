@@ -8,29 +8,55 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 
 /**
- * Strips client-supplied identity claims so downstream services cannot be tricked by spoofed headers.
- * The original Authorization bearer token is strictly preserved for downstream verification.
+ * Strips client-supplied identity claims and internal service authentication headers
+ * so downstream services cannot be tricked by spoofed or forged headers.
+ *
+ * In accordance with HTTP semantics, header sanitization is strictly case-insensitive
+ * and cleanses all duplicate header instances.
+ *
+ * Authentic client credentials (e.g. Authorization: Bearer <token>) and approved merchant
+ * API keys (X-API-Key) are strictly preserved for downstream verification.
  */
 @Component
 public class StripUntrustedHeadersGatewayFilter implements GlobalFilter, Ordered {
 
-    private static final List<String> FORBIDDEN_HEADERS = List.of(
-            "X-User-Id", "x-user-id",
-            "X-Roles", "x-roles",
-            "X-Tenant-Id", "x-tenant-id",
-            "X-Keycloak-Sub", "x-keycloak-sub",
-            "X-User-Email", "x-user-email"
+    private static final Set<String> FORBIDDEN_HEADERS_LOWER = Set.of(
+            // User and role identity claims
+            "x-user-id",
+            "x-roles",
+            "x-tenant-id",
+            "x-keycloak-sub",
+            "x-user-email",
+            "x-user-sub",
+            "x-merchant-id",
+            "x-courier-id",
+            "x-actor-id",
+            "x-forwarded-user",
+            "x-forwarded-roles",
+            "x-forwarded-groups",
+
+            // Internal gRPC service authentication & actor delegation context (Issue #100 / PR #188)
+            "x-swiftdrop-service-token",
+            "x-swiftdrop-actor-token",
+            "x-swiftdrop-actor-sub",
+            "x-swiftdrop-actor-roles",
+            "x-swiftdrop-correlation-id"
     );
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest().mutate()
                 .headers(headers -> {
-                    for (String header : FORBIDDEN_HEADERS) {
-                        headers.remove(header);
+                    Set<String> headerNames = new HashSet<>(headers.headerNames());
+                    for (String headerName : headerNames) {
+                        if (headerName != null && FORBIDDEN_HEADERS_LOWER.contains(headerName.toLowerCase(Locale.ROOT))) {
+                            headers.remove(headerName);
+                        }
                     }
                 })
                 .build();
