@@ -147,10 +147,17 @@ export class AuthSession {
     } catch { this.publish(anonymous, 'provider-unavailable') }
     finally { this.clearCredentials() }
   }
-  /** Restricted to the approved idempotent profile read; never replay arbitrary commands. */
+  /** Restricted to approved idempotent profile reads; never replay arbitrary commands. */
   profileFetch: typeof fetch = async (input, init) => {
-    const profileUrl = `${(import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080').replace(/\/$/, '')}/api/v1/users/me`
-    if (String(input) !== profileUrl || (init?.method ?? 'GET') !== 'GET') throw new Error('Unsupported profile request')
+    const gatewayUrl = (import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080').replace(/\/$/, '')
+    const allowedUrls = new Set([
+      `${gatewayUrl}/api/v1/users/me`,
+      `${gatewayUrl}/api/v1/staff/me`,
+    ])
+    const requestUrl = String(input)
+    if (!allowedUrls.has(requestUrl) || (init?.method ?? 'GET') !== 'GET') {
+      throw new Error('Unsupported profile request')
+    }
     const generation = this.generation
     const response = await fetch(input, init)
     if (generation !== this.generation || init?.signal?.aborted) throw new Error('Session changed')

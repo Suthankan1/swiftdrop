@@ -1,8 +1,10 @@
 import { useAuth } from '../../../auth/context'
-import { StaffProfileUnavailable } from '../../staff/components/StaffProfileUnavailable'
+import { StaffProfile } from '../../staff/components/StaffProfile'
+import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 
 export function AdminPage() {
   const auth = useAuth()
+  const { state, query, refetch } = useStaffProfile('ADMIN')
 
   return (
     <div className="page-container staff-page admin-page">
@@ -14,7 +16,7 @@ export function AdminPage() {
         </p>
       </header>
       <div className="profile-grid">
-        <StaffProfileUnavailable />
+        <StaffProfile state={state} onRetry={() => { void refetch() }} />
         <aside className="card staff-note admin-policy" aria-labelledby="admin-policy-heading">
           <h2 className="section-heading" id="admin-policy-heading">Access with accountability</h2>
           <p className="muted">
@@ -27,6 +29,15 @@ export function AdminPage() {
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out
           </button>
+          {query.isError && (
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={() => { void refetch() }}
+            >
+              Retry profile
+            </button>
+          )}
         </aside>
       </div>
     </div>
