@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package swiftdrop.delivery.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.swiftdrop.delivery.v1";
+option java_outer_classname = "DeliveryProto";
+
+// Internal private gRPC service for Delivery Operations microservice.
+// Used by GraphQL Query API for composite dashboard projections and internal service checks.
+service DeliveryInternalService {
+  // Queries parcel aggregate for internal services and GraphQL resolvers (IF-GRPC-05).
+  rpc GetParcelInternal (GetParcelInternalRequest) returns (GetParcelInternalResponse);
+
+  // Queries active workload count for a specific courier.
+  rpc GetCourierWorkload (CourierWorkloadRequest) returns (CourierWorkloadResponse);
+}
+
+// Request to fetch internal parcel details.
+message GetParcelInternalRequest {
+  string parcel_id = 1; // UUID string
+}
+
+// Internal projection of parcel state for cross-service queries and GraphQL aggregations.
+message GetParcelInternalResponse {
+  string parcel_id = 1; // UUID string
+  string tracking_number = 2; // e.g. "SWD-2026-000001"
+  string current_status = 3; // "CREATED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED"
+  int64 version = 4; // Optimistic locking aggregate version
+  int64 amount_minor_units = 5; // Price charged in minor units
+  string currency = 6; // ISO 4217 currency code (e.g. "LKR")
+  string created_by_sub = 7; // Creator Keycloak subject UUID
+  string merchant_id = 8; // Associated merchant UUID or empty if consumer parcel
+  string active_courier_sub = 9; // Assigned courier Keycloak subject UUID or empty
+  google.protobuf.Timestamp created_at = 10; // UTC creation timestamp
+}
+
+// Request to query courier active assignment count.
+message CourierWorkloadRequest {
+  string courier_sub = 1; // Keycloak subject string
+}
+
+// Workload response containing active parcel assignment count.
+message CourierWorkloadResponse {
+  string courier_sub = 1;
+  int32 active_assignments_count = 2; // Current number of parcels in active assignment (capacity <= 5)
+}

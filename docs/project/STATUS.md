@@ -16,7 +16,31 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
 
-When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
+## Issue #92 Freeze Versioned Protobuf Contracts & Reproducible Java Generation — 2026-10-25
+
+Primary Implementer: **Gajanthan (@Gajanthan23)** (Platform / Protobuf Lead); branch `feat/n10-b01-protobuf-contracts`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts/Platform steward), **Harithkeshan (@Harithkeshan)** (Pricing domain steward), **Vibhushan (@Vibhushan-2003)** (Delivery domain steward), **Thuvarahan (@thuvarahan-t)** (Communications domain steward).
+
+Delivered versioned Protocol Buffer contracts and reproducible Java generation tooling:
+- **Canonical Contracts Committed:** Created versioned Protocol Buffer v3 definitions under `contracts/grpc/swiftdrop/`:
+  - `accounts/v1/accounts.proto`: `AccountsInternalService` (`CheckCourierEligibility`, `ValidateMerchantKeyDigest`, `ResolveRecipientContact`, `GetPendingMerchantsSummary`).
+  - `pricing/v1/pricing.proto`: `PricingInternalService` (`ValidateQuote`).
+  - `delivery/v1/delivery.proto`: `DeliveryInternalService` (`GetParcelInternal`, `GetCourierWorkload`).
+  - Invariants preserved: `proto3`, `java_multiple_files = true`, `com.swiftdrop.<service>.v1` package, UTC timestamps (`google.protobuf.Timestamp`), integer minor units for monetary quantities (`int64`), and stable permanent field tags.
+- **Admin Pending-Merchant Summary RPC (#121/#139 Gap Closure):** Defined `GetPendingMerchantsSummary` on `AccountsInternalService` with bounded pagination (page, size 1-50), status filter ("PENDING"), and total pending count for GraphQL `adminDashboard` query projection.
+- **Java Generation Module (`shared/proto-contracts`):** Pinned `protobuf-maven-plugin:0.6.1`, `protoc:3.25.5`, `io.grpc:protoc-gen-grpc-java:1.68.1`, `io.grpc:grpc-bom:1.68.1`, and Java 21 LTS (`com.swiftdrop:proto-contracts:0.0.1-SNAPSHOT`).
+- **Zero Shared Entity JAR Invariant:** Packages wire contracts and stubs only; zero database entities or shared models.
+- **Security & Actor Delegation Helper:** Implemented `SwiftDropGrpcMetadata` providing constants for `x-swiftdrop-service-token`, `x-swiftdrop-actor-sub`, `x-swiftdrop-actor-roles`, `x-swiftdrop-correlation-id`, and `DEFAULT_DEADLINE_MS` (2000ms bounded timeout).
+- **Validation Evidence:**
+  - Automated Java test suite: **14 tests PASS** across 5 test classes (0 failures, 0 skips):
+    - `AccountsContractTest`: Courier eligibility, merchant key validation, contact resolution, pending merchant summary.
+    - `PricingContractTest`: Quote validation, minor units, mismatch detection.
+    - `DeliveryContractTest`: Parcel internal projection, courier workload count.
+    - `SecurityMetadataAndDeadlineTest`: Service token authentication rejection, metadata propagation, 50ms deadline timeout (`DEADLINE_EXCEEDED`).
+    - `ContractDescriptorAndSerializationTest`: Descriptor validation, binary serialization roundtrip, JSON parser/printer.
+  - Python contract validation gate: **PASS** across all 4 gates (OpenAPI, GraphQL, Kafka, Protobuf).
+  - Python contract unit test suite (`test_protobuf_contracts.py`): **4 tests PASS**.
+  - Bit-for-bit reproducibility: Clean builds compared across two independent clean runs; 36 generated files verified with **zero SHA-256 hash mismatches**.
 
 ## Issue #96 Communications Service Foundation & Durable Job Schema — 2026-10-24
 

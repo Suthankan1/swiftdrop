@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package swiftdrop.pricing.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.swiftdrop.pricing.v1";
+option java_outer_classname = "PricingProto";
+
+// Internal private gRPC service for Pricing & Zones microservice.
+// Used by Delivery Operations during parcel booking to verify price quotes.
+service PricingInternalService {
+  // Validates that a quote exists, is not expired, and that fee matches (IF-GRPC-04).
+  rpc ValidateQuote (ValidateQuoteRequest) returns (ValidateQuoteResponse);
+}
+
+// Request to validate an existing price quote before confirming parcel booking.
+message ValidateQuoteRequest {
+  string quote_id = 1; // UUID string
+  string expected_rate_version = 2; // e.g. "RATE-2026-V1"
+  int64 expected_amount_minor_units = 3; // Monetary amount in integer minor units (cents)
+  string expected_currency = 4; // ISO 4217 three-letter currency code (e.g. "LKR")
+}
+
+// Response detailing quote validity and verified snapshot values.
+message ValidateQuoteResponse {
+  bool is_valid = 1;
+  string quote_id = 2; // UUID string
+  string rate_version = 3;
+  int64 verified_amount_minor_units = 4; // Verified amount in integer minor units
+  string currency = 5; // ISO 4217 currency code
+  google.protobuf.Timestamp expires_at = 6; // ISO UTC expiry timestamp
+  string validation_code = 7; // "VALID", "QUOTE_EXPIRED", "RATE_SUPERSEDED", "AMOUNT_MISMATCH", "QUOTE_NOT_FOUND"
+}
