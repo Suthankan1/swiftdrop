@@ -283,3 +283,64 @@ jobs:
           name: terraform-policy-results
           path: terraform-policy-results.xml
           retention-days: 7
+
+  kubernetes-cluster-policy:
+    name: Kubernetes Cluster Static Quality & Safety Policy Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Install policy test dependencies
+        run: pip install pyyaml pytest
+
+      - name: Verify mandatory Kubernetes cluster foundation files
+        run: |
+          echo "================================================================================"
+          echo "         SWIFTDROP MANDATORY KUBERNETES FOUNDATION INTEGRITY CHECK              "
+          echo "================================================================================"
+          test -d platform/kubernetes/k3d || { echo "ERROR: platform/kubernetes/k3d directory missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/cluster.yaml || { echo "ERROR: platform/kubernetes/k3d/cluster.yaml missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/namespaces.yaml || { echo "ERROR: platform/kubernetes/k3d/namespaces.yaml missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/create.sh || { echo "ERROR: platform/kubernetes/k3d/create.sh missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/start.sh || { echo "ERROR: platform/kubernetes/k3d/start.sh missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/stop.sh || { echo "ERROR: platform/kubernetes/k3d/stop.sh missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/status.sh || { echo "ERROR: platform/kubernetes/k3d/status.sh missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/verify.sh || { echo "ERROR: platform/kubernetes/k3d/verify.sh missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/capacity.sh || { echo "ERROR: platform/kubernetes/k3d/capacity.sh missing!"; exit 1; }
+          test -f platform/kubernetes/k3d/storage-preflight.sh || { echo "ERROR: platform/kubernetes/k3d/storage-preflight.sh missing!"; exit 1; }
+          echo "✓ All mandatory cluster foundation and lifecycle scripts present."
+
+      - name: Check shell script syntax with bash -n
+        run: |
+          echo "================================================================================"
+          echo "         SWIFTDROP SHELL SCRIPT SYNTAX CHECK (bash -n)                          "
+          echo "================================================================================"
+          for script in platform/kubernetes/k3d/*.sh; do
+            echo "Checking: $script"
+            bash -n "$script"
+          done
+          echo "✓ All lifecycle shell scripts passed syntax check."
+
+      - name: Run Kubernetes configuration, safety, and storage test suite
+        run: python3 -m pytest tests/kubernetes -v --junitxml=kubernetes-policy-results.xml
+
+      - name: Verify unittest discovery parity
+        run: python3 -m unittest discover -s tests/kubernetes -p "test_*.py" -v
+
+      - name: Upload Kubernetes policy test results
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: kubernetes-policy-results
+          path: kubernetes-policy-results.xml
+          retention-days: 7
