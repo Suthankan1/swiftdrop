@@ -143,7 +143,15 @@ class EmailConfigurationTests(unittest.TestCase):
                 env_file.unlink()
 
     def test_committed_email_policy_and_local_smtp(self):
-        validate_realm(self.realm)
+        realm_files = [
+            f for f in [IDENTITY_DIR / "realm-swiftdrop.json", IDENTITY_DIR / "realm-devarom.json"]
+            if f.exists()
+        ]
+        for rf in realm_files:
+            with self.subTest(realm=rf.name):
+                realm = json.loads(rf.read_text())
+                validate_realm(realm)
+
 
     def test_resolved_compose_has_only_local_mail_capture(self):
         validate_compose(self.compose)
