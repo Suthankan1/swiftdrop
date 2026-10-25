@@ -7,6 +7,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -38,6 +40,7 @@ public class IdempotencyRecord {
     @Column(name = "status", nullable = false, length = 20)
     private IdempotencyStatus status = IdempotencyStatus.IN_PROGRESS;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "stored_result", columnDefinition = "jsonb")
     private String storedResult;
 
