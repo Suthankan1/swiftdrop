@@ -1,17 +1,41 @@
-# Optional Kubernetes/Helm bonus target — planned folder
+# SwiftDrop — Kubernetes Platform Architecture & Deployment Foundation
 
-> **Documentation placeholder only.** There are **no generated sources/configs** in this folder. The responsible team will generate the application using Spring Initializr/Vite or create supporting configs in its own scoped issue.
+This directory houses the Kubernetes deployment architecture and cluster orchestration tooling for the SwiftDrop project under ADR-0011 (Strict $0 Cost Policy).
 
-## Intended scope
+---
 
-Full stack only if team pursues bonus and demonstrates real readiness, service routing, persistent data and secrets strategy.
+## Current Architecture & Implementation Status
 
-## Ownership/boundary
+| Component | Status | Governing Issue | Details |
+|---|---|---|---|
+| **Local k3d/K3s Cluster Foundation** | **IMPLEMENTED & VERIFIED** | **#175 (P0)** | Pinned K3s `v1.31.2`, loopback-only API (`:16443`), loopback ingress (`:18080`, `:18443`), host-mounted `local-path` storage, and verified NetworkPolicy enforcement. |
+| **Cluster Lifecycle Scripts** | **IMPLEMENTED** | **#175 (P0)** | Non-destructive `create.sh`, `start.sh`, `stop.sh`, `status.sh`, `verify.sh`, `capacity.sh`, and `storage-preflight.sh`. |
+| **Application Helm Charts** | PLANNED / IN PROGRESS | #149 (P07) | Helm charts covering services, ingress TLS, and secret wiring. |
+| **Persistent Workloads & Databases** | PLANNED / IN PROGRESS | #154 (P08) | Stateful PostgreSQL databases, Kafka KRaft, and MinIO object storage. |
+| **Public Cloud (Azure AKS / VMs)** | **STRICTLY PROHIBITED** | **ADR-0011 / #172** | Zero billable Azure resources; all workloads target measured local hardware. |
 
-No manifests yet; do not treat diagram 19 as deployed. KRaft persistent Kafka/Kubernetes is not trivial; do not include secrets in manifests.
+---
 
-## First planned slice
+## Directory Layout
 
-After backend and Compose work, with team permission and reproducible evidence.
+- `k3d/`: Declarative k3d cluster specification (`cluster.yaml`), core namespaces (`namespaces.yaml`), lifecycle scripts, and the complete [Local Cluster Operator Runbook](k3d/README.md).
+- `tests/`: Automated unit and policy tests verifying declarative configuration, script safety, and persistent storage contracts in [tests/kubernetes/](../../tests/kubernetes/README.md).
 
-Read `AGENTS.md` at repository root, `docs/team/OWNERSHIP.md` where applicable, `docs/architecture/BASELINE.md` and `docs/contracts/README.md` before implementation.
+---
+
+## Quick Start (Local Operator)
+
+To start the dedicated SwiftDrop local Kubernetes cluster:
+```bash
+# 1. Bootstrap cluster and apply management namespaces
+./platform/kubernetes/k3d/create.sh
+
+# 2. Verify cluster readiness, storage, and NetworkPolicy enforcement
+./platform/kubernetes/k3d/verify.sh
+
+# 3. Check cluster status and resource consumption
+./platform/kubernetes/k3d/status.sh
+./platform/kubernetes/k3d/capacity.sh
+```
+
+For complete operational details, storage persistence guarantees, and cross-task handoffs, see the [k3d Operator Runbook](k3d/README.md).

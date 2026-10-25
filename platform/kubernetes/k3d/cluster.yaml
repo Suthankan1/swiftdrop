@@ -1,0 +1,51 @@
+# SwiftDrop Dedicated Local k3d/K3s Cluster Configuration
+# Canonical Reference: docs/architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md
+# GitHub Issue: https://github.com/Suthankan1/swiftdrop/issues/175
+# Prerequisites: Issues #91, #172, #173, #174
+# Downstream Prerequisites: Issues #128, #149, #154, #161, #176, #177
+
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: swiftdrop-local
+servers: 1
+agents: 0
+image: docker.io/rancher/k3s:v1.31.2-k3s1
+
+# Dedicated loopback-only Kubernetes API binding (never exposed on 0.0.0.0 or LAN)
+kubeAPI:
+  hostIP: "127.0.0.1"
+  hostPort: "16443"
+
+# Dedicated loopback-only ingress ports (non-conflicting with Docker Compose :8080, :8081, :8090, :5173)
+ports:
+  - port: 127.0.0.1:18080:80
+    nodeFilters:
+      - loadbalancer
+  - port: 127.0.0.1:18443:443
+    nodeFilters:
+      - loadbalancer
+
+# Host storage mount into K3s local-path provisioner storage root (/var/lib/rancher/k3s/storage)
+# Retains PVC data outside container lifecycle across pod restarts and cluster stop/start
+volumes:
+  - volume: ${HOME}/.swiftdrop/k3d/storage:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - server:0
+
+options:
+  k3d:
+    wait: true
+    timeout: "180s"
+    disableLoadbalancer: false
+    disableImageVolume: false
+    disableRollback: false
+  k3s:
+    extraArgs:
+      - arg: --node-name=swiftdrop-control-plane
+        nodeFilters:
+          - server:0
+      # Flannel CNI and embedded kube-router network-policy controller remain active by default
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: false
