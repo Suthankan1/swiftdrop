@@ -8,6 +8,8 @@ Canonical References:
 - GitHub Issue #174 (N10-ZC03)
 """
 
+from __future__ import annotations
+
 import copy
 import re
 import unittest

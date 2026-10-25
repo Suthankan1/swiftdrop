@@ -8,6 +8,8 @@ Canonical References:
 - GitHub Issue #174 (N10-ZC03)
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -17,7 +19,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
