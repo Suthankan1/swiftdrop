@@ -181,13 +181,67 @@ class MerchantAuthorizationServiceTest {
     }
 
     @Test
-    @DisplayName("Customer cannot access merchant tenant resources")
+    @DisplayName("Customer cannot access unrelated merchant tenant resources")
     void customerCannotAccessMerchantTenant() {
         var decision = service.authorizeTenantAccess(customerIdentity, merchantAId);
         assertThat(decision.authorized()).isFalse();
         assertThat(decision.denialReason()).contains("Caller lacks MERCHANT or ADMIN role");
 
         assertThatThrownBy(() -> service.requireTenantAccess(customerIdentity, merchantAId))
+                .isInstanceOf(TenantAccessDeniedException.class)
+                .hasMessageContaining("Caller lacks MERCHANT role");
+    }
+
+    @Test
+    @DisplayName("Customer owning a PENDING merchant tenant can inspect own pending status")
+    void customerOwningPendingMerchantCanInspectOwnTenant() {
+        var pendingMerchantId = UUID.randomUUID();
+        var pendingMerchant = new Merchant(
+                pendingMerchantId, UUID.randomUUID(), customerIdentity.subject(),
+                "Customer Owned Shop", "PV-112233", MerchantStatus.PENDING,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(pendingMerchantId)).thenReturn(Optional.of(pendingMerchant));
+
+        var decision = service.authorizeTenantAccess(customerIdentity, pendingMerchantId);
+        assertThat(decision.authorized()).isTrue();
+        assertThat(decision.merchantId()).isEqualTo(pendingMerchantId);
+        assertThat(decision.status()).isEqualTo(MerchantStatus.PENDING);
+
+        // requireTenantAccess should not throw
+        service.requireTenantAccess(customerIdentity, pendingMerchantId);
+    }
+
+    @Test
+    @DisplayName("Customer cannot access another owner's PENDING merchant tenant (cross-tenant denial)")
+    void customerCannotAccessOtherPendingMerchantTenant() {
+        // merchantB is in PENDING status, owned by subjectB ("keycloak-sub-merchant-b")
+        // customerIdentity has subject "keycloak-sub-customer"
+        var decision = service.authorizeTenantAccess(customerIdentity, merchantBId);
+        assertThat(decision.authorized()).isFalse();
+        assertThat(decision.denialReason()).contains("Caller lacks MERCHANT or ADMIN role");
+
+        assertThatThrownBy(() -> service.requireTenantAccess(customerIdentity, merchantBId))
+                .isInstanceOf(TenantAccessDeniedException.class)
+                .hasMessageContaining("Caller lacks MERCHANT role");
+    }
+
+    @Test
+    @DisplayName("Customer owning an APPROVED merchant tenant without MERCHANT role is denied")
+    void customerOwningApprovedMerchantWithoutRoleIsDenied() {
+        var approvedMerchantId = UUID.randomUUID();
+        var approvedMerchant = new Merchant(
+                approvedMerchantId, UUID.randomUUID(), customerIdentity.subject(),
+                "Customer Store", "PV-445566", MerchantStatus.APPROVED,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(approvedMerchantId)).thenReturn(Optional.of(approvedMerchant));
+
+        var decision = service.authorizeTenantAccess(customerIdentity, approvedMerchantId);
+        assertThat(decision.authorized()).isFalse();
+        assertThat(decision.denialReason()).contains("Caller lacks MERCHANT or ADMIN role");
+
+        assertThatThrownBy(() -> service.requireTenantAccess(customerIdentity, approvedMerchantId))
                 .isInstanceOf(TenantAccessDeniedException.class)
                 .hasMessageContaining("Caller lacks MERCHANT role");
     }

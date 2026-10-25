@@ -45,6 +45,9 @@ public class ProfileSecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").hasAnyRole("CUSTOMER", "MERCHANT", "COURIER", "DISPATCHER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/merchants").hasAnyRole("CUSTOMER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/merchants/me").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/merchants/{merchantId}/status").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
                         .requestMatchers("/api/v1/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
                         .requestMatchers("/api/v1/staff/**").hasAnyRole("COURIER", "DISPATCHER", "ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
