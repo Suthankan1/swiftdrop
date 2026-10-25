@@ -1,0 +1,77 @@
+# SwiftDrop Machine-Readable GitHub Actions OIDC Trust Policy Contract
+# Canonical Reference: docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md
+# Cost Invariant Reference: docs/architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md
+# Originating Delivery Task: https://github.com/Suthankan1/swiftdrop/issues/174 (N10-ZC03)
+# Downstream Coordination: https://github.com/Suthankan1/swiftdrop/issues/167 (Release Gates)
+
+version: "1.0"
+policy_mode: "deny-by-default"
+effective_date: "2026-10-25"
+milestone: "2026-11-10"
+
+# Cloud Identity State: Strict deny-by-default. All cloud authentication is NOT AUTHORIZED.
+cloud_identity:
+  enabled: false
+  deployment_authorized: false
+  authentication_authorized: false
+  provider: "microsoft-entra-id"
+  federation_type: "workload-identity-federation"
+  active_credentials_exist: false
+
+# GitHub Actions OIDC Invariants
+github:
+  repository: "Suthankan1/swiftdrop"
+  repository_id: 1420084393
+  owner_id: 131566783
+  allow_pull_requests: false
+  allow_forks: false
+  allow_untrusted_code: false
+  allowed_events: [] # STRICTLY EMPTY WHILE DISABLED
+
+  oidc:
+    enabled: false
+    issuer: "https://token.actions.githubusercontent.com"
+    audience: "api://AzureADTokenExchange"
+    approved_subjects: [] # STRICTLY EMPTY WHILE DISABLED
+    approved_branches: [] # STRICTLY EMPTY WHILE DISABLED
+    approved_environments: [] # STRICTLY EMPTY WHILE DISABLED
+    max_token_duration_seconds: 3600
+    permissions:
+      id_token_write_authorized: false
+      repository_write_authorized: false
+
+# Microsoft Entra & Azure RBAC Boundaries
+azure:
+  tenant_id: "UNVERIFIED" # Zero real tenant IDs committed
+  subscription_id: "UNVERIFIED" # Zero real subscription IDs committed
+  client_id: "UNVERIFIED" # Zero real app/client IDs committed
+  client_secret_permitted: false # Long-lived secrets strictly forbidden
+  allowed_role_assignments: [] # STRICTLY EMPTY
+  allowed_resource_scopes: [] # STRICTLY EMPTY
+  prohibited_roles:
+    - "Owner"
+    - "Contributor"
+    - "User Access Administrator"
+    - "Role Based Access Control Administrator"
+    - "Management Group Contributor"
+  future_readonly_template:
+    target_role: "Reader"
+    scope_level: "resource-group"
+    required_actions:
+      - "Microsoft.Resources/subscriptions/resourceGroups/read"
+      - "Microsoft.Resources/deployments/read"
+    data_source_behavior: "audit-read-only-plan-apis"
+    status: "BLOCKED_CLOUD_IDENTITY_NOT_CONFIGURED"
+
+# Terraform State Custody Contract
+terraform_state:
+  backend_type: "none" # Backend-disabled in CI; local for reviewed operator experiments
+  remote_state_authorized: false
+  azure_storage_backend_permitted: false
+  primary_custodian: "Suthankan1"
+  storage_location: "outside-git-checkout"
+  encryption_at_rest_required: true
+  encryption_mechanism: "macos-filevault-aes-xts"
+  locking_enforcement: "single-writer-mandatory"
+  backup_required: true
+  backup_encryption: "aes-256-offline"
