@@ -1,0 +1,26 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: delivery-service
+  datasource:
+    url: ${DELIVERY_DB_URL}
+    username: ${DELIVERY_DB_USERNAME}
+    password: ${DELIVERY_DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    clean-disabled: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
