@@ -52,6 +52,9 @@ backups/
 *.tfstate.*
 *.tfstate.backup
 *.tfplan
+tfplan
+tfplan.*
+*.plan
 *.tfvars
 *.tfvars.json
 !*.example.tfvars
