@@ -1,0 +1,75 @@
+# SwiftDrop Machine-Readable Cost & Cloud Allowlist Policy Contract
+# Canonical Reference: docs/architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md
+# GitHub Issue: https://github.com/Suthankan1/swiftdrop/issues/172
+# Consumed by: https://github.com/Suthankan1/swiftdrop/issues/173 (Terraform deny-by-default tests)
+
+version: "1.0"
+policy_mode: "deny-by-default"
+milestone: "2026-11-10"
+effective_date: "2026-10-25"
+cost_ceiling_usd: 0.00
+
+# Azure Cloud Gate: All cloud provisioning is strictly prohibited by default.
+azure:
+  deployment_authorized: false
+  subscription_offer: "MS-AZR-0170P" # Azure for Students
+  subscription_status: "UNVERIFIED"
+  promotional_credit_permitted: false # Promotional credit is NOT $0 justification
+  billing_overage_permitted: false
+  allowed_resources: []               # INITIAL ALLOWLIST MUST REMAIN EMPTY
+  allowed_skus: {}
+  allowed_regions: []
+
+# Local Hosting Target: Authorized default topology for the November 10 release.
+local:
+  target: "k3d-k3s"
+  authorized: true
+  primary_host_operator: "Suthankan1"
+  hardware_architecture: "arm64"
+  workloads:
+    - name: "frontend-spa"
+      type: "static-web"
+      host: "local"
+    - name: "api-gateway"
+      type: "spring-cloud-gateway"
+      host: "k3d"
+    - name: "accounts-service"
+      type: "spring-boot"
+      host: "k3d"
+    - name: "pricing-service"
+      type: "spring-boot"
+      host: "k3d"
+    - name: "delivery-service"
+      type: "spring-boot"
+      host: "k3d"
+    - name: "communications-service"
+      type: "spring-boot"
+      host: "k3d"
+    - name: "graphql-query-api"
+      type: "spring-boot-graphql"
+      host: "k3d"
+    - name: "keycloak-idp"
+      type: "quarkus-keycloak"
+      host: "k3d"
+  dependencies:
+    - name: "accounts-postgres"
+      type: "postgresql"
+      database: "accounts_db"
+    - name: "pricing-postgres"
+      type: "postgresql"
+      database: "pricing_db"
+    - name: "delivery-postgres"
+      type: "postgresql"
+      database: "delivery_db"
+    - name: "communications-postgres"
+      type: "postgresql"
+      database: "communications_db"
+    - name: "keycloak-postgres"
+      type: "postgresql"
+      database: "keycloak_db"
+    - name: "kafka-broker"
+      type: "apache-kafka-kraft"
+    - name: "minio-storage"
+      type: "s3-compatible-object-storage"
+    - name: "mailpit-smtp"
+      type: "smtp-capture"
