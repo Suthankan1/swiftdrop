@@ -26,5 +26,6 @@ See the consolidated [Runtime Decision Register](RUNTIME_DECISION_REGISTER.md) a
 | Medium | Assignment notification requirement | Dispatcher/Courier + Communications/Merchant + Platform | **Proposed: deferred assignment push notification to avoid fake status event (DA-04)** |
 | High | Webhook retry limits (5 attempts), backoff ceiling (6h), HMAC-SHA256 (`X-SwiftDrop-Signature`), HTTPS enforcement | Merchant Pair + Platform | **Frozen in [RUNTIME_DECISION_REGISTER.md](RUNTIME_DECISION_REGISTER.md) (DEC-COM-01 to 05); contracts in [contracts/rest/](../../contracts/rest/openapi-communications.yaml)** |
 | Medium | Data retention policies (7yr parcels, 1yr assignments, 30d outbox/inbox/webhook logs, 90d proof photos) | Relevant owners | **Proposed in [RUNTIME_DECISION_REGISTER.md](RUNTIME_DECISION_REGISTER.md) (DEC-RET-01)** |
+| High | SwiftDrop November 10 Hosting Target & Azure Resource Allowlist | Platform (Suthankan1) + Independent Reviewers (Harithkeshan, Vibhushan) | **Frozen: Strict $0 local k3d/K3s release default; initial Azure allowlist EMPTY per [ADR-0011](adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md) (Refs #172)** |
 
 See also [decision records](adr/README.md). Even once approved, contract changes should follow review rules.
