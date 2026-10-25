@@ -32,3 +32,10 @@ server.error:
   include-message: never
   include-stacktrace: never
   include-binding-errors: never
+
+grpc:
+  client:
+    accounts:
+      host: ${ACCOUNTS_GRPC_HOST:localhost}
+      port: ${ACCOUNTS_GRPC_PORT:9081}
+      deadline-ms: ${ACCOUNTS_GRPC_DEADLINE_MS:2000}

@@ -205,6 +205,14 @@ mvn -f services/communications-service/pom.xml verify
 - [x] 19 automated unit and slice tests passing with zero failures.
 - [x] Testcontainers integration test harness for real PostgreSQL verification.
 
+### IMPLEMENTED in Issue #110 (N10-B06):
+- [x] Type-safe gRPC client adapter `AccountsRecipientContactClient` (`GrpcAccountsRecipientContactClient`) implementing `IF-GRPC-03`.
+- [x] Channel-scoped permitted contact projection `PermittedRecipientContact` (`recipientSub`, `email`, `phoneNumber`, `fullName`, `isEligible`, `emailPermitted`, `smsPermitted`, `status`, `rejectionReason`).
+- [x] Purpose validation and channel scoping (`EMAIL`, `SMS`, `SMS_MOCK`, `ANY`).
+- [x] Bounded timeout enforcement (default 2000ms deadline) with fallback exception hierarchy (`AccountsServiceUnavailableException`, `AccountsSecurityException`, `AccountsContactException`).
+- [x] Strict data isolation: zero Communications SQL against Accounts or Keycloak databases; zero PII logged in Communications client.
+- [x] 8 automated unit/integration tests with in-process gRPC test server (`AccountsRecipientContactClientTest`).
+
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Kafka consumers and topic listener configurations (belongs to **Issue #32**).
 - ❌ External email or SMS transmission engines.

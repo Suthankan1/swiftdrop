@@ -65,17 +65,24 @@ message MerchantKeyDigestResponse {
   repeated string scopes = 5; // e.g. ["parcels:create", "parcels:read"]
 }
 
-// Request to resolve recipient contact information.
+// Request to resolve recipient contact information (IF-GRPC-03, #110).
 message RecipientContactRequest {
   string recipient_sub = 1; // Keycloak subject string
+  string purpose = 2; // Notification purpose/scope: e.g. "PARCEL_STATUS_UPDATE", "DELIVERY_NOTIFICATION", "TRANSACTIONAL"
+  string channel = 3; // Requested contact channel: "EMAIL", "SMS_MOCK", "SMS", "ANY" (defaults to allowed channels)
 }
 
-// Response containing recipient contact details for notification dispatch.
+// Response containing recipient contact details for notification dispatch (IF-GRPC-03, #110).
 message RecipientContactResponse {
   string recipient_sub = 1;
   string email = 2;
   string phone_number = 3;
   string full_name = 4;
+  bool is_eligible = 5; // Whether recipient is eligible to receive notifications
+  bool email_permitted = 6; // Whether email contact is available and permitted under policy
+  bool sms_permitted = 7; // Whether SMS contact is available and permitted under policy
+  string status = 8; // Lifecycle status: "ACTIVE", "DISABLED", "MISSING_CONTACT", "NOT_FOUND"
+  string rejection_reason = 9; // e.g. "ELIGIBLE", "RECIPIENT_NOT_FOUND", "CONTACT_MISSING", "STAFF_INACTIVE", etc.
 }
 
 // Request to list pending merchant onboarding requests with deterministic pagination (#121, #139).

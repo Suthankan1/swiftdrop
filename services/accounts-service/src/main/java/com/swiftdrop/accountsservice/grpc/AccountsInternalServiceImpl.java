@@ -15,6 +15,7 @@ import com.swiftdrop.accountsservice.staff.StaffRole;
 import com.swiftdrop.accountsservice.staff.StaffStatus;
 import com.swiftdrop.security.grpc.DelegatedActorContext;
 import com.swiftdrop.security.grpc.SwiftDropGrpcContext;
+import com.swiftdrop.security.service.SwiftDropServiceIdentity;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
@@ -26,9 +27,9 @@ import java.util.*;
 /**
  * Authoritative gRPC provider implementing AccountsInternalService.
  * Enforces fail-closed lifecycle status, caller authorization, anti-spoofing,
- * and minimal server-side profile field scoping.
+ * minimal server-side profile field scoping, and permitted notification contact lookup.
  *
- * Implements Issue #109 (N10-B05).
+ * Implements Issue #109 (N10-B05) and Issue #110 (N10-B06).
  */
 @Service
 @Transactional(readOnly = true)
@@ -39,6 +40,12 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
     public static final int DEFAULT_PAGE_SIZE = 20;
 
     private static final Set<String> VALID_SCOPES = Set.of("", "MINIMAL", "CUSTOMER", "MERCHANT", "STAFF", "COURIER");
+    private static final Set<String> VALID_NOTIFICATION_PURPOSES = Set.of(
+            "", "TRANSACTIONAL", "PARCEL_STATUS_UPDATE", "DELIVERY_NOTIFICATION", "ACCOUNT_ALERT", "NOTIFICATION"
+    );
+    private static final Set<String> VALID_NOTIFICATION_CHANNELS = Set.of(
+            "", "ANY", "EMAIL", "SMS", "SMS_MOCK"
+    );
 
     private final AccountProfileRepository accountProfiles;
     private final MerchantRepository merchantRepository;
@@ -551,24 +558,186 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
     @Override
     public void resolveRecipientContact(RecipientContactRequest request,
                                         StreamObserver<RecipientContactResponse> responseObserver) {
+        // 1. Caller machine identity verification (defense-in-depth)
+        var callingServiceOpt = SwiftDropGrpcContext.currentCallingService();
+        if (callingServiceOpt.isPresent() && callingServiceOpt.get() != SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("Calling service is not authorized to resolve recipient contact: " + callingServiceOpt.get().getServiceName())
+                    .asRuntimeException());
+            return;
+        }
+
+        // 2. Reject human actor delegation on service-only background RPC
+        var actorOpt = SwiftDropGrpcContext.currentDelegatedActor();
+        if (actorOpt.isPresent()) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("Actor delegation is forbidden on service-only operation ResolveRecipientContact")
+                    .asRuntimeException());
+            return;
+        }
+
+        // 3. Validate recipient identifier
         String recipientSub = request.getRecipientSub();
         if (recipientSub == null || recipientSub.isBlank()) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("recipient_sub is required").asRuntimeException());
             return;
         }
+        String sanitizedSub = recipientSub.trim();
+        if (sanitizedSub.length() > 255 || sanitizedSub.contains("\n") || sanitizedSub.contains("\r")) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid recipient_sub format").asRuntimeException());
+            return;
+        }
 
-        Optional<AccountProfile> profileOpt = accountProfiles.findByKeycloakSub(recipientSub.trim());
+        // 4. Validate notification purpose / scope
+        String rawPurpose = request.getPurpose() != null ? request.getPurpose().trim().toUpperCase() : "";
+        if (!VALID_NOTIFICATION_PURPOSES.contains(rawPurpose)) {
+            responseObserver.onError(Status.INVALID_ARGUMENT
+                    .withDescription("Unsupported or unauthorized notification purpose: " + request.getPurpose())
+                    .asRuntimeException());
+            return;
+        }
+
+        // 5. Validate notification contact channel
+        String rawChannel = request.getChannel() != null ? request.getChannel().trim().toUpperCase() : "";
+        if (!VALID_NOTIFICATION_CHANNELS.contains(rawChannel)) {
+            responseObserver.onError(Status.INVALID_ARGUMENT
+                    .withDescription("Unsupported notification channel: " + request.getChannel())
+                    .asRuntimeException());
+            return;
+        }
+        String channel = rawChannel.isBlank() ? "ANY" : rawChannel;
+
+        // 6. Check if recipient is a Staff profile (e.g. Courier or Staff)
+        Optional<StaffProfile> staffOpt = staffProfiles.findByKeycloakSub(sanitizedSub);
+        if (staffOpt.isPresent()) {
+            StaffProfile staff = staffOpt.get();
+            if (!staff.getStatus().isActive()) {
+                // Disabled staff recipient: omit contact details and return fail-closed response
+                responseObserver.onNext(RecipientContactResponse.newBuilder()
+                        .setRecipientSub(sanitizedSub)
+                        .setIsEligible(false)
+                        .setEmailPermitted(false)
+                        .setSmsPermitted(false)
+                        .setStatus("DISABLED")
+                        .setRejectionReason("STAFF_" + staff.getStatus().name())
+                        .build());
+                responseObserver.onCompleted();
+                return;
+            }
+        }
+
+        // 7. Check if recipient is a Merchant
+        Optional<Merchant> merchantOpt = merchantRepository.findByKeycloakSub(sanitizedSub);
+        if (merchantOpt.isPresent()) {
+            Merchant merchant = merchantOpt.get();
+            if (merchant.getStatus() != MerchantStatus.APPROVED) {
+                // Ineligible/disabled merchant: fail closed
+                responseObserver.onNext(RecipientContactResponse.newBuilder()
+                        .setRecipientSub(sanitizedSub)
+                        .setIsEligible(false)
+                        .setEmailPermitted(false)
+                        .setSmsPermitted(false)
+                        .setStatus("DISABLED")
+                        .setRejectionReason("MERCHANT_" + merchant.getStatus().name())
+                        .build());
+                responseObserver.onCompleted();
+                return;
+            }
+        }
+
+        // 8. Retrieve primary account profile
+        Optional<AccountProfile> profileOpt = accountProfiles.findByKeycloakSub(sanitizedSub);
         if (profileOpt.isEmpty()) {
-            responseObserver.onError(Status.NOT_FOUND.withDescription("Recipient not found: " + recipientSub).asRuntimeException());
+            // Check if sanitizedSub was a merchant ID UUID
+            if (merchantOpt.isEmpty() && staffOpt.isEmpty()) {
+                try {
+                    UUID maybeMerchantId = UUID.fromString(sanitizedSub);
+                    merchantOpt = merchantRepository.findById(maybeMerchantId);
+                    if (merchantOpt.isPresent()) {
+                        Merchant m = merchantOpt.get();
+                        if (m.getStatus() != MerchantStatus.APPROVED) {
+                            responseObserver.onNext(RecipientContactResponse.newBuilder()
+                                    .setRecipientSub(sanitizedSub)
+                                    .setIsEligible(false)
+                                    .setEmailPermitted(false)
+                                    .setSmsPermitted(false)
+                                    .setStatus("DISABLED")
+                                    .setRejectionReason("MERCHANT_" + m.getStatus().name())
+                                    .build());
+                            responseObserver.onCompleted();
+                            return;
+                        }
+                        profileOpt = accountProfiles.findByKeycloakSub(m.getKeycloakSub());
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Not a UUID, continue
+                }
+            }
+        }
+
+        if (profileOpt.isEmpty()) {
+            responseObserver.onError(Status.NOT_FOUND
+                    .withDescription("Recipient not found: " + sanitizedSub)
+                    .asRuntimeException());
             return;
         }
 
         AccountProfile profile = profileOpt.get();
+        String email = profile.getEmail() != null ? profile.getEmail().trim() : "";
+        String phone = profile.getPhoneNumber() != null ? profile.getPhoneNumber().trim() : "";
+        String fullName = profile.getFullName() != null ? profile.getFullName().trim() : "";
+
+        boolean hasEmail = !email.isBlank();
+        boolean hasSms = !phone.isBlank();
+
+        // 9. Check channel requirements and availability
+        boolean emailPermitted = false;
+        boolean smsPermitted = false;
+        boolean isEligible = false;
+        String status = "ACTIVE";
+        String rejectionReason = "ELIGIBLE";
+
+        if ("EMAIL".equals(channel)) {
+            if (hasEmail) {
+                emailPermitted = true;
+                isEligible = true;
+            } else {
+                status = "MISSING_CONTACT";
+                rejectionReason = "MISSING_EMAIL_CONTACT";
+            }
+        } else if ("SMS".equals(channel) || "SMS_MOCK".equals(channel)) {
+            if (hasSms) {
+                smsPermitted = true;
+                isEligible = true;
+            } else {
+                status = "MISSING_CONTACT";
+                rejectionReason = "MISSING_PHONE_CONTACT";
+            }
+        } else { // "ANY"
+            if (hasEmail || hasSms) {
+                emailPermitted = hasEmail;
+                smsPermitted = hasSms;
+                isEligible = true;
+            } else {
+                status = "MISSING_CONTACT";
+                rejectionReason = "NO_CONTACT_METHODS";
+            }
+        }
+
+        // 10. Channel projection (exclude fields not permitted for this notification channel)
+        String exposedEmail = emailPermitted ? email : "";
+        String exposedPhone = smsPermitted ? phone : "";
+
         responseObserver.onNext(RecipientContactResponse.newBuilder()
-                .setRecipientSub(recipientSub)
-                .setEmail(profile.getEmail() != null ? profile.getEmail() : "")
-                .setPhoneNumber(profile.getPhoneNumber() != null ? profile.getPhoneNumber() : "")
-                .setFullName(profile.getFullName() != null ? profile.getFullName() : "")
+                .setRecipientSub(sanitizedSub)
+                .setEmail(exposedEmail)
+                .setPhoneNumber(exposedPhone)
+                .setFullName(fullName)
+                .setIsEligible(isEligible)
+                .setEmailPermitted(emailPermitted)
+                .setSmsPermitted(smsPermitted)
+                .setStatus(status)
+                .setRejectionReason(rejectionReason)
                 .build());
         responseObserver.onCompleted();
     }

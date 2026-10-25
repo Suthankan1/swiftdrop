@@ -125,13 +125,20 @@ message MerchantKeyDigestResponse {
 
 message RecipientContactRequest {
   string recipient_sub = 1; // Keycloak subject string
+  string purpose = 2; // Approved notification purpose (e.g. "PARCEL_STATUS_UPDATE", "DELIVERY_NOTIFICATION", "TRANSACTIONAL", "ACCOUNT_ALERT", "NOTIFICATION")
+  string channel = 3; // Permitted notification channel ("EMAIL", "SMS", "SMS_MOCK", "ANY")
 }
 
 message RecipientContactResponse {
   string recipient_sub = 1;
-  string email = 2;
-  string phone_number = 3;
+  string email = 2; // Excluded if channel is SMS
+  string phone_number = 3; // Excluded if channel is EMAIL
   string full_name = 4;
+  bool is_eligible = 5; // Policy eligibility flag for dispatching notification
+  bool email_permitted = 6; // Whether email notifications are permitted for recipient
+  bool sms_permitted = 7; // Whether SMS notifications are permitted for recipient
+  string status = 8; // "ACTIVE", "INACTIVE", "SUSPENDED", "PENDING", "MISSING_CONTACT", "NOT_FOUND"
+  string rejection_reason = 9; // e.g. "ELIGIBLE", "MISSING_EMAIL_CONTACT", "STAFF_SUSPENDED", etc.
 }
 
 message PendingMerchantsSummaryRequest {
