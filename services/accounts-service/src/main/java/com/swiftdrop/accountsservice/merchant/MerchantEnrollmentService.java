@@ -3,6 +3,8 @@ package com.swiftdrop.accountsservice.merchant;
 import com.swiftdrop.accountsservice.identity.TrustedIdentity;
 import com.swiftdrop.accountsservice.profile.AccountProfile;
 import com.swiftdrop.accountsservice.profile.AccountProfileRepository;
+import jakarta.persistence.EntityManager;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +24,20 @@ public class MerchantEnrollmentService {
 
     private final MerchantRepository merchantRepository;
     private final AccountProfileRepository accountProfileRepository;
+    private final EntityManager entityManager;
 
     public MerchantEnrollmentService(MerchantRepository merchantRepository,
                                    AccountProfileRepository accountProfileRepository) {
+        this(merchantRepository, accountProfileRepository, null);
+    }
+
+    @Autowired
+    public MerchantEnrollmentService(MerchantRepository merchantRepository,
+                                   AccountProfileRepository accountProfileRepository,
+                                   EntityManager entityManager) {
         this.merchantRepository = Objects.requireNonNull(merchantRepository, "MerchantRepository is required");
         this.accountProfileRepository = Objects.requireNonNull(accountProfileRepository, "AccountProfileRepository is required");
+        this.entityManager = entityManager;
     }
 
     /**
@@ -96,13 +107,16 @@ public class MerchantEnrollmentService {
         Merchant saved;
         try {
             saved = merchantRepository.save(merchant);
+            if (entityManager != null) {
+                entityManager.flush();
+            }
         } catch (DataIntegrityViolationException ex) {
-            String combined = (ex.getMessage() != null ? ex.getMessage() : "") + " "
-                    + (ex.getRootCause() != null && ex.getRootCause().getMessage() != null ? ex.getRootCause().getMessage() : "");
-            if (combined.contains("uq_merchants_keycloak_sub")) {
+            String combined = ((ex.getMessage() != null ? ex.getMessage() : "") + " "
+                    + (ex.getRootCause() != null && ex.getRootCause().getMessage() != null ? ex.getRootCause().getMessage() : "")).toLowerCase();
+            if (combined.contains("uq_merchants_keycloak_sub") || combined.contains("keycloak_sub")) {
                 throw new MerchantConflictException("Authenticated user already owns a merchant tenant", ex);
             }
-            if (combined.contains("uq_merchants_registration_number")) {
+            if (combined.contains("uq_merchants_registration_number") || combined.contains("registration_number")) {
                 throw new MerchantConflictException("Merchant registration number already exists: " + registrationNumber, ex);
             }
             throw ex;

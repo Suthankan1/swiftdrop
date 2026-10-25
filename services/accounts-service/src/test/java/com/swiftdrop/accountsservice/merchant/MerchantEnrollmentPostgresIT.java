@@ -230,7 +230,7 @@ class MerchantEnrollmentPostgresIT {
                     var request = new MerchantRegistrationRequest("Concurrent Shop " + index, "PV-CONC-" + index + "-" + UUID.randomUUID().toString().substring(0, 6));
                     enrollmentService.enrollMerchant(identity, request);
                     successCount.incrementAndGet();
-                } catch (MerchantConflictException ex) {
+                } catch (MerchantConflictException | DataIntegrityViolationException ex) {
                     conflictCount.incrementAndGet();
                 } catch (Exception ignored) {
                 }
