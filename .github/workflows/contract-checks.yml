@@ -52,6 +52,9 @@ jobs:
           echo "Comparing contract compatibility against base reference: $BASE_REF"
           python3 tests/contracts/validate_contracts.py --check-compatibility --base-ref="$BASE_REF" --output-json=contract-validation-report.json
 
+      - name: Run contract unit tests
+        run: python3 -m unittest discover -s tests/contracts -p "test_*.py" -v
+
       - name: Upload contract validation report
         if: always()
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1

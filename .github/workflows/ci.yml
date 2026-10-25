@@ -80,6 +80,19 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      - name: Build and verify shared proto contracts
+        run: |
+          echo "================================================================================"
+          echo "            SWIFTDROP PROTOBUF CONTRACT & GENERATION GATE                      "
+          echo "================================================================================"
+          chmod +x shared/proto-contracts/mvnw
+          if (cd shared/proto-contracts && ./mvnw -B clean install); then
+            echo "✓ shared/proto-contracts build, generation, and verification SUCCEEDED."
+          else
+            echo "✗ shared/proto-contracts build failed."
+            exit 1
+          fi
+
       - name: Discover and verify Spring Boot microservices
         run: |
           echo "================================================================================"

@@ -35,8 +35,11 @@ python3 tests/contracts/test_delivery_status_contract.py
 # Delivery outbox event contract & schema invariants (Issue #31)
 python3 tests/contracts/test_outbox_contract.py
 
-# Protobuf gate inspection
-python3 tests/contracts/validate_contracts.py --mode=protobuf
+# Protobuf contracts validation & compatibility diffing (Issue #92)
+python3 tests/contracts/validate_contracts.py --mode=protobuf --check-compatibility --base-ref=origin/test
+
+# Protobuf contract invariant unit tests (Issue #92)
+python3 -m unittest tests/contracts/test_protobuf_contracts.py -v
 ```
 
 ---
@@ -45,7 +48,8 @@ python3 tests/contracts/validate_contracts.py --mode=protobuf
 
 In GitHub Actions (`.github/workflows/contract-checks.yml`), this suite executes on all pull requests targeting `test` or `main`.
 
-- **Breaking Change Detection:** Automatically diffs endpoints, required fields, and response schemas against the PR target branch.
+- **Breaking Change Detection:** Automatically diffs REST, GraphQL, Kafka, and Protobuf contracts against the PR target branch (`check_protobuf_compatibility`, `check_kafka_compatibility`, `check_openapi_compatibility`, `check_graphql_compatibility`).
 - **Read-Only Invariant:** Enforces that GraphQL SDL contains 0 mutations and 0 subscriptions.
 - **Privacy Gate:** Validates that Kafka event envelopes and payloads forbid private customer data via `additionalProperties: false`.
-- **Issue #92 Coordination:** Explicitly reports the pending `.proto` implementation status without falsely marking incomplete contracts as green.
+- **Protobuf Invariants (Issue #92):** Enforces `proto3`, package/Java naming, permanent field tags, integer minor units for monetary fields, UTC timestamps, and rejection of renumbered/removed fields without `reserved`.
+- **Java Generation Pipeline:** `shared/proto-contracts` compiles contracts with pinned `protoc:3.25.5` and `protoc-gen-grpc-java:1.68.1`, executing 14 contract and in-process gRPC tests.

@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package swiftdrop.accounts.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.swiftdrop.accounts.v1";
+option java_outer_classname = "AccountsProto";
+
+// Internal private gRPC service for Accounts & Partners microservice.
+// Callers must pass authenticated service identity and actor delegation metadata.
+service AccountsInternalService {
+  // Verifies if a courier is active and eligible for new parcel assignments (IF-GRPC-01).
+  rpc CheckCourierEligibility (CourierEligibilityRequest) returns (CourierEligibilityResponse);
+
+  // Validates a merchant API key digest during automated order booking (IF-GRPC-02).
+  rpc ValidateMerchantKeyDigest (MerchantKeyDigestRequest) returns (MerchantKeyDigestResponse);
+
+  // Resolves recipient notification contact handles (email/phone) without exposing PII in events (IF-GRPC-03).
+  rpc ResolveRecipientContact (RecipientContactRequest) returns (RecipientContactResponse);
+
+  // Queries bounded admin pending-merchant review summary for admin dashboard (IF-GRPC-06, Refs #121/#139).
+  rpc GetPendingMerchantsSummary (PendingMerchantsSummaryRequest) returns (PendingMerchantsSummaryResponse);
+}
+
+// Request to verify courier eligibility.
+message CourierEligibilityRequest {
+  string courier_sub = 1; // Keycloak subject string (UUID format)
+}
+
+// Response detailing courier eligibility status.
+message CourierEligibilityResponse {
+  string courier_sub = 1;
+  bool is_eligible = 2;
+  bool is_active = 3;
+  string full_name = 4;
+  string rejection_reason = 5; // e.g. "COURIER_SUSPENDED", "COURIER_NOT_FOUND", "ELIGIBLE"
+}
+
+// Request to validate a merchant API key digest.
+message MerchantKeyDigestRequest {
+  string key_prefix = 1; // First 12 chars of the key, e.g. "swd_live_abc"
+  string key_digest = 2; // SHA-256 hex digest of the API key
+}
+
+// Response with merchant identity and validated scopes.
+message MerchantKeyDigestResponse {
+  bool is_valid = 1;
+  string merchant_id = 2; // UUID string
+  string business_name = 3;
+  string status = 4; // "APPROVED", "PENDING", "SUSPENDED", "REJECTED"
+  repeated string scopes = 5; // e.g. ["parcels:create", "parcels:read"]
+}
+
+// Request to resolve recipient contact information.
+message RecipientContactRequest {
+  string recipient_sub = 1; // Keycloak subject string
+}
+
+// Response containing recipient contact details for notification dispatch.
+message RecipientContactResponse {
+  string recipient_sub = 1;
+  string email = 2;
+  string phone_number = 3;
+  string full_name = 4;
+}
+
+// Request to list pending merchant onboarding requests with deterministic pagination (#121, #139).
+message PendingMerchantsSummaryRequest {
+  string status_filter = 1; // Defaults to "PENDING" if empty
+  int32 page = 2; // 0-based page index (must be >= 0)
+  int32 page_size = 3; // Number of items per page (bounded: 1 to 50, default 20)
+}
+
+// Item summary in pending merchant queue.
+message PendingMerchantItem {
+  string merchant_id = 1; // UUID string
+  string business_name = 2;
+  string registration_number = 3;
+  google.protobuf.Timestamp submitted_at = 4; // UTC submission timestamp
+  string status = 5; // "PENDING", "APPROVED", "SUSPENDED", "REJECTED"
+}
+
+// Paginated response containing pending merchant summaries.
+message PendingMerchantsSummaryResponse {
+  int32 total_pending_count = 1; // Total number of merchants matching the filter
+  int32 page = 2; // Current 0-based page index
+  int32 page_size = 3; // Bounded page size
+  repeated PendingMerchantItem items = 4;
+}
