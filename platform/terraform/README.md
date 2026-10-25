@@ -6,8 +6,9 @@ This directory contains the baseline Terraform configuration for the SwiftDrop p
 
 - **Canonical Architecture Reference:** [`docs/architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md`](../../docs/architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md)
 - **Machine-Readable Allowlist Contract:** [`platform/security/azure-allowlist-policy.yaml`](../security/azure-allowlist-policy.yaml)
-- **Originating Delivery Task:** [Issue #173 (N10-ZC02)](https://github.com/Suthankan1/swiftdrop/issues/173) — Plan-only Terraform foundation and deny-by-default cost/security policy tests
-- **Downstream Boundary:** [Issue #174 (N10-ZC03)](https://github.com/Suthankan1/swiftdrop/issues/174) — Safe Terraform state and GitHub Actions OIDC
+- **State Custody & OIDC Security Policy:** [`docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md`](../../docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md)
+- **Machine-Readable OIDC Trust Contract:** [`platform/security/github-oidc-trust-policy.yaml`](../security/github-oidc-trust-policy.yaml)
+- **Originating Delivery Tasks:** [Issue #173 (N10-ZC02)](https://github.com/Suthankan1/swiftdrop/issues/173) (Plan-only baseline) and [Issue #174 (N10-ZC03)](https://github.com/Suthankan1/swiftdrop/issues/174) (Safe state & OIDC boundary)
 
 ### Strict $0 Hosting Invariants
 1. **Deny-by-Default:** Per ADR-0011, the Azure allowlist (`azure.allowed_resources`) is intentionally **EMPTY (`[]`)** and `azure.deployment_authorized` is `false`.
@@ -78,4 +79,7 @@ python3 -m pytest tests/terraform-policy -v
 ## 5. Security & Boundary Notice
 
 - Under **no circumstances** execute `terraform apply` or `terraform destroy` in pull request workflows or on unauthorized infrastructure.
-- Remote state configuration and OIDC cloud federation are strictly deferred to **Issue #174**.
+- **Remote State:** DEFERRED — Zero cloud backend configured. CI initializes with `-backend=false`.
+- **Local State Custody:** Managed exclusively by named custodian `@Suthankan1` under strict single-writer rules, FileVault encryption at rest, and offline encrypted backups (`docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md`).
+- **OIDC Workload Identity:** Formally defined but DISABLED (`platform/security/github-oidc-trust-policy.yaml`). Zero live Azure credentials or federated identity credentials exist.
+- **Active CI Workflows:** Credential-free and read-only (`permissions: contents: read`). `id-token: write` is strictly prohibited in untrusted workflows.
