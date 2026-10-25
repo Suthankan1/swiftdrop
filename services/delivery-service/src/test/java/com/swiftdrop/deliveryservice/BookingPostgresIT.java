@@ -47,7 +47,7 @@ class BookingPostgresIT {
   String schema="booking_it_"+UUID.randomUUID().toString().replace("-", "");
   url+=(url.contains("?")?"&":"?")+"currentSchema="+schema;
   ds=new DriverManagerDataSource(url,user,password==null?"":password);
-  Flyway.configure().dataSource(ds).schemas(schema).locations("classpath:db/migration/booking").load().migrate();
+  Flyway.configure().dataSource(ds).schemas(schema).locations("classpath:booking_migration").load().migrate();
   jdbc=new JdbcTemplate(ds);validators=Validation.buildDefaultValidatorFactory();
  }
  @AfterAll static void close() { if(validators!=null) validators.close();if(postgres!=null) postgres.stop(); }
