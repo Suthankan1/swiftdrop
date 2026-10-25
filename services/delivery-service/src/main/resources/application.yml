@@ -49,6 +49,15 @@ swiftdrop:
     issuer-uri: ${KEYCLOAK_ISSUER_URI:${devarom.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}
     jwk-set-uri: ${KEYCLOAK_JWKS_URI:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}}
     audience: ${JWT_AUDIENCE:${devarom.jwt.audience:swiftdrop-api}}
+  proof-storage:
+    enabled: ${SWIFTDROP_STORAGE_ENABLED:false}
+    endpoint: ${S3_ENDPOINT:}
+    bucket: ${SWIFTDROP_STORAGE_BUCKET:}
+    region: ${SWIFTDROP_STORAGE_REGION:}
+    access-key: ${SWIFTDROP_STORAGE_ACCESS_KEY:}
+    secret-key: ${SWIFTDROP_STORAGE_SECRET_KEY:}
+    api-call-timeout: ${SWIFTDROP_STORAGE_API_CALL_TIMEOUT:10s}
+    api-call-attempt-timeout: ${SWIFTDROP_STORAGE_API_CALL_ATTEMPT_TIMEOUT:3s}
 
 management:
   endpoints:

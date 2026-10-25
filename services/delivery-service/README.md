@@ -124,6 +124,7 @@ To prevent competing service scaffolds and ensure clean feature package ownershi
 | `com.swiftdrop.deliveryservice.booking` | Booking intake boundary & quote snapshotting | Sinthuha | #20 | `BookingContract`, `BookParcelCommand`, `BookingResult` |
 | `com.swiftdrop.deliveryservice.assignment` | Courier active assignment & workload check | HarithKeshan | #24 | `CourierAssignmentContract` |
 | `com.swiftdrop.deliveryservice.proof` | Proof-of-delivery metadata validation | Abhinaya | #29 | `ProofMetadataContract` |
+| `com.swiftdrop.deliveryservice.proof.storage` | Private proof-byte storage port and S3-compatible adapter | Abhinaya | #28 | `ProofObjectStorage`, `S3ProofObjectStorage` |
 | `com.swiftdrop.deliveryservice.query` | Read projections for internal gRPC & GraphQL | Vibhushan | #94 | `ParcelProjection`, `ParcelQueryService` |
 | `com.swiftdrop.deliveryservice.receipt` | Bounded Authorized PDF Delivery Receipt adapter | Sinthuha | LATER-09 | `PdfReceiptAdapter`, `ReceiptController`, `ReceiptService` |
 
@@ -203,7 +204,7 @@ mvn -f services/delivery-service/pom.xml verify
 - ❌ Delivery booking business service or quote validation logic (belongs to **Issue #20**).
 - ❌ Courier status transition REST endpoints and state mutation service (belongs to **Issue #23**).
 - ❌ Single-active courier assignment command and tables (belongs to **Issue #24**).
-- ❌ Proof-of-delivery photo upload adapter or MinIO S3 client (belongs to **Issue #29**).
+- ❌ Proof metadata persistence and authorized upload/retrieval endpoints (belong to **Issue #95**); the independent private S3-compatible byte adapter is implemented separately under **Issue #28**.
 - ❌ Outbox table and Kafka background publisher relay (belongs to **Issue #31**).
 - ❌ Server-Sent Events (SSE) tracking stream handler (belongs to **Issue #26**).
 - ❌ gRPC server stubs or private gRPC service implementation (belongs to **Issue #94** / **Issue #100**).
@@ -266,3 +267,35 @@ PDF generation is deterministic, in-process, and strictly bounded using Apache P
 - **Max output byte size:** 1,048,576 bytes (1 MB).
 - **Zero SSRF:** Zero external network calls, zero external fonts, zero external template engines. Uses built-in Standard 14 PDF Helvetica fonts.
 - **Zero float errors:** Minor-unit integer arithmetic preserved with exact decimal string formatting.
+
+---
+
+## 10. Private Proof Storage Adapter (Issue #28)
+
+**Owner:** Abhinaya (`@abhi190503`) — Delivery Operations / Courier backend.
+
+`ProofObjectStorage` is an internal, controller-free port for storing and retrieving private proof bytes. The
+`S3ProofObjectStorage` implementation targets the Platform-owned private S3-compatible MinIO bucket and always uses
+the one configured bucket. It generates opaque `proofs/v1/{uuid-v4}` references on the server, uses a conditional
+create (`If-None-Match: *`) to prevent overwrite, rejects non-canonical references, streams exact declared lengths,
+and maps provider failures to sanitized typed exceptions.
+
+The adapter is disabled unless `SWIFTDROP_STORAGE_ENABLED=true`. When enabled, Delivery requires backend-only
+injection of `S3_ENDPOINT`, `SWIFTDROP_STORAGE_BUCKET`, `SWIFTDROP_STORAGE_REGION`,
+`SWIFTDROP_STORAGE_ACCESS_KEY`, and `SWIFTDROP_STORAGE_SECRET_KEY`. Optional call deadlines use
+`SWIFTDROP_STORAGE_API_CALL_TIMEOUT` and `SWIFTDROP_STORAGE_API_CALL_ATTEMPT_TIMEOUT`. Never place these credentials
+in frontend configuration or logs.
+
+The adapter deliberately does not accept filenames, return public/presigned URLs, authorize users, persist proof
+metadata, validate evidence-policy media types, choose upload-size limits, or implement retention/deletion. Issue #95
+must authorize the caller before resolving an opaque reference and owns metadata/endpoint integration. Issue #124
+owns approved retention and cleanup policy; deletion is not exposed until that contract is reviewed.
+
+Run focused tests from `services/delivery-service`:
+
+```powershell
+.\mvnw.cmd -Dtest="ProofStorageSecurityTest,S3ProofObjectStorageTest,ProofStorageConfigurationTest" test
+```
+
+Real MinIO verification requires the approved local dependency stack and uniquely generated synthetic objects. It is
+not represented as passing unless that stack is actually available during verification.
