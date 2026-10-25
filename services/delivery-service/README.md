@@ -20,6 +20,7 @@ The **Delivery Operations Service** is the authoritative Spring Boot microservic
 - Proof-of-delivery metadata reference validation (private object store object keys).
 - Atomic Transactional Outbox publication (`outbox_events` -> Kafka KRaft topic `parcel.lifecycle.v1`).
 - One-way live parcel status updates via Server-Sent Events (SSE).
+- Authorized official PDF delivery receipt generation and streaming.
 
 Issue #126 establishes the **Spring Boot 4.1.1 application foundation, dedicated PostgreSQL Flyway schema, aggregate entities, and bounded feature package contracts** that provide the architectural scaffolding for upcoming delivery feature implementations:
 - **Issue #20:** Delivery Booking & Canonical Parcel Provider (Sinthuha)
@@ -28,6 +29,7 @@ Issue #126 establishes the **Spring Boot 4.1.1 application foundation, dedicated
 - **Issue #29:** Courier Proof Capture & Delivery Metadata (Abhinaya)
 - **Issue #31:** Delivery Outbox & Bounded Kafka Relay (Vibhushan)
 - **Issue #94:** Composite Dashboard Read Projections & gRPC Provider (Vibhushan)
+- **LATER-09:** Bounded Authorized PDF Delivery Receipt Backend Adapter (Sinthuha)
 
 ---
 
@@ -41,6 +43,7 @@ Per SwiftDrop Architecture Baseline v1.3, [DATA_OWNERSHIP.md](../../docs/archite
 - Append-only chronological status audit history (`status_history`).
 - Request de-duplication lease and completion records (`idempotency_records`).
 - Future feature persistence: `delivery_assignments` (Issue #24), `delivery_proofs` (Issue #29), and `outbox_events` (Issue #31).
+- Official bounded PDF delivery receipt generation and streaming adapter.
 
 ### Delivery DOES NOT OWN (Strict Boundary Enforcement):
 - ❌ User identity, passwords, credentials, or Keycloak identity representations (owned strictly by **Platform / Keycloak**). External subjects (`sender_sub`, `courier_sub`, `actor_sub`) are stored strictly as opaque scalar Strings.
@@ -122,6 +125,7 @@ To prevent competing service scaffolds and ensure clean feature package ownershi
 | `com.swiftdrop.deliveryservice.assignment` | Courier active assignment & workload check | HarithKeshan | #24 | `CourierAssignmentContract` |
 | `com.swiftdrop.deliveryservice.proof` | Proof-of-delivery metadata validation | Abhinaya | #29 | `ProofMetadataContract` |
 | `com.swiftdrop.deliveryservice.query` | Read projections for internal gRPC & GraphQL | Vibhushan | #94 | `ParcelProjection`, `ParcelQueryService` |
+| `com.swiftdrop.deliveryservice.receipt` | Bounded Authorized PDF Delivery Receipt adapter | Sinthuha | LATER-09 | `PdfReceiptAdapter`, `ReceiptController`, `ReceiptService` |
 
 ---
 
@@ -153,7 +157,7 @@ spring.flyway.clean-disabled=true
 ### 6.1 Compiling and Running Unit Tests
 From repository root:
 ```bash
-# Build and run all unit, entity, migration, lifecycle, and negative configuration tests
+# Build and run all unit, entity, migration, lifecycle, receipt, and negative configuration tests
 mvn -f services/delivery-service/pom.xml test
 ```
 Or using the Maven Wrapper inside the service directory:
@@ -192,7 +196,7 @@ mvn -f services/delivery-service/pom.xml verify
 - [x] Spring Data JPA repositories with query methods.
 - [x] Bounded feature package contracts: `booking` (#20), `status` (#23), `assignment` (#24), `proof` (#29), `query` (#94), `idempotency`, and `core`.
 - [x] Fail-closed datasource configuration and Actuator health check on port 8083.
-- [x] 18 automated unit and slice tests passing with zero failures.
+- [x] Automated unit and slice tests passing with zero failures.
 - [x] Testcontainers integration test harness for real PostgreSQL verification.
 
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
@@ -203,6 +207,7 @@ mvn -f services/delivery-service/pom.xml verify
 - ❌ Outbox table and Kafka background publisher relay (belongs to **Issue #31**).
 - ❌ Server-Sent Events (SSE) tracking stream handler (belongs to **Issue #26**).
 - ❌ gRPC server stubs or private gRPC service implementation (belongs to **Issue #94** / **Issue #100**).
+
 ---
 
 ## 8. LATER-02 Quote-to-Booking Foundation (Issue #20)
@@ -221,3 +226,43 @@ Read [LATER-02 contract/audit/handoff](../../docs/contracts/LATER_02_QUOTE_BOOKI
 - Concurrency-safe local key replay and one booking per quote, immutable fee/provenance, safe structured failures.
 - Initial `CREATED` / version 1 only. No assignments, notifications, Kafka relay, live tracking, merchant orders, or frontend changes.
 
+---
+
+## 9. Bounded Authorized PDF Delivery Receipt Backend Adapter (LATER-09)
+
+**Owner:** Sinthuha (@Sinthuha-n) — Delivery Operations.
+
+### Official Receipt Endpoint
+
+Conforms strictly to `contracts/rest/openapi-delivery.yaml`:
+
+- **Path:** `GET /api/v1/parcels/{parcelId}/receipt`
+- **Method:** `GET`
+- **Security:** Bearer JWT (Keycloak OIDC)
+- **Content-Type:** `application/pdf`
+- **Headers:**
+  - `Content-Disposition: attachment; filename="receipt-SWD-YYYYMMDD-XXXX.pdf"`
+  - `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`
+  - `Pragma: no-cache`
+  - `X-Content-Type-Options: nosniff`
+
+### Security & Object-Level Authorization (BOLA/IDOR Defense)
+
+Receipts contain sensitive commercial and personal delivery data and are strictly access-controlled:
+1. **Parcel Creator:** Requester `sub` must match `createdBySub`.
+2. **Merchant Tenant:** Requester holding `MERCHANT` role must have matching `merchant_id` claim.
+3. **Recipient:** Requester matching verified `phone_number` claim.
+4. **Staff Oversight:** Requesters holding `ADMIN` or `DISPATCHER` roles.
+5. **Cross-access denial:** Requesters without verified ownership receive `403 Forbidden` RFC 7807 ProblemDetail.
+6. **Unauthenticated denial:** Missing or invalid tokens receive `401 Unauthorized` RFC 7807 ProblemDetail.
+7. **Eligibility gate:** Non-completed parcels (not `DELIVERED`) or unconfirmed payments fail closed with `404 Not Found` ("Receipt not available or parcel not completed").
+
+### Resource Bounds & Safety
+
+PDF generation is deterministic, in-process, and strictly bounded using Apache PDFBox 3.0.5:
+- **Max text length:** 2,000 characters per field.
+- **Max financial line items:** 50 items.
+- **Max document pages:** 5 pages (receipts format to 1 page).
+- **Max output byte size:** 1,048,576 bytes (1 MB).
+- **Zero SSRF:** Zero external network calls, zero external fonts, zero external template engines. Uses built-in Standard 14 PDF Helvetica fonts.
+- **Zero float errors:** Minor-unit integer arithmetic preserved with exact decimal string formatting.
