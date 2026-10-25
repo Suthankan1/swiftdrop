@@ -2,7 +2,7 @@
 
 > **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
 
-Last documentation update: **2026-10-22**. This file describes the **starter artifact**, not unknown external repositories.
+Last documentation update: **2026-10-25**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
@@ -16,7 +16,39 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | Email Verification & MFA Policy (Issue #47) | **Native Email Verification (PR #48) & RFC 6238 TOTP (PR #49) VERIFIED; Production Policy & ADR-0009 Finalized** | 14/14 static invariant checks PASS; 93 unit tests PASS (pytest 49 subtests, unittest parity); production policy in `docs/security/EMAIL_VERIFICATION_MFA_POLICY.md`; ADR-0009 recommendation Outcome A (no typed email OTP); handoff to #150 and #159 |
 | GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
 | Keycloak Role Reconciliation | **Controlled Keycloak Staff & Merchant-Role Reconciliation Adapter IMPLEMENTED (Issue #107)** | 52 automated reconciliation/security tests PASS (193 total in Accounts Service); server-only least privilege Keycloak administration; idempotent staff/merchant reconciliation; stale-retry protection; V5 durable audit schema; Spring Security admin guard (`hasRole('ADMIN')`) |
+| Strict $0 Hosting Decision & Azure Allowlist (Issue #172) | **Strict $0 Local Hosting Decision Frozen; Azure Allowlist INITIALIZED TO EMPTY (ADR-0011)** | Complete resource-by-resource decision matrix; Azure for Students credit disqualified; SWA Free blocked on missing subscription hard-stop & local reachability; local k3d/K3s topology frozen for all 8 workloads; machine-readable policy contract published in `platform/security/azure-allowlist-policy.yaml`; handoff to #173-#178 |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
+
+## Issue #172 Strict $0 Hosting Decision & Subscription-Specific Azure Allowlist — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / DevOps / Security Lead); branch `docs/n10-zc01-strict-zero-cost-hosting`, targeting `test`.
+Reviewers: **Harithkeshan (@Harithkeshan)** (Platform & Staff/Admin Lead), **Vibhushan (@Vibhushan-2003)** (Independent Security & Quality Lead).
+
+Delivered comprehensive research, financial risk analysis, architectural decision formalization, and downstream execution contracts for GitHub Issue #172 ([N10-ZC01]):
+- **Strict $0 Cost Policy Formalization:**
+  - Codified the non-negotiable definition of Strict $0: zero unauthorized cloud charges and zero consumption of Azure Students promotional credits ($100 credit balance).
+  - Explicitly disqualified promotional credits, pricing calculators, trial offsets, and marketing "Free" labels as proof of non-billable hosting.
+  - Enforced fail-closed governance: any unverified SKU, dependency, or overage behavior automatically fails closed to `BLOCKED` or `REJECTED`.
+- **Azure Allowlist Default State:**
+  - Initialized subscription-specific Azure allowlist to **EMPTY (`allowed_resources: []`)**.
+  - Set `azure.deployment_authorized: false`.
+  - Machine-readable policy contract published in `platform/security/azure-allowlist-policy.yaml`.
+- **Comprehensive Resource-by-Resource Decision Matrix (21 Categories):**
+  - Evaluated all candidate Azure resources (VMs, Managed Disks, Public IPs, NAT Gateways, Load Balancers, AKS Nodes, Storage Accounts, Terraform State Storage, ACR, Flexible PostgreSQL, Functions, App Insights, Monitor/Log Analytics, Paid Alerts, Key Vault, Front Door, Purchased Domains, Paid SSL, Egress Networking, Static Web Apps, and Cloud K3s VMs).
+  - Categorized each with exact SKUs, meter units, failure conditions, official Microsoft Learn citations, and retrieval timestamps (UTC).
+- **Rigorous Evaluation of Azure Static Web Apps Free Candidate:**
+  - Evaluated strictly for compiled SPA bundle (`frontend/dist/`).
+  - Found candidate **BLOCKED / NOT APPROVED** due to: (1) unverified subscription overage hard stops without active session inspection; and (2) the architectural browser reachability gap (public SPA calling local Gateway/Keycloak causes browser mixed-content rejections, localhost resolution failures on client machines, and OIDC redirect/CORS mismatch).
+- **Frozen Local Release Topology for November 10:**
+  - Assigned all eight SwiftDrop application and identity workloads (React SPA, API Gateway, Accounts, Pricing, Delivery, Communications, GraphQL, and Keycloak) to deploy locally on existing hardware via **k3d / K3s**.
+  - State dependencies frozen on local host: 5 dedicated PostgreSQL databases (`accounts_db`, `pricing_db`, `delivery_db`, `communications_db`, `keycloak_db`), Kafka KRaft broker, private MinIO S3 storage, and Mailpit SMTP.
+  - Suthankan1 recorded as Host Capacity Owner. Measured host metrics: Darwin `arm64`, 10 CPU cores, 16 GiB RAM, 93 GiB available disk, Docker 29.9.2. Full stack estimated working set (~6.5 to 7.5 GiB) fits comfortably within 16 GiB memory budget.
+  - Honest distinction between local demonstration release and Internet-hosted release (`PUBLIC INTERNET ACCESS — NOT VERIFIED / LOCAL-ONLY RELEASE`).
+- **Canonical Deliverables & Downstream Handoff:**
+  - Published Architecture Decision Record: `docs/architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md`.
+  - Published Technical Handoff Document: `docs/handoff/ISSUE_172_TO_173_178_ZERO_COST_HOSTING.md`.
+  - Linked policy to downstream infrastructure chain (#173, #174, #175, #176, #177, #178) and existing deployment tasks (#128, #149, #154, #150, #160, #167, #170). Issue #178 confirmed as an optional future spending gate, not a release prerequisite.
+
 
 ## Issue #47 Keycloak Email Verification, MFA Policy & Security Acceptance — 2026-10-25
 
