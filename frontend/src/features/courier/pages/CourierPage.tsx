@@ -1,8 +1,10 @@
 import { useAuth } from '../../../auth/context'
-import { FeedbackState } from '../../../components/ui/FeedbackState'
+import { StaffProfile } from '../../staff/components/StaffProfile'
+import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 
 export function CourierPage() {
   const auth = useAuth()
+  const { state, query, refetch } = useStaffProfile('COURIER')
 
   return (
     <div className="page-container courier-page">
@@ -14,9 +16,7 @@ export function CourierPage() {
         </p>
       </header>
       <div className="profile-grid">
-        <FeedbackState title="Courier staff details are not yet available">
-          The protected staff-read provider is still pending. No account, assignment, parcel, or proof data is loaded on this page.
-        </FeedbackState>
+        <StaffProfile state={state} onRetry={() => { void refetch() }} />
         <aside className="card courier-note" aria-labelledby="courier-next-heading">
           <h2 id="courier-next-heading">Built for the work ahead.</h2>
           <p className="muted">
@@ -25,6 +25,15 @@ export function CourierPage() {
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out
           </button>
+          {query.isError && (
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={() => { void refetch() }}
+            >
+              Retry profile
+            </button>
+          )}
         </aside>
       </div>
     </div>
