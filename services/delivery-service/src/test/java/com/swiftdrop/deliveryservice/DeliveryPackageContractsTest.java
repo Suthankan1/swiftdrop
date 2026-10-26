@@ -131,4 +131,92 @@ class DeliveryPackageContractsTest {
         assertThat(ex.getActualVersion()).isEqualTo(4L);
         assertThat(ex.getMessage()).contains("expected version 3 but was 4");
     }
+
+    @Test
+    @DisplayName("Verify UpdateStatusRequest record contracts")
+    void testUpdateStatusRequestContract() {
+        UUID proofId = UUID.randomUUID();
+        com.swiftdrop.deliveryservice.status.dto.UpdateStatusRequest req =
+                new com.swiftdrop.deliveryservice.status.dto.UpdateStatusRequest(
+                        ParcelStatus.DELIVERED,
+                        3L,
+                        "Handed to recipient",
+                        null,
+                        proofId
+                );
+
+        assertThat(req.newStatus()).isEqualTo(ParcelStatus.DELIVERED);
+        assertThat(req.expectedVersion()).isEqualTo(3L);
+        assertThat(req.note()).isEqualTo("Handed to recipient");
+        assertThat(req.reason()).isNull();
+        assertThat(req.proofId()).isEqualTo(proofId);
+    }
+
+    @Test
+    @DisplayName("Verify ParcelStatusChangeResponse record contracts")
+    void testParcelStatusChangeResponseContract() {
+        UUID parcelId = UUID.randomUUID();
+        Instant now = Instant.now();
+        com.swiftdrop.deliveryservice.status.dto.ParcelStatusChangeResponse resp =
+                new com.swiftdrop.deliveryservice.status.dto.ParcelStatusChangeResponse(
+                        parcelId,
+                        "SWD-2026-TRK-9",
+                        "OUT_FOR_DELIVERY",
+                        "DELIVERED",
+                        4L,
+                        4L,
+                        now
+                );
+
+        assertThat(resp.parcelId()).isEqualTo(parcelId);
+        assertThat(resp.trackingNumber()).isEqualTo("SWD-2026-TRK-9");
+        assertThat(resp.previousStatus()).isEqualTo("OUT_FOR_DELIVERY");
+        assertThat(resp.currentStatus()).isEqualTo("DELIVERED");
+        assertThat(resp.stateVersion()).isEqualTo(4L);
+        assertThat(resp.updatedParcelVersion()).isEqualTo(4L);
+        assertThat(resp.occurredAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("Verify AssignCourierRequest record contracts")
+    void testAssignCourierRequestContract() {
+        UUID parcelId = UUID.randomUUID();
+        String courierSub = "courier-sub-123";
+        com.swiftdrop.deliveryservice.assignment.dto.AssignCourierRequest req =
+                new com.swiftdrop.deliveryservice.assignment.dto.AssignCourierRequest(
+                        parcelId,
+                        courierSub,
+                        1L
+                );
+
+        assertThat(req.parcelId()).isEqualTo(parcelId);
+        assertThat(req.courierSub()).isEqualTo(courierSub);
+        assertThat(req.expectedVersion()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("Verify AssignmentResponse record contracts")
+    void testAssignmentResponseContract() {
+        UUID assignmentId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+        Instant now = Instant.now();
+        com.swiftdrop.deliveryservice.assignment.dto.AssignmentResponse resp =
+                new com.swiftdrop.deliveryservice.assignment.dto.AssignmentResponse(
+                        assignmentId,
+                        parcelId,
+                        "courier-sub-123",
+                        true,
+                        now,
+                        "dispatcher-sub-999",
+                        2L
+                );
+
+        assertThat(resp.assignmentId()).isEqualTo(assignmentId);
+        assertThat(resp.parcelId()).isEqualTo(parcelId);
+        assertThat(resp.courierSub()).isEqualTo("courier-sub-123");
+        assertThat(resp.active()).isTrue();
+        assertThat(resp.assignedAt()).isEqualTo(now);
+        assertThat(resp.assignedBy()).isEqualTo("dispatcher-sub-999");
+        assertThat(resp.newParcelVersion()).isEqualTo(2L);
+    }
 }
