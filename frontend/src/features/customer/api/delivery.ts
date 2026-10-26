@@ -1,4 +1,5 @@
 import type {
+  BookParcelRequest,
   CustomerDeliveriesPage,
   CustomerDeliverySummary,
   PaginationParams,
@@ -18,6 +19,9 @@ export type DeliveryFailureKind =
   | 'invalid-response'
   | 'download-failed'
   | 'not-eligible'
+  | 'conflict'
+  | 'expired'
+  | 'validation-error'
 
 export class DeliveryError extends Error {
   readonly kind: DeliveryFailureKind
@@ -444,6 +448,101 @@ export function createDeliveryApi({
       const filename = sanitizeReceiptFilename(contentDisposition, fallbackFilename)
 
       return { blob, filename }
+    },
+
+    /**
+     * Books a new parcel delivery using an accepted quote snapshot (IF-REST-03, openapi-delivery.yaml).
+     * Dispatches POST /api/v1/parcels with Keycloak CUSTOMER Bearer token and optional Idempotency-Key.
+     */
+    async bookParcel(
+      payload: BookParcelRequest,
+      idempotencyKey?: string,
+      signal?: AbortSignal,
+    ): Promise<ParcelDetailResponse> {
+      const token = await resolveAuthToken()
+      const url = `${normalizedGateway}/api/v1/parcels`
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, application/problem+json',
+        Authorization: `Bearer ${token}`,
+      }
+      if (idempotencyKey?.trim()) {
+        headers['Idempotency-Key'] = idempotencyKey.trim()
+      }
+
+      let response: Response
+      try {
+        response = await fetchRequest(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+          credentials: 'omit',
+          cache: 'no-store',
+          signal,
+        })
+      } catch (error) {
+        if (signal?.aborted) throw error
+        throw new DeliveryError('unavailable', 'Delivery booking service is currently unreachable.')
+      }
+
+      if (response.status === 401) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError('auth-required', 'Session expired. Please sign in again.', problem, 401)
+      }
+      if (response.status === 403) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError('forbidden', 'You are not authorized to book a delivery.', problem, 403)
+      }
+      if (response.status === 409) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError(
+          'conflict',
+          problem?.detail || 'Quote has already been consumed or an idempotency conflict occurred.',
+          problem,
+          409,
+        )
+      }
+      if (response.status === 422) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError(
+          'expired',
+          problem?.detail || 'Quote has expired. Please recalculate your quote to continue.',
+          problem,
+          422,
+        )
+      }
+      if (response.status === 400) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError(
+          'validation-error',
+          problem?.detail || 'Invalid booking details provided.',
+          problem,
+          400,
+        )
+      }
+      if (!response.ok) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError(
+          'unavailable',
+          `Delivery booking failed with status ${response.status}.`,
+          problem,
+          response.status,
+        )
+      }
+
+      let data: unknown
+      try {
+        data = await response.json()
+      } catch {
+        throw new DeliveryError('invalid-response', 'Invalid JSON received from booking response.')
+      }
+
+      if (!isParcelDetailResponse(data)) {
+        throw new DeliveryError('invalid-response', 'Booking response does not match the approved contract.')
+      }
+
+      return data
     },
   }
 }

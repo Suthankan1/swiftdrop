@@ -33,7 +33,12 @@ export function CustomerPage() {
     <CustomerNav />
     <div className="profile-grid"><CustomerProfile state={state} />
       <aside className="card customer-note" aria-labelledby="customer-note-heading"><h2 id="customer-note-heading">Built around you.</h2>
-        <p>Monitor your active parcels, delivery milestones, and official receipts.</p>
+        <p>Calculate dynamic rates, book delivery dispatches, monitor active milestones, and download official receipts.</p>
+        {inRouter ? (
+          <Link to="/customer/quote" className="button button-primary">Request a quote &amp; book</Link>
+        ) : (
+          <a href="/customer/quote" className="button button-primary">Request a quote &amp; book</a>
+        )}
         {inRouter ? (
           <Link to="/customer/history" className="button button-secondary">View delivery history</Link>
         ) : (
