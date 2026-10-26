@@ -9,10 +9,14 @@ option java_package = "com.swiftdrop.pricing.v1";
 option java_outer_classname = "PricingProto";
 
 // Internal private gRPC service for Pricing & Zones microservice.
-// Used by Delivery Operations during parcel booking to verify price quotes.
+// Used by Delivery Operations during parcel booking to verify price quotes,
+// and by administrative read clients for bounded tariff and zone summaries.
 service PricingInternalService {
   // Validates that a quote exists, is not expired, and that fee matches (IF-GRPC-04).
   rpc ValidateQuote (ValidateQuoteRequest) returns (ValidateQuoteResponse);
+
+  // Queries bounded active zones and rate version summaries for admin views (Refs #114).
+  rpc GetPricingAdminSummary (PricingAdminSummaryRequest) returns (PricingAdminSummaryResponse);
 }
 
 // Request to validate an existing price quote before confirming parcel booking.
@@ -32,4 +36,44 @@ message ValidateQuoteResponse {
   string currency = 5; // ISO 4217 currency code
   google.protobuf.Timestamp expires_at = 6; // ISO UTC expiry timestamp
   string validation_code = 7; // "VALID", "QUOTE_EXPIRED", "RATE_SUPERSEDED", "AMOUNT_MISMATCH", "QUOTE_NOT_FOUND"
+
+  // Additive snapshot fields for booking authorization & route binding (Refs #114, backward-compatible)
+  string pickup_zone = 8;
+  string dropoff_zone = 9;
+  string subject_sub = 10;
+  string tenant_id = 11;
+  bool is_anonymous = 12;
+  int64 base_fee_minor_units = 13;
+  int64 weight_surcharge_minor_units = 14;
+}
+
+// Request for bounded administrative zone and rate summaries.
+message PricingAdminSummaryRequest {
+  bool active_only = 1; // Filter for active zones/tariffs
+  int32 page = 2; // 0-based page index (>= 0)
+  int32 page_size = 3; // Bounded: 1 to 50, default 20
+}
+
+message PricingZoneSummaryItem {
+  string zone_id = 1; // UUID string
+  string zone_code = 2; // e.g. "ZONE_1"
+  string name = 3; // e.g. "Colombo Municipal"
+  string description = 4;
+  bool is_active = 5;
+}
+
+message RateVersionSummaryItem {
+  string rate_version_id = 1; // UUID string
+  string version_code = 2; // e.g. "RATE-2026-V1"
+  string currency = 3; // "LKR"
+  string status = 4; // "ACTIVE", "DRAFT", "ARCHIVED"
+  google.protobuf.Timestamp created_at = 5;
+  int32 rule_count = 6;
+}
+
+message PricingAdminSummaryResponse {
+  repeated PricingZoneSummaryItem zones = 1;
+  repeated RateVersionSummaryItem rate_versions = 2;
+  int32 total_zones = 3;
+  int32 total_rate_versions = 4;
 }
