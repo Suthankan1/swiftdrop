@@ -343,6 +343,19 @@ class GrpcDelegationSpoofingTest {
         assertThat(handlerInvocations.get()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("AuthorizeEventRecipient policy: COMMUNICATIONS_SERVICE allowed, actor delegation FORBIDDEN")
+    void testAuthorizeEventRecipientPolicy() {
+        GrpcSecurityPolicy policy = new GrpcSecurityPolicy();
+        var opt = policy.getPolicy("swiftdrop.delivery.v1.DeliveryInternalService/AuthorizeEventRecipient");
+        assertThat(opt).isPresent();
+        var p = opt.get();
+        assertThat(p.isCallerAllowed(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE)).isTrue();
+        assertThat(p.isCallerAllowed(SwiftDropServiceIdentity.DELIVERY_SERVICE)).isFalse();
+        assertThat(p.isCallerAllowed(SwiftDropServiceIdentity.ACCOUNTS_SERVICE)).isFalse();
+        assertThat(p.delegationRequirement()).isEqualTo(GrpcSecurityPolicy.DelegationRequirement.FORBIDDEN);
+    }
+
     private static class MockAccountsInternalService extends AccountsInternalServiceGrpc.AccountsInternalServiceImplBase {
         private final AtomicInteger counter;
 

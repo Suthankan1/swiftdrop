@@ -305,3 +305,29 @@ not represented as passing unless that stack is actually available during verifi
 `swiftdrop-pod`, uses only random synthetic content, verifies anonymous denial and conditional non-overwrite behavior,
 and deletes only the exact object it created. If the approved provider or application credentials are absent, the real
 provider test is reported as skipped rather than passed.
+
+---
+
+## 11. Delivery Event-to-Recipient Authorization gRPC Service (Issue #111)
+
+**Owner:** Sinthuha (`@Sinthuha-n`) — Delivery Operations Lead.
+
+`DeliveryInternalServiceImpl` implements the authoritative server-side gRPC endpoints for `swiftdrop.delivery.v1.DeliveryInternalService`:
+1. `GetParcelInternal`: Returns parcel projections for the GraphQL Query API (`IF-GRPC-05`).
+2. `GetCourierWorkload`: Returns active workload count for couriers.
+3. `AuthorizeEventRecipient`: Exposes secure, bounded, read-only event-to-recipient authorization for Communications (`IF-GRPC-11`, #111).
+
+### Security & Invariant Rules
+- **Machine Caller Enforcement:** Strictly verifies machine caller identity (`COMMUNICATIONS_SERVICE` via internal service JWT). Calls from unauthorized services or unauthenticated callers fail closed (`PERMISSION_DENIED` / `UNAUTHENTICATED`).
+- **Forbidden Human Delegation:** Rejects requests with human actor tokens (`DelegationRequirement.FORBIDDEN`) to prevent spoofing on background notification jobs.
+- **Authoritative Provenance:** Validates `event_id` against `outbox_events` and asserts that `event.aggregate_id == request.parcel_id`. Mismatched or forged pairings fail closed (`is_authorized = false`, `reason = EVENT_PARCEL_MISMATCH`).
+- **Tenant Isolation:** Enforces merchant boundary when `merchant_id` is supplied (`MERCHANT_TENANT_MISMATCH`).
+- **Recipient Association:** Authorizes only the legitimate parcel customer (`sender_sub`) or the currently active courier assigned to the parcel (`courier_sub`). Third parties and unassociated users are rejected (`RECIPIENT_NOT_ASSOCIATED`).
+- **Staleness & Terminal Policies:** Evaluates state versions (`current_version` vs `event_version`). Superseded non-terminal events require `allow_stale = true` (`STALE_EVENT`). Superseded terminal events strictly reject outdated notifications unless explicit terminal override applies (`STALE_TERMINAL_EVENT`).
+- **Zero PII Exposure:** Returns strictly minimal delivery metadata (`tracking_number`, `current_status`, `is_authorized`, `authorization_reason`). Plain recipient email, phone, street address, or raw payloads are never emitted.
+
+### Verification
+Execute focused test suite:
+```bash
+mvn test -Dtest=DeliveryInternalServiceGrpcTest -f services/delivery-service/pom.xml
+```
