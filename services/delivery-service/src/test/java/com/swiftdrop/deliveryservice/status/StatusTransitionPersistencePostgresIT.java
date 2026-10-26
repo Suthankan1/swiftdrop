@@ -77,6 +77,9 @@ class StatusTransitionPersistencePostgresIT {
     private StatusHistoryRepository statusHistoryRepository;
 
     @Autowired
+    private com.swiftdrop.deliveryservice.outbox.OutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private StatusTransitionService statusTransitionService;
 
     private UUID parcelId;
@@ -138,10 +141,20 @@ class StatusTransitionPersistencePostgresIT {
         assertThat(history.getActorSub()).isEqualTo(assignedCourier);
         assertThat(history.getResultingVersion()).isEqualTo(2L);
         assertThat(history.getNote()).isEqualTo("Courier picked up package from sender.");
+
+        // Verify OutboxEvent record in database
+        List<com.swiftdrop.deliveryservice.outbox.OutboxEvent> outboxList =
+                outboxEventRepository.findByAggregateIdOrderByAggregateVersionAsc(parcelId);
+        assertThat(outboxList).hasSize(1);
+        com.swiftdrop.deliveryservice.outbox.OutboxEvent outboxEvent = outboxList.get(0);
+        assertThat(outboxEvent.getStatus()).isEqualTo(com.swiftdrop.deliveryservice.outbox.OutboxStatus.PENDING);
+        assertThat(outboxEvent.getAggregateVersion()).isEqualTo(2L);
+        assertThat(outboxEvent.getTopic()).isEqualTo("parcel.lifecycle.v1");
+        assertThat(outboxEvent.getPartitionKey()).isEqualTo(parcelId.toString());
     }
 
     @Test
-    @DisplayName("2. Exception triggers full rollback: neither state nor history are persisted")
+    @DisplayName("2. Exception triggers full rollback: neither state nor history nor outbox are persisted")
     void testFullRollbackOnException() {
         // Attempt illegal transition CREATED -> IN_TRANSIT
         UpdateStatusRequest invalidRequest = new UpdateStatusRequest(
@@ -167,10 +180,15 @@ class StatusTransitionPersistencePostgresIT {
         // Verify zero history rows inserted
         List<StatusHistory> historyList = statusHistoryRepository.findByParcelIdOrderByResultingVersionAsc(parcelId);
         assertThat(historyList).isEmpty();
+
+        // Verify zero outbox rows inserted
+        List<com.swiftdrop.deliveryservice.outbox.OutboxEvent> outboxList =
+                outboxEventRepository.findByAggregateIdOrderByAggregateVersionAsc(parcelId);
+        assertThat(outboxList).isEmpty();
     }
 
     @Test
-    @DisplayName("3. Stale expectedVersion aborts transaction with VersionConflictException and no history")
+    @DisplayName("3. Stale expectedVersion aborts transaction with VersionConflictException and no outbox/history")
     void testStaleExpectedVersionRollback() {
         UpdateStatusRequest staleRequest = new UpdateStatusRequest(
                 ParcelStatus.PICKED_UP,
@@ -193,10 +211,14 @@ class StatusTransitionPersistencePostgresIT {
 
         List<StatusHistory> historyList = statusHistoryRepository.findByParcelIdOrderByResultingVersionAsc(parcelId);
         assertThat(historyList).isEmpty();
+
+        List<com.swiftdrop.deliveryservice.outbox.OutboxEvent> outboxList =
+                outboxEventRepository.findByAggregateIdOrderByAggregateVersionAsc(parcelId);
+        assertThat(outboxList).isEmpty();
     }
 
     @Test
-    @DisplayName("4. Sequential permitted transitions append chronological immutable history records")
+    @DisplayName("4. Sequential permitted transitions append chronological immutable history and outbox records")
     void testSequentialTransitionsAppendHistory() {
         // Step 1: CREATED -> PICKED_UP (version 1 -> 2)
         statusTransitionService.updateStatus(
@@ -237,5 +259,13 @@ class StatusTransitionPersistencePostgresIT {
 
         assertThat(historyList.get(2).getNewStatus()).isEqualTo(ParcelStatus.OUT_FOR_DELIVERY);
         assertThat(historyList.get(2).getResultingVersion()).isEqualTo(4L);
+
+        // Verify matching sequential outbox events
+        List<com.swiftdrop.deliveryservice.outbox.OutboxEvent> outboxList =
+                outboxEventRepository.findByAggregateIdOrderByAggregateVersionAsc(parcelId);
+        assertThat(outboxList).hasSize(3);
+        assertThat(outboxList.get(0).getAggregateVersion()).isEqualTo(2L);
+        assertThat(outboxList.get(1).getAggregateVersion()).isEqualTo(3L);
+        assertThat(outboxList.get(2).getAggregateVersion()).isEqualTo(4L);
     }
 }
