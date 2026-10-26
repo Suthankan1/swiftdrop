@@ -54,7 +54,7 @@ class PricingContractTest {
     }
 
     @Test
-    @DisplayName("ValidateQuote: valid quote returns valid status with verified minor units")
+    @DisplayName("ValidateQuote: valid quote returns valid status with verified minor units and additive snapshot")
     void testValidateQuoteSuccess() {
         String quoteId = UUID.randomUUID().toString();
         ValidateQuoteRequest request = ValidateQuoteRequest.newBuilder()
@@ -73,6 +73,11 @@ class PricingContractTest {
         assertThat(response.getCurrency()).isEqualTo("LKR");
         assertThat(response.getValidationCode()).isEqualTo("VALID");
         assertThat(response.getExpiresAt().getSeconds()).isGreaterThan(0);
+        assertThat(response.getPickupZone()).isEqualTo("ZONE_1");
+        assertThat(response.getDropoffZone()).isEqualTo("ZONE_2");
+        assertThat(response.getSubjectSub()).isEqualTo("user-alice-123");
+        assertThat(response.getBaseFeeMinorUnits()).isEqualTo(100000L);
+        assertThat(response.getWeightSurchargeMinorUnits()).isEqualTo(50000L);
     }
 
     @Test
@@ -92,6 +97,26 @@ class PricingContractTest {
         assertThat(response.getValidationCode()).isEqualTo("AMOUNT_MISMATCH");
     }
 
+    @Test
+    @DisplayName("GetPricingAdminSummary: returns bounded zones and rate versions")
+    void testGetPricingAdminSummary() {
+        com.swiftdrop.pricing.v1.PricingAdminSummaryRequest request =
+                com.swiftdrop.pricing.v1.PricingAdminSummaryRequest.newBuilder()
+                        .setActiveOnly(true)
+                        .setPage(0)
+                        .setPageSize(20)
+                        .build();
+
+        com.swiftdrop.pricing.v1.PricingAdminSummaryResponse response = blockingStub.getPricingAdminSummary(request);
+
+        assertThat(response.getZonesCount()).isEqualTo(1);
+        assertThat(response.getZones(0).getZoneCode()).isEqualTo("ZONE_1");
+        assertThat(response.getRateVersionsCount()).isEqualTo(1);
+        assertThat(response.getRateVersions(0).getVersionCode()).isEqualTo("RATE-2026-V1");
+        assertThat(response.getTotalZones()).isEqualTo(1);
+        assertThat(response.getTotalRateVersions()).isEqualTo(1);
+    }
+
     private static class MockPricingService extends PricingInternalServiceGrpc.PricingInternalServiceImplBase {
         @Override
         public void validateQuote(ValidateQuoteRequest request,
@@ -108,7 +133,12 @@ class PricingContractTest {
                     .setRateVersion(request.getExpectedRateVersion())
                     .setVerifiedAmountMinorUnits(150000L)
                     .setCurrency("LKR")
-                    .setExpiresAt(ts);
+                    .setExpiresAt(ts)
+                    .setPickupZone("ZONE_1")
+                    .setDropoffZone("ZONE_2")
+                    .setSubjectSub("user-alice-123")
+                    .setBaseFeeMinorUnits(100000L)
+                    .setWeightSurchargeMinorUnits(50000L);
 
             if (matchesAmount) {
                 builder.setIsValid(true).setValidationCode("VALID");
@@ -117,6 +147,38 @@ class PricingContractTest {
             }
 
             responseObserver.onNext(builder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void getPricingAdminSummary(com.swiftdrop.pricing.v1.PricingAdminSummaryRequest request,
+                                           StreamObserver<com.swiftdrop.pricing.v1.PricingAdminSummaryResponse> responseObserver) {
+            com.swiftdrop.pricing.v1.PricingZoneSummaryItem zone =
+                    com.swiftdrop.pricing.v1.PricingZoneSummaryItem.newBuilder()
+                            .setZoneId(UUID.randomUUID().toString())
+                            .setZoneCode("ZONE_1")
+                            .setName("Colombo Municipal")
+                            .setIsActive(true)
+                            .build();
+
+            com.swiftdrop.pricing.v1.RateVersionSummaryItem rate =
+                    com.swiftdrop.pricing.v1.RateVersionSummaryItem.newBuilder()
+                            .setRateVersionId(UUID.randomUUID().toString())
+                            .setVersionCode("RATE-2026-V1")
+                            .setCurrency("LKR")
+                            .setStatus("ACTIVE")
+                            .setRuleCount(6)
+                            .build();
+
+            com.swiftdrop.pricing.v1.PricingAdminSummaryResponse response =
+                    com.swiftdrop.pricing.v1.PricingAdminSummaryResponse.newBuilder()
+                            .addZones(zone)
+                            .addRateVersions(rate)
+                            .setTotalZones(1)
+                            .setTotalRateVersions(1)
+                            .build();
+
+            responseObserver.onNext(response);
             responseObserver.onCompleted();
         }
     }
