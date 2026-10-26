@@ -45,11 +45,8 @@ type Query {
   """
   deliveryStats(filter: DeliveryStatsFilterInput): DeliveryStatsSummary!
 
-  """
-  Public, redacted parcel tracking view.
-  Open to unauthenticated users; strictly excludes recipient contact details and proof URLs.
-  """
-  publicTracking(trackingNumber: String!): PublicTrackingView
+  # Issue #119 gap closure: public tracking is REST-owned (#115/#133).
+  # Historical publicTracking contract and supporting types remain in Git history.
 }
 
 input PaginationInput {
