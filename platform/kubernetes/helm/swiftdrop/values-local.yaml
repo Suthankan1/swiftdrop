@@ -1,0 +1,137 @@
+# ==============================================================================
+# SwiftDrop Platform — Local Development Helm Values (Issue #149)
+# Environment: k3d-swiftdrop-local (Single-node K3s v1.31.2, Apple Silicon ARM64)
+# Allocatable Docker RAM: 4.06 GiB. Conservative JVM memory footprints.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+
+namespaces:
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+ingress:
+  enabled: true
+  className: traefik
+  host: swiftdrop.local
+  subdomains:
+    enabled: true
+    app: app.swiftdrop.local
+    api: api.swiftdrop.local
+    auth: auth.swiftdrop.local
+  tls:
+    enabled: true
+    secretName: swiftdrop-tls-cert
+
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+frontend:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 30m
+      memory: 48Mi
+    limits:
+      cpu: 100m
+      memory: 96Mi
+
+apiGateway:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=80m -XX:ReservedCodeCacheSize=32m -Xss512k"
+
+accounts:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=80m -XX:ReservedCodeCacheSize=32m -Xss512k"
+
+pricing:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=80m -XX:ReservedCodeCacheSize=32m -Xss512k"
+
+delivery:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=80m -XX:ReservedCodeCacheSize=32m -Xss512k"
+
+communications:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=80m -XX:ReservedCodeCacheSize=32m -Xss512k"
+
+graphql:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=80m -XX:ReservedCodeCacheSize=32m -Xss512k"
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  config:
+    javaOptsAppend: "-Dkeycloak.migration.replace-placeholders=true -Xms128m -Xmx256m"
+
+statefulInterfaces:
+  createPlaceholderServices: false

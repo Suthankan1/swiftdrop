@@ -1,0 +1,18 @@
+apiVersion: v2
+name: swiftdrop
+description: Enterprise Helm chart for SwiftDrop microservices, Keycloak identity, ingress TLS and Kubernetes security boundaries
+type: application
+version: 1.0.0
+appVersion: "1.3.0"
+keywords:
+  - swiftdrop
+  - logistics
+  - microservices
+  - keycloak
+  - ingress-tls
+home: https://github.com/Suthankan1/swiftdrop
+sources:
+  - https://github.com/Suthankan1/swiftdrop
+maintainers:
+  - name: Suthankan1
+    url: https://github.com/Suthankan1

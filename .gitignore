@@ -5,6 +5,8 @@
 !.env.*.example
 *.pem
 *.key
+*.crt
+*.csr
 *.p12
 *.pfx
 *credentials*.json

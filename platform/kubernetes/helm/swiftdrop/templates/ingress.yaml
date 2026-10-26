@@ -1,0 +1,152 @@
+# ==============================================================================
+# SwiftDrop Platform — Ingress & Local TLS Routing (Issue #149)
+# Reuses existing embedded K3s Traefik ingress controller.
+# Exposes ONLY approved browser-facing routes: Frontend SPA, API Gateway, Keycloak.
+# All internal services remain strictly private and ClusterIP only.
+# ==============================================================================
+
+{{- if .Values.ingress.enabled }}
+# 1. Apps Ingress (Frontend SPA & Spring Cloud Gateway)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: swiftdrop-apps-ingress
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+        {{- if .Values.ingress.subdomains.enabled }}
+        - {{ .Values.ingress.subdomains.app }}
+        - {{ .Values.ingress.subdomains.api }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    # Primary domain path-based routing (swiftdrop.local)
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 8080
+    {{- if .Values.ingress.subdomains.enabled }}
+    # Subdomain routing: app.swiftdrop.local -> Frontend SPA
+    - host: {{ .Values.ingress.subdomains.app }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 8080
+    # Subdomain routing: api.swiftdrop.local -> API Gateway
+    - host: {{ .Values.ingress.subdomains.api }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+    {{- end }}
+
+{{- if .Values.keycloak.enabled }}
+---
+# 2. Identity Ingress (Keycloak OIDC Provider)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: swiftdrop-identity-ingress
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+        {{- if .Values.ingress.subdomains.enabled }}
+        - {{ .Values.ingress.subdomains.auth }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    # Path-based routing on primary host (swiftdrop.local)
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /realms
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          - path: /resources
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          - path: /js
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+    {{- if .Values.ingress.subdomains.enabled }}
+    # Subdomain routing: auth.swiftdrop.local -> Keycloak
+    - host: {{ .Values.ingress.subdomains.auth }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+    {{- end }}
+{{- end }}
+{{- end }}

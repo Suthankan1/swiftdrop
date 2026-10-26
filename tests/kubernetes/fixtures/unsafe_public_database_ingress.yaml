@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: unsafe-database-ingress
+  namespace: swiftdrop-data
+spec:
+  rules:
+    - host: db.public.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: business-postgres
+                port:
+                  number: 5432

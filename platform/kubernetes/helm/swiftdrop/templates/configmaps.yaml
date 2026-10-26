@@ -1,0 +1,146 @@
+# ==============================================================================
+# SwiftDrop Platform — Externalized Non-Secret ConfigMaps (Issue #149)
+# Contains only non-secret endpoint URLs, ports, hostnames, and JVM options.
+# Zero passwords, tokens, API keys, or certificates are permitted in ConfigMaps.
+# ==============================================================================
+
+{{- if .Values.apiGateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-gateway-config
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "api-gateway") | nindent 4 }}
+data:
+  SERVER_PORT: {{ .Values.apiGateway.config.serverPort | quote }}
+  KEYCLOAK_ISSUER_URI: {{ .Values.apiGateway.config.keycloakIssuerUri | quote }}
+  KEYCLOAK_JWKS_URI: {{ .Values.apiGateway.config.keycloakJwksUri | quote }}
+  JWT_AUDIENCE: {{ .Values.apiGateway.config.jwtAudience | quote }}
+  ACCOUNTS_SERVICE_URL: {{ .Values.apiGateway.config.accountsServiceUrl | quote }}
+  PRICING_SERVICE_URL: {{ .Values.apiGateway.config.pricingServiceUrl | quote }}
+  DELIVERY_SERVICE_URL: {{ .Values.apiGateway.config.deliveryServiceUrl | quote }}
+  COMMUNICATIONS_SERVICE_URL: {{ .Values.apiGateway.config.communicationsServiceUrl | quote }}
+  GRAPHQL_SERVICE_URL: {{ .Values.apiGateway.config.graphqlServiceUrl | quote }}
+  CORS_ALLOWED_ORIGIN: {{ .Values.apiGateway.config.corsAllowedOrigin | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.apiGateway.config.javaToolOptions | quote }}
+{{- end }}
+
+{{- if .Values.accounts.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-accounts-config
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "accounts-service") | nindent 4 }}
+data:
+  SERVER_PORT: {{ .Values.accounts.config.serverPort | quote }}
+  ACCOUNTS_GRPC_PORT: {{ .Values.accounts.config.grpcPort | quote }}
+  ACCOUNTS_DB_URL: {{ .Values.accounts.config.dbUrl | quote }}
+  KEYCLOAK_ISSUER_URI: {{ .Values.accounts.config.keycloakIssuerUri | quote }}
+  KEYCLOAK_JWKS_URI: {{ .Values.accounts.config.keycloakJwksUri | quote }}
+  JWT_AUDIENCE: {{ .Values.accounts.config.jwtAudience | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.accounts.config.javaToolOptions | quote }}
+{{- end }}
+
+{{- if .Values.pricing.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-pricing-config
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "pricing-service") | nindent 4 }}
+data:
+  SERVER_PORT: {{ .Values.pricing.config.serverPort | quote }}
+  PRICING_GRPC_PORT: {{ .Values.pricing.config.grpcPort | quote }}
+  PRICING_DB_URL: {{ .Values.pricing.config.dbUrl | quote }}
+  KEYCLOAK_ISSUER_URI: {{ .Values.pricing.config.keycloakIssuerUri | quote }}
+  KEYCLOAK_JWKS_URI: {{ .Values.pricing.config.keycloakJwksUri | quote }}
+  JWT_AUDIENCE: {{ .Values.pricing.config.jwtAudience | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.pricing.config.javaToolOptions | quote }}
+{{- end }}
+
+{{- if .Values.delivery.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-delivery-config
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "delivery-service") | nindent 4 }}
+data:
+  SERVER_PORT: {{ .Values.delivery.config.serverPort | quote }}
+  DELIVERY_GRPC_PORT: {{ .Values.delivery.config.grpcPort | quote }}
+  DELIVERY_DB_URL: {{ .Values.delivery.config.dbUrl | quote }}
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.delivery.config.kafkaBootstrapServers | quote }}
+  KEYCLOAK_ISSUER_URI: {{ .Values.delivery.config.keycloakIssuerUri | quote }}
+  KEYCLOAK_JWKS_URI: {{ .Values.delivery.config.keycloakJwksUri | quote }}
+  JWT_AUDIENCE: {{ .Values.delivery.config.jwtAudience | quote }}
+  PRICING_GRPC_HOST: {{ .Values.delivery.config.pricingGrpcHost | quote }}
+  PRICING_GRPC_PORT: {{ .Values.delivery.config.pricingGrpcPort | quote }}
+  SWIFTDROP_STORAGE_ENABLED: {{ .Values.delivery.config.storageEnabled | quote }}
+  S3_ENDPOINT: {{ .Values.delivery.config.s3Endpoint | quote }}
+  SWIFTDROP_STORAGE_BUCKET: {{ .Values.delivery.config.storageBucket | quote }}
+  SWIFTDROP_STORAGE_REGION: {{ .Values.delivery.config.storageRegion | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.delivery.config.javaToolOptions | quote }}
+{{- end }}
+
+{{- if .Values.communications.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-communications-config
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "communications-service") | nindent 4 }}
+data:
+  SERVER_PORT: {{ .Values.communications.config.serverPort | quote }}
+  COMMUNICATIONS_DB_URL: {{ .Values.communications.config.dbUrl | quote }}
+  ACCOUNTS_GRPC_HOST: {{ .Values.communications.config.accountsGrpcHost | quote }}
+  ACCOUNTS_GRPC_PORT: {{ .Values.communications.config.accountsGrpcPort | quote }}
+  DELIVERY_GRPC_HOST: {{ .Values.communications.config.deliveryGrpcHost | quote }}
+  DELIVERY_GRPC_PORT: {{ .Values.communications.config.deliveryGrpcPort | quote }}
+  SPRING_MAIL_HOST: {{ .Values.communications.config.mailHost | quote }}
+  SPRING_MAIL_PORT: {{ .Values.communications.config.mailPort | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.communications.config.javaToolOptions | quote }}
+{{- end }}
+
+{{- if .Values.graphql.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-graphql-config
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
+data:
+  GRAPHQL_SERVER_PORT: {{ .Values.graphql.config.serverPort | quote }}
+  SWIFTDROP_GRPC_ACCOUNTS_TARGET: {{ .Values.graphql.config.accountsGrpcTarget | quote }}
+  SWIFTDROP_GRPC_DELIVERY_TARGET: {{ .Values.graphql.config.deliveryGrpcTarget | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.graphql.config.javaToolOptions | quote }}
+{{- end }}
+
+{{- if .Values.keycloak.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-keycloak-config
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+data:
+  KC_DB: {{ .Values.keycloak.config.db | quote }}
+  KC_DB_URL: {{ .Values.keycloak.config.dbUrl | quote }}
+  KC_HOSTNAME: {{ .Values.keycloak.config.hostname | quote }}
+  KC_HTTP_PORT: {{ .Values.keycloak.config.httpPort | quote }}
+  KC_PROXY_HEADERS: {{ .Values.keycloak.config.proxyHeaders | quote }}
+  JAVA_OPTS_APPEND: {{ .Values.keycloak.config.javaOptsAppend | quote }}
+{{- end }}
