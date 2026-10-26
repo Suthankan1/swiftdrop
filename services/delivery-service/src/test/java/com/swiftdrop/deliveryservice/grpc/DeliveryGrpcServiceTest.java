@@ -2,6 +2,7 @@ package com.swiftdrop.deliveryservice.grpc;
 
 import com.google.protobuf.Timestamp;
 import com.swiftdrop.delivery.v1.*;
+import com.swiftdrop.deliveryservice.assignment.DeliveryAssignment;
 import com.swiftdrop.deliveryservice.assignment.DeliveryAssignmentRepository;
 import com.swiftdrop.deliveryservice.core.Parcel;
 import com.swiftdrop.deliveryservice.core.ParcelRepository;
@@ -9,6 +10,7 @@ import com.swiftdrop.deliveryservice.core.ParcelStatus;
 import com.swiftdrop.deliveryservice.outbox.OutboxEventRepository;
 import com.swiftdrop.deliveryservice.query.ParcelProjection;
 import com.swiftdrop.deliveryservice.query.ParcelQueryService;
+import com.swiftdrop.deliveryservice.status.StatusHistory;
 import com.swiftdrop.deliveryservice.status.StatusHistoryRepository;
 import com.swiftdrop.grpc.security.SwiftDropGrpcMetadata;
 import com.swiftdrop.security.grpc.ActorDelegationValidator;
@@ -115,6 +117,11 @@ class DeliveryGrpcServiceTest {
 
     private DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub createStub(
             String serviceName, String actorSub, List<String> actorRoles) {
+        return createStub(serviceName, actorSub, actorRoles, null);
+    }
+
+    private DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub createStub(
+            String serviceName, String actorSub, List<String> actorRoles, Map<String, Object> extraUserClaims) {
 
         Metadata headers = new Metadata();
         if (serviceName != null) {
@@ -133,7 +140,7 @@ class DeliveryGrpcServiceTest {
             headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, actorSub);
             if (actorRoles != null) {
                 headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_ROLES, String.join(",", actorRoles));
-                String userToken = jwtHelper.createSignedUserToken(actorSub, actorRoles);
+                String userToken = jwtHelper.createSignedUserToken(actorSub, actorRoles, extraUserClaims);
                 headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_TOKEN, userToken);
             }
         }
@@ -433,5 +440,321 @@ class DeliveryGrpcServiceTest {
 
         assertThat(response.getCourierSub()).isEqualTo("courier-kamal");
         assertThat(response.getActiveAssignmentsCount()).isEqualTo(2);
+    }
+
+    // =========================================================================
+    // Issue #112: Authorized Customer Owned-Parcel Read Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("ListCustomerParcels: succeeds for authorized CUSTOMER and returns owned summaries")
+    void testListCustomerParcels_Success_Customer() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        UUID parcelId = UUID.randomUUID();
+        Parcel parcel = new Parcel(parcelId, "SWD-2026-CUST-01", customerSub, null, null, "v1", 120000L, "LKR", new BigDecimal("1.500"));
+        parcel.setCreatedAt(Instant.parse("2026-10-25T10:00:00Z"));
+        parcel.setUpdatedAt(Instant.parse("2026-10-25T11:00:00Z"));
+
+        when(parcelRepository.countActiveBySenderSub(customerSub)).thenReturn(1);
+        when(parcelRepository.countCompletedBySenderSub(customerSub)).thenReturn(2);
+        when(parcelRepository.findBySenderSubOrderByCreatedAtDesc(eq(customerSub), any()))
+                .thenReturn(new PageImpl<>(List.of(parcel), PageRequest.of(0, 20), 3));
+
+        ListCustomerParcelsResponse response = stub.listCustomerParcels(
+                ListCustomerParcelsRequest.newBuilder().setPage(0).setPageSize(20).build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotalCount()).isEqualTo(3);
+        assertThat(response.getActiveCount()).isEqualTo(1);
+        assertThat(response.getCompletedCount()).isEqualTo(2);
+        assertThat(response.getParcelsCount()).isEqualTo(1);
+        CustomerParcelSummary item = response.getParcels(0);
+        assertThat(item.getParcelId()).isEqualTo(parcelId.toString());
+        assertThat(item.getTrackingNumber()).isEqualTo("SWD-2026-CUST-01");
+        assertThat(item.getCurrentStatus()).isEqualTo("CREATED");
+        assertThat(item.getAmountMinorUnits()).isEqualTo(120000L);
+    }
+
+    @Test
+    @DisplayName("ListCustomerParcels: cross-customer read is rejected with PERMISSION_DENIED")
+    void testListCustomerParcels_CrossCustomerDenied() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        assertThatThrownBy(() -> stub.listCustomerParcels(
+                ListCustomerParcelsRequest.newBuilder().setCustomerSub("other-customer-sub").build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .extracting(e -> ((StatusRuntimeException) e).getStatus().getCode())
+                .isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
+
+    @Test
+    @DisplayName("ListCustomerParcels: staff can query specific customer_sub")
+    void testListCustomerParcels_Success_Staff() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), dispatcherSub, List.of("DISPATCHER"));
+
+        String targetCustomer = "cust-target-123";
+        when(parcelRepository.countActiveBySenderSub(targetCustomer)).thenReturn(0);
+        when(parcelRepository.countCompletedBySenderSub(targetCustomer)).thenReturn(1);
+        when(parcelRepository.findBySenderSubOrderByCreatedAtDesc(eq(targetCustomer), any()))
+                .thenReturn(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 20), 1));
+
+        ListCustomerParcelsResponse response = stub.listCustomerParcels(
+                ListCustomerParcelsRequest.newBuilder().setCustomerSub(targetCustomer).setPage(0).setPageSize(20).build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getCompletedCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("ListCustomerParcels: batch query filters strictly to customer's parcels")
+    void testListCustomerParcels_BatchQuery_OmitUnauthorized() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        UUID ownedId = UUID.randomUUID();
+        UUID otherId = UUID.randomUUID();
+
+        Parcel ownedParcel = new Parcel(ownedId, "SWD-2026-OWNED-01", customerSub, null, null, "v1", 100000L, "LKR", new BigDecimal("1.0"));
+        when(parcelRepository.countActiveBySenderSub(customerSub)).thenReturn(1);
+        when(parcelRepository.countCompletedBySenderSub(customerSub)).thenReturn(0);
+        when(parcelRepository.findBySenderSubAndParcelIdIn(eq(customerSub), any()))
+                .thenReturn(List.of(ownedParcel));
+
+        ListCustomerParcelsResponse response = stub.listCustomerParcels(
+                ListCustomerParcelsRequest.newBuilder()
+                        .addParcelIds(ownedId.toString())
+                        .addParcelIds(otherId.toString())
+                        .build()
+        );
+
+        assertThat(response.getParcelsCount()).isEqualTo(1);
+        assertThat(response.getParcels(0).getParcelId()).isEqualTo(ownedId.toString());
+    }
+
+    // =========================================================================
+    // Issue #112: Authorized Merchant Tenant-Order Read Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("ListMerchantOrders: succeeds for authorized MERCHANT with verified tenant claim")
+    void testListMerchantOrders_Success_Merchant() {
+        UUID merchantId = UUID.randomUUID();
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), "merchant-actor-01", List.of("MERCHANT"),
+                        Map.of("merchant_id", merchantId.toString(), "merchant_status", "APPROVED"));
+
+        UUID parcelId = UUID.randomUUID();
+        Parcel order = new Parcel(parcelId, "SWD-2026-MERCH-01", "sender-sub", merchantId, null, "v1", 250000L, "LKR", new BigDecimal("3.000"));
+
+        when(parcelRepository.countActiveByMerchantId(merchantId)).thenReturn(1);
+        when(parcelRepository.countDeliveredByMerchantId(merchantId)).thenReturn(5);
+        when(parcelRepository.countFailedByMerchantId(merchantId)).thenReturn(0);
+        when(parcelRepository.countByMerchantId(merchantId)).thenReturn(6);
+        when(parcelRepository.findByMerchantIdOrderByCreatedAtDesc(eq(merchantId), any()))
+                .thenReturn(new PageImpl<>(List.of(order), PageRequest.of(0, 20), 6));
+
+        ListMerchantOrdersResponse response = stub.listMerchantOrders(
+                ListMerchantOrdersRequest.newBuilder().setMerchantId(merchantId.toString()).build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotalCount()).isEqualTo(6);
+        assertThat(response.getActiveCount()).isEqualTo(1);
+        assertThat(response.getDeliveredCount()).isEqualTo(5);
+        assertThat(response.getOrdersCount()).isEqualTo(1);
+        MerchantOrderSummary summary = response.getOrders(0);
+        assertThat(summary.getParcelId()).isEqualTo(parcelId.toString());
+        assertThat(summary.getFeeMinorUnits()).isEqualTo(250000L);
+    }
+
+    @Test
+    @DisplayName("ListMerchantOrders: cross-tenant read attempt is rejected with PERMISSION_DENIED")
+    void testListMerchantOrders_CrossTenantDenied() {
+        UUID actorMerchantId = UUID.randomUUID();
+        UUID otherMerchantId = UUID.randomUUID();
+
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), "merchant-actor-01", List.of("MERCHANT"),
+                        Map.of("merchant_id", actorMerchantId.toString(), "merchant_status", "APPROVED"));
+
+        assertThatThrownBy(() -> stub.listMerchantOrders(
+                ListMerchantOrdersRequest.newBuilder().setMerchantId(otherMerchantId.toString()).build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .extracting(e -> ((StatusRuntimeException) e).getStatus().getCode())
+                .isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
+
+    @Test
+    @DisplayName("ListMerchantOrders: merchant actor without tenant_id claim is denied")
+    void testListMerchantOrders_MissingMerchantTenantDenied() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), "merchant-actor-02", List.of("MERCHANT"),
+                        Collections.emptyMap());
+
+        assertThatThrownBy(() -> stub.listMerchantOrders(
+                ListMerchantOrdersRequest.newBuilder().build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .extracting(e -> ((StatusRuntimeException) e).getStatus().getCode())
+                .isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
+
+    // =========================================================================
+    // Issue #112: Authorized Courier Current-Assignment Read Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("ListCourierAssignments: succeeds for authorized COURIER and returns assignments")
+    void testListCourierAssignments_Success_Courier() {
+        String courierSub = "courier-nimal";
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), courierSub, List.of("COURIER"));
+
+        UUID parcelId = UUID.randomUUID();
+        UUID assignmentId = UUID.randomUUID();
+        DeliveryAssignment assignment = new DeliveryAssignment(assignmentId, parcelId, courierSub, "dispatcher-1", Instant.now(), null, true);
+        Parcel parcel = new Parcel(parcelId, "SWD-2026-COUR-01", "sender-sub", null, null, "v1", 100000L, "LKR", new BigDecimal("1.0"));
+
+        when(assignmentRepository.countByCourierSubAndActiveTrue(courierSub)).thenReturn(1);
+        when(historyRepository.countCourierDeliveredBetween(eq(courierSub), any(), any())).thenReturn(4);
+        when(historyRepository.countCourierFailedBetween(eq(courierSub), any(), any())).thenReturn(1);
+        when(assignmentRepository.findActiveByCourierSub(eq(courierSub), any()))
+                .thenReturn(new PageImpl<>(List.of(assignment), PageRequest.of(0, 20), 1));
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+
+        ListCourierAssignmentsResponse response = stub.listCourierAssignments(
+                ListCourierAssignmentsRequest.newBuilder().setActiveOnly(true).build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getActiveCount()).isEqualTo(1);
+        assertThat(response.getTodayDeliveredCount()).isEqualTo(4);
+        assertThat(response.getTodayFailedCount()).isEqualTo(1);
+        assertThat(response.getAssignmentsCount()).isEqualTo(1);
+        CourierAssignmentSummary item = response.getAssignments(0);
+        assertThat(item.getAssignmentId()).isEqualTo(assignmentId.toString());
+        assertThat(item.getParcelId()).isEqualTo(parcelId.toString());
+        assertThat(item.getTrackingNumber()).isEqualTo("SWD-2026-COUR-01");
+        assertThat(item.getIsActive()).isTrue();
+    }
+
+    @Test
+    @DisplayName("ListCourierAssignments: cross-courier query attempt is rejected with PERMISSION_DENIED")
+    void testListCourierAssignments_CrossCourierDenied() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), "courier-sunil", List.of("COURIER"));
+
+        assertThatThrownBy(() -> stub.listCourierAssignments(
+                ListCourierAssignmentsRequest.newBuilder().setCourierSub("courier-other").build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .extracting(e -> ((StatusRuntimeException) e).getStatus().getCode())
+                .isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
+
+    // =========================================================================
+    // Issue #112: Authorized Delivery History & Latest Status Read Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("GetDeliveryHistory: customer retrieves history and latest status for owned parcel")
+    void testGetDeliveryHistory_Success_Customer() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        UUID parcelId = UUID.randomUUID();
+        Parcel parcel = new Parcel(parcelId, "SWD-2026-HIST-01", customerSub, null, null, "v1", 100000L, "LKR", new BigDecimal("1.0"));
+        parcel.setStatus(ParcelStatus.IN_TRANSIT);
+
+        StatusHistory h1 = new StatusHistory(UUID.randomUUID(), parcelId, null, ParcelStatus.CREATED, "BOOKING", "Note", null, customerSub, 1L, Instant.now().minusSeconds(3600));
+        StatusHistory h2 = new StatusHistory(UUID.randomUUID(), parcelId, ParcelStatus.CREATED, ParcelStatus.IN_TRANSIT, "DISPATCH", "Note", null, "courier-sub", 2L, Instant.now());
+
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(historyRepository.findByParcelIdOrderByVersionAsc(eq(parcelId), any()))
+                .thenReturn(new PageImpl<>(List.of(h1, h2), PageRequest.of(0, 20), 2));
+
+        GetDeliveryHistoryResponse response = stub.getDeliveryHistory(
+                GetDeliveryHistoryRequest.newBuilder().setParcelId(parcelId.toString()).build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getParcelId()).isEqualTo(parcelId.toString());
+        assertThat(response.getTrackingNumber()).isEqualTo("SWD-2026-HIST-01");
+        assertThat(response.getCurrentStatus()).isEqualTo("IN_TRANSIT");
+        assertThat(response.getItemsCount()).isEqualTo(2);
+        assertThat(response.getItems(0).getNewStatus()).isEqualTo("CREATED");
+        assertThat(response.getItems(1).getNewStatus()).isEqualTo("IN_TRANSIT");
+    }
+
+    @Test
+    @DisplayName("GetDeliveryHistory: customer denied access to another customer's parcel history")
+    void testGetDeliveryHistory_CrossCustomerDenied() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        UUID parcelId = UUID.randomUUID();
+        Parcel otherParcel = new Parcel(parcelId, "SWD-2026-OTHER-01", "other-customer", null, null, "v1", 100000L, "LKR", new BigDecimal("1.0"));
+
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(otherParcel));
+
+        assertThatThrownBy(() -> stub.getDeliveryHistory(
+                GetDeliveryHistoryRequest.newBuilder().setParcelId(parcelId.toString()).build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .extracting(e -> ((StatusRuntimeException) e).getStatus().getCode())
+                .isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
+
+    @Test
+    @DisplayName("GetDeliveryHistory: returns NOT_FOUND if parcel does not exist")
+    void testGetDeliveryHistory_NotFound() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        UUID missingId = UUID.randomUUID();
+        when(parcelRepository.findById(missingId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> stub.getDeliveryHistory(
+                GetDeliveryHistoryRequest.newBuilder().setParcelId(missingId.toString()).build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .extracting(e -> ((StatusRuntimeException) e).getStatus().getCode())
+                .isEqualTo(Status.Code.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("GetDeliveryHistory: batch summaries return only authorized parcels without leaking unauthorized")
+    void testGetDeliveryHistory_BatchSummaries_FiltersUnauthorized() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        UUID ownedId = UUID.randomUUID();
+        UUID otherId = UUID.randomUUID();
+
+        Parcel ownedParcel = new Parcel(ownedId, "SWD-2026-OWN-01", customerSub, null, null, "v1", 100000L, "LKR", new BigDecimal("1.0"));
+        Parcel otherParcel = new Parcel(otherId, "SWD-2026-OTH-01", "other-cust", null, null, "v1", 100000L, "LKR", new BigDecimal("1.0"));
+
+        when(parcelRepository.findById(ownedId)).thenReturn(Optional.of(ownedParcel));
+        when(parcelRepository.findById(otherId)).thenReturn(Optional.of(otherParcel));
+        when(historyRepository.findByParcelIdOrderByResultingVersionAsc(ownedId)).thenReturn(Collections.emptyList());
+
+        GetDeliveryHistoryResponse response = stub.getDeliveryHistory(
+                GetDeliveryHistoryRequest.newBuilder()
+                        .addParcelIds(ownedId.toString())
+                        .addParcelIds(otherId.toString())
+                        .build()
+        );
+
+        assertThat(response.getSummariesCount()).isEqualTo(1);
+        assertThat(response.getSummaries(0).getParcelId()).isEqualTo(ownedId.toString());
     }
 }

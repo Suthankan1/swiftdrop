@@ -59,4 +59,99 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
     """)
     long countInTransitBeforeOrAt(
             @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime);
+
+    List<Parcel> findBySenderSubAndParcelIdIn(String senderSub, java.util.Collection<UUID> parcelIds);
+
+    List<Parcel> findByMerchantIdAndParcelIdIn(UUID merchantId, java.util.Collection<UUID> parcelIds);
+
+    int countBySenderSub(String senderSub);
+
+    int countByMerchantId(UUID merchantId);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(p) FROM Parcel p
+        WHERE p.senderSub = :senderSub
+        AND p.status NOT IN (com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED, com.swiftdrop.deliveryservice.core.ParcelStatus.FAILED)
+    """)
+    int countActiveBySenderSub(@org.springframework.data.repository.query.Param("senderSub") String senderSub);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(p) FROM Parcel p
+        WHERE p.senderSub = :senderSub
+        AND p.status IN (com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED, com.swiftdrop.deliveryservice.core.ParcelStatus.FAILED)
+    """)
+    int countCompletedBySenderSub(@org.springframework.data.repository.query.Param("senderSub") String senderSub);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(p) FROM Parcel p
+        WHERE p.merchantId = :merchantId
+        AND p.status NOT IN (com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED, com.swiftdrop.deliveryservice.core.ParcelStatus.FAILED)
+    """)
+    int countActiveByMerchantId(@org.springframework.data.repository.query.Param("merchantId") UUID merchantId);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(p) FROM Parcel p
+        WHERE p.merchantId = :merchantId
+        AND p.status = com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED
+    """)
+    int countDeliveredByMerchantId(@org.springframework.data.repository.query.Param("merchantId") UUID merchantId);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(p) FROM Parcel p
+        WHERE p.merchantId = :merchantId
+        AND p.status = com.swiftdrop.deliveryservice.core.ParcelStatus.FAILED
+    """)
+    int countFailedByMerchantId(@org.springframework.data.repository.query.Param("merchantId") UUID merchantId);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT p FROM Parcel p
+        WHERE p.senderSub = :senderSub
+        AND p.status NOT IN (com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED, com.swiftdrop.deliveryservice.core.ParcelStatus.FAILED)
+        ORDER BY p.createdAt DESC, p.parcelId ASC
+    """)
+    Page<Parcel> findActiveBySenderSub(
+            @org.springframework.data.repository.query.Param("senderSub") String senderSub,
+            Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT p FROM Parcel p
+        WHERE p.senderSub = :senderSub
+        AND p.status IN (com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED, com.swiftdrop.deliveryservice.core.ParcelStatus.FAILED)
+        ORDER BY p.createdAt DESC, p.parcelId ASC
+    """)
+    Page<Parcel> findCompletedBySenderSub(
+            @org.springframework.data.repository.query.Param("senderSub") String senderSub,
+            Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT p FROM Parcel p
+        WHERE p.senderSub = :senderSub
+        AND p.status = :status
+        ORDER BY p.createdAt DESC, p.parcelId ASC
+    """)
+    Page<Parcel> findBySenderSubAndStatus(
+            @org.springframework.data.repository.query.Param("senderSub") String senderSub,
+            @org.springframework.data.repository.query.Param("status") ParcelStatus status,
+            Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT p FROM Parcel p
+        WHERE p.merchantId = :merchantId
+        AND p.status NOT IN (com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED, com.swiftdrop.deliveryservice.core.ParcelStatus.FAILED)
+        ORDER BY p.createdAt DESC, p.parcelId ASC
+    """)
+    Page<Parcel> findActiveByMerchantId(
+            @org.springframework.data.repository.query.Param("merchantId") UUID merchantId,
+            Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT p FROM Parcel p
+        WHERE p.merchantId = :merchantId
+        AND p.status = :status
+        ORDER BY p.createdAt DESC, p.parcelId ASC
+    """)
+    Page<Parcel> findByMerchantIdAndStatus(
+            @org.springframework.data.repository.query.Param("merchantId") UUID merchantId,
+            @org.springframework.data.repository.query.Param("status") ParcelStatus status,
+            Pageable pageable);
 }

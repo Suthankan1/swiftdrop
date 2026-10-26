@@ -167,6 +167,39 @@ public class GrpcSecurityPolicy {
                 DelegationRequirement.FORBIDDEN,
                 Collections.emptySet()
         ));
+
+        // Delivery ListCustomerParcels: GraphQL -> Delivery (Actor: CUSTOMER, DISPATCHER, ADMIN, #112)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/ListCustomerParcels",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE, SwiftDropServiceIdentity.DELIVERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_CUSTOMER, SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Delivery ListMerchantOrders: GraphQL -> Delivery (Actor: MERCHANT, DISPATCHER, ADMIN, #112)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/ListMerchantOrders",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE, SwiftDropServiceIdentity.DELIVERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_MERCHANT, SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Delivery ListCourierAssignments: GraphQL -> Delivery (Actor: COURIER, DISPATCHER, ADMIN, #112)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/ListCourierAssignments",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE, SwiftDropServiceIdentity.DELIVERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_COURIER, SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Delivery GetDeliveryHistory: GraphQL -> Delivery (Actor: CUSTOMER, MERCHANT, COURIER, DISPATCHER, ADMIN, #112)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/GetDeliveryHistory",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE, SwiftDropServiceIdentity.DELIVERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_CUSTOMER, SwiftDropRoles.ROLE_MERCHANT, SwiftDropRoles.ROLE_COURIER,
+                        SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
     }
 
     public void register(MethodPolicy policy) {
