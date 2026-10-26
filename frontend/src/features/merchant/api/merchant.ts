@@ -6,6 +6,10 @@ export type MerchantApprovalStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJ
 
 export * from './webhookContracts'
 export * from './webhooks'
+export * from './credentialsContracts'
+export * from './credentials'
+export * from './enrollmentContracts'
+export * from './enrollment'
 
 /**
  * Normalizes raw backend status into canonical domain states.

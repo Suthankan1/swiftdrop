@@ -7,6 +7,8 @@ import { CustomerHistoryPage } from '../../features/customer/pages/CustomerHisto
 import { DispatcherPage } from '../../features/dispatcher/pages/DispatcherPage'
 import { MerchantPage } from '../../features/merchant/pages/MerchantPage'
 import { MerchantWebhooksPage } from '../../features/merchant/pages/MerchantWebhooksPage'
+import { MerchantEnrollmentPage } from '../../features/merchant/pages/MerchantEnrollmentPage'
+import { MerchantCredentialsPage } from '../../features/merchant/pages/MerchantCredentialsPage'
 import { LandingPage } from '../../features/public/LandingPage'
 import { NotFoundPage } from '../../features/public/NotFoundPage'
 import { LoginPage, CallbackPage, LogoutPage, ProtectedRoute } from '../../auth/AuthPages'
@@ -20,8 +22,12 @@ export function AppRoutes() {
           <Route path="customer" element={<CustomerPage />} />
           <Route path="customer/history" element={<CustomerHistoryPage />} />
         </Route>
+        <Route element={<ProtectedRoute />}>
+          <Route path="merchant/enroll" element={<MerchantEnrollmentPage />} />
+        </Route>
         <Route element={<ProtectedRoute role="MERCHANT" />}>
           <Route path="merchant" element={<MerchantPage />} />
+          <Route path="merchant/credentials" element={<MerchantCredentialsPage />} />
           <Route path="merchant/webhooks" element={<MerchantWebhooksPage />} />
         </Route>
         <Route element={<ProtectedRoute role="COURIER" />}><Route path="courier" element={<CourierPage />} /></Route>
