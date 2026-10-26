@@ -165,11 +165,12 @@ As documented in `BookingAuthorization.java` and `LATER_02_QUOTE_BOOKING.md`:
 | Delivery Quote Provider Unit Tests | `com.swiftdrop.deliveryservice.quote.GrpcBookingQuoteProviderTest` | 5 tests | **PASS** |
 | Delivery Booking Foundation Tests | `com.swiftdrop.deliveryservice.BookingFoundationTest` | 11 tests | **PASS** |
 
-### Post-Merge Conflict Resolution Notes
+### Post-Merge Conflict Resolution & CI Verification Notes
 - Merged latest `origin/test` (incorporating PR #219: `feat/n10-b08-delivery-grpc-read-models`).
 - Reconciled RPC method count in `tests/contracts/test_protobuf_contracts.py` from 16/19 to 20 total RPC methods (Accounts: 8, Delivery: 10, Pricing: 2).
 - Clean auto-merge across `GrpcSecurityPolicy.java` and `ContractDescriptorAndSerializationTest.java`.
-- Verified 100% green across all 6 test suites and confirmed PR #220 status is `MERGEABLE`.
+- Removed `@Component` from `GrpcBookingQuoteProvider.java` in `delivery-service` to adhere to the design boundary (no production quote-to-booking bean registered until external contract is approved) and prevent eager Spring context instantiation without the gRPC stub bean.
+- Verified 100% green across all 10 GitHub Actions CI checks on PR #220 (`mergeable: MERGEABLE`, `mergeStateStatus: CLEAN`).
 
 ---
 
