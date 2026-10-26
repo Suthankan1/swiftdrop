@@ -318,18 +318,34 @@ jobs:
           test -f platform/kubernetes/k3d/verify.sh || { echo "ERROR: platform/kubernetes/k3d/verify.sh missing!"; exit 1; }
           test -f platform/kubernetes/k3d/capacity.sh || { echo "ERROR: platform/kubernetes/k3d/capacity.sh missing!"; exit 1; }
           test -f platform/kubernetes/k3d/storage-preflight.sh || { echo "ERROR: platform/kubernetes/k3d/storage-preflight.sh missing!"; exit 1; }
-          echo "✓ All mandatory cluster foundation and lifecycle scripts present."
+          test -d platform/kubernetes/helm/swiftdrop || { echo "ERROR: platform/kubernetes/helm/swiftdrop directory missing!"; exit 1; }
+          test -f platform/kubernetes/helm/swiftdrop/Chart.yaml || { echo "ERROR: platform/kubernetes/helm/swiftdrop/Chart.yaml missing!"; exit 1; }
+          test -f platform/kubernetes/helm/swiftdrop/values.yaml || { echo "ERROR: platform/kubernetes/helm/swiftdrop/values.yaml missing!"; exit 1; }
+          test -f platform/kubernetes/helm/swiftdrop/values-local.yaml || { echo "ERROR: platform/kubernetes/helm/swiftdrop/values-local.yaml missing!"; exit 1; }
+          test -f platform/kubernetes/helm/swiftdrop/values-test.yaml || { echo "ERROR: platform/kubernetes/helm/swiftdrop/values-test.yaml missing!"; exit 1; }
+          echo "✓ All mandatory cluster foundation and Helm chart files present."
 
       - name: Check shell script syntax with bash -n
         run: |
           echo "================================================================================"
           echo "         SWIFTDROP SHELL SCRIPT SYNTAX CHECK (bash -n)                          "
           echo "================================================================================"
-          for script in platform/kubernetes/k3d/*.sh; do
+          for script in platform/kubernetes/k3d/*.sh platform/kubernetes/helm/scripts/*.sh; do
             echo "Checking: $script"
             bash -n "$script"
           done
-          echo "✓ All lifecycle shell scripts passed syntax check."
+          echo "✓ All lifecycle and helm shell scripts passed syntax check."
+
+      - name: Helm Chart Lint & Static Validation
+        run: |
+          echo "================================================================================"
+          echo "         SWIFTDROP HELM LINT & TEMPLATE VALIDATION GATE                         "
+          echo "================================================================================"
+          helm lint platform/kubernetes/helm/swiftdrop
+          helm template swiftdrop platform/kubernetes/helm/swiftdrop -f platform/kubernetes/helm/swiftdrop/values.yaml > /dev/null
+          helm template swiftdrop platform/kubernetes/helm/swiftdrop -f platform/kubernetes/helm/swiftdrop/values-local.yaml > /dev/null
+          helm template swiftdrop platform/kubernetes/helm/swiftdrop -f platform/kubernetes/helm/swiftdrop/values-test.yaml > /dev/null
+          echo "✓ All Helm chart environments rendered cleanly."
 
       - name: Run Kubernetes configuration, safety, and storage test suite
         run: python3 -m pytest tests/kubernetes -v --junitxml=kubernetes-policy-results.xml

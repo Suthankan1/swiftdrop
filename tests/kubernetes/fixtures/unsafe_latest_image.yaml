@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unsafe-latest-deployment
+  namespace: swiftdrop-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unpinned
+  template:
+    metadata:
+      labels:
+        app: unpinned
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/suthankan1/swiftdrop-api-gateway:latest
