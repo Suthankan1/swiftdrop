@@ -6,8 +6,8 @@ import com.swiftdrop.deliveryservice.proof.storage.exception.ProofObjectNotFound
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +16,7 @@ import java.util.UUID;
 public class ProofCompensationService {
 
     private static final Logger log = LoggerFactory.getLogger(ProofCompensationService.class);
+    static final int CLEANUP_BATCH_SIZE = 50;
 
     private final ProofObjectStorage proofObjectStorage;
     private final ProofCleanupTaskRepository cleanupTaskRepository;
@@ -44,8 +45,7 @@ public class ProofCompensationService {
         this.proofObjectStorage = proofObjectStorage;
         this.cleanupTaskRepository = cleanupTaskRepository;
         this.proofRepository = proofRepository;
-        this.taskCoordinator = taskCoordinator != null ? taskCoordinator
-                : (cleanupTaskRepository != null ? new ProofCleanupTaskCoordinator(cleanupTaskRepository) : null);
+        this.taskCoordinator = taskCoordinator;
     }
 
     /**
@@ -100,60 +100,27 @@ public class ProofCompensationService {
     /**
      * Executes pending durable cleanup tasks with safety checks against active proof references.
      */
-    @Transactional
     public int processPendingCleanups() {
-        if (proofObjectStorage == null) {
+        if (taskCoordinator == null) {
             return 0;
         }
-        List<ProofCleanupTask> pending = cleanupTaskRepository.findByStatus("PENDING");
+        List<UUID> pendingTaskIds = cleanupTaskRepository
+                .findByStatusOrderByCreatedAtAsc(ProofCleanupTask.STATUS_PENDING, PageRequest.of(0, CLEANUP_BATCH_SIZE))
+                .stream()
+                .map(ProofCleanupTask::getTaskId)
+                .toList();
         int completed = 0;
-        for (ProofCleanupTask task : pending) {
-            if (proofRepository != null && proofRepository.countByObjectReference(task.getObjectReference()) > 0) {
-                log.warn("Pending cleanup task {} object is still referenced by an active proof record. Cancelling task.",
-                        task.getTaskId());
-                task.setStatus("FAILED");
-                if (taskCoordinator != null) {
-                    taskCoordinator.markFailed(task.getTaskId(), "STILL_REFERENCED");
-                }
-                if (cleanupTaskRepository != null) {
-                    cleanupTaskRepository.save(task);
-                }
-                continue;
-            }
+        for (UUID taskId : pendingTaskIds) {
             try {
-                proofObjectStorage.delete(new ProofObjectReference(task.getObjectReference()));
-                task.setStatus("COMPLETED");
-                if (taskCoordinator != null) {
-                    taskCoordinator.markCompleted(task.getTaskId());
+                ProofCleanupTaskCoordinator.ProcessingResult result = taskCoordinator.processTask(taskId);
+                if (result == ProofCleanupTaskCoordinator.ProcessingResult.COMPLETED) {
+                    completed++;
+                    log.info("Pending cleanup task {} completed", taskId);
+                } else {
+                    log.info("Pending cleanup task {} finished with safe outcome {}", taskId, result);
                 }
-                if (cleanupTaskRepository != null) {
-                    cleanupTaskRepository.save(task);
-                }
-                completed++;
-                log.info("Pending cleanup task {} successfully executed and marked COMPLETED", task.getTaskId());
-            } catch (ProofObjectNotFoundException e) {
-                // Reconcile object already absent from storage
-                task.setStatus("COMPLETED");
-                if (taskCoordinator != null) {
-                    taskCoordinator.markCompleted(task.getTaskId());
-                }
-                if (cleanupTaskRepository != null) {
-                    cleanupTaskRepository.save(task);
-                }
-                completed++;
-                log.info("Pending cleanup task {} reconciled: object was already deleted from storage", task.getTaskId());
-            } catch (Exception e) {
-                log.warn("Pending cleanup task {} execution failed for reason: RETRY_FAILED", task.getTaskId());
-                task.incrementRetry();
-                if (task.getRetryCount() >= 5) {
-                    task.setStatus("FAILED");
-                }
-                if (taskCoordinator != null) {
-                    taskCoordinator.recordFailureAttempt(task.getTaskId(), "RETRY_FAILED");
-                }
-                if (cleanupTaskRepository != null) {
-                    cleanupTaskRepository.save(task);
-                }
+            } catch (Exception databaseFailure) {
+                log.error("Cleanup task {} could not commit its authoritative state transition", taskId);
             }
         }
         return completed;

@@ -18,6 +18,8 @@ import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +36,7 @@ class ProofReplacementInvariantsTest {
     private ProofObjectStorage proofObjectStorage;
     private ProofCleanupTaskRepository cleanupTaskRepository;
     private ProofCompensationService compensationService;
+    private ProofCleanupTaskCoordinator taskCoordinator;
     private ProofService proofService;
 
     private final UUID parcelId = UUID.randomUUID();
@@ -48,15 +51,29 @@ class ProofReplacementInvariantsTest {
         courierAssignmentContract = mock(CourierAssignmentContract.class);
         proofObjectStorage = mock(ProofObjectStorage.class);
         cleanupTaskRepository = mock(ProofCleanupTaskRepository.class);
+        Map<UUID, ProofCleanupTask> cleanupTasks = new HashMap<>();
+        when(cleanupTaskRepository.save(any(ProofCleanupTask.class))).thenAnswer(invocation -> {
+            ProofCleanupTask task = invocation.getArgument(0);
+            cleanupTasks.put(task.getTaskId(), task);
+            return task;
+        });
+        when(cleanupTaskRepository.findByIdForUpdate(any(UUID.class))).thenAnswer(invocation ->
+                Optional.ofNullable(cleanupTasks.get(invocation.<UUID>getArgument(0))));
+        when(cleanupTaskRepository.saveAndFlush(any(ProofCleanupTask.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(proofObjectStorage.supportsDeletion()).thenReturn(true);
+        taskCoordinator = new ProofCleanupTaskCoordinator(cleanupTaskRepository, proofRepository, proofObjectStorage);
 
-        compensationService = new ProofCompensationService(proofObjectStorage, cleanupTaskRepository, proofRepository);
+        compensationService = new ProofCompensationService(
+                proofObjectStorage, cleanupTaskRepository, proofRepository, taskCoordinator
+        );
         proofService = new ProofService(
                 parcelRepository,
                 proofRepository,
                 courierAssignmentContract,
                 proofObjectStorage,
                 compensationService,
-                cleanupTaskRepository
+                cleanupTaskRepository,
+                taskCoordinator
         );
     }
 

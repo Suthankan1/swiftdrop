@@ -17,7 +17,6 @@ import com.swiftdrop.deliveryservice.proof.storage.ProofObjectStorage;
 import com.swiftdrop.deliveryservice.proof.storage.ProofObjectUpload;
 import com.swiftdrop.deliveryservice.proof.storage.RetrievedProofObject;
 import com.swiftdrop.deliveryservice.proof.storage.StoredProofObject;
-import com.swiftdrop.deliveryservice.proof.storage.exception.ProofObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,8 +87,7 @@ public class ProofService {
         this.proofObjectStorage = proofObjectStorage;
         this.compensationService = Objects.requireNonNull(compensationService, "compensationService cannot be null");
         this.cleanupTaskRepository = cleanupTaskRepository;
-        this.taskCoordinator = taskCoordinator != null ? taskCoordinator
-                : (cleanupTaskRepository != null ? new ProofCleanupTaskCoordinator(cleanupTaskRepository) : null);
+        this.taskCoordinator = taskCoordinator;
     }
 
     /**
@@ -236,7 +234,7 @@ public class ProofService {
                     }
 
                     // Register afterCommit hook to perform old object deletion ONLY after DB commit
-                    registerPostCommitOldObjectCleanup(taskId, oldRef);
+                    registerPostCommitOldObjectCleanup(taskId);
                 }
 
                 return toResponse(updated);
@@ -281,58 +279,30 @@ public class ProofService {
         }
     }
 
-    private void registerPostCommitOldObjectCleanup(UUID taskId, String oldRef) {
+    private void registerPostCommitOldObjectCleanup(UUID taskId) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    executeOldObjectCleanup(taskId, oldRef);
+                    executeOldObjectCleanup(taskId);
                 }
             });
         } else {
             // When not running in a transaction synchronization context (e.g. standalone test)
-            executeOldObjectCleanup(taskId, oldRef);
+            executeOldObjectCleanup(taskId);
         }
     }
 
-    private void executeOldObjectCleanup(UUID taskId, String oldRef) {
+    private void executeOldObjectCleanup(UUID taskId) {
+        if (taskCoordinator == null || taskId == null) {
+            return;
+        }
         try {
-            // Re-verify that no active proof record in the DB still points to oldRef
-            if (proofRepository.countByObjectReference(oldRef) > 0) {
-                log.warn("Replaced proof object is still referenced by another proof record. Skipping deletion for task {}", taskId);
-                if (taskCoordinator != null && taskId != null) {
-                    taskCoordinator.markFailed(taskId, "STILL_REFERENCED");
-                } else if (cleanupTaskRepository != null && taskId != null) {
-                    cleanupTaskRepository.findById(taskId).ifPresent(t -> {
-                        t.setStatus("FAILED");
-                        cleanupTaskRepository.save(t);
-                    });
-                }
-                return;
-            }
-            if (proofObjectStorage != null) {
-                try {
-                    proofObjectStorage.delete(new ProofObjectReference(oldRef));
-                    log.info("Post-commit successfully deleted replaced proof object for task {}", taskId);
-                } catch (ProofObjectNotFoundException ex) {
-                    log.info("Replaced proof object was already absent from storage for task {}", taskId);
-                }
-
-                if (taskCoordinator != null && taskId != null) {
-                    taskCoordinator.markCompleted(taskId);
-                } else if (cleanupTaskRepository != null && taskId != null) {
-                    cleanupTaskRepository.findById(taskId).ifPresent(t -> {
-                        t.setStatus("COMPLETED");
-                        cleanupTaskRepository.save(t);
-                    });
-                }
-            }
+            ProofCleanupTaskCoordinator.ProcessingResult result = taskCoordinator.processTask(taskId);
+            log.info("Post-commit cleanup task {} finished with safe outcome {}", taskId, result);
         } catch (Exception ex) {
             log.warn("Post-commit synchronous deletion of replaced proof failed for task {}. Cleanup task remains durable for retry.",
                     taskId);
-            if (taskCoordinator != null && taskId != null) {
-                taskCoordinator.recordFailureAttempt(taskId, "POST_COMMIT_FAILED");
-            }
         }
     }
 

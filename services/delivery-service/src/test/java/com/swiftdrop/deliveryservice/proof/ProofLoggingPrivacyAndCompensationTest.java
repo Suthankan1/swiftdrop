@@ -13,12 +13,12 @@ import com.swiftdrop.deliveryservice.proof.retention.ProofRetentionCleanupServic
 import com.swiftdrop.deliveryservice.proof.storage.ProofObjectReference;
 import com.swiftdrop.deliveryservice.proof.storage.ProofObjectStorage;
 import com.swiftdrop.deliveryservice.proof.storage.StoredProofObject;
-import com.swiftdrop.deliveryservice.proof.storage.exception.ProofObjectNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Pageable;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
@@ -77,6 +77,8 @@ class ProofLoggingPrivacyAndCompensationTest {
         proofObjectStorage = mock(ProofObjectStorage.class);
         cleanupTaskRepository = mock(ProofCleanupTaskRepository.class);
         taskCoordinator = mock(ProofCleanupTaskCoordinator.class);
+        when(taskCoordinator.processTask(any(UUID.class)))
+                .thenReturn(ProofCleanupTaskCoordinator.ProcessingResult.COMPLETED);
 
         compensationService = new ProofCompensationService(
                 proofObjectStorage, cleanupTaskRepository, proofRepository, taskCoordinator
@@ -214,17 +216,15 @@ class ProofLoggingPrivacyAndCompensationTest {
     @DisplayName("Durable retry processing logs remain privacy-safe and handle absent objects cleanly")
     void durableRetryProcessing_logsContainNoStorageKeys() {
         ProofCleanupTask task = new ProofCleanupTask(UUID.randomUUID(), secretOldKey, "RETRY_TEST");
-        when(cleanupTaskRepository.findByStatus("PENDING")).thenReturn(List.of(task));
-        when(proofRepository.countByObjectReference(secretOldKey)).thenReturn(0L);
-
-        // Simulate object already absent from storage (404)
-        doThrow(new ProofObjectNotFoundException("Private proof object was not found"))
-                .when(proofObjectStorage).delete(any());
+        when(cleanupTaskRepository.findByStatusOrderByCreatedAtAsc(eq("PENDING"), any(Pageable.class)))
+                .thenReturn(List.of(task));
+        when(taskCoordinator.processTask(task.getTaskId()))
+                .thenReturn(ProofCleanupTaskCoordinator.ProcessingResult.COMPLETED);
 
         int processed = compensationService.processPendingCleanups();
 
         assertThat(processed).isEqualTo(1);
-        verify(taskCoordinator).markCompleted(task.getTaskId());
+        verify(taskCoordinator).processTask(task.getTaskId());
 
         assertThat(listAppender.list).isNotEmpty();
         assertNoStorageKeysInLogs();

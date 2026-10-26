@@ -1,5 +1,8 @@
 package com.swiftdrop.deliveryservice.proof;
 
+import com.swiftdrop.deliveryservice.proof.storage.ProofObjectReference;
+import com.swiftdrop.deliveryservice.proof.storage.ProofObjectStorage;
+import com.swiftdrop.deliveryservice.proof.storage.exception.ProofObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +11,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -25,12 +27,20 @@ import java.util.UUID;
 public class ProofCleanupTaskCoordinator {
 
     private static final Logger log = LoggerFactory.getLogger(ProofCleanupTaskCoordinator.class);
+    static final int MAXIMUM_ATTEMPTS = 5;
 
     private final ProofCleanupTaskRepository cleanupTaskRepository;
+    private final ProofOfDeliveryRepository proofRepository;
+    private final ProofObjectStorage proofObjectStorage;
 
     @Autowired
-    public ProofCleanupTaskCoordinator(ProofCleanupTaskRepository cleanupTaskRepository) {
+    public ProofCleanupTaskCoordinator(
+            ProofCleanupTaskRepository cleanupTaskRepository,
+            ProofOfDeliveryRepository proofRepository,
+            @Autowired(required = false) ProofObjectStorage proofObjectStorage) {
         this.cleanupTaskRepository = Objects.requireNonNull(cleanupTaskRepository, "cleanupTaskRepository cannot be null");
+        this.proofRepository = Objects.requireNonNull(proofRepository, "proofRepository cannot be null");
+        this.proofObjectStorage = proofObjectStorage;
     }
 
     /**
@@ -47,70 +57,59 @@ public class ProofCleanupTaskCoordinator {
     }
 
     /**
-     * Records task status as COMPLETED in an isolated new transaction.
+     * Processes one task under a pessimistic row lock. The storage side effect and its single
+     * authoritative database transition share this isolated transaction. If the process stops
+     * after deletion but before commit, the still-pending task safely reconciles the absent object
+     * on its next attempt.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompleted(UUID taskId) {
+    public ProcessingResult processTask(UUID taskId) {
         if (taskId == null) {
-            return;
+            return ProcessingResult.SKIPPED;
         }
-        Optional<ProofCleanupTask> taskOpt = cleanupTaskRepository.findByIdForUpdate(taskId);
-        if (taskOpt.isPresent()) {
-            ProofCleanupTask task = taskOpt.get();
-            task.setStatus("COMPLETED");
-            cleanupTaskRepository.saveAndFlush(task);
-            log.info("Cleanup task {} marked as COMPLETED", taskId);
-        } else {
-            cleanupTaskRepository.findById(taskId).ifPresent(task -> {
-                task.setStatus("COMPLETED");
-                cleanupTaskRepository.saveAndFlush(task);
-                log.info("Cleanup task {} marked as COMPLETED", taskId);
-            });
-        }
-    }
 
-    /**
-     * Records task status as FAILED in an isolated new transaction.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(UUID taskId, String reason) {
-        if (taskId == null) {
-            return;
+        ProofCleanupTask task = cleanupTaskRepository.findByIdForUpdate(taskId).orElse(null);
+        if (task == null || !task.isPending()) {
+            return ProcessingResult.SKIPPED;
         }
-        Optional<ProofCleanupTask> taskOpt = cleanupTaskRepository.findByIdForUpdate(taskId);
-        if (taskOpt.isPresent()) {
-            ProofCleanupTask task = taskOpt.get();
-            task.setStatus("FAILED");
-            cleanupTaskRepository.saveAndFlush(task);
-            log.warn("Cleanup task {} marked as FAILED for reason: {}", taskId, reason);
-        } else {
-            cleanupTaskRepository.findById(taskId).ifPresent(task -> {
-                task.setStatus("FAILED");
-                cleanupTaskRepository.saveAndFlush(task);
-                log.warn("Cleanup task {} marked as FAILED for reason: {}", taskId, reason);
-            });
-        }
-    }
 
-    /**
-     * Records a failed deletion attempt, incrementing retry count or failing if limit reached.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordFailureAttempt(UUID taskId, String reason) {
-        if (taskId == null) {
-            return;
+        if (proofRepository.countByObjectReference(task.getObjectReference()) > 0) {
+            task.markFailed();
+            cleanupTaskRepository.saveAndFlush(task);
+            log.warn("Cleanup task {} blocked because its object is still referenced by active proof metadata", taskId);
+            return ProcessingResult.TERMINAL_FAILURE;
         }
-        Optional<ProofCleanupTask> taskOpt = cleanupTaskRepository.findByIdForUpdate(taskId);
-        ProofCleanupTask task = taskOpt.orElseGet(() -> cleanupTaskRepository.findById(taskId).orElse(null));
-        if (task != null) {
-            task.incrementRetry();
-            if (task.getRetryCount() >= 5) {
-                task.setStatus("FAILED");
-                log.warn("Cleanup task {} exceeded maximum retry attempts; marked as FAILED for reason: {}", taskId, reason);
-            } else {
-                log.warn("Cleanup task {} attempt incremented (retry count: {}) for reason: {}", taskId, task.getRetryCount(), reason);
+
+        if (proofObjectStorage == null || !proofObjectStorage.supportsDeletion()) {
+            log.warn("Cleanup task {} was not attempted because authoritative physical deletion is unavailable", taskId);
+            return ProcessingResult.SKIPPED;
+        }
+
+        try {
+            proofObjectStorage.delete(new ProofObjectReference(task.getObjectReference()));
+        } catch (ProofObjectNotFoundException alreadyAbsent) {
+            log.info("Cleanup task {} reconciled an object already absent from storage", taskId);
+        } catch (Exception deletionFailure) {
+            task.recordFailedAttempt(MAXIMUM_ATTEMPTS);
+            cleanupTaskRepository.saveAndFlush(task);
+            if (task.isPending()) {
+                log.warn("Cleanup task {} deletion attempt failed; retry count is {}", taskId, task.getRetryCount());
+                return ProcessingResult.RETRYABLE_FAILURE;
             }
-            cleanupTaskRepository.saveAndFlush(task);
+            log.warn("Cleanup task {} reached the maximum deletion attempts and is now FAILED", taskId);
+            return ProcessingResult.TERMINAL_FAILURE;
         }
+
+        task.markCompleted();
+        cleanupTaskRepository.saveAndFlush(task);
+        log.info("Cleanup task {} marked as COMPLETED", taskId);
+        return ProcessingResult.COMPLETED;
+    }
+
+    public enum ProcessingResult {
+        COMPLETED,
+        RETRYABLE_FAILURE,
+        TERMINAL_FAILURE,
+        SKIPPED
     }
 }

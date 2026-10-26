@@ -173,7 +173,7 @@ class ProofPersistencePostgresIT {
         List<ProofCleanupTask> pending = cleanupRepository.findByStatus("PENDING");
         assertThat(pending).anyMatch(t -> t.getObjectReference().equals(orphanRef));
 
-        task.setStatus("COMPLETED");
+        task.markCompleted();
         cleanupRepository.saveAndFlush(task);
 
         List<ProofCleanupTask> pendingAfter = cleanupRepository.findByStatus("PENDING");
@@ -314,8 +314,8 @@ class ProofPersistencePostgresIT {
     }
 
     @Test
-    @DisplayName("ProofCleanupTaskCoordinator persists tasks and executes REQUIRES_NEW status transitions in PostgreSQL")
-    void proofCleanupTaskCoordinator_persistsAndTransitionsInPostgres() {
+    @DisplayName("ProofCleanupTaskCoordinator persists tasks and fails closed without a deletion-capable adapter")
+    void proofCleanupTaskCoordinator_persistsAndFailsClosedWithoutDeletionAdapter() {
         String orphanRef = "proofs/v1/" + UUID.randomUUID();
         ProofCleanupTask created = taskCoordinator.recordDurableCleanup(orphanRef, "IT_TEST_REASON");
 
@@ -327,18 +327,18 @@ class ProofPersistencePostgresIT {
         assertThat(inDb.getObjectReference()).isEqualTo(orphanRef);
         assertThat(inDb.getStatus()).isEqualTo("PENDING");
 
-        // Mark completed via coordinator
-        taskCoordinator.markCompleted(created.getTaskId());
+        // No deletion-capable adapter is configured in this persistence test.
+        assertThat(taskCoordinator.processTask(created.getTaskId()))
+                .isEqualTo(ProofCleanupTaskCoordinator.ProcessingResult.SKIPPED);
 
         ProofCleanupTask completedDb = cleanupRepository.findById(created.getTaskId()).orElseThrow();
-        assertThat(completedDb.getStatus()).isEqualTo("COMPLETED");
+        assertThat(completedDb.getStatus()).isEqualTo("PENDING");
 
-        // Record failure attempt on new task
+        // A second task remains pending until an authoritative storage adapter is available.
         ProofCleanupTask task2 = taskCoordinator.recordDurableCleanup("proofs/v1/" + UUID.randomUUID(), "RETRY_TEST");
-        taskCoordinator.recordFailureAttempt(task2.getTaskId(), "TIMEOUT_1");
 
         ProofCleanupTask retryDb = cleanupRepository.findById(task2.getTaskId()).orElseThrow();
-        assertThat(retryDb.getRetryCount()).isEqualTo(1);
+        assertThat(retryDb.getRetryCount()).isZero();
         assertThat(retryDb.getStatus()).isEqualTo("PENDING");
     }
 

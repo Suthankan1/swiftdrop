@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Pageable;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -40,6 +41,7 @@ class ProofServiceTest {
     private CourierAssignmentContract courierAssignmentContract;
     private ProofObjectStorage proofObjectStorage;
     private ProofCleanupTaskRepository cleanupTaskRepository;
+    private ProofCleanupTaskCoordinator taskCoordinator;
     private ProofCompensationService compensationService;
     private ProofService proofService;
     private ProofMetadataService proofMetadataService;
@@ -57,15 +59,19 @@ class ProofServiceTest {
         courierAssignmentContract = mock(CourierAssignmentContract.class);
         proofObjectStorage = mock(ProofObjectStorage.class);
         cleanupTaskRepository = mock(ProofCleanupTaskRepository.class);
+        taskCoordinator = mock(ProofCleanupTaskCoordinator.class);
 
-        compensationService = new ProofCompensationService(proofObjectStorage, cleanupTaskRepository, proofRepository);
+        compensationService = new ProofCompensationService(
+                proofObjectStorage, cleanupTaskRepository, proofRepository, taskCoordinator
+        );
         proofService = new ProofService(
                 parcelRepository,
                 proofRepository,
                 courierAssignmentContract,
                 proofObjectStorage,
                 compensationService,
-                cleanupTaskRepository
+                cleanupTaskRepository,
+                taskCoordinator
         );
         proofMetadataService = new ProofMetadataService(proofRepository);
     }
@@ -267,8 +273,8 @@ class ProofServiceTest {
                     parcelId, new ByteArrayInputStream(bytes), 1024L, "image/jpeg", "Recipient", "Delivered", courierSub, List.of("COURIER")
             )).isInstanceOf(RuntimeException.class);
 
-            // Verify durable cleanup task was saved in repository
-            verify(cleanupTaskRepository).saveAndFlush(any(ProofCleanupTask.class));
+            // Verify the proxied coordinator owns durable compensation persistence.
+            verify(taskCoordinator).recordDurableCleanup(validRef, "DB_PERSISTENCE_FAILURE");
         }
 
         @Test
@@ -451,14 +457,15 @@ class ProofServiceTest {
         @DisplayName("processPendingCleanups processes pending tasks and marks completed")
         void processPendingCleanups_success() {
             ProofCleanupTask task = new ProofCleanupTask(UUID.randomUUID(), validRef, "DB_FAILURE");
-            when(cleanupTaskRepository.findByStatus("PENDING")).thenReturn(List.of(task));
+            when(cleanupTaskRepository.findByStatusOrderByCreatedAtAsc(eq("PENDING"), any(Pageable.class)))
+                    .thenReturn(List.of(task));
+            when(taskCoordinator.processTask(task.getTaskId()))
+                    .thenReturn(ProofCleanupTaskCoordinator.ProcessingResult.COMPLETED);
 
             int completed = compensationService.processPendingCleanups();
 
             assertThat(completed).isEqualTo(1);
-            assertThat(task.getStatus()).isEqualTo("COMPLETED");
-            verify(proofObjectStorage).delete(new ProofObjectReference(validRef));
-            verify(cleanupTaskRepository).save(task);
+            verify(taskCoordinator).processTask(task.getTaskId());
         }
     }
 }
