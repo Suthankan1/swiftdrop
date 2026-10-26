@@ -28,15 +28,28 @@ public class StatusTransitionService {
     private final ParcelRepository parcelRepository;
     private final StatusHistoryRepository statusHistoryRepository;
     private final CourierAssignmentContract courierAssignmentContract;
+    private final com.swiftdrop.deliveryservice.outbox.OutboxEventRepository outboxEventRepository;
+    private final com.swiftdrop.deliveryservice.outbox.OutboxEventFactory outboxEventFactory;
+
+    public StatusTransitionService(
+            ParcelRepository parcelRepository,
+            StatusHistoryRepository statusHistoryRepository,
+            CourierAssignmentContract courierAssignmentContract) {
+        this(parcelRepository, statusHistoryRepository, courierAssignmentContract, null, null);
+    }
 
     @Autowired
     public StatusTransitionService(
             ParcelRepository parcelRepository,
             StatusHistoryRepository statusHistoryRepository,
-            @Autowired(required = false) CourierAssignmentContract courierAssignmentContract) {
+            @Autowired(required = false) CourierAssignmentContract courierAssignmentContract,
+            @Autowired(required = false) com.swiftdrop.deliveryservice.outbox.OutboxEventRepository outboxEventRepository,
+            @Autowired(required = false) com.swiftdrop.deliveryservice.outbox.OutboxEventFactory outboxEventFactory) {
         this.parcelRepository = parcelRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.courierAssignmentContract = courierAssignmentContract;
+        this.outboxEventRepository = outboxEventRepository;
+        this.outboxEventFactory = outboxEventFactory != null ? outboxEventFactory : new com.swiftdrop.deliveryservice.outbox.OutboxEventFactory();
     }
 
     /**
@@ -100,6 +113,29 @@ public class StatusTransitionService {
                 occurredAt
         );
         statusHistoryRepository.save(history);
+
+        // 7. Record outbox event atomically in same local database transaction
+        if (outboxEventRepository != null) {
+            String courierSub = null;
+            if (courierAssignmentContract != null) {
+                courierSub = courierAssignmentContract.getActiveCourierSub(parcelId).orElse(null);
+            }
+            if (courierSub == null && (roles.contains("ROLE_COURIER") || roles.contains("COURIER"))) {
+                courierSub = actorSub;
+            }
+
+            com.swiftdrop.deliveryservice.outbox.OutboxEvent outboxEvent = outboxEventFactory.createParcelStatusChangedEvent(
+                    updatedParcel,
+                    previousStatus,
+                    request.newStatus(),
+                    request.reason(),
+                    courierSub,
+                    null,
+                    occurredAt,
+                    resultingVersion
+            );
+            outboxEventRepository.save(outboxEvent);
+        }
 
         return new ParcelStatusChangeResponse(
                 parcel.getParcelId(),
