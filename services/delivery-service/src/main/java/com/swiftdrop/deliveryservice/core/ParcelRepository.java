@@ -1,5 +1,7 @@
 package com.swiftdrop.deliveryservice.core;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +19,11 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
 
     List<Parcel> findBySenderSub(String senderSub);
 
+    Page<Parcel> findBySenderSubOrderByCreatedAtDesc(String senderSub, Pageable pageable);
+
     List<Parcel> findByMerchantId(UUID merchantId);
+
+    Page<Parcel> findByMerchantIdOrderByCreatedAtDesc(UUID merchantId, Pageable pageable);
 
     List<Parcel> findByStatus(ParcelStatus status);
 
