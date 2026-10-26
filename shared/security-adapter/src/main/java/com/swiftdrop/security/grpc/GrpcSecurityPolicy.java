@@ -135,6 +135,30 @@ public class GrpcSecurityPolicy {
                 DelegationRequirement.REQUIRED,
                 Set.of(SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
         ));
+
+        // Delivery ListUnassignedParcels: GraphQL -> Delivery (Actor: DISPATCHER, ADMIN, #113)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/ListUnassignedParcels",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Delivery GetCourierWorkloadSummary: GraphQL -> Delivery (Actor: DISPATCHER, ADMIN, #113)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/GetCourierWorkloadSummary",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
+
+        // Delivery GetDeliveryStatsInternal: GraphQL -> Delivery (Actor: DISPATCHER, ADMIN, #113, #30)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/GetDeliveryStatsInternal",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
+        ));
     }
 
     public void register(MethodPolicy policy) {

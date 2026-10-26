@@ -16,6 +16,15 @@ service DeliveryInternalService {
 
   // Queries active workload count for a specific courier.
   rpc GetCourierWorkload (CourierWorkloadRequest) returns (CourierWorkloadResponse);
+
+  // Queries paginated unassigned parcel projections for dispatchers and admins.
+  rpc ListUnassignedParcels (ListUnassignedParcelsRequest) returns (ListUnassignedParcelsResponse);
+
+  // Queries active workload counts for a batch of couriers within caller's scope.
+  rpc GetCourierWorkloadSummary (CourierWorkloadSummaryRequest) returns (CourierWorkloadSummaryResponse);
+
+  // Queries delivery status and outcome statistics for a reporting window.
+  rpc GetDeliveryStatsInternal (GetDeliveryStatsRequest) returns (GetDeliveryStatsResponse);
 }
 
 // Request to fetch internal parcel details.
@@ -46,4 +55,64 @@ message CourierWorkloadRequest {
 message CourierWorkloadResponse {
   string courier_sub = 1;
   int32 active_assignments_count = 2; // Current number of parcels in active assignment (capacity <= 5)
+}
+
+// Request to list unassigned parcels with deterministic pagination and optional zone filter.
+message ListUnassignedParcelsRequest {
+  int32 page = 1; // 0-based page index (must be >= 0)
+  int32 page_size = 2; // Bounded page size: 1 to 50, default 20
+  string zone = 3; // Optional zone filter
+}
+
+// Item summary in unassigned parcel queue.
+message UnassignedParcelSummary {
+  string parcel_id = 1; // UUID string
+  string tracking_number = 2; // e.g. "SWD-2026-000001"
+  string status = 3; // Always "CREATED"
+  int64 version = 4;
+  int64 amount_minor_units = 5;
+  string currency = 6;
+  double weight_kg = 7;
+  google.protobuf.Timestamp created_at = 8;
+  string sender_sub = 9;
+  string merchant_id = 10;
+  string pickup_zone = 11;
+  string dropoff_zone = 12;
+}
+
+// Paginated response containing unassigned parcel summaries.
+message ListUnassignedParcelsResponse {
+  int32 total_count = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated UnassignedParcelSummary items = 4;
+}
+
+// Request to query workload counts for multiple couriers (capped at 50).
+message CourierWorkloadSummaryRequest {
+  repeated string courier_subs = 1; // Bounded list of courier subjects (max 50)
+}
+
+// Response containing workload summaries for requested couriers.
+message CourierWorkloadSummaryResponse {
+  repeated CourierWorkloadResponse workloads = 1;
+}
+
+// Request for daily delivery outcome aggregates and status statistics.
+message GetDeliveryStatsRequest {
+  google.protobuf.Timestamp start_time = 1; // Canonical UTC start instant (inclusive)
+  google.protobuf.Timestamp end_time = 2;   // Canonical UTC end instant (inclusive)
+  string zone = 3;                         // Optional zone filter (e.g. "CMB-01"); empty string if all authorized zones
+  string status = 4;                       // Optional status filter (e.g. "DELIVERED"); empty string if all statuses
+  repeated string authorized_zones = 5;    // Caller's verified operational zones for tenant confinement
+}
+
+// Response containing delivery outcome metrics and status statistics.
+message GetDeliveryStatsResponse {
+  int64 total_count = 1;
+  int64 delivered_count = 2;
+  int64 failed_count = 3;
+  int64 in_transit_count = 4;
+  int64 created_count = 5;
+  optional double average_delivery_hours = 6; // Omitted (empty) if delivered_count == 0 or no timestamps
 }
