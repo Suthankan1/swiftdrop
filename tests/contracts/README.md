@@ -50,6 +50,13 @@ In GitHub Actions (`.github/workflows/contract-checks.yml`), this suite executes
 
 - **Breaking Change Detection:** Automatically diffs REST, GraphQL, Kafka, and Protobuf contracts against the PR target branch (`check_protobuf_compatibility`, `check_kafka_compatibility`, `check_openapi_compatibility`, `check_graphql_compatibility`).
 - **Read-Only Invariant:** Enforces that GraphQL SDL contains 0 mutations and 0 subscriptions.
+- **Issue #119 retirement:** The October 23 amendment removes the original
+  `Query.publicTracking(trackingNumber: String!): PublicTrackingView` root in favor
+  of REST #115/#133. The validator reports this exact removal as accepted. Other
+  fields/types/enums and altered tracking signatures remain subject to the normal
+  compatibility gate; there is no CLI/environment bypass. Regression tests live
+  in `test_graphql_compatibility.py`. This exception does not assert domain/security
+  acceptance of the complete service.
 - **Privacy Gate:** Validates that Kafka event envelopes and payloads forbid private customer data via `additionalProperties: false`.
 - **Protobuf Invariants (Issue #92):** Enforces `proto3`, package/Java naming, permanent field tags, integer minor units for monetary fields, UTC timestamps, and rejection of renumbered/removed fields without `reserved`.
 - **Java Generation Pipeline:** `shared/proto-contracts` compiles contracts with pinned `protoc:3.25.5` and `protoc-gen-grpc-java:1.68.1`, executing 14 contract and in-process gRPC tests.
