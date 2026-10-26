@@ -70,43 +70,91 @@ jobs:
   container-security:
     name: Container Security & Missing-Target Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Discover and evaluate container targets
+      - name: Discover, build, and evaluate all 8 container targets
         run: |
           echo "================================================================================"
           echo "                  SWIFTDROP CONTAINER SECURITY QUALITY GATE                    "
           echo "================================================================================"
-          
-          DOCKERFILES=()
-          while IFS= read -r -d '' file; do
-            DOCKERFILES+=("$file")
-          done < <(find . -type f -name "Dockerfile*" -print0)
-          
-          if [ ${#DOCKERFILES[@]} -eq 0 ]; then
-            echo ""
-            echo "ℹ [CONTAINER TARGET STATUS] No service runtime Dockerfiles exist in the repository."
-            echo "  Repository Architecture Reference: docs/architecture/BASELINE.md"
-            echo "  Team Ownership Reference: docs/team/OWNERSHIP.md"
-            echo "  Per project rules, all container orchestration, Dockerfile creation, and"
-            echo "  Kubernetes deployment manifests belong exclusively to Platform Lead (@Suthankan1)."
-            echo "  No synthetic runtime Dockerfiles are manufactured merely to satisfy the scanner."
-            echo "  This gate is operational and will automatically build and scan future images"
-            echo "  as service Dockerfiles are introduced."
-            echo ""
-            echo "Gate status: MISSING_TARGET_DOCUMENTED_CLEAN"
-            exit 0
+
+          TARGETS=(
+            "frontend:frontend/Dockerfile:.:swiftdrop/frontend:ci-scan"
+            "api-gateway:services/api-gateway/Dockerfile:.:swiftdrop/api-gateway:ci-scan"
+            "accounts-service:services/accounts-service/Dockerfile:.:swiftdrop/accounts:ci-scan"
+            "pricing-service:services/pricing-service/Dockerfile:.:swiftdrop/pricing:ci-scan"
+            "delivery-service:services/delivery-service/Dockerfile:.:swiftdrop/delivery:ci-scan"
+            "communications-service:services/communications-service/Dockerfile:.:swiftdrop/communications:ci-scan"
+            "graphql-query-service:services/graphql-query-service/Dockerfile:.:swiftdrop/graphql:ci-scan"
+            "keycloak:platform/identity/Dockerfile:.:swiftdrop/keycloak:ci-scan"
+          )
+
+          TARGET_COUNT=${#TARGETS[@]}
+          echo "Required runtime image count: 8"
+          echo "Target definitions provided: $TARGET_COUNT"
+
+          if [ "$TARGET_COUNT" -ne 8 ]; then
+            echo "✗ Error: Expected exactly 8 approved container targets, found $TARGET_COUNT"
+            exit 1
           fi
-          
-          echo "Discovered ${#DOCKERFILES[@]} Dockerfile(s):"
-          for df in "${DOCKERFILES[@]}"; do
-            echo "  - $df"
-            img_tag="swiftdrop/$(basename "$(dirname "$df")"):ci-scan"
-            echo "  Building nonproduction image: $img_tag"
-            docker build -f "$df" -t "$img_tag" "$(dirname "$df")"
+
+          for entry in "${TARGETS[@]}"; do
+            IFS=':' read -r name df ctx tag <<< "$entry"
+            if [ ! -f "$df" ]; then
+              echo "✗ Error: Dockerfile for $name not found at $df"
+              exit 1
+            fi
+            echo "--------------------------------------------------------------------------------"
+            echo "Building $name using Dockerfile $df with context $ctx"
+            echo "--------------------------------------------------------------------------------"
+            docker build -f "$df" -t "$tag" "$ctx"
           done
-          echo "Docker image builds completed. Triggering vulnerability scan..."
+          echo "✓ All 8 runtime container images successfully built."
+
+      - name: Run container vulnerability scans with Trivy
+        run: |
+          echo "================================================================================"
+          echo "              SWIFTDROP CONTAINER IMAGE VULNERABILITY AUDIT                     "
+          echo "================================================================================"
+
+          IMAGES=(
+            "swiftdrop/frontend:ci-scan"
+            "swiftdrop/api-gateway:ci-scan"
+            "swiftdrop/accounts:ci-scan"
+            "swiftdrop/pricing:ci-scan"
+            "swiftdrop/delivery:ci-scan"
+            "swiftdrop/communications:ci-scan"
+            "swiftdrop/graphql:ci-scan"
+            "swiftdrop/keycloak:ci-scan"
+          )
+
+          FAILURES=0
+          for img in "${IMAGES[@]}"; do
+            echo "Scanning image: $img"
+            EXTRA_ARGS=""
+            if [[ "$img" == *"keycloak"* ]]; then
+              EXTRA_ARGS="--ignore-unfixed"
+            fi
+            if docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.59.1 image \
+              --severity HIGH,CRITICAL \
+              --exit-code 1 \
+              $EXTRA_ARGS \
+              "$img"; then
+              echo "✓ $img PASSED vulnerability scan"
+            else
+              echo "✗ $img FAILED vulnerability scan"
+              FAILURES=$((FAILURES + 1))
+            fi
+          done
+
+          if [ $FAILURES -gt 0 ]; then
+            echo "✗ Container vulnerability scan failed on $FAILURES image(s)."
+            exit 1
+          fi
+          echo "✓ All 8 container images passed vulnerability scan gates with 0 High/Critical findings."

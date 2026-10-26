@@ -344,3 +344,98 @@ jobs:
           name: kubernetes-policy-results
           path: kubernetes-policy-results.xml
           retention-days: 7
+
+  container-images-validation:
+    name: Container Image Architecture & Policy Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Run container image definitions and policy test suite
+        run: python3 -m unittest discover -s tests/container-images -p "test_*.py" -v
+
+  publish-runtime-images:
+    name: Trusted GHCR Runtime Image Publication
+    needs:
+      - frontend-quality
+      - java-services
+      - container-images-validation
+      - terraform-quality-gates
+      - kubernetes-cluster-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'push' && github.repository == 'Suthankan1/swiftdrop' && (github.ref == 'refs/heads/test' || startsWith(github.ref, 'refs/tags/'))
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract commit SHA identifiers
+        id: vars
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "sha_full=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build and push all 8 runtime images to private GHCR
+        env:
+          SHA_SHORT: ${{ steps.vars.outputs.sha_short }}
+          SHA_FULL: ${{ steps.vars.outputs.sha_full }}
+        run: |
+          echo "================================================================================"
+          echo "           SWIFTDROP TRUSTED GHCR RUNTIME IMAGE PUBLICATION                     "
+          echo "================================================================================"
+
+          TARGETS=(
+            "frontend:frontend/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-frontend"
+            "api-gateway:services/api-gateway/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-api-gateway"
+            "accounts-service:services/accounts-service/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-accounts"
+            "pricing-service:services/pricing-service/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-pricing"
+            "delivery-service:services/delivery-service/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-delivery"
+            "communications-service:services/communications-service/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-communications"
+            "graphql-query-service:services/graphql-query-service/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-graphql"
+            "keycloak:platform/identity/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-keycloak"
+          )
+
+          mkdir -p build/artifacts/digests
+
+          for entry in "${TARGETS[@]}"; do
+            IFS=':' read -r name df ctx base_img <<< "$entry"
+            tag_short="${base_img}:${SHA_SHORT}"
+            tag_full="${base_img}:${SHA_FULL}"
+
+            echo "Building and pushing $name ($tag_short, $tag_full)..."
+            docker build -f "$df" -t "$tag_short" -t "$tag_full" "$ctx"
+            docker push "$tag_short"
+            docker push "$tag_full"
+            digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag_short" 2>/dev/null || echo "digest-pending")
+            echo "$name: $tag_short ($digest)" >> build/artifacts/digests/published-images.txt
+          done
+          echo "✓ All 8 runtime images published to private GHCR."
+
+      - name: Upload publication manifests
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: ghcr-published-image-digests
+          path: build/artifacts/digests/published-images.txt
+          retention-days: 30
