@@ -9,8 +9,11 @@ export function CustomerNav() {
         <a href="/customer" className="customer-nav-tab is-active">
           Account Profile
         </a>
+        <a href="/customer/quote" className="customer-nav-tab">
+          Request Quote &amp; Book
+        </a>
         <a href="/customer/history" className="customer-nav-tab">
-          Deliveries & Tracking
+          Deliveries &amp; Tracking
         </a>
       </nav>
     )
@@ -26,10 +29,16 @@ export function CustomerNav() {
         Account Profile
       </NavLink>
       <NavLink
+        to="/customer/quote"
+        className={({ isActive }) => `customer-nav-tab${isActive ? ' is-active' : ''}`}
+      >
+        Request Quote &amp; Book
+      </NavLink>
+      <NavLink
         to="/customer/history"
         className={({ isActive }) => `customer-nav-tab${isActive ? ' is-active' : ''}`}
       >
-        Deliveries & Tracking
+        Deliveries &amp; Tracking
       </NavLink>
     </nav>
   )

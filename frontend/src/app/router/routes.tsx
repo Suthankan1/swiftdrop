@@ -3,6 +3,8 @@ import { AppLayout } from '../../components/layout/AppLayout'
 import { AdminPage } from '../../features/admin/pages/AdminPage'
 import { CourierPage } from '../../features/courier/pages/CourierPage'
 import { CustomerPage } from '../../features/customer/pages/CustomerPage'
+import { CustomerQuotePage } from '../../features/customer/pages/CustomerQuotePage'
+import { CustomerBookingConfirmedPage } from '../../features/customer/pages/CustomerBookingConfirmedPage'
 import { CustomerHistoryPage } from '../../features/customer/pages/CustomerHistoryPage'
 import { DispatcherPage } from '../../features/dispatcher/pages/DispatcherPage'
 import { MerchantPage } from '../../features/merchant/pages/MerchantPage'
@@ -20,6 +22,8 @@ export function AppRoutes() {
         <Route index element={<LandingPage />} />
         <Route element={<ProtectedRoute role="CUSTOMER" />}>
           <Route path="customer" element={<CustomerPage />} />
+          <Route path="customer/quote" element={<CustomerQuotePage />} />
+          <Route path="customer/booking/confirmed/:parcelId" element={<CustomerBookingConfirmedPage />} />
           <Route path="customer/history" element={<CustomerHistoryPage />} />
         </Route>
         <Route element={<ProtectedRoute />}>

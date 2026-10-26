@@ -92,3 +92,16 @@ export interface ReceiptDownloadResult {
   blob: Blob
   filename: string
 }
+
+/**
+ * Command payload for booking a delivery using an accepted quote (IF-REST-03).
+ * Grounded in openapi-delivery.yaml BookParcelRequest.
+ */
+export interface BookParcelRequest {
+  quoteId: string
+  pickupAddress: string
+  dropoffAddress: string
+  recipientName: string
+  recipientPhone: string
+  deliveryNotes?: string
+}

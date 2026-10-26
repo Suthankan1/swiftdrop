@@ -5,7 +5,7 @@ import {
   sanitizeReceiptFilename,
   triggerBlobDownload,
 } from './delivery'
-import type { ParcelDetailResponse, PublicTrackingResponse } from './deliveryContracts'
+import type { BookParcelRequest, ParcelDetailResponse, PublicTrackingResponse } from './deliveryContracts'
 
 describe('sanitizeReceiptFilename', () => {
   it('extracts filename from standard Content-Disposition', () => {
@@ -302,6 +302,158 @@ describe('createDeliveryApi', () => {
         'http://localhost:8080/api/v1/parcels?page=0&size=10',
         expect.anything(),
       )
+    })
+  })
+
+  describe('bookParcel', () => {
+    const validBookingPayload: BookParcelRequest = {
+      quoteId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      pickupAddress: '123 Galle Road, Colombo 03',
+      dropoffAddress: '45 Kandy Road, Gampaha',
+      recipientName: 'Nimal Perera',
+      recipientPhone: '+94771234567',
+      deliveryNotes: 'Leave at security gate.',
+    }
+
+    const mockParcelResponse: ParcelDetailResponse = {
+      parcelId: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      trackingNumber: 'SWD-20261026-A1B2C3',
+      createdBySub: 'user-sub-123',
+      merchantId: null,
+      currentStatus: 'CREATED',
+      version: 1,
+      weightKg: 2.5,
+      dimensions: '30x20x15',
+      amountMinorUnits: 50000,
+      currency: 'LKR',
+      rateVersion: 'RATE-2026-V1',
+      pickupAddress: '123 Galle Road, Colombo 03',
+      dropoffAddress: '45 Kandy Road, Gampaha',
+      activeCourierSub: null,
+      createdAt: '2026-10-26T10:05:00Z',
+    }
+
+    it('books parcel successfully with 201 Created and Idempotency-Key header', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(mockParcelResponse), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      const idempotencyKey = '11111111-2222-3333-4444-555555555555'
+      const parcel = await api.bookParcel(validBookingPayload, idempotencyKey)
+
+      expect(parcel.parcelId).toBe('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')
+      expect(parcel.trackingNumber).toBe('SWD-20261026-A1B2C3')
+      expect(parcel.currentStatus).toBe('CREATED')
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8080/api/v1/parcels',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer valid-test-token',
+            'Idempotency-Key': idempotencyKey,
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify(validBookingPayload),
+        }),
+      )
+    })
+
+    it('handles 409 Conflict when quote already consumed or idempotency mismatch', async () => {
+      const problem = {
+        title: 'Conflict',
+        status: 409,
+        detail: 'Quote already booked.',
+      }
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(problem), {
+          status: 409,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.bookParcel(validBookingPayload)).rejects.toMatchObject({
+        kind: 'conflict',
+        message: 'Quote already booked.',
+        statusCode: 409,
+      })
+    })
+
+    it('handles 422 Unprocessable Entity when quote expired', async () => {
+      const problem = {
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Quote expired. Request a new quote.',
+      }
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(problem), {
+          status: 422,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.bookParcel(validBookingPayload)).rejects.toMatchObject({
+        kind: 'expired',
+        message: 'Quote expired. Request a new quote.',
+        statusCode: 422,
+      })
+    })
+
+    it('handles 400 Bad Request with validation details', async () => {
+      const problem = {
+        title: 'Bad Request',
+        status: 400,
+        detail: 'recipientPhone must not be blank',
+      }
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(problem), {
+          status: 400,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.bookParcel(validBookingPayload)).rejects.toMatchObject({
+        kind: 'validation-error',
+        message: 'recipientPhone must not be blank',
+        statusCode: 400,
+      })
+    })
+
+    it('handles missing auth token with auth-required error', async () => {
+      const api = createDeliveryApi({
+        getAccessToken: async () => null,
+        fetch: mockFetch,
+      })
+
+      await expect(api.bookParcel(validBookingPayload)).rejects.toMatchObject({
+        kind: 'auth-required',
+      })
+    })
+
+    it('handles 403 Forbidden with ownership/role error', async () => {
+      const problem = {
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Caller does not possess CUSTOMER role.',
+      }
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(problem), {
+          status: 403,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.bookParcel(validBookingPayload)).rejects.toMatchObject({
+        kind: 'forbidden',
+        statusCode: 403,
+      })
     })
   })
 })
