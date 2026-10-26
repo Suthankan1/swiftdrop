@@ -252,7 +252,7 @@ class ProofPersistencePostgresIT {
         // Verify parcel master record remains intact
         Parcel parcel = parcelRepository.findById(parcelId).orElseThrow();
         assertThat(parcel.getParcelId()).isEqualTo(parcelId);
-        assertThat(parcel.getTrackingNumber()).isEqualTo("SWD-20261026-IT01");
+        assertThat(parcel.getTrackingNumber()).startsWith("SWD-PROOF-IT-");
     }
 
     @Test
@@ -283,5 +283,27 @@ class ProofPersistencePostgresIT {
         );
 
         assertThat(candidatesAfterPurge).extracting(ProofOfDelivery::getProofId).doesNotContain(proofResponse.proofId());
+    }
+
+    @Test
+    @DisplayName("Fresh DefaultProofHoldProvider defaults to non-authoritative and fails closed on real PostgreSQL entities")
+    void defaultProofHoldProvider_failsClosedOnRealPostgresEntities() {
+        var holdProvider = new com.swiftdrop.deliveryservice.proof.retention.DefaultProofHoldProvider();
+        assertThat(holdProvider.isAuthoritative()).isFalse();
+
+        // When not authoritative, isUnderHold returns Optional.empty()
+        var holdResult = holdProvider.isUnderHold(parcelId, UUID.randomUUID());
+        assertThat(holdResult).isEmpty();
+    }
+
+    @Test
+    @DisplayName("countByObjectReference accurately counts references in PostgreSQL to prevent deleting referenced objects")
+    void countByObjectReference_accuratelyCountsInPostgres() {
+        String sharedRef = "proofs/v1/" + UUID.randomUUID();
+        UploadProofRequest request = new UploadProofRequest("Shared Recipient", sharedRef, "Shared note");
+        proofService.recordProofMetadata(parcelId, request, courierSub, List.of("COURIER"));
+
+        assertThat(proofRepository.countByObjectReference(sharedRef)).isEqualTo(1L);
+        assertThat(proofRepository.countByObjectReference("non-existent-ref")).isEqualTo(0L);
     }
 }

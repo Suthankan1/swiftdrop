@@ -19,12 +19,22 @@ public class ProofCompensationService {
 
     private final ProofObjectStorage proofObjectStorage;
     private final ProofCleanupTaskRepository cleanupTaskRepository;
+    private final ProofOfDeliveryRepository proofRepository;
 
     public ProofCompensationService(
             @Autowired(required = false) ProofObjectStorage proofObjectStorage,
             ProofCleanupTaskRepository cleanupTaskRepository) {
+        this(proofObjectStorage, cleanupTaskRepository, null);
+    }
+
+    @Autowired
+    public ProofCompensationService(
+            @Autowired(required = false) ProofObjectStorage proofObjectStorage,
+            ProofCleanupTaskRepository cleanupTaskRepository,
+            @Autowired(required = false) ProofOfDeliveryRepository proofRepository) {
         this.proofObjectStorage = proofObjectStorage;
         this.cleanupTaskRepository = cleanupTaskRepository;
+        this.proofRepository = proofRepository;
     }
 
     /**
@@ -33,6 +43,12 @@ public class ProofCompensationService {
      */
     public void compensateOrphan(ProofObjectReference reference, String reason) {
         if (reference == null) {
+            return;
+        }
+        // Safety check: do not delete an object that is still referenced by an active proof
+        if (proofRepository != null && proofRepository.countByObjectReference(reference.value()) > 0) {
+            log.warn("Storage object {} is still referenced by an active proof record. Skipping orphan compensation.",
+                    reference.value());
             return;
         }
         if (proofObjectStorage != null) {
@@ -60,7 +76,7 @@ public class ProofCompensationService {
     }
 
     /**
-     * Executes pending durable cleanup tasks.
+     * Executes pending durable cleanup tasks with safety checks against active proof references.
      */
     @Transactional
     public int processPendingCleanups() {
@@ -70,6 +86,13 @@ public class ProofCompensationService {
         List<ProofCleanupTask> pending = cleanupTaskRepository.findByStatus("PENDING");
         int completed = 0;
         for (ProofCleanupTask task : pending) {
+            if (proofRepository != null && proofRepository.countByObjectReference(task.getObjectReference()) > 0) {
+                log.warn("Pending cleanup task {} object {} is still referenced by an active proof record. Cancelling task.",
+                        task.getTaskId(), task.getObjectReference());
+                task.setStatus("FAILED");
+                cleanupTaskRepository.save(task);
+                continue;
+            }
             try {
                 proofObjectStorage.delete(new ProofObjectReference(task.getObjectReference()));
                 task.setStatus("COMPLETED");

@@ -66,7 +66,7 @@ class ProofRetentionCleanupServiceTest {
         proofObjectStorage = mock(ProofObjectStorage.class);
         when(proofObjectStorage.supportsDeletion()).thenReturn(true);
 
-        holdProvider = new DefaultProofHoldProvider();
+        holdProvider = new DefaultProofHoldProvider(true);
 
         cleanupService = new ProofRetentionCleanupService(
                 properties,

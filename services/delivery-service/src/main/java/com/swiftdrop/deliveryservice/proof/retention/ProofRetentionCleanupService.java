@@ -1,10 +1,8 @@
 package com.swiftdrop.deliveryservice.proof.retention;
 
-import com.swiftdrop.deliveryservice.core.Parcel;
 import com.swiftdrop.deliveryservice.core.ParcelRepository;
 import com.swiftdrop.deliveryservice.proof.ProofOfDelivery;
 import com.swiftdrop.deliveryservice.proof.ProofOfDeliveryRepository;
-import com.swiftdrop.deliveryservice.proof.storage.ProofObjectReference;
 import com.swiftdrop.deliveryservice.proof.storage.ProofObjectStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -22,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -39,35 +34,66 @@ public class ProofRetentionCleanupService {
     private static final Logger log = LoggerFactory.getLogger(ProofRetentionCleanupService.class);
 
     private final ProofRetentionProperties properties;
-    private final ProofRetentionEvaluator evaluator;
+    private final ProofRetentionCandidateProcessor candidateProcessor;
     private final ProofOfDeliveryRepository proofRepository;
-    private final ParcelRepository parcelRepository;
-    private final ProofObjectStorage proofObjectStorage;
-    private final ProofHoldProvider holdProvider;
     private final Clock clock;
 
+    @Autowired
+    public ProofRetentionCleanupService(
+            ProofRetentionProperties properties,
+            ProofRetentionCandidateProcessor candidateProcessor,
+            ProofOfDeliveryRepository proofRepository,
+            @Autowired(required = false) Clock clock) {
+        this.properties = Objects.requireNonNull(properties, "properties cannot be null");
+        this.candidateProcessor = Objects.requireNonNull(candidateProcessor, "candidateProcessor cannot be null");
+        this.proofRepository = Objects.requireNonNull(proofRepository, "proofRepository cannot be null");
+        this.clock = clock != null ? clock : Clock.systemUTC();
+    }
+
+    /**
+     * Backward-compatible constructor for testing seams.
+     */
     public ProofRetentionCleanupService(
             ProofRetentionProperties properties,
             ProofRetentionEvaluator evaluator,
             ProofOfDeliveryRepository proofRepository,
             ParcelRepository parcelRepository,
-            @Autowired(required = false) ProofObjectStorage proofObjectStorage,
-            @Autowired(required = false) ProofHoldProvider holdProvider,
-            @Autowired(required = false) Clock clock) {
-        this.properties = Objects.requireNonNull(properties, "properties cannot be null");
-        this.evaluator = Objects.requireNonNull(evaluator, "evaluator cannot be null");
-        this.proofRepository = Objects.requireNonNull(proofRepository, "proofRepository cannot be null");
-        this.parcelRepository = Objects.requireNonNull(parcelRepository, "parcelRepository cannot be null");
-        this.proofObjectStorage = proofObjectStorage;
-        this.holdProvider = holdProvider != null ? holdProvider : new DefaultProofHoldProvider();
-        this.clock = clock != null ? clock : Clock.systemUTC();
+            ProofObjectStorage proofObjectStorage,
+            ProofHoldProvider holdProvider,
+            Clock clock) {
+        this(
+                properties,
+                new ProofRetentionCandidateProcessor(
+                        proofRepository,
+                        parcelRepository,
+                        evaluator,
+                        proofObjectStorage,
+                        holdProvider,
+                        clock
+                ),
+                proofRepository,
+                clock
+        );
     }
 
     /**
-     * Executes one bounded batch of candidate proof cleanups if approved by policy.
-     * Returns a summary report with execution metrics.
+     * Executes one bounded batch of candidate proof cleanups on page 0 if approved by policy.
+     *
+     * @return summary report with execution metrics
      */
     public RetentionCleanupBatchReport executeCleanupBatch() {
+        return executeCleanupBatch(0);
+    }
+
+    /**
+     * Executes one bounded batch of candidate proof cleanups on the specified page if approved by policy.
+     * Paginating across pages allows operators and schedulers to avoid candidate starvation when earlier
+     * pages contain unexpired or held proof records.
+     *
+     * @param pageNumber the 0-based page index to evaluate
+     * @return summary report with execution metrics
+     */
+    public RetentionCleanupBatchReport executeCleanupBatch(int pageNumber) {
         if (!properties.isValidAndApproved()) {
             log.info("Proof retention cleanup execution skipped: policy DEC-RET-01 is unapproved or disabled.");
             return RetentionCleanupBatchReport.disabled();
@@ -75,22 +101,23 @@ public class ProofRetentionCleanupService {
 
         Instant now = clock.instant();
         Instant olderThan = now.minus(Duration.ofDays(properties.getRetentionDays()));
-        Pageable pageable = PageRequest.of(0, properties.getBatchSize());
+        Pageable pageable = PageRequest.of(Math.max(0, pageNumber), properties.getBatchSize());
 
         List<ProofOfDelivery> candidates = proofRepository.findCandidatesForRetention(
                 RetentionStatus.ACTIVE, olderThan, pageable);
 
         if (candidates.isEmpty()) {
-            log.debug("No active candidate proofs found older than {}", olderThan);
+            log.debug("No active candidate proofs found older than {} (page {})", olderThan, pageNumber);
             return RetentionCleanupBatchReport.of("No candidate proofs found", Collections.emptyList());
         }
 
-        log.info("Processing retention batch of {} candidate proof records", candidates.size());
+        log.info("Processing retention batch of {} candidate proof records (page {})", candidates.size(), pageNumber);
         List<RetentionCleanupResult> results = new ArrayList<>();
 
         for (ProofOfDelivery candidate : candidates) {
             try {
-                RetentionCleanupResult result = processCandidate(candidate.getProofId());
+                // Invoked on injected Spring component: REQUIRES_NEW transaction proxy is active
+                RetentionCleanupResult result = candidateProcessor.processCandidate(candidate.getProofId());
                 results.add(result);
             } catch (Exception ex) {
                 log.error("Unexpected failure processing retention candidate proof {}: {}",
@@ -104,64 +131,9 @@ public class ProofRetentionCleanupService {
     }
 
     /**
-     * Atomically inspects, evaluates, physically purges, and tombstones a single candidate proof.
-     * Operates in an isolated transaction to prevent batch poisoning.
+     * Delegates single candidate processing to the transactional candidate processor.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RetentionCleanupResult processCandidate(UUID proofId) {
-        Objects.requireNonNull(proofId, "proofId cannot be null");
-
-        // 1. Re-read under pessimistic lock or isolated transaction
-        Optional<ProofOfDelivery> proofOpt = proofRepository.findByIdForUpdate(proofId);
-        if (proofOpt.isEmpty()) {
-            return RetentionCleanupResult.skippedAlreadyPurged(proofId, null);
-        }
-        ProofOfDelivery proof = proofOpt.get();
-
-        if (proof.isPurged() || proof.getObjectReference() == null) {
-            return RetentionCleanupResult.skippedAlreadyPurged(proofId, proof.getParcelId());
-        }
-
-        // 2. Authoritative parcel context
-        Optional<Parcel> parcelOpt = parcelRepository.findById(proof.getParcelId());
-        if (parcelOpt.isEmpty()) {
-            log.warn("Authoritative parcel not found for proof {}. Ineligible.", proofId);
-            return RetentionCleanupResult.skippedIneligible(
-                    proofId, proof.getParcelId(), "Authoritative parcel record not found");
-        }
-        Parcel parcel = parcelOpt.get();
-
-        // 3. Strict eligibility evaluation
-        RetentionEvaluation evaluation = evaluator.evaluate(proof, parcel, holdProvider);
-        if (!evaluation.eligible()) {
-            log.info("Retention cleanup ineligible for proof {} (parcel {}): {}",
-                    proofId, parcel.getParcelId(), evaluation.rejectionDetails());
-            return RetentionCleanupResult.skippedIneligible(
-                    proofId, parcel.getParcelId(), evaluation.rejectionDetails());
-        }
-
-        // 4. Storage capability verification (never accept no-op adapter as deletion)
-        if (proofObjectStorage == null || !proofObjectStorage.supportsDeletion()) {
-            log.warn("Storage deletion unsupported for proof {}. Adapter cannot guarantee physical removal.", proofId);
-            return RetentionCleanupResult.failedStorageUnsupported(proofId, parcel.getParcelId());
-        }
-
-        // 5. Execute physical storage deletion
-        ProofObjectReference reference = new ProofObjectReference(proof.getObjectReference());
-        try {
-            proofObjectStorage.delete(reference);
-            log.info("Physical storage object deleted for proof {} (parcel {})", proofId, parcel.getParcelId());
-        } catch (RuntimeException ex) {
-            log.error("Physical storage deletion failed for proof {} (parcel {}): {}",
-                    proofId, parcel.getParcelId(), ex.getMessage());
-            return RetentionCleanupResult.failedStorage(proofId, parcel.getParcelId(), ex.getMessage());
-        }
-
-        // 6. Atomically persist privacy tombstone in database
-        proof.markPurged(clock.instant());
-        proofRepository.saveAndFlush(proof);
-        log.info("Proof metadata tombstoned for proof {} (parcel {})", proofId, parcel.getParcelId());
-
-        return RetentionCleanupResult.purged(proofId, parcel.getParcelId());
+        return candidateProcessor.processCandidate(proofId);
     }
 }

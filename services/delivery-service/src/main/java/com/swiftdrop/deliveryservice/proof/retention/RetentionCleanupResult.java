@@ -43,6 +43,14 @@ public record RetentionCleanupResult(
         FAILED_DATABASE_ERROR
     }
 
+    public boolean isPurged() {
+        return status == Status.PURGED;
+    }
+
+    public boolean isSkipped() {
+        return status == Status.SKIPPED_INELIGIBLE || status == Status.SKIPPED_ALREADY_PURGED;
+    }
+
     public static RetentionCleanupResult purged(UUID proofId, UUID parcelId) {
         return new RetentionCleanupResult(proofId, parcelId, Status.PURGED, "Proof successfully purged and tombstoned");
     }

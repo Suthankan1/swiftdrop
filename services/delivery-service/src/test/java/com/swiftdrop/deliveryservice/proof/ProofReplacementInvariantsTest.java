@@ -49,13 +49,14 @@ class ProofReplacementInvariantsTest {
         proofObjectStorage = mock(ProofObjectStorage.class);
         cleanupTaskRepository = mock(ProofCleanupTaskRepository.class);
 
-        compensationService = new ProofCompensationService(proofObjectStorage, cleanupTaskRepository);
+        compensationService = new ProofCompensationService(proofObjectStorage, cleanupTaskRepository, proofRepository);
         proofService = new ProofService(
                 parcelRepository,
                 proofRepository,
                 courierAssignmentContract,
                 proofObjectStorage,
-                compensationService
+                compensationService,
+                cleanupTaskRepository
         );
     }
 
@@ -76,7 +77,7 @@ class ProofReplacementInvariantsTest {
     }
 
     @Test
-    @DisplayName("Replacement proof updates database reference to new object and compensates old object")
+    @DisplayName("Replacement proof updates database reference to new object, persists durable task, and compensates old object")
     void uploadProofContent_replacement_updatesDbAndCompensatesOldOnly() {
         Parcel parcel = createParcel(ParcelStatus.OUT_FOR_DELIVERY);
         when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
@@ -87,6 +88,7 @@ class ProofReplacementInvariantsTest {
                 "Old Recipient", "Old Note", courierSub, Instant.now()
         );
         when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(existingProof));
+        when(proofRepository.countByObjectReference(oldRef)).thenReturn(0L);
 
         ProofObjectReference newObjectReference = new ProofObjectReference(newRef);
         when(proofObjectStorage.store(any())).thenReturn(new StoredProofObject(newObjectReference, 2048L, "image/png"));
@@ -107,13 +109,51 @@ class ProofReplacementInvariantsTest {
         assertThat(existingProof.getRecipientName()).isEqualTo("New Recipient");
         assertThat(existingProof.getDeliveryNote()).isEqualTo("New Note");
 
-        // 2. Verify newly uploaded proof is NOT deleted
+        // 2. Verify durable cleanup task was saved in transaction
+        ArgumentCaptor<ProofCleanupTask> taskCaptor = ArgumentCaptor.forClass(ProofCleanupTask.class);
+        verify(cleanupTaskRepository).save(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getObjectReference()).isEqualTo(oldRef);
+        assertThat(taskCaptor.getValue().getReason()).isEqualTo("REPLACED_PROOF");
+
+        // 3. Verify newly uploaded proof is NOT deleted
         verify(proofObjectStorage, never()).delete(newObjectReference);
 
-        // 3. Verify OLD reference was compensated
+        // 4. Verify OLD reference was compensated
         ArgumentCaptor<ProofObjectReference> deleteCaptor = ArgumentCaptor.forClass(ProofObjectReference.class);
         verify(proofObjectStorage).delete(deleteCaptor.capture());
         assertThat(deleteCaptor.getValue().value()).isEqualTo(oldRef);
+    }
+
+    @Test
+    @DisplayName("When old object is still referenced by another proof record, it is NEVER deleted")
+    void uploadProofContent_replacement_whenOldRefStillReferenced_doesNotDeleteOldObject() {
+        Parcel parcel = createParcel(ParcelStatus.OUT_FOR_DELIVERY);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+
+        ProofOfDelivery existingProof = new ProofOfDelivery(
+                UUID.randomUUID(), parcelId, oldRef, "PHOTO", "image/jpeg", 1024L,
+                "Old Recipient", "Old Note", courierSub, Instant.now()
+        );
+        when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(existingProof));
+        // Another record still references oldRef
+        when(proofRepository.countByObjectReference(oldRef)).thenReturn(1L);
+
+        ProofObjectReference newObjectReference = new ProofObjectReference(newRef);
+        when(proofObjectStorage.store(any())).thenReturn(new StoredProofObject(newObjectReference, 2048L, "image/png"));
+        when(proofRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        byte[] content = new byte[2048];
+        ProofResponse response = proofService.uploadProofContent(
+                parcelId, new ByteArrayInputStream(content), 2048L, "image/png",
+                "New Recipient", "New Note", courierSub, List.of("COURIER")
+        );
+
+        assertThat(response).isNotNull();
+
+        // Object storage delete should NEVER be called on oldRef or newRef
+        verify(proofObjectStorage, never()).delete(new ProofObjectReference(oldRef));
+        verify(proofObjectStorage, never()).delete(newObjectReference);
     }
 
     @Test

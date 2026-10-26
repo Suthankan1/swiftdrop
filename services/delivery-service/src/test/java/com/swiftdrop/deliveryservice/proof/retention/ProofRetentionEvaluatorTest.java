@@ -44,7 +44,7 @@ class ProofRetentionEvaluatorTest {
         approvedPolicy.setEligibleTerminalStates(Set.of(ParcelStatus.DELIVERED, ParcelStatus.FAILED));
         approvedPolicy.setBatchSize(50);
 
-        holdProvider = new DefaultProofHoldProvider();
+        holdProvider = new DefaultProofHoldProvider(true);
         evaluator = new ProofRetentionEvaluator(approvedPolicy, fixedClock);
 
         parcelId = UUID.randomUUID();
@@ -313,6 +313,21 @@ class ProofRetentionEvaluatorTest {
             Parcel parcel = createParcel(ParcelStatus.DELIVERED, EVALUATION_TIME.minus(Duration.ofDays(100)));
 
             RetentionEvaluation result = evaluator.evaluate(proof, parcel, null);
+
+            assertThat(result.eligible()).isFalse();
+            assertThat(result.rejectionReason()).isEqualTo(RetentionRejectionReason.HOLD_STATUS_INDETERMINATE);
+        }
+
+        @Test
+        @DisplayName("Fresh default hold provider (authoritative=false) fails closed on fresh startup or restart")
+        void freshStartupDefaultHoldProvider_failsClosed() {
+            DefaultProofHoldProvider freshProvider = new DefaultProofHoldProvider();
+            assertThat(freshProvider.isAuthoritative()).isFalse();
+
+            ProofOfDelivery proof = createProof(EVALUATION_TIME.minus(Duration.ofDays(100)));
+            Parcel parcel = createParcel(ParcelStatus.DELIVERED, EVALUATION_TIME.minus(Duration.ofDays(100)));
+
+            RetentionEvaluation result = evaluator.evaluate(proof, parcel, freshProvider);
 
             assertThat(result.eligible()).isFalse();
             assertThat(result.rejectionReason()).isEqualTo(RetentionRejectionReason.HOLD_STATUS_INDETERMINATE);

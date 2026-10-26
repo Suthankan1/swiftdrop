@@ -29,4 +29,7 @@ public interface ProofOfDeliveryRepository extends JpaRepository<ProofOfDelivery
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM ProofOfDelivery p WHERE p.proofId = :proofId")
     Optional<ProofOfDelivery> findByIdForUpdate(@Param("proofId") UUID proofId);
+
+    @Query("SELECT COUNT(p) FROM ProofOfDelivery p WHERE p.objectReference = :objectReference")
+    long countByObjectReference(@Param("objectReference") String objectReference);
 }

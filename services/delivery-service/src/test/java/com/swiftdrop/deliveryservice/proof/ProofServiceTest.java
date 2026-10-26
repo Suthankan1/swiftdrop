@@ -58,13 +58,14 @@ class ProofServiceTest {
         proofObjectStorage = mock(ProofObjectStorage.class);
         cleanupTaskRepository = mock(ProofCleanupTaskRepository.class);
 
-        compensationService = new ProofCompensationService(proofObjectStorage, cleanupTaskRepository);
+        compensationService = new ProofCompensationService(proofObjectStorage, cleanupTaskRepository, proofRepository);
         proofService = new ProofService(
                 parcelRepository,
                 proofRepository,
                 courierAssignmentContract,
                 proofObjectStorage,
-                compensationService
+                compensationService,
+                cleanupTaskRepository
         );
         proofMetadataService = new ProofMetadataService(proofRepository);
     }
