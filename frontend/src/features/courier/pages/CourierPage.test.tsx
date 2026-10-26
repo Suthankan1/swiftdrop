@@ -217,4 +217,106 @@ describe('Courier role landing', () => {
     expect(screen.queryByRole('heading', { name: /ready for your next route/i })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
   })
+
+  describe('Mobile assignment dashboard and parcel detail workflow', () => {
+    const sampleAssignment = {
+      assignmentId: 'assign-wf-1',
+      parcelId: 'parcel-wf-101',
+      courierSub: 'courier-test-subject',
+      active: true,
+      assignedAt: '2026-10-26T09:45:00Z',
+      assignedBy: 'dispatcher-1',
+    }
+
+    const sampleSummary = {
+      courierSub: 'courier-test-subject',
+      activeAssignedCount: 3,
+      todayDeliveredCount: 8,
+      todayFailedCount: 1,
+    }
+
+    const sampleParcel = {
+      parcelId: 'parcel-wf-101',
+      trackingNumber: 'SWD-20261026-WF12',
+      createdBySub: 'customer-1',
+      merchantId: null,
+      currentStatus: 'OUT_FOR_DELIVERY' as const,
+      version: 2,
+      weightKg: 2.1,
+      dimensions: '20 × 15 × 5 cm',
+      pickupAddress: 'Depot Central',
+      dropoffAddress: '12 Temple Lane, Colombo 04',
+      activeCourierSub: 'courier-test-subject',
+      createdAt: '2026-10-26T08:00:00Z',
+    }
+
+    it('navigates from paginated assignments into authorized parcel detail and back', async () => {
+      const user = userEvent.setup()
+      const auth = authenticated(['COURIER'], 'courier-test-subject')
+
+      // Mock fetch responses for GraphQL summary, assignments, parcel details, and proof lookup
+      const requestMock = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = url.toString()
+        if (urlStr.includes('/graphql')) {
+          return new Response(
+            JSON.stringify({
+              data: { courierDashboard: sampleSummary },
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.includes('/api/v1/assignments/my')) {
+          return new Response(
+            JSON.stringify({
+              items: [sampleAssignment],
+              currentPage: 0,
+              pageSize: 20,
+              totalElements: 1,
+              totalPages: 1,
+              hasNext: false,
+              hasPrevious: false,
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.includes('/api/v1/parcels/parcel-wf-101/proof')) {
+          return new Response(null, { status: 404 })
+        }
+        if (urlStr.includes('/api/v1/parcels/parcel-wf-101')) {
+          return new Response(JSON.stringify(sampleParcel), { status: 200 })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      vi.stubGlobal('fetch', requestMock)
+
+      renderCourier(auth)
+
+      // Confirms summary counts rendered
+      expect(await screen.findByText('3')).toBeInTheDocument()
+      expect(screen.getByText('8')).toBeInTheDocument()
+      expect(screen.getByText('1')).toBeInTheDocument()
+
+      // Confirms assignment card rendered
+      expect(await screen.findByText(/parcel-wf/i)).toBeInTheDocument()
+      const viewDetailsBtn = screen.getByRole('button', {
+        name: /view parcel details for parcel-w/i,
+      })
+      expect(viewDetailsBtn).toBeInTheDocument()
+
+      // Click to open parcel details
+      await user.click(viewDetailsBtn)
+
+      // Confirms parcel detail view opened
+      expect(await screen.findByRole('heading', { name: 'SWD-20261026-WF12' })).toBeInTheDocument()
+      expect(screen.getAllByText('12 Temple Lane, Colombo 04').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: /back to assignments list/i })).toBeInTheDocument()
+
+      // Click back to assignments
+      await user.click(screen.getByRole('button', { name: /back to assignments list/i }))
+
+      // Confirms returned to assignment list
+      expect(await screen.findByRole('heading', { name: /assigned deliveries/i })).toBeInTheDocument()
+    })
+  })
 })

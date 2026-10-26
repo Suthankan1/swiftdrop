@@ -1,9 +1,25 @@
+import { useState } from 'react'
 import { useAuth } from '../../../auth/context'
 import { StaffProfile } from '../../staff/components/StaffProfile'
 import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
-import { CourierProofWorkspace } from '../components/CourierProofWorkspace'
+import { CourierDashboardSummary } from '../components/CourierDashboardSummary'
+import { CourierAssignmentList } from '../components/CourierAssignmentList'
+import { CourierParcelDetails } from '../components/CourierParcelDetails'
+import type { createCourierDashboardApi } from '../api/courierDashboard'
+import type { createCourierAssignmentsApi } from '../api/courierAssignments'
+import type { createCourierProofApi } from '../api/proof'
 
-export function CourierPage() {
+export interface CourierPageProps {
+  summaryApiOverride?: ReturnType<typeof createCourierDashboardApi>
+  assignmentsApiOverride?: ReturnType<typeof createCourierAssignmentsApi>
+  proofApiOverride?: ReturnType<typeof createCourierProofApi>
+}
+
+export function CourierPage({
+  summaryApiOverride,
+  assignmentsApiOverride,
+  proofApiOverride,
+}: CourierPageProps = {}) {
   const auth = useAuth()
   const { state, query, refetch } = useStaffProfile('COURIER')
 
@@ -11,6 +27,15 @@ export function CourierPage() {
     state.status === 'ready' &&
     state.profile.businessStatus === 'ACTIVE' &&
     state.profile.role === 'COURIER'
+
+  const [selectedParcelId, setSelectedParcelId] = useState<string | null>(null)
+
+  const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
+  const [prevSubject, setPrevSubject] = useState(subject)
+  if (subject !== prevSubject) {
+    setPrevSubject(subject)
+    setSelectedParcelId(null)
+  }
 
   return (
     <div className="page-container courier-page">
@@ -62,13 +87,29 @@ export function CourierPage() {
       </div>
 
       {isOperationalCourier && (
-        <section className="courier-proof-section" aria-label="Proof of Delivery Section">
-          <CourierProofWorkspace
-            key={auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : 'anon'}
+        <div className="courier-dashboard-container" aria-label="Courier Operations Dashboard">
+          <CourierDashboardSummary
+            key={`summary-${subject}`}
+            apiOverride={summaryApiOverride}
           />
-        </section>
-      )}
 
+          {selectedParcelId ? (
+            <CourierParcelDetails
+              key={`parcel-${subject}-${selectedParcelId}`}
+              parcelId={selectedParcelId}
+              onClose={() => setSelectedParcelId(null)}
+              apiOverride={proofApiOverride}
+            />
+          ) : (
+            <CourierAssignmentList
+              key={`assignments-${subject}`}
+              selectedParcelId={selectedParcelId}
+              onSelectParcel={(id) => setSelectedParcelId(id)}
+              apiOverride={assignmentsApiOverride}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

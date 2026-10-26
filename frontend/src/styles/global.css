@@ -999,3 +999,52 @@ main:focus { outline: none; }
   .dispatcher-table td { display: grid; grid-template-columns: minmax(5rem, 1fr) minmax(0, 2fr); gap: .5rem; }
   .dispatcher-table td::before { content: attr(data-label); font-weight: 600; }
 }
+
+/* Courier Mobile Assignment & Dashboard Styles (Issue #146) */
+.courier-dashboard-container { display: flex; flex-direction: column; gap: 32px; margin-top: 36px; }
+.courier-summary-section { width: 100%; }
+.courier-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+.metric-card { border-top: 4px solid var(--color-teal); display: flex; flex-direction: column; gap: 8px; }
+.metric-value { font-size: 32px; font-weight: 700; color: var(--color-ink); }
+.metric-caption { font-size: 12px; margin: 0; }
+.section-heading-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.assignment-list-section { border-top: 4px solid var(--color-teal); }
+.assignment-cards-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.assignment-item-card { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--color-border); border-radius: 8px; padding: 18px 20px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.assignment-item-card:hover { border-color: var(--color-teal); }
+.assignment-item-card.is-selected { border-color: var(--color-teal); background: #fafbf7; }
+.assignment-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.assignment-card-title { margin: 4px 0 0; font-size: 16px; font-weight: 600; }
+.assignment-card-body { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.assignment-meta-row { display: flex; gap: 8px; align-items: baseline; }
+.meta-label { color: var(--color-muted); font-size: 12px; }
+.meta-value { font-weight: 500; }
+.parcel-id-snippet { font-size: 12px; color: var(--color-muted); word-break: break-all; }
+.assignment-card-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+.pagination-controls-row { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border); gap: 12px; flex-wrap: wrap; }
+.pagination-info { font-size: 13px; }
+.courier-parcel-detail-view { display: flex; flex-direction: column; gap: 20px; }
+.detail-navigation-bar { display: flex; align-items: center; margin-bottom: 4px; }
+.back-button { font-weight: 600; }
+.parcel-detail-header-card { border-top: 4px solid var(--color-teal); }
+.tracking-number-heading { font-size: clamp(20px, 3vw, 28px); margin: 6px 0 0; word-break: break-all; }
+.status-badges-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.badge-version { background: #f0f2eb; color: var(--color-ink); }
+.parcel-specs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+.spec-item { display: flex; flex-direction: column; gap: 4px; }
+.spec-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-muted); }
+.spec-value { font-size: 14px; font-weight: 500; }
+.parcel-route-card { display: flex; flex-direction: column; gap: 14px; }
+.card-subheading { font-size: 16px; margin: 0; font-weight: 600; }
+.parcel-proof-workspace { display: flex; flex-direction: column; gap: 20px; }
+
+@media (max-width: 480px) {
+  .assignment-card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .assignment-card-actions { width: 100%; }
+  .assignment-card-actions .button { width: 100%; justify-content: center; }
+  .pagination-controls-row { flex-direction: column; gap: 12px; align-items: stretch; }
+  .pagination-controls-row .button { width: 100%; justify-content: center; }
+  .pagination-info { text-align: center; }
+  .courier-summary-grid { grid-template-columns: 1fr; }
+  .parcel-specs-grid { grid-template-columns: 1fr 1fr; }
+}
