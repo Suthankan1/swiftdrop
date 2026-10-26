@@ -1,0 +1,364 @@
+# ==============================================================================
+# SwiftDrop Platform — Full-Stack Persistent Compose Runtime (Issue #141)
+# Connects the eight approved application/identity images with existing
+# service-owned databases, Kafka, private MinIO, and local Mailpit receiver.
+# Reuses platform/dependencies/docker-compose.dependencies.yml without resetting state.
+# ==============================================================================
+
+name: swiftdrop
+
+include:
+  - path: ../dependencies/docker-compose.dependencies.yml
+
+services:
+  # ----------------------------------------------------------------------------
+  # Dedicated Accounts PostgreSQL Database (accounts_db)
+  # ----------------------------------------------------------------------------
+  accounts-postgres:
+    image: postgres:16-alpine
+    container_name: ${ACCOUNTS_DB_CONTAINER_NAME:-swiftdrop-accounts-postgres}
+    environment:
+      POSTGRES_DB: accounts_db
+      POSTGRES_USER: ${ACCOUNTS_DB_USERNAME:-accounts_app}
+      POSTGRES_PASSWORD: ${ACCOUNTS_DB_PASSWORD:-accounts_dev_password}
+    ports:
+      - "127.0.0.1:${ACCOUNTS_DB_PORT:-5438}:5432"
+    volumes:
+      - swiftdrop-accounts-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ACCOUNTS_DB_USERNAME:-accounts_app} -d accounts_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+
+  # ----------------------------------------------------------------------------
+  # Dedicated Keycloak PostgreSQL Database (keycloak_db)
+  # ----------------------------------------------------------------------------
+  keycloak-postgres:
+    image: postgres:16-alpine
+    container_name: ${KEYCLOAK_DB_CONTAINER_NAME:-swiftdrop-keycloak-postgres}
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_dev_password}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_DB_PORT:-5437}:5432"
+    volumes:
+      - swiftdrop-keycloak-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USERNAME:-keycloak} -d keycloak_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+
+  # ----------------------------------------------------------------------------
+  # Local Capture-Only Test Mail Receiver (Mailpit)
+  # ----------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:v1.27.4
+    container_name: ${MAILPIT_CONTAINER_NAME:-swiftdrop-mailpit}
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_MAX_MESSAGES: 100
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+
+  # ----------------------------------------------------------------------------
+  # 1. Keycloak Identity Provider (Themed Image #128)
+  # ----------------------------------------------------------------------------
+  keycloak:
+    image: ghcr.io/suthankan1/swiftdrop-keycloak:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: ${KEYCLOAK_CONTAINER_NAME:-swiftdrop-keycloak}
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak_db
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_dev_password}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:8090}
+      KC_HTTP_PORT: 8080
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}
+      JAVA_OPTS_APPEND: "-Dkeycloak.migration.replace-placeholders=true -Xms192m -Xmx384m"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8090}:8080"
+    volumes:
+      - ../identity/realm-swiftdrop.json:/opt/keycloak/data/import/realm-swiftdrop.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 25
+      start_period: 20s
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+      - app-net
+
+  # ----------------------------------------------------------------------------
+  # 2. Accounts & Partners Service (#128 Image)
+  # ----------------------------------------------------------------------------
+  accounts-service:
+    image: ghcr.io/suthankan1/swiftdrop-accounts:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: swiftdrop-accounts-service
+    environment:
+      SERVER_PORT: 8081
+      ACCOUNTS_GRPC_PORT: 9081
+      ACCOUNTS_DB_URL: jdbc:postgresql://accounts-postgres:5432/accounts_db
+      ACCOUNTS_DB_USERNAME: ${ACCOUNTS_DB_USERNAME:-accounts_app}
+      ACCOUNTS_DB_PASSWORD: ${ACCOUNTS_DB_PASSWORD:-accounts_dev_password}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      accounts-postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+      - app-net
+
+  # ----------------------------------------------------------------------------
+  # 3. Pricing & Zones Service (#128 Image)
+  # ----------------------------------------------------------------------------
+  pricing-service:
+    image: ghcr.io/suthankan1/swiftdrop-pricing:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: swiftdrop-pricing-service
+    environment:
+      SERVER_PORT: 8082
+      PRICING_GRPC_PORT: 9083
+      PRICING_DB_URL: jdbc:postgresql://business-postgres:5432/pricing_db
+      PRICING_DB_USERNAME: ${PRICING_DB_USERNAME:-pricing_app}
+      PRICING_DB_PASSWORD: ${PRICING_DB_PASSWORD:-pricing_dev_password}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      business-postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+      - app-net
+
+  # ----------------------------------------------------------------------------
+  # 4. Delivery Operations Service (#128 Image)
+  # ----------------------------------------------------------------------------
+  delivery-service:
+    image: ghcr.io/suthankan1/swiftdrop-delivery:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: swiftdrop-delivery-service
+    environment:
+      SERVER_PORT: 8083
+      DELIVERY_GRPC_PORT: 9082
+      DELIVERY_DB_URL: jdbc:postgresql://business-postgres:5432/delivery_db
+      DELIVERY_DB_USERNAME: ${DELIVERY_DB_USERNAME:-delivery_app}
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD:-delivery_dev_password}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      SWIFTDROP_STORAGE_ENABLED: "true"
+      S3_ENDPOINT: http://minio:9000
+      SWIFTDROP_STORAGE_BUCKET: ${SWIFTDROP_STORAGE_BUCKET:-swiftdrop-pod}
+      SWIFTDROP_STORAGE_REGION: us-east-1
+      SWIFTDROP_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-swiftdrop_storage_admin}
+      SWIFTDROP_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio_dev_password}
+      PRICING_GRPC_HOST: pricing-service
+      PRICING_GRPC_PORT: 9083
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8083/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      business-postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+      - app-net
+
+  # ----------------------------------------------------------------------------
+  # 5. Communications Service (#128 Image)
+  # ----------------------------------------------------------------------------
+  communications-service:
+    image: ghcr.io/suthankan1/swiftdrop-communications:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: swiftdrop-communications-service
+    environment:
+      SERVER_PORT: 8084
+      COMMUNICATIONS_DB_URL: jdbc:postgresql://business-postgres:5432/communications_db
+      COMMUNICATIONS_DB_USERNAME: ${COMMUNICATIONS_DB_USERNAME:-communications_app}
+      COMMUNICATIONS_DB_PASSWORD: ${COMMUNICATIONS_DB_PASSWORD:-communications_dev_password}
+      ACCOUNTS_GRPC_HOST: accounts-service
+      ACCOUNTS_GRPC_PORT: 9081
+      DELIVERY_GRPC_HOST: delivery-service
+      DELIVERY_GRPC_PORT: 9082
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: 1025
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      business-postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dependencies-net
+      - app-net
+
+  # ----------------------------------------------------------------------------
+  # 6. GraphQL Query API (#128 Image)
+  # ----------------------------------------------------------------------------
+  graphql-query-service:
+    image: ghcr.io/suthankan1/swiftdrop-graphql:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: swiftdrop-graphql-query-service
+    environment:
+      GRAPHQL_SERVER_PORT: 8085
+      SWIFTDROP_GRPC_ACCOUNTS_TARGET: accounts-service:9081
+      SWIFTDROP_GRPC_DELIVERY_TARGET: delivery-service:9082
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8085/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      accounts-service:
+        condition: service_healthy
+      delivery-service:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-net
+
+  # ----------------------------------------------------------------------------
+  # 7. Spring Cloud API Gateway (#128 Image)
+  # ----------------------------------------------------------------------------
+  api-gateway:
+    image: ghcr.io/suthankan1/swiftdrop-api-gateway:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: swiftdrop-api-gateway
+    environment:
+      SERVER_PORT: 8080
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      ACCOUNTS_SERVICE_URL: http://accounts-service:8081
+      PRICING_SERVICE_URL: http://pricing-service:8082
+      DELIVERY_SERVICE_URL: http://delivery-service:8083
+      COMMUNICATIONS_SERVICE_URL: http://communications-service:8084
+      GRAPHQL_SERVICE_URL: http://graphql-query-service:8085
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:3000}
+      SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      accounts-service:
+        condition: service_healthy
+      pricing-service:
+        condition: service_healthy
+      delivery-service:
+        condition: service_healthy
+      communications-service:
+        condition: service_healthy
+      graphql-query-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-net
+
+  # ----------------------------------------------------------------------------
+  # 8. React Single Page Application (#128 Image)
+  # ----------------------------------------------------------------------------
+  frontend:
+    image: ghcr.io/suthankan1/swiftdrop-frontend:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    container_name: swiftdrop-frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    name: swiftdrop-app-net
+    driver: bridge
+
+volumes:
+  swiftdrop-accounts-postgres-data:
+    name: ${ACCOUNTS_DB_VOLUME:-swiftdrop-accounts-postgres-data}
+  swiftdrop-keycloak-postgres-data:
+    name: ${KEYCLOAK_DB_VOLUME:-swiftdrop-keycloak-postgres-data}
