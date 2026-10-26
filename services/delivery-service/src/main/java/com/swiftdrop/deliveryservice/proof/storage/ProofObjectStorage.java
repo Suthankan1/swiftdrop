@@ -11,4 +11,8 @@ public interface ProofObjectStorage {
     StoredProofObject store(ProofObjectUpload upload);
 
     RetrievedProofObject retrieve(ProofObjectReference reference);
+
+    default void delete(ProofObjectReference reference) {
+        // default no-op for storage implementations that do not support deletion
+    }
 }
