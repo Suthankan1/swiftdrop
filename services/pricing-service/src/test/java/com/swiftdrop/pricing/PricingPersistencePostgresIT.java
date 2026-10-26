@@ -62,10 +62,13 @@ class PricingPersistencePostgresIT {
     @Autowired
     private RateRuleRepository rateRuleRepository;
 
+    @Autowired
+    private com.swiftdrop.pricing.persistence.QuoteRepository quoteRepository;
+
     @Test
     @DisplayName("Should successfully apply Flyway migrations and seed baseline data")
     void shouldApplyMigrationsSuccessfully() {
-        assertThat(flyway.info().applied()).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(flyway.info().applied()).hasSizeGreaterThanOrEqualTo(3);
 
         // Check seeded zones
         List<ZoneEntity> activeZones = zoneRepository.findByActiveTrueOrderByZoneCodeAsc();
@@ -153,6 +156,70 @@ class PricingPersistencePostgresIT {
                 "INSERT INTO pricing_rate_rules (rate_version_id, pickup_zone_code, dropoff_zone_code, " +
                         "size_category, min_weight_kg, max_weight_kg, base_fee_minor_units) " +
                         "VALUES ('" + active.getId() + "', 'ZONE_1', 'ZONE_1', 'SMALL', 1.00, 35.00, 1000)"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("Should successfully persist and retrieve immutable quote snapshot in PostgreSQL")
+    void shouldPersistAndRetrieveQuoteSnapshot() {
+        RateVersionEntity active = rateVersionRepository.findByVersionCode("RATE-2026-V1").orElseThrow();
+        UUID quoteId = UUID.randomUUID();
+        Instant now = Instant.now();
+        Instant expires = now.plusSeconds(900);
+
+        com.swiftdrop.pricing.persistence.QuoteEntity quote = new com.swiftdrop.pricing.persistence.QuoteEntity(
+                quoteId,
+                active.getId(),
+                active.getVersionCode(),
+                null,
+                "ZONE_1",
+                "ZONE_2",
+                30,
+                20,
+                15,
+                new BigDecimal("2.50"),
+                new BigDecimal("1.80"),
+                new BigDecimal("2.50"),
+                SizeCategory.MEDIUM,
+                35000L,
+                15000L,
+                50000L,
+                "LKR",
+                "cust-sub-123",
+                "tenant-xyz",
+                false,
+                now,
+                expires
+        );
+
+        quoteRepository.saveAndFlush(quote);
+
+        Optional<com.swiftdrop.pricing.persistence.QuoteEntity> retrieved = quoteRepository.findById(quoteId);
+        assertThat(retrieved).isPresent();
+        com.swiftdrop.pricing.persistence.QuoteEntity entity = retrieved.get();
+        assertThat(entity.getRateVersionCode()).isEqualTo("RATE-2026-V1");
+        assertThat(entity.getTotalAmountMinorUnits()).isEqualTo(50000L);
+        assertThat(entity.getSubjectSub()).isEqualTo("cust-sub-123");
+        assertThat(entity.getTenantId()).isEqualTo("tenant-xyz");
+        assertThat(entity.isAnonymous()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should enforce PostgreSQL check constraints on pricing_quotes table")
+    void shouldEnforceQuoteCheckConstraints() {
+        RateVersionEntity active = rateVersionRepository.findByVersionCode("RATE-2026-V1").orElseThrow();
+        UUID quoteId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        // expires_at <= created_at violated
+        assertThatThrownBy(() -> jdbc.execute(
+                "INSERT INTO pricing_quotes (id, rate_version_id, rate_version_code, pickup_zone_code, dropoff_zone_code, " +
+                        "length_cm, width_cm, height_cm, physical_weight_kg, volumetric_weight_kg, chargeable_weight_kg, " +
+                        "size_category, base_fee_minor_units, weight_surcharge_minor_units, total_amount_minor_units, " +
+                        "currency, is_anonymous, created_at, expires_at) VALUES (" +
+                        "'" + quoteId + "', '" + active.getId() + "', 'RATE-2026-V1', 'ZONE_1', 'ZONE_2', " +
+                        "30, 20, 15, 2.50, 1.80, 2.50, 'MEDIUM', 35000, 15000, 50000, 'LKR', true, " +
+                        "'" + now + "', '" + now + "')"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }
