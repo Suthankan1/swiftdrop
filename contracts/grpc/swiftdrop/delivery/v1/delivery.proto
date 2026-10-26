@@ -16,6 +16,9 @@ service DeliveryInternalService {
 
   // Queries active workload count for a specific courier.
   rpc GetCourierWorkload (CourierWorkloadRequest) returns (CourierWorkloadResponse);
+
+  // Authorizes delivery lifecycle event to recipient and resolves approved recipient/merchant references (IF-GRPC-11, #111).
+  rpc AuthorizeEventRecipient (AuthorizeEventRecipientRequest) returns (AuthorizeEventRecipientResponse);
 }
 
 // Request to fetch internal parcel details.
@@ -46,4 +49,30 @@ message CourierWorkloadRequest {
 message CourierWorkloadResponse {
   string courier_sub = 1;
   int32 active_assignments_count = 2; // Current number of parcels in active assignment (capacity <= 5)
+}
+
+// Request to authorize a delivery lifecycle event and resolve approved recipient/merchant references (IF-GRPC-11, #111).
+message AuthorizeEventRecipientRequest {
+  string event_id = 1; // UUID of the lifecycle domain event (from Kafka or outbox)
+  string parcel_id = 2; // UUID of the parcel aggregate
+  string recipient_sub = 3; // Optional candidate Keycloak subject string to verify, or empty to resolve authoritative recipient
+  string merchant_id = 4; // Optional merchant tenant UUID for cross-tenant boundary verification
+  bool allow_stale = 5; // If false (default), stale events (event_version < current_version) fail authorization
+}
+
+// Response containing authorization outcome and minimal approved recipient/merchant references (IF-GRPC-11, #111).
+message AuthorizeEventRecipientResponse {
+  bool is_authorized = 1; // True if the event-recipient pairing is authorized for notification dispatch
+  string parcel_id = 2; // Authoritative parcel UUID
+  string event_id = 3; // Authoritative event UUID
+  string recipient_sub = 4; // Authoritative recipient Keycloak subject string (zero contact PII)
+  string merchant_id = 5; // Merchant tenant UUID if commercial parcel; empty for consumer parcel
+  string tracking_number = 6; // Public tracking number (e.g. "SWD-20261023-A1B2")
+  string current_status = 7; // Current parcel status ("CREATED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED")
+  string event_type = 8; // Domain event type (e.g. "parcel.status.changed.v1")
+  int64 event_version = 9; // Aggregate version of the event
+  int64 current_version = 10; // Current aggregate version of the parcel
+  bool is_terminal = 11; // True if current status is terminal (DELIVERED or FAILED)
+  bool is_stale = 12; // True if event_version < current_version
+  string authorization_reason = 13; // Explicit outcome reason (e.g. "AUTHORIZED", "AUTHORIZED_STALE", "EVENT_NOT_FOUND", "PARCEL_NOT_FOUND", "PARCEL_MISMATCH", "RECIPIENT_NOT_AUTHORIZED", "MERCHANT_MISMATCH", "STALE_EVENT", "STALE_TERMINAL_EVENT")
 }

@@ -1,6 +1,11 @@
 server:
   port: 8083
 
+grpc:
+  server:
+    port: ${DELIVERY_GRPC_PORT:9082}
+    enabled: ${DELIVERY_GRPC_ENABLED:true}
+
 spring:
   application:
     name: delivery-service
