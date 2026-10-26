@@ -37,4 +37,26 @@ public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssi
     """)
     List<Object[]> countActiveAssignmentsByCourierSubs(
             @org.springframework.data.repository.query.Param("courierSubs") java.util.Collection<String> courierSubs);
+
+    List<DeliveryAssignment> findByCourierSubAndActiveTrueAndParcelIdIn(String courierSub, java.util.Collection<UUID> parcelIds);
+
+    List<DeliveryAssignment> findByCourierSubAndParcelIdIn(String courierSub, java.util.Collection<UUID> parcelIds);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT da FROM DeliveryAssignment da
+        WHERE da.courierSub = :courierSub AND da.active = true
+        ORDER BY da.assignedAt DESC, da.assignmentId ASC
+    """)
+    Page<DeliveryAssignment> findActiveByCourierSub(
+            @org.springframework.data.repository.query.Param("courierSub") String courierSub,
+            Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT da FROM DeliveryAssignment da
+        WHERE da.courierSub = :courierSub
+        ORDER BY da.assignedAt DESC, da.assignmentId ASC
+    """)
+    Page<DeliveryAssignment> findAllByCourierSub(
+            @org.springframework.data.repository.query.Param("courierSub") String courierSub,
+            Pageable pageable);
 }

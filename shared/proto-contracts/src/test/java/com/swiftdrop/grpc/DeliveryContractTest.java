@@ -178,6 +178,93 @@ class DeliveryContractTest {
         assertThat(response.getAverageDeliveryHours()).isEqualTo(3.5);
     }
 
+    @Test
+    @DisplayName("ListCustomerParcels: returns bounded customer parcel summaries and counts")
+    void testListCustomerParcelsSuccess() {
+        String customerSub = UUID.randomUUID().toString();
+        ListCustomerParcelsRequest request = ListCustomerParcelsRequest.newBuilder()
+                .setCustomerSub(customerSub)
+                .setPage(0)
+                .setPageSize(20)
+                .build();
+
+        ListCustomerParcelsResponse response = blockingStub.listCustomerParcels(request);
+
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getActiveCount()).isEqualTo(1);
+        assertThat(response.getCompletedCount()).isEqualTo(0);
+        assertThat(response.getParcelsList()).hasSize(1);
+        CustomerParcelSummary parcel = response.getParcels(0);
+        assertThat(parcel.getTrackingNumber()).isEqualTo("SWD-2026-CUST-01");
+        assertThat(parcel.getCurrentStatus()).isEqualTo("IN_TRANSIT");
+        assertThat(parcel.getAmountMinorUnits()).isEqualTo(150000L);
+    }
+
+    @Test
+    @DisplayName("ListMerchantOrders: returns bounded merchant tenant orders and outcome counts")
+    void testListMerchantOrdersSuccess() {
+        String merchantId = UUID.randomUUID().toString();
+        ListMerchantOrdersRequest request = ListMerchantOrdersRequest.newBuilder()
+                .setMerchantId(merchantId)
+                .setPage(0)
+                .setPageSize(20)
+                .build();
+
+        ListMerchantOrdersResponse response = blockingStub.listMerchantOrders(request);
+
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getActiveCount()).isEqualTo(1);
+        assertThat(response.getDeliveredCount()).isEqualTo(0);
+        assertThat(response.getFailedCount()).isEqualTo(0);
+        assertThat(response.getOrdersList()).hasSize(1);
+        MerchantOrderSummary order = response.getOrders(0);
+        assertThat(order.getTrackingNumber()).isEqualTo("SWD-2026-MERCH-01");
+        assertThat(order.getFeeMinorUnits()).isEqualTo(200000L);
+    }
+
+    @Test
+    @DisplayName("ListCourierAssignments: returns bounded courier assignments and outcome counts")
+    void testListCourierAssignmentsSuccess() {
+        String courierSub = UUID.randomUUID().toString();
+        ListCourierAssignmentsRequest request = ListCourierAssignmentsRequest.newBuilder()
+                .setCourierSub(courierSub)
+                .setPage(0)
+                .setPageSize(20)
+                .setActiveOnly(true)
+                .build();
+
+        ListCourierAssignmentsResponse response = blockingStub.listCourierAssignments(request);
+
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getActiveCount()).isEqualTo(1);
+        assertThat(response.getTodayDeliveredCount()).isEqualTo(3);
+        assertThat(response.getTodayFailedCount()).isEqualTo(0);
+        assertThat(response.getAssignmentsList()).hasSize(1);
+        CourierAssignmentSummary item = response.getAssignments(0);
+        assertThat(item.getTrackingNumber()).isEqualTo("SWD-2026-COUR-01");
+        assertThat(item.getCurrentStatus()).isEqualTo("OUT_FOR_DELIVERY");
+    }
+
+    @Test
+    @DisplayName("GetDeliveryHistory: returns parcel delivery history timeline and latest status")
+    void testGetDeliveryHistorySuccess() {
+        String parcelId = UUID.randomUUID().toString();
+        GetDeliveryHistoryRequest request = GetDeliveryHistoryRequest.newBuilder()
+                .setParcelId(parcelId)
+                .setPage(0)
+                .setPageSize(20)
+                .build();
+
+        GetDeliveryHistoryResponse response = blockingStub.getDeliveryHistory(request);
+
+        assertThat(response.getParcelId()).isEqualTo(parcelId);
+        assertThat(response.getCurrentStatus()).isEqualTo("DELIVERED");
+        assertThat(response.getCurrentVersion()).isEqualTo(4L);
+        assertThat(response.getItemsList()).hasSize(2);
+        assertThat(response.getItems(0).getNewStatus()).isEqualTo("CREATED");
+        assertThat(response.getItems(1).getNewStatus()).isEqualTo("DELIVERED");
+    }
+
     private static class MockDeliveryService extends DeliveryInternalServiceGrpc.DeliveryInternalServiceImplBase {
         @Override
         public void getParcelInternal(GetParcelInternalRequest request,
@@ -299,6 +386,146 @@ class DeliveryContractTest {
                     .setIsTerminal(false)
                     .setIsStale(false)
                     .setAuthorizationReason("AUTHORIZED")
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void listCustomerParcels(ListCustomerParcelsRequest request,
+                                        StreamObserver<ListCustomerParcelsResponse> responseObserver) {
+            Instant now = Instant.now();
+            Timestamp ts = Timestamp.newBuilder().setSeconds(now.getEpochSecond()).build();
+
+            CustomerParcelSummary parcel = CustomerParcelSummary.newBuilder()
+                    .setParcelId(UUID.randomUUID().toString())
+                    .setTrackingNumber("SWD-2026-CUST-01")
+                    .setCurrentStatus("IN_TRANSIT")
+                    .setAmountMinorUnits(150000L)
+                    .setCurrency("LKR")
+                    .setRecipientCity("Colombo")
+                    .setCreatedAt(ts)
+                    .setUpdatedAt(ts)
+                    .setVersion(2L)
+                    .build();
+
+            ListCustomerParcelsResponse response = ListCustomerParcelsResponse.newBuilder()
+                    .setTotalCount(1)
+                    .setPage(request.getPage())
+                    .setPageSize(request.getPageSize())
+                    .setActiveCount(1)
+                    .setCompletedCount(0)
+                    .addParcels(parcel)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void listMerchantOrders(ListMerchantOrdersRequest request,
+                                       StreamObserver<ListMerchantOrdersResponse> responseObserver) {
+            Instant now = Instant.now();
+            Timestamp ts = Timestamp.newBuilder().setSeconds(now.getEpochSecond()).build();
+
+            MerchantOrderSummary order = MerchantOrderSummary.newBuilder()
+                    .setParcelId(UUID.randomUUID().toString())
+                    .setTrackingNumber("SWD-2026-MERCH-01")
+                    .setCurrentStatus("CREATED")
+                    .setWeightKg(2.5)
+                    .setFeeMinorUnits(200000L)
+                    .setCurrency("LKR")
+                    .setCreatedAt(ts)
+                    .setLastStatusUpdate(ts)
+                    .setVersion(1L)
+                    .build();
+
+            ListMerchantOrdersResponse response = ListMerchantOrdersResponse.newBuilder()
+                    .setTotalCount(1)
+                    .setPage(request.getPage())
+                    .setPageSize(request.getPageSize())
+                    .setActiveCount(1)
+                    .setDeliveredCount(0)
+                    .setFailedCount(0)
+                    .addOrders(order)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void listCourierAssignments(ListCourierAssignmentsRequest request,
+                                           StreamObserver<ListCourierAssignmentsResponse> responseObserver) {
+            Instant now = Instant.now();
+            Timestamp ts = Timestamp.newBuilder().setSeconds(now.getEpochSecond()).build();
+
+            CourierAssignmentSummary assignment = CourierAssignmentSummary.newBuilder()
+                    .setAssignmentId(UUID.randomUUID().toString())
+                    .setParcelId(UUID.randomUUID().toString())
+                    .setTrackingNumber("SWD-2026-COUR-01")
+                    .setCurrentStatus("OUT_FOR_DELIVERY")
+                    .setPickupAddress("123 Galle Rd, Colombo 03")
+                    .setDropoffAddress("456 Kandy Rd, Kelaniya")
+                    .setRecipientName("Bob Silva")
+                    .setRecipientPhone("+94771234567")
+                    .setAssignedAt(ts)
+                    .setVersion(2L)
+                    .setIsActive(true)
+                    .build();
+
+            ListCourierAssignmentsResponse response = ListCourierAssignmentsResponse.newBuilder()
+                    .setTotalCount(1)
+                    .setPage(request.getPage())
+                    .setPageSize(request.getPageSize())
+                    .setActiveCount(1)
+                    .setTodayDeliveredCount(3)
+                    .setTodayFailedCount(0)
+                    .addAssignments(assignment)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void getDeliveryHistory(GetDeliveryHistoryRequest request,
+                                       StreamObserver<GetDeliveryHistoryResponse> responseObserver) {
+            Instant now = Instant.now();
+            Timestamp ts1 = Timestamp.newBuilder().setSeconds(now.minusSeconds(3600).getEpochSecond()).build();
+            Timestamp ts2 = Timestamp.newBuilder().setSeconds(now.getEpochSecond()).build();
+
+            DeliveryStatusHistoryItem item1 = DeliveryStatusHistoryItem.newBuilder()
+                    .setHistoryId(UUID.randomUUID().toString())
+                    .setParcelId(request.getParcelId())
+                    .setNewStatus("CREATED")
+                    .setReason("BOOKING_CONFIRMED")
+                    .setResultingVersion(1L)
+                    .setOccurredAt(ts1)
+                    .build();
+
+            DeliveryStatusHistoryItem item2 = DeliveryStatusHistoryItem.newBuilder()
+                    .setHistoryId(UUID.randomUUID().toString())
+                    .setParcelId(request.getParcelId())
+                    .setPreviousStatus("OUT_FOR_DELIVERY")
+                    .setNewStatus("DELIVERED")
+                    .setReason("DELIVERY_CONFIRMED")
+                    .setResultingVersion(4L)
+                    .setOccurredAt(ts2)
+                    .build();
+
+            GetDeliveryHistoryResponse response = GetDeliveryHistoryResponse.newBuilder()
+                    .setParcelId(request.getParcelId())
+                    .setTrackingNumber("SWD-2026-000001")
+                    .setCurrentStatus("DELIVERED")
+                    .setCurrentVersion(4L)
+                    .setLatestStatusAt(ts2)
+                    .setTotalCount(2)
+                    .setPage(request.getPage())
+                    .setPageSize(request.getPageSize())
+                    .addItems(item1)
+                    .addItems(item2)
                     .build();
 
             responseObserver.onNext(response);
