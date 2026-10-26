@@ -149,5 +149,6 @@ class PricingPackageContractsTest {
         assertThat(new AmbiguousRateRuleException("ambiguous").getErrorCode()).isEqualTo("AMBIGUOUS_RATE_RULE");
         assertThat(new RateVersionImmutableException("immutable").getErrorCode()).isEqualTo("RATE_VERSION_IMMUTABLE");
         assertThat(new CurrencyMismatchException("currency error").getErrorCode()).isEqualTo("CURRENCY_MISMATCH");
+        assertThat(new com.swiftdrop.pricing.error.QuoteNotFoundException("missing quote").getErrorCode()).isEqualTo("QUOTE_NOT_FOUND");
     }
 }
