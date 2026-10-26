@@ -95,9 +95,10 @@ class WebhookSubscriptionHttpSecurityTest {
     void authenticatedMerchant_CanCreateSubscription() throws Exception {
         UUID subId = UUID.randomUUID();
         UUID merchantId = UUID.randomUUID();
+        String mockSecret = "test-mock-secret-" + UUID.randomUUID();
         WebhookSubscriptionCreatedResponse createdResponse = new WebhookSubscriptionCreatedResponse(
                 subId, merchantId, "https://api.merchant.com/callbacks",
-                List.of("parcel.status.changed.v1"), "swd_whsec_secret", true, Instant.now()
+                List.of("parcel.status.changed.v1"), mockSecret, true, Instant.now()
         );
 
         when(subscriptionService.createSubscription(eq(MERCHANT_SUB), any()))

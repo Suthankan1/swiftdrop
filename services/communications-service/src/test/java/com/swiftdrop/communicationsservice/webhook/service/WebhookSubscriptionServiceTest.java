@@ -256,7 +256,8 @@ class WebhookSubscriptionServiceTest {
     @DisplayName("Rotate secret generates new secret and updates secretRef")
     void rotateSecret_GeneratesNewSecretAndEncryptedRef() {
         UUID subscriptionId = UUID.randomUUID();
-        String oldSecretRef = secretService.encryptSecret("swd_whsec_old_secret_123");
+        String oldSecret = "test-synthetic-secret-" + UUID.randomUUID();
+        String oldSecretRef = secretService.encryptSecret(oldSecret);
         WebhookSubscription sub = new WebhookSubscription(
                 subscriptionId, callerMerchantId, "https://api.com", "parcel.status.changed.v1", oldSecretRef);
 

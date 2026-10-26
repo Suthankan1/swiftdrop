@@ -74,12 +74,13 @@ class WebhookSubscriptionControllerTest {
                 List.of("parcel.status.changed.v1")
         );
 
+        String mockSigningSecret = "test-mock-secret-" + UUID.randomUUID();
         WebhookSubscriptionCreatedResponse createdResponse = new WebhookSubscriptionCreatedResponse(
                 subId,
                 merchantId,
                 "https://api.example.com/webhooks",
                 List.of("parcel.status.changed.v1"),
-                "swd_whsec_mock_signing_secret_for_controller_testing_only",
+                mockSigningSecret,
                 true,
                 Instant.now()
         );
@@ -97,7 +98,7 @@ class WebhookSubscriptionControllerTest {
                 .andExpect(jsonPath("$.merchantId").value(merchantId.toString()))
                 .andExpect(jsonPath("$.httpsUrl").value("https://api.example.com/webhooks"))
                 .andExpect(jsonPath("$.allowedEventTypes[0]").value("parcel.status.changed.v1"))
-                .andExpect(jsonPath("$.hmacSigningSecret").value("swd_whsec_mock_signing_secret_for_controller_testing_only"))
+                .andExpect(jsonPath("$.hmacSigningSecret").value(mockSigningSecret))
                 .andExpect(jsonPath("$.active").value(true));
     }
 
