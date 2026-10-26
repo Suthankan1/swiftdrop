@@ -35,6 +35,9 @@ python3 tests/contracts/test_delivery_status_contract.py
 # Delivery outbox event contract & schema invariants (Issue #31)
 python3 tests/contracts/test_outbox_contract.py
 
+# GraphQL read-only deliveryStats contract & security invariants (Issue #30)
+python3 tests/contracts/test_delivery_stats_graphql_contract.py
+
 # Protobuf contracts validation & compatibility diffing (Issue #92)
 python3 tests/contracts/validate_contracts.py --mode=protobuf --check-compatibility --base-ref=origin/test
 
