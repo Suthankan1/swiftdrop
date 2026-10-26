@@ -11,6 +11,12 @@ export function MerchantNav() {
         Account Overview
       </NavLink>
       <NavLink
+        to="/merchant/credentials"
+        className={({ isActive }) => `merchant-nav-tab${isActive ? ' is-active' : ''}`}
+      >
+        API Credentials
+      </NavLink>
+      <NavLink
         to="/merchant/webhooks"
         className={({ isActive }) => `merchant-nav-tab${isActive ? ' is-active' : ''}`}
       >
