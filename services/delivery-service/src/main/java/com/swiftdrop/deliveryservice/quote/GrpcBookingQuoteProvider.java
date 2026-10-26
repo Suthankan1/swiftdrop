@@ -6,15 +6,13 @@ import com.swiftdrop.pricing.v1.ValidateQuoteResponse;
 import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Production gRPC adapter implementing BookingQuoteProvider.
+ * gRPC adapter implementing BookingQuoteProvider.
  * Invokes PricingInternalService.ValidateQuote over authenticated internal gRPC with a bounded deadline.
  *
  * Enforces:
@@ -22,7 +20,6 @@ import java.util.concurrent.TimeUnit;
  * - Safe fail-closed semantics on gRPC error, timeout, or quote rejection
  * - Retry safety (read-only verification without reservation side-effects)
  */
-@Component
 public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
 
     private static final Logger log = LoggerFactory.getLogger(GrpcBookingQuoteProvider.class);
