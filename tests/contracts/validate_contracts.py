@@ -208,6 +208,22 @@ def validate_graphql_sdl() -> Dict[str, Any]:
     }
 
 
+def is_issue_119_tracking_removal(type_name: str, field_name: str, field) -> bool:
+    """Only the original unassigned public root is retired by issue #119's Oct23 amendment.
+
+    This is a contract decision, not a general waiver: no CLI/env bypass exists.
+    A restored field with a different signature must receive a new review.
+    """
+    return (
+        type_name == "Query"
+        and field_name == "publicTracking"
+        and str(field.type) == "PublicTrackingView"
+        and set(field.args) == {"trackingNumber"}
+        and str(field.args["trackingNumber"].type) == "String!"
+        and field.args["trackingNumber"].default_value is graphql.Undefined
+    )
+
+
 def check_graphql_compatibility(base_ref: str) -> List[str]:
     """Check for breaking changes in GraphQL schema relative to git base_ref."""
     breaking_changes = []
@@ -231,6 +247,9 @@ def check_graphql_compatibility(base_ref: str) -> List[str]:
 
     for q_name, base_field in base_queries.items():
         if q_name not in head_queries:
+            if is_issue_119_tracking_removal("Query", q_name, base_field):
+                print("    ACCEPTED REMOVAL (#119): Query.publicTracking; public tracking is REST-owned (#115/#133).")
+                continue
             breaking_changes.append(f"GraphQL Query field '{q_name}' was removed")
             continue
 
@@ -257,6 +276,8 @@ def check_graphql_compatibility(base_ref: str) -> List[str]:
         if isinstance(base_type, graphql.GraphQLObjectType) and isinstance(head_type, graphql.GraphQLObjectType):
             for field_name in base_type.fields:
                 if field_name not in head_type.fields:
+                    if is_issue_119_tracking_removal(type_name, field_name, base_type.fields[field_name]):
+                        continue
                     breaking_changes.append(f"GraphQL Field '{type_name}.{field_name}' was removed")
 
         if isinstance(base_type, graphql.GraphQLEnumType) and isinstance(head_type, graphql.GraphQLEnumType):

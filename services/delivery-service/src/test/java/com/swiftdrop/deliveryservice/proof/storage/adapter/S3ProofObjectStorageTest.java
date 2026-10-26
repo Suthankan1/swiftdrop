@@ -218,6 +218,31 @@ class S3ProofObjectStorageTest {
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 
+    @Test
+    void deleteInvokesS3DeleteObjectWithCorrectBucketAndKey() {
+        ProofObjectReference reference = new ProofObjectReference(
+                "proofs/v1/123e4567-e89b-42d3-a456-426614174000");
+
+        storage.delete(reference);
+
+        org.mockito.ArgumentCaptor<software.amazon.awssdk.services.s3.model.DeleteObjectRequest> captor =
+                org.mockito.ArgumentCaptor.forClass(software.amazon.awssdk.services.s3.model.DeleteObjectRequest.class);
+        verify(s3Client).deleteObject(captor.capture());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().bucket()).isEqualTo(BUCKET);
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().key()).isEqualTo(reference.value());
+    }
+
+    @Test
+    void deleteMapsS3ExceptionsSafely() {
+        when(s3Client.deleteObject(any(software.amazon.awssdk.services.s3.model.DeleteObjectRequest.class)))
+                .thenThrow(s3Failure(500));
+
+        ProofObjectReference reference = new ProofObjectReference(
+                "proofs/v1/123e4567-e89b-42d3-a456-426614174000");
+
+        assertSafeFailure(() -> storage.delete(reference), ProofStorageUnavailableException.class);
+    }
+
     private void assertSafeFailure(Runnable operation, Class<? extends RuntimeException> expectedType) {
         assertThatThrownBy(operation::run)
                 .isInstanceOf(expectedType)

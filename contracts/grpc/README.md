@@ -285,6 +285,9 @@ service DeliveryInternalService {
 
   // Queries active workload count for a specific courier
   rpc GetCourierWorkload (CourierWorkloadRequest) returns (CourierWorkloadResponse);
+
+  // Authorizes whether a requested delivery event is associated with an eligible recipient (IF-GRPC-11, Refs #111)
+  rpc AuthorizeEventRecipient (AuthorizeEventRecipientRequest) returns (AuthorizeEventRecipientResponse);
 }
 
 message GetParcelInternalRequest {
@@ -311,6 +314,30 @@ message CourierWorkloadRequest {
 message CourierWorkloadResponse {
   string courier_sub = 1;
   int32 active_assignments_count = 2;
+}
+
+message AuthorizeEventRecipientRequest {
+  string event_id = 1;      // Authoritative outbox event UUID
+  string parcel_id = 2;     // Associated parcel UUID
+  string recipient_sub = 3; // Recipient identity subject
+  string merchant_id = 4;    // Optional merchant tenant UUID for strict isolation
+  bool allow_stale = 5;     // Whether notification on superseded state versions is permitted
+}
+
+message AuthorizeEventRecipientResponse {
+  bool is_authorized = 1;           // Primary policy authorization flag
+  string parcel_id = 2;            // Authoritative parcel UUID
+  string event_id = 3;             // Authoritative event UUID
+  string recipient_sub = 4;        // Authorized recipient subject
+  string merchant_id = 5;          // Merchant tenant UUID if applicable
+  string tracking_number = 6;      // Parcel tracking number for human-readable notification text
+  string current_status = 7;       // Current parcel status ("CREATED", "IN_TRANSIT", "DELIVERED", etc.)
+  string event_type = 8;           // Emitted event type (e.g. "parcel.status.changed.v1")
+  int64 event_version = 9;         // State version when event occurred
+  int64 current_version = 10;      // Current state version of parcel
+  bool is_terminal = 11;           // Whether current parcel status is terminal (DELIVERED/FAILED)
+  bool is_stale = 12;              // True if current_version > event_version
+  string authorization_reason = 13;// "AUTHORIZED", "AUTHORIZED_STALE", "AUTHORIZED_TERMINAL", "EVENT_NOT_FOUND", "PARCEL_NOT_FOUND", "EVENT_PARCEL_MISMATCH", "MERCHANT_TENANT_MISMATCH", "RECIPIENT_NOT_ASSOCIATED", "STALE_EVENT", "STALE_TERMINAL_EVENT"
 }
 ```
 
