@@ -230,7 +230,7 @@ message AvailableCouriersSummaryResponse {
 
 ### 4.2 Pricing Service (`com.swiftdrop.pricing.v1.PricingInternalService`)
 
-Used by Delivery Operations during parcel booking.
+Used by Delivery Operations during parcel booking (IF-GRPC-04) and by administrative read clients (Refs #114).
 
 ```protobuf
 syntax = "proto3";
@@ -245,6 +245,9 @@ option java_package = "com.swiftdrop.pricing.v1";
 service PricingInternalService {
   // Validates that a quote exists, is not expired, and fee matches
   rpc ValidateQuote (ValidateQuoteRequest) returns (ValidateQuoteResponse);
+
+  // Queries bounded active zones and rate version summaries for admin views (Refs #114)
+  rpc GetPricingAdminSummary (PricingAdminSummaryRequest) returns (PricingAdminSummaryResponse);
 }
 
 message ValidateQuoteRequest {
@@ -261,7 +264,46 @@ message ValidateQuoteResponse {
   int64 verified_amount_minor_units = 4;
   string currency = 5;
   google.protobuf.Timestamp expires_at = 6;
-  string validation_code = 7; // "VALID", "QUOTE_EXPIRED", "RATE_SUPERSEDED", "AMOUNT_MISMATCH"
+  string validation_code = 7; // "VALID", "QUOTE_EXPIRED", "RATE_SUPERSEDED", "AMOUNT_MISMATCH", "QUOTE_NOT_FOUND"
+
+  // Additive snapshot fields for booking authorization & route binding (Refs #114, backward-compatible)
+  string pickup_zone = 8;
+  string dropoff_zone = 9;
+  string subject_sub = 10;
+  string tenant_id = 11;
+  bool is_anonymous = 12;
+  int64 base_fee_minor_units = 13;
+  int64 weight_surcharge_minor_units = 14;
+}
+
+message PricingAdminSummaryRequest {
+  bool active_only = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message PricingZoneSummaryItem {
+  string zone_id = 1;
+  string zone_code = 2;
+  string name = 3;
+  string description = 4;
+  bool is_active = 5;
+}
+
+message RateVersionSummaryItem {
+  string rate_version_id = 1;
+  string version_code = 2;
+  string currency = 3;
+  string status = 4;
+  google.protobuf.Timestamp created_at = 5;
+  int32 rule_count = 6;
+}
+
+message PricingAdminSummaryResponse {
+  repeated PricingZoneSummaryItem zones = 1;
+  repeated RateVersionSummaryItem rate_versions = 2;
+  int32 total_zones = 3;
+  int32 total_rate_versions = 4;
 }
 ```
 
