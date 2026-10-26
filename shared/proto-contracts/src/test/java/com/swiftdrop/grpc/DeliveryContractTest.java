@@ -114,10 +114,74 @@ class DeliveryContractTest {
         assertThat(response.getAuthorizationReason()).isEqualTo("AUTHORIZED");
     }
 
+    @Test
+    @DisplayName("ListUnassignedParcels: returns paginated unassigned parcel summaries")
+    void testListUnassignedParcelsSuccess() {
+        ListUnassignedParcelsRequest request = ListUnassignedParcelsRequest.newBuilder()
+                .setPage(0)
+                .setPageSize(20)
+                .setZone("CMB-01")
+                .build();
+
+        ListUnassignedParcelsResponse response = blockingStub.listUnassignedParcels(request);
+
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getPage()).isEqualTo(0);
+        assertThat(response.getPageSize()).isEqualTo(20);
+        assertThat(response.getItemsList()).hasSize(1);
+        UnassignedParcelSummary item = response.getItems(0);
+        assertThat(item.getStatus()).isEqualTo("CREATED");
+        assertThat(item.getTrackingNumber()).isEqualTo("SWD-2026-UNASSIGNED-01");
+        assertThat(item.getPickupZone()).isEqualTo("CMB-01");
+    }
+
+    @Test
+    @DisplayName("GetCourierWorkloadSummary: returns batch courier workload summaries")
+    void testGetCourierWorkloadSummarySuccess() {
+        String courier1 = UUID.randomUUID().toString();
+        String courier2 = UUID.randomUUID().toString();
+        CourierWorkloadSummaryRequest request = CourierWorkloadSummaryRequest.newBuilder()
+                .addCourierSubs(courier1)
+                .addCourierSubs(courier2)
+                .build();
+
+        CourierWorkloadSummaryResponse response = blockingStub.getCourierWorkloadSummary(request);
+
+        assertThat(response.getWorkloadsList()).hasSize(2);
+        assertThat(response.getWorkloads(0).getCourierSub()).isEqualTo(courier1);
+        assertThat(response.getWorkloads(0).getActiveAssignmentsCount()).isEqualTo(2);
+        assertThat(response.getWorkloads(1).getCourierSub()).isEqualTo(courier2);
+        assertThat(response.getWorkloads(1).getActiveAssignmentsCount()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("GetDeliveryStatsInternal: returns delivery outcome counts and average delivery hours")
+    void testGetDeliveryStatsInternalSuccess() {
+        Instant now = Instant.now();
+        Instant start = now.minusSeconds(86400);
+        GetDeliveryStatsRequest request = GetDeliveryStatsRequest.newBuilder()
+                .setStartTime(Timestamp.newBuilder().setSeconds(start.getEpochSecond()).build())
+                .setEndTime(Timestamp.newBuilder().setSeconds(now.getEpochSecond()).build())
+                .setZone("CMB-01")
+                .setStatus("DELIVERED")
+                .addAuthorizedZones("CMB-01")
+                .build();
+
+        GetDeliveryStatsResponse response = blockingStub.getDeliveryStatsInternal(request);
+
+        assertThat(response.getTotalCount()).isEqualTo(42L);
+        assertThat(response.getDeliveredCount()).isEqualTo(42L);
+        assertThat(response.getFailedCount()).isEqualTo(3L);
+        assertThat(response.getInTransitCount()).isEqualTo(10L);
+        assertThat(response.getCreatedCount()).isEqualTo(55L);
+        assertThat(response.hasAverageDeliveryHours()).isTrue();
+        assertThat(response.getAverageDeliveryHours()).isEqualTo(3.5);
+    }
+
     private static class MockDeliveryService extends DeliveryInternalServiceGrpc.DeliveryInternalServiceImplBase {
         @Override
         public void getParcelInternal(GetParcelInternalRequest request,
-                                      StreamObserver<GetParcelInternalResponse> responseObserver) {
+                                       StreamObserver<GetParcelInternalResponse> responseObserver) {
             Instant now = Instant.now();
             Timestamp ts = Timestamp.newBuilder()
                     .setSeconds(now.getEpochSecond())
@@ -147,6 +211,72 @@ class DeliveryContractTest {
             CourierWorkloadResponse response = CourierWorkloadResponse.newBuilder()
                     .setCourierSub(request.getCourierSub())
                     .setActiveAssignmentsCount(3)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void listUnassignedParcels(ListUnassignedParcelsRequest request,
+                                          StreamObserver<ListUnassignedParcelsResponse> responseObserver) {
+            Instant now = Instant.now();
+            Timestamp ts = Timestamp.newBuilder()
+                    .setSeconds(now.getEpochSecond())
+                    .setNanos(now.getNano())
+                    .build();
+
+            UnassignedParcelSummary item = UnassignedParcelSummary.newBuilder()
+                    .setParcelId(UUID.randomUUID().toString())
+                    .setTrackingNumber("SWD-2026-UNASSIGNED-01")
+                    .setStatus("CREATED")
+                    .setVersion(1L)
+                    .setAmountMinorUnits(150000L)
+                    .setCurrency("LKR")
+                    .setWeightKg(1.25)
+                    .setCreatedAt(ts)
+                    .setSenderSub(UUID.randomUUID().toString())
+                    .setPickupZone(request.getZone().isBlank() ? "CMB-01" : request.getZone())
+                    .setDropoffZone("CMB-02")
+                    .build();
+
+            ListUnassignedParcelsResponse response = ListUnassignedParcelsResponse.newBuilder()
+                    .setTotalCount(1)
+                    .setPage(request.getPage())
+                    .setPageSize(request.getPageSize())
+                    .addItems(item)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void getCourierWorkloadSummary(CourierWorkloadSummaryRequest request,
+                                             StreamObserver<CourierWorkloadSummaryResponse> responseObserver) {
+            CourierWorkloadSummaryResponse.Builder builder = CourierWorkloadSummaryResponse.newBuilder();
+            int count = 2;
+            for (String sub : request.getCourierSubsList()) {
+                builder.addWorkloads(CourierWorkloadResponse.newBuilder()
+                        .setCourierSub(sub)
+                        .setActiveAssignmentsCount(count)
+                        .build());
+                count = 0;
+            }
+            responseObserver.onNext(builder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void getDeliveryStatsInternal(GetDeliveryStatsRequest request,
+                                             StreamObserver<GetDeliveryStatsResponse> responseObserver) {
+            GetDeliveryStatsResponse response = GetDeliveryStatsResponse.newBuilder()
+                    .setTotalCount(42L)
+                    .setDeliveredCount(42L)
+                    .setFailedCount(3L)
+                    .setInTransitCount(10L)
+                    .setCreatedCount(55L)
+                    .setAverageDeliveryHours(3.5)
                     .build();
 
             responseObserver.onNext(response);
