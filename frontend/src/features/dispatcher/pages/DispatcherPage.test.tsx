@@ -166,10 +166,10 @@ describe('Dispatcher role landing', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('offers no operational commands, assignment queues, or fabricated metrics', () => {
+  it('withholds operations until the staff profile is verified', () => {
     render(entry(authenticated()))
     const main = within(screen.getByRole('main'))
-    expect(main.getByText(/live unassigned parcel queues.*future releases/i)).toBeInTheDocument()
+    expect(main.getByText(/review unassigned parcels and eligible courier workloads/i)).toBeInTheDocument()
     expect(main.getAllByRole('button')).toHaveLength(1)
     expect(main.getByRole('button', { name: 'Sign out' })).toHaveAttribute('type', 'button')
     expect(main.queryByRole('table')).not.toBeInTheDocument()
