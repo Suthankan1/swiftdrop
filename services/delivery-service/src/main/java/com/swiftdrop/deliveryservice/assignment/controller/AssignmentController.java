@@ -3,15 +3,19 @@ package com.swiftdrop.deliveryservice.assignment.controller;
 import com.swiftdrop.deliveryservice.assignment.DeliveryAssignmentService;
 import com.swiftdrop.deliveryservice.assignment.dto.AssignCourierRequest;
 import com.swiftdrop.deliveryservice.assignment.dto.AssignmentResponse;
+import com.swiftdrop.deliveryservice.query.dto.PagedResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collection;
@@ -47,6 +51,35 @@ public class AssignmentController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<PagedResponse<AssignmentResponse>> getMyAssignments(
+            @RequestParam(name = "activeOnly", defaultValue = "true") boolean activeOnly,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            Authentication authentication) {
+
+        String courierSub = extractSubject(authentication);
+        Collection<String> roles = extractRoles(authentication);
+
+        PagedResponse<AssignmentResponse> response = assignmentService.getMyAssignments(
+                courierSub,
+                roles,
+                activeOnly,
+                PageRequest.of(page, size)
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<PagedResponse<AssignmentResponse>> listAssignments(
+            @RequestParam(name = "activeOnly", defaultValue = "true") boolean activeOnly,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            Authentication authentication) {
+        return getMyAssignments(activeOnly, page, size, authentication);
     }
 
     private String extractSubject(Authentication authentication) {
