@@ -390,6 +390,56 @@ class ProofServiceTest {
             when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.empty());
             assertThat(proofMetadataService.isProofValid(parcelId, UUID.randomUUID())).isFalse();
         }
+
+        @Test
+        @DisplayName("isProofValid returns false when proof has been purged per retention policy")
+        void isProofValid_purged_returnsFalse() {
+            UUID proofId = UUID.randomUUID();
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    proofId, parcelId, validRef, "PHOTO", "image/jpeg", 512L, "K.", "Note", courierSub, Instant.now()
+            );
+            proof.markPurged(Instant.now());
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+
+            assertThat(proofMetadataService.isProofValid(parcelId, proofId)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("Purged Proof Safeguards")
+    class PurgedProofSafeguardTests {
+
+        @Test
+        @DisplayName("getProofMetadata throws ProofNotFoundException when proof has been purged")
+        void getProofMetadata_purged_throwsNotFound() {
+            Parcel parcel = createParcel(ParcelStatus.DELIVERED);
+            when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    UUID.randomUUID(), parcelId, validRef, "PHOTO", "image/jpeg", 512L, "K.", "Note", courierSub, Instant.now()
+            );
+            proof.markPurged(Instant.now());
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+
+            assertThatThrownBy(() -> proofService.getProofMetadata(parcelId, customerSub, List.of("CUSTOMER")))
+                    .isInstanceOf(ProofNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("getProofContent throws ProofNotFoundException when proof has been purged")
+        void getProofContent_purged_throwsNotFound() {
+            Parcel parcel = createParcel(ParcelStatus.DELIVERED);
+            when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    UUID.randomUUID(), parcelId, validRef, "PHOTO", "image/jpeg", 512L, "K.", "Note", courierSub, Instant.now()
+            );
+            proof.markPurged(Instant.now());
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+
+            assertThatThrownBy(() -> proofService.getProofContent(parcelId, customerSub, List.of("CUSTOMER")))
+                    .isInstanceOf(ProofNotFoundException.class);
+        }
     }
 
     @Nested

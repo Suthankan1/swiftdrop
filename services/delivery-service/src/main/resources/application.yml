@@ -82,6 +82,12 @@ swiftdrop:
     secret-key: ${SWIFTDROP_STORAGE_SECRET_KEY:}
     api-call-timeout: ${SWIFTDROP_STORAGE_API_CALL_TIMEOUT:10s}
     api-call-attempt-timeout: ${SWIFTDROP_STORAGE_API_CALL_ATTEMPT_TIMEOUT:3s}
+  delivery:
+    retention:
+      enabled: ${PROOF_RETENTION_ENABLED:false}
+      policy-approved: ${PROOF_RETENTION_POLICY_APPROVED:false}
+      scheduler-enabled: ${PROOF_RETENTION_SCHEDULER_ENABLED:false}
+      batch-size: ${PROOF_RETENTION_BATCH_SIZE:50}
 
 management:
   endpoints:

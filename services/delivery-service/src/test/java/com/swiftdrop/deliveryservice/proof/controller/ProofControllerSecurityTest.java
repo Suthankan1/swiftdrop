@@ -291,4 +291,42 @@ class ProofControllerSecurityTest {
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
                 .andExpect(content().bytes(imageBytes));
     }
+
+    @Test
+    @DisplayName("Purged proof metadata retrieval returns 404 Not Found without leaking storage key or recipient name")
+    void getProofMetadata_purgedProof_returns404ZeroLeak() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        String token = createJwt("customer-sender", List.of("CUSTOMER"), false);
+
+        when(proofService.getProofMetadata(eq(parcelId), eq("customer-sender"), any()))
+                .thenThrow(new ProofNotFoundException(parcelId));
+
+        mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof", parcelId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Proof Not Found"))
+                .andExpect(jsonPath("$.objectReference").doesNotExist())
+                .andExpect(jsonPath("$.recipientName").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Purged proof binary content retrieval returns 404 Not Found without leaking storage key")
+    void getProofContent_purgedProof_returns404ZeroLeak() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        String token = createJwt("customer-sender", List.of("CUSTOMER"), false);
+
+        when(proofService.getProofContent(eq(parcelId), eq("customer-sender"), any()))
+                .thenThrow(new ProofNotFoundException(parcelId));
+
+        mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof/content", parcelId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .accept(MediaType.APPLICATION_JSON, MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Proof Not Found"));
+    }
 }

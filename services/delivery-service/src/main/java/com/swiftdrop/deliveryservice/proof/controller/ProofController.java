@@ -102,7 +102,13 @@ public class ProofController {
     /**
      * Streams the private proof binary to authorized actors with zero public URL leaks.
      */
-    @GetMapping(value = "/content", produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE, "image/webp", MediaType.APPLICATION_OCTET_STREAM_VALUE})
+    @GetMapping(value = "/content", produces = {
+            MediaType.IMAGE_JPEG_VALUE,
+            MediaType.IMAGE_PNG_VALUE,
+            "image/webp",
+            MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            MediaType.APPLICATION_PROBLEM_JSON_VALUE
+    })
     public ResponseEntity<Resource> getProofContent(
             @PathVariable("parcelId") UUID parcelId,
             Authentication authentication) {

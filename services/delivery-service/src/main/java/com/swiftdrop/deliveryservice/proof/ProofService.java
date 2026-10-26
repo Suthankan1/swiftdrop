@@ -86,6 +86,9 @@ public class ProofService {
         Optional<ProofOfDelivery> existing = proofRepository.findByParcelId(parcelId);
         if (existing.isPresent()) {
             ProofOfDelivery existingProof = existing.get();
+            if (existingProof.isPurged()) {
+                throw new IllegalLifecycleStageException("Cannot update proof: existing proof has been purged per retention policy");
+            }
             if (Objects.equals(existingProof.getObjectReference(), reference.value())) {
                 log.info("Duplicate proof submission for parcel {}: returning existing proof {}", parcelId, existingProof.getProofId());
                 return toResponse(existingProof);
@@ -153,6 +156,9 @@ public class ProofService {
 
         // Check if proof already recorded for this parcel
         Optional<ProofOfDelivery> existing = proofRepository.findByParcelId(parcelId);
+        if (existing.isPresent() && existing.get().isPurged()) {
+            throw new IllegalLifecycleStageException("Cannot upload proof: existing proof has been purged per retention policy");
+        }
 
         // 1. Store private object
         ProofObjectUpload upload = new ProofObjectUpload(content, contentLength, normalizedType);
@@ -162,11 +168,19 @@ public class ProofService {
         try {
             if (existing.isPresent()) {
                 ProofOfDelivery existingProof = existing.get();
-                // Compensate old object if replacing
+                // Compensate old object only after successful database save of replacement
                 String oldRef = existingProof.getObjectReference();
-                existingProof.updateMetadata(recipientName, deliveryNote);
+                existingProof.replaceEvidence(
+                        stored.reference().value(),
+                        normalizedType,
+                        contentLength,
+                        recipientName,
+                        deliveryNote
+                );
                 ProofOfDelivery updated = proofRepository.saveAndFlush(existingProof);
-                compensationService.compensateOrphan(new ProofObjectReference(oldRef), "REPLACED_PROOF");
+                if (oldRef != null && !oldRef.equals(stored.reference().value())) {
+                    compensationService.compensateOrphan(new ProofObjectReference(oldRef), "REPLACED_PROOF");
+                }
                 return toResponse(updated);
             }
 
@@ -188,7 +202,9 @@ public class ProofService {
             return toResponse(saved);
         } catch (RuntimeException e) {
             log.error("Database write failed after proof upload for parcel {}. Triggering compensation.", parcelId, e);
-            compensationService.compensateOrphan(stored.reference(), "DB_PERSISTENCE_FAILURE");
+            if (stored != null && stored.reference() != null) {
+                compensationService.compensateOrphan(stored.reference(), "DB_PERSISTENCE_FAILURE");
+            }
             throw e;
         }
     }
@@ -210,6 +226,10 @@ public class ProofService {
 
         ProofOfDelivery proof = proofRepository.findByParcelId(parcelId)
                 .orElseThrow(() -> new ProofNotFoundException(parcelId));
+
+        if (proof.isPurged()) {
+            throw new ProofNotFoundException(parcelId);
+        }
 
         return new ProofDetailResponse(
                 proof.getProofId(),
@@ -242,6 +262,10 @@ public class ProofService {
 
         ProofOfDelivery proof = proofRepository.findByParcelId(parcelId)
                 .orElseThrow(() -> new ProofNotFoundException(parcelId));
+
+        if (proof.isPurged() || proof.getObjectReference() == null) {
+            throw new ProofNotFoundException(parcelId);
+        }
 
         if (proofObjectStorage == null) {
             throw new IllegalStateException("ProofObjectStorage is not configured");

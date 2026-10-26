@@ -223,4 +223,65 @@ class ProofPersistencePostgresIT {
                 List.of("COURIER")
         )).hasMessageContaining("not found or does not belong to parcel");
     }
+
+    @Test
+    @DisplayName("V5 schema migration: proof persists with default retentionStatus ACTIVE and nullable tombstone")
+    void proofRetentionTombstone_persistsAndTransitionsToPurgedSafely() {
+        String ref = "proofs/v1/" + UUID.randomUUID();
+        UploadProofRequest request = new UploadProofRequest("Test Recipient", ref, "Tombstone test note");
+        ProofResponse proofResponse = proofService.recordProofMetadata(parcelId, request, courierSub, List.of("COURIER"));
+
+        ProofOfDelivery saved = proofRepository.findById(proofResponse.proofId()).orElseThrow();
+        assertThat(saved.getRetentionStatus()).isEqualTo(com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.ACTIVE);
+        assertThat(saved.getPurgedAt()).isNull();
+        assertThat(saved.getObjectReference()).isEqualTo(ref);
+
+        // Transition to PURGED via tombstoning
+        Instant purgeTime = Instant.now();
+        saved.markPurged(purgeTime);
+        proofRepository.saveAndFlush(saved);
+
+        ProofOfDelivery purged = proofRepository.findById(proofResponse.proofId()).orElseThrow();
+        assertThat(purged.isPurged()).isTrue();
+        assertThat(purged.getRetentionStatus()).isEqualTo(com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.PURGED);
+        assertThat(purged.getPurgedAt()).isNotNull();
+        assertThat(purged.getObjectReference()).isNull();
+        assertThat(purged.getRecipientName()).isNull();
+        assertThat(purged.getDeliveryNote()).isNull();
+
+        // Verify parcel master record remains intact
+        Parcel parcel = parcelRepository.findById(parcelId).orElseThrow();
+        assertThat(parcel.getParcelId()).isEqualTo(parcelId);
+        assertThat(parcel.getTrackingNumber()).isEqualTo("SWD-20261026-IT01");
+    }
+
+    @Test
+    @DisplayName("findCandidatesForRetention selects only ACTIVE unpurged proofs with object reference")
+    void findCandidatesForRetention_selectsActiveOnly() {
+        String ref = "proofs/v1/" + UUID.randomUUID();
+        UploadProofRequest request = new UploadProofRequest("Recipient Candidate", ref, "Candidate note");
+        ProofResponse proofResponse = proofService.recordProofMetadata(parcelId, request, courierSub, List.of("COURIER"));
+
+        Instant threshold = Instant.now().plusSeconds(60);
+        List<ProofOfDelivery> candidates = proofRepository.findCandidatesForRetention(
+                com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.ACTIVE,
+                threshold,
+                org.springframework.data.domain.PageRequest.of(0, 10)
+        );
+
+        assertThat(candidates).extracting(ProofOfDelivery::getProofId).contains(proofResponse.proofId());
+
+        // Now mark purged and re-query
+        ProofOfDelivery proof = proofRepository.findById(proofResponse.proofId()).orElseThrow();
+        proof.markPurged(Instant.now());
+        proofRepository.saveAndFlush(proof);
+
+        List<ProofOfDelivery> candidatesAfterPurge = proofRepository.findCandidatesForRetention(
+                com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.ACTIVE,
+                threshold,
+                org.springframework.data.domain.PageRequest.of(0, 10)
+        );
+
+        assertThat(candidatesAfterPurge).extracting(ProofOfDelivery::getProofId).doesNotContain(proofResponse.proofId());
+    }
 }
