@@ -9,6 +9,8 @@ import com.swiftdrop.deliveryservice.core.ParcelStatus;
 import com.swiftdrop.deliveryservice.outbox.OutboxEvent;
 import com.swiftdrop.deliveryservice.outbox.OutboxEventRepository;
 import com.swiftdrop.deliveryservice.outbox.OutboxStatus;
+import com.swiftdrop.deliveryservice.query.ParcelQueryService;
+import com.swiftdrop.deliveryservice.status.StatusHistoryRepository;
 import com.swiftdrop.grpc.security.SwiftDropGrpcMetadata;
 import com.swiftdrop.security.grpc.ActorDelegationValidator;
 import com.swiftdrop.security.grpc.GrpcSecurityPolicy;
@@ -42,6 +44,8 @@ class DeliveryInternalServiceGrpcTest {
     private ParcelRepository parcelRepository;
     private OutboxEventRepository outboxEventRepository;
     private DeliveryAssignmentRepository deliveryAssignmentRepository;
+    private StatusHistoryRepository statusHistoryRepository;
+    private ParcelQueryService parcelQueryService;
 
     private Server server;
     private ManagedChannel channel;
@@ -57,11 +61,15 @@ class DeliveryInternalServiceGrpcTest {
         parcelRepository = mock(ParcelRepository.class);
         outboxEventRepository = mock(OutboxEventRepository.class);
         deliveryAssignmentRepository = mock(DeliveryAssignmentRepository.class);
+        statusHistoryRepository = mock(StatusHistoryRepository.class);
+        parcelQueryService = mock(ParcelQueryService.class);
 
         DeliveryInternalServiceImpl serviceImpl = new DeliveryInternalServiceImpl(
                 parcelRepository,
                 outboxEventRepository,
-                deliveryAssignmentRepository
+                deliveryAssignmentRepository,
+                statusHistoryRepository,
+                parcelQueryService
         );
 
         ServiceTokenValidator serviceValidator = new JwtServiceTokenValidator(

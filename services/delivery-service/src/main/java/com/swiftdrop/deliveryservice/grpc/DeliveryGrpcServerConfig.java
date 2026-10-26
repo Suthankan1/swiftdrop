@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 /**
- * Spring configuration providing gRPC security validators and policy beans for Delivery Operations.
+ * Spring configuration providing gRPC security validators and policy beans for Delivery Service.
  */
 @Configuration(proxyBeanMethods = false)
 public class DeliveryGrpcServerConfig {
