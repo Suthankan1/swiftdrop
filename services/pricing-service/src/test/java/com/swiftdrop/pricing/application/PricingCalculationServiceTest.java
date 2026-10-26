@@ -70,9 +70,9 @@ class PricingCalculationServiceTest {
         inactiveZoneEntity = new ZoneEntity("ZONE_INACTIVE", "Closed", "Closed", 24, false);
 
         activeVersionV1 = new RateVersionEntity(
-                "RATE-2026-V1", "LKR", RateVersionStatus.ACTIVE, Instant.now(), "2026 active");
+                UUID.randomUUID(), "RATE-2026-V1", "LKR", RateVersionStatus.ACTIVE, Instant.now(), "2026 active");
         supersededVersionV0 = new RateVersionEntity(
-                "RATE-2025-V0", "LKR", RateVersionStatus.SUPERSEDED, Instant.now().minusSeconds(10000), "2025 old");
+                UUID.randomUUID(), "RATE-2025-V0", "LKR", RateVersionStatus.SUPERSEDED, Instant.now().minusSeconds(10000), "2025 old");
 
         v1Rule = new RateRuleEntity(
                 activeVersionV1.getId(), "ZONE_1", "ZONE_2", SizeCategory.MEDIUM,

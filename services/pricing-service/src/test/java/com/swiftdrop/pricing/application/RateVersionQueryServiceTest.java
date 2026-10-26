@@ -94,7 +94,7 @@ class RateVersionQueryServiceTest {
     @DisplayName("Should return rate rules for a specific version code")
     void shouldReturnRateRulesForVersion() {
         RateVersionEntity versionEntity = new RateVersionEntity(
-                "RATE-2026-V1", "LKR", RateVersionStatus.ACTIVE, Instant.now(), "Active");
+                UUID.randomUUID(), "RATE-2026-V1", "LKR", RateVersionStatus.ACTIVE, Instant.now(), "Active");
         UUID versionId = versionEntity.getId();
 
         RateRuleEntity ruleEntity = new RateRuleEntity(

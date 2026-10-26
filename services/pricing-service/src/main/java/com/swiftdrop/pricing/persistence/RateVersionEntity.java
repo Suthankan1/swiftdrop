@@ -58,7 +58,7 @@ public class RateVersionEntity {
                              RateVersionStatus status,
                              Instant effectiveFrom,
                              String description) {
-        this(UUID.randomUUID(), versionCode, currency, status, effectiveFrom, description);
+        this(null, versionCode, currency, status, effectiveFrom, description);
     }
 
     public RateVersionEntity(UUID id,

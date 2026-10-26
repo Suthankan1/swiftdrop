@@ -67,7 +67,7 @@ public class RateRuleEntity {
                           long baseFeeMinorUnits,
                           long perKgSurchargeMinorUnits,
                           BigDecimal weightThresholdKg) {
-        this(UUID.randomUUID(), rateVersionId, pickupZoneCode, dropoffZoneCode, sizeCategory,
+        this(null, rateVersionId, pickupZoneCode, dropoffZoneCode, sizeCategory,
                 minWeightKg, maxWeightKg, baseFeeMinorUnits, perKgSurchargeMinorUnits, weightThresholdKg);
     }
 

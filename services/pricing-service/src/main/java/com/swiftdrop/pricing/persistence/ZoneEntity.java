@@ -44,7 +44,7 @@ public class ZoneEntity {
     }
 
     public ZoneEntity(String zoneCode, String name, String description, int standardTransitHours, boolean active) {
-        this(UUID.randomUUID(), zoneCode, name, description, standardTransitHours, active);
+        this(null, zoneCode, name, description, standardTransitHours, active);
     }
 
     public ZoneEntity(UUID id, String zoneCode, String name, String description, int standardTransitHours, boolean active) {
