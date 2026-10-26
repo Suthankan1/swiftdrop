@@ -1,6 +1,11 @@
 server:
   port: 8082
 
+grpc:
+  server:
+    port: ${PRICING_GRPC_PORT:9083}
+    enabled: ${PRICING_GRPC_ENABLED:true}
+
 spring:
   application:
     name: pricing-service
