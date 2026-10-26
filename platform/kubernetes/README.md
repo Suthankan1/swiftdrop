@@ -10,7 +10,7 @@ This directory houses the Kubernetes deployment architecture and cluster orchest
 |---|---|---|---|
 | **Local k3d/K3s Cluster Foundation** | **IMPLEMENTED & VERIFIED** | **#175 (P0)** | Pinned K3s `v1.31.2`, loopback-only API (`:16443`), loopback ingress (`:18080`, `:18443`), host-mounted `local-path` storage, and verified NetworkPolicy enforcement. |
 | **Cluster Lifecycle Scripts** | **IMPLEMENTED** | **#175 (P0)** | Non-destructive `create.sh`, `start.sh`, `stop.sh`, `status.sh`, `verify.sh`, `capacity.sh`, and `storage-preflight.sh`. |
-| **Application Helm Charts** | PLANNED / IN PROGRESS | #149 (P07) | Helm charts covering services, ingress TLS, and secret wiring. |
+| **Application Helm Charts & Ingress TLS** | **IMPLEMENTED & VERIFIED** | **#149 (P07)** | Helm chart covering all 8 pinned images, embedded Traefik ingress, local TLS boundary (`swiftdrop.local`), least-privilege RBAC, external secrets, and verified NetworkPolicies. |
 | **Persistent Workloads & Databases** | PLANNED / IN PROGRESS | #154 (P08) | Stateful PostgreSQL databases, Kafka KRaft, and MinIO object storage. |
 | **Public Cloud (Azure AKS / VMs)** | **STRICTLY PROHIBITED** | **ADR-0011 / #172** | Zero billable Azure resources; all workloads target measured local hardware. |
 
@@ -19,6 +19,7 @@ This directory houses the Kubernetes deployment architecture and cluster orchest
 ## Directory Layout
 
 - `k3d/`: Declarative k3d cluster specification (`cluster.yaml`), core namespaces (`namespaces.yaml`), lifecycle scripts, and the complete [Local Cluster Operator Runbook](k3d/README.md).
+- `helm/`: SwiftDrop application Helm chart (`swiftdrop`), local TLS provisioner, automated security verification, and the [Helm Operator Runbook](helm/README.md).
 - `tests/`: Automated unit and policy tests verifying declarative configuration, script safety, and persistent storage contracts in [tests/kubernetes/](../../tests/kubernetes/README.md).
 
 ---
