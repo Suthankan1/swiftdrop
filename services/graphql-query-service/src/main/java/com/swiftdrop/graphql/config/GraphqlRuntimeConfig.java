@@ -5,8 +5,6 @@ import com.swiftdrop.graphql.resolver.RootQueryResolver;
 import com.swiftdrop.graphql.security.GraphqlFieldPolicy;
 import graphql.analysis.MaxQueryComplexityInstrumentation;
 import graphql.analysis.MaxQueryDepthInstrumentation;
-import graphql.schema.GraphQLList;
-import graphql.schema.GraphQLTypeUtil;
 import io.grpc.Status;
 import java.util.List;
 import java.util.Map;
@@ -35,11 +33,10 @@ public class GraphqlRuntimeConfig {
 
     @Bean
     public MaxQueryComplexityInstrumentation complexityLimit() {
-        // Each scalar costs 1; list child work is conservatively multiplied by the approved cap 50.
-        return new MaxQueryComplexityInstrumentation(100, (env, child) -> {
-            int multiplier = GraphQLTypeUtil.unwrapNonNull(env.getFieldDefinition().getType()) instanceof GraphQLList ? 50 : 1;
-            return 1 + multiplier * child;
-        });
+        // Selection complexity is independent of result cardinality. Provider pagination
+        // and ResultBoundsInstrumentation separately enforce the 50-item ceiling.
+        // Multiplying each list by 50 prevented even two scalar fields at limit 100.
+        return new MaxQueryComplexityInstrumentation(100, (env, child) -> 1 + child);
     }
 
     @Bean
