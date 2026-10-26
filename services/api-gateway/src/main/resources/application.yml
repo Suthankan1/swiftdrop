@@ -8,16 +8,129 @@ spring:
     gateway:
       server:
         webflux:
+          httpclient:
+            connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:5s}
           routes:
+            - id: communications-service-webhooks
+              uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
+              order: 5
             - id: accounts-service-users-me
               uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/v1/users/me
+              order: 10
+            - id: accounts-service-merchants
+              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/merchants, /api/v1/merchants/**
+              order: 10
+            - id: accounts-service-admin
+              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/admin/**
+              order: 10
+            - id: pricing-service-quotes
+              uri: ${PRICING_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/quotes, /api/v1/quotes/**
+              order: 10
+            - id: pricing-service-zones
+              uri: ${PRICING_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/zones, /api/v1/zones/**
+              order: 10
+            - id: delivery-service-tracking
+              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/tracking/**
+              order: 10
+              metadata:
+                response-timeout: -1
+            - id: delivery-service-merchant-parcels
+              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/merchant/parcels, /api/v1/merchant/parcels/**
+              order: 10
+            - id: delivery-service-assignments
+              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/assignments, /api/v1/assignments/**
+              order: 10
+            - id: delivery-service-parcels
+              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/parcels, /api/v1/parcels/**
+              order: 10
+              metadata:
+                response-timeout: -1
+            - id: graphql-query-service
+              uri: ${GRAPHQL_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/graphql
+              order: 10
       routes:
+        - id: communications-service-webhooks
+          uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
+          order: 5
         - id: accounts-service-users-me
           uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/v1/users/me
+          order: 10
+        - id: accounts-service-merchants
+          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/merchants, /api/v1/merchants/**
+          order: 10
+        - id: accounts-service-admin
+          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/admin/**
+          order: 10
+        - id: pricing-service-quotes
+          uri: ${PRICING_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/quotes, /api/v1/quotes/**
+          order: 10
+        - id: pricing-service-zones
+          uri: ${PRICING_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/zones, /api/v1/zones/**
+          order: 10
+        - id: delivery-service-tracking
+          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/tracking/**
+          order: 10
+          metadata:
+            response-timeout: -1
+        - id: delivery-service-merchant-parcels
+          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/merchant/parcels, /api/v1/merchant/parcels/**
+          order: 10
+        - id: delivery-service-assignments
+          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/assignments, /api/v1/assignments/**
+          order: 10
+        - id: delivery-service-parcels
+          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/parcels, /api/v1/parcels/**
+          order: 10
+          metadata:
+            response-timeout: -1
+        - id: graphql-query-service
+          uri: ${GRAPHQL_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/graphql
+          order: 10
       globalcors:
         cors-configurations:
           '[/**]':

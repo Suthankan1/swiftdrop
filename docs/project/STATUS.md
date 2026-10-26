@@ -1,5 +1,45 @@
 # Current project status — update only with evidence
 
+## Issue #25 Dispatcher frontend consumer — 2026-10-26
+
+Owner HarithKeshan; branch `feat/later-07-dispatcher-queue`, starting integration
+SHA `6191835c51e34f16413e7f80bf44fdc1aa7757fe`. Extends the existing authenticated
+staff landing with bounded GraphQL queue/workloads, projected parcel details,
+manual REST assignment confirmation, version/conflict/unknown-outcome handling,
+canonical refresh, subject-scoped cache/cancellation and responsive presentation.
+No runtime fixtures, service credentials, infrastructure or identity edits.
+
+User-delegated scope decision: separate GraphQL complexity correction counts
+selected fields once while retaining limit 100, depth 5, bounded pagination,
+50-item results and payload/deadline guards. Required projection costs 23 rather
+than 709 with the old fixed list multiplier. Two new endpoint regressions prove
+the projection reaches authorized provider policy and oversized aliases/fragments
+still fail. Security review remains required before merge.
+
+Actual local verification (Node 24.11.0, installed pinned pnpm 12.11.2):
+
+- PASS `pnpm.cmd install --frozen-lockfile` (Corepack shim was broken).
+- PASS `pnpm.cmd typecheck`, `pnpm.cmd lint`, `pnpm.cmd build`.
+- PASS `pnpm.cmd test --run`: **395 tests, 31 files**, including existing
+  Customer/Merchant/Courier/Admin and shared auth regressions; synthetic HTTP mocks.
+- PASS `services/graphql-query-service/mvnw.cmd test -q`: **31 tests**, no
+  failures/errors/skips, including actual signed-JWT endpoint tests with isolated
+  providers. This is not a live business-provider verification.
+- PASS contract validator `--mode all --check-compatibility --base-ref origin/test`:
+  all four REST/GraphQL/Kafka/Protobuf gates; no contract artifacts changed.
+- BLOCKED live queue/assignment/wrong-role/conflict verification: #135 resolver
+  remains OPEN, Gateway lacks `/api/v1/staff/me`, `/graphql` and assignment routes,
+  authoritative sizeCategory/zone/capacity mappings need provider handoff, and no
+  isolated full-stack authenticated dataset was exercised. #24/#113/#109/#119 are
+  CLOSED; provider existence/issue closure does not prove Gateway integration.
+- DEFERRED Dispatcher abort/failure (#98 OPEN) and advanced assignment lifecycle
+  (#125 OPEN); no unsupported controls are exposed.
+- SKIPPED visual/browser/mobile checks: no browser connection available.
+
+See [Dispatcher handoff](../../frontend/src/features/dispatcher/README.md).
+Next small task: integrate #135/provider mappings and Platform Gateway routes,
+then verify the authorized flow using controlled identities and synthetic parcels.
+
 > **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
 
 Last documentation update: **2026-10-25**. This file describes the **starter artifact**, not unknown external repositories.

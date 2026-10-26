@@ -119,4 +119,25 @@ class GraphqlEndpointSecurityTest {
             assertThat(result.getResponse().getStatus()).isBetween(400, 499);
         }
     }
+    @Test void completeDispatcherProjectionReachesAuthorizedProvider() throws Exception {
+        String document = "{dispatcherDashboard(pagination:{page:0,size:20}){"
+                + "unassignedParcels{parcelId trackingNumber pickupZone dropoffZone weightKg sizeCategory createdAt version}"
+                + "pageInfo{currentPage pageSize totalElements totalPages hasNext}"
+                + "availableCouriers{courierSub fullName activeAssignmentsCount maxCapacity eligible}}}";
+        // The test provider deliberately denies access; reaching it proves the legal
+        // projection passed complexity validation, without fabricating provider data.
+        assertThat(query(valid("DISPATCHER"), document).getResponse().getContentAsString())
+                .contains("FORBIDDEN").doesNotContain("maximum query complexity", "private-host");
+        assertThat(query(valid("CUSTOMER"), document).getResponse().getContentAsString()).contains("FORBIDDEN");
+    }
+    @Test void complexityStillRejectsAliasesAndRepeatedFragmentsBeforeProvider() throws Exception {
+        StringBuilder fields = new StringBuilder();
+        for (int i = 0; i < 101; i++) fields.append("p").append(i).append(":pageSize ");
+        String direct = "{dispatcherDashboard{pageInfo{" + fields + "}}}";
+        String fragment = "{dispatcherDashboard{pageInfo{...Pages}}} fragment Pages on PageInfo{" + fields + "}";
+        for (String document : List.of(direct, fragment)) {
+            assertThat(query(valid("DISPATCHER"), document).getResponse().getContentAsString())
+                    .contains("complexity").doesNotContain("FORBIDDEN");
+        }
+    }
 }
