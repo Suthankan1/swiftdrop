@@ -30,12 +30,22 @@ public class StatusTransitionService {
     private final CourierAssignmentContract courierAssignmentContract;
     private final com.swiftdrop.deliveryservice.outbox.OutboxEventRepository outboxEventRepository;
     private final com.swiftdrop.deliveryservice.outbox.OutboxEventFactory outboxEventFactory;
+    private final com.swiftdrop.deliveryservice.proof.ProofMetadataContract proofMetadataContract;
 
     public StatusTransitionService(
             ParcelRepository parcelRepository,
             StatusHistoryRepository statusHistoryRepository,
             CourierAssignmentContract courierAssignmentContract) {
-        this(parcelRepository, statusHistoryRepository, courierAssignmentContract, null, null);
+        this(parcelRepository, statusHistoryRepository, courierAssignmentContract, null, null, null);
+    }
+
+    public StatusTransitionService(
+            ParcelRepository parcelRepository,
+            StatusHistoryRepository statusHistoryRepository,
+            CourierAssignmentContract courierAssignmentContract,
+            com.swiftdrop.deliveryservice.outbox.OutboxEventRepository outboxEventRepository,
+            com.swiftdrop.deliveryservice.outbox.OutboxEventFactory outboxEventFactory) {
+        this(parcelRepository, statusHistoryRepository, courierAssignmentContract, outboxEventRepository, outboxEventFactory, null);
     }
 
     @Autowired
@@ -44,12 +54,14 @@ public class StatusTransitionService {
             StatusHistoryRepository statusHistoryRepository,
             @Autowired(required = false) CourierAssignmentContract courierAssignmentContract,
             @Autowired(required = false) com.swiftdrop.deliveryservice.outbox.OutboxEventRepository outboxEventRepository,
-            @Autowired(required = false) com.swiftdrop.deliveryservice.outbox.OutboxEventFactory outboxEventFactory) {
+            @Autowired(required = false) com.swiftdrop.deliveryservice.outbox.OutboxEventFactory outboxEventFactory,
+            @Autowired(required = false) com.swiftdrop.deliveryservice.proof.ProofMetadataContract proofMetadataContract) {
         this.parcelRepository = parcelRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.courierAssignmentContract = courierAssignmentContract;
         this.outboxEventRepository = outboxEventRepository;
         this.outboxEventFactory = outboxEventFactory != null ? outboxEventFactory : new com.swiftdrop.deliveryservice.outbox.OutboxEventFactory();
+        this.proofMetadataContract = proofMetadataContract;
     }
 
     /**
@@ -92,6 +104,14 @@ public class StatusTransitionService {
                 request.reason(),
                 request.proofId()
         );
+
+        if (request.newStatus() == ParcelStatus.DELIVERED && proofMetadataContract != null) {
+            if (!proofMetadataContract.isProofValid(parcelId, request.proofId())) {
+                throw new InvalidTransitionParametersException(
+                        "Proof reference " + request.proofId() + " not found or does not belong to parcel " + parcelId
+                );
+            }
+        }
 
         // 5. Update parcel status; optimistic locking increments aggregate version upon flush
         parcel.setStatus(request.newStatus());

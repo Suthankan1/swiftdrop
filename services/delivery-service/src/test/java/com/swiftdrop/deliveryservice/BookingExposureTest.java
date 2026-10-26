@@ -2,6 +2,7 @@ package com.swiftdrop.deliveryservice;
 
 import com.swiftdrop.deliveryservice.booking.BookingService;
 import com.swiftdrop.deliveryservice.assignment.controller.AssignmentController;
+import com.swiftdrop.deliveryservice.proof.controller.ProofController;
 import com.swiftdrop.deliveryservice.query.controller.ParcelQueryController;
 import com.swiftdrop.deliveryservice.receipt.controller.ReceiptController;
 import com.swiftdrop.deliveryservice.status.controller.StatusController;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {ReceiptController.class, StatusController.class, AssignmentController.class, ParcelQueryController.class}))
+@WebMvcTest(excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {ReceiptController.class, StatusController.class, AssignmentController.class, ParcelQueryController.class, ProofController.class}))
 @Import(BookingFoundationSecurity.class)
 class BookingExposureTest {
     @Autowired MockMvc mvc;

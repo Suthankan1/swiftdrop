@@ -16,6 +16,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -89,6 +90,23 @@ public final class S3ProofObjectStorage implements ProofObjectStorage {
             return new RetrievedProofObject(response, contentLength, metadata.contentType());
         } catch (RuntimeException exception) {
             throw mapFailure("retrieve", exception);
+        }
+    }
+
+    @Override
+    public void delete(ProofObjectReference reference) {
+        if (reference == null) {
+            throw new InvalidProofObjectException("Proof object reference is required");
+        }
+
+        DeleteObjectRequest request = DeleteObjectRequest.builder()
+                .bucket(bucket)
+                .key(reference.value())
+                .build();
+        try {
+            s3Client.deleteObject(request);
+        } catch (RuntimeException exception) {
+            throw mapFailure("delete", exception);
         }
     }
 
