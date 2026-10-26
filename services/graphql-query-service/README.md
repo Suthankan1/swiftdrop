@@ -78,11 +78,14 @@ Shared generated contracts and security adapter source remain unchanged.
 | gRPC deadline | 2,000ms, preserving a shorter existing deadline |
 | Batch | maximum 50 keys per provider call; loader caching disabled |
 
-Complexity is `1 + children` for ordinary fields and `1 + 50 * children` for
-list fields. Scalars cost 1. The conservative list multiplier uses the approved
-maximum even for smaller requested pages, so pagination cannot undercharge work;
-oversized pages are rejected. List-heavy projections can exceed 100; narrow the
-selection. Caps are frozen. graphql-java handles syntax, fragment cycles,
+Complexity is `1 + children` for all selected fields; scalars cost 1. Result
+cardinality is bounded separately by provider pagination and the 50-item result
+guard. Issue #25's policy correction removes the former fixed list multiplier:
+it charged the required Dispatcher projection 709 even at page size 1. The
+projection now costs 23 under the unchanged cap of 100. Alias/fragment expansion
+still counts toward complexity, and oversized pages are rejected before provider
+execution. This policy change requires security review in the feature PR.
+graphql-java handles syntax, fragment cycles,
 variables and selected operations before provider work. JSON batches are rejected.
 
 The result guard is a final defense, never fetch-all-and-truncate pagination.
