@@ -24,7 +24,7 @@ class ProtobufContractsTest(unittest.TestCase):
         self.assertEqual(result["status"], "VALID")
         self.assertEqual(result["services_count"], 3)
         self.assertGreaterEqual(result["messages_count"], 15)
-        self.assertEqual(len(result["rpc_methods"]), 15)
+        self.assertEqual(len(result["rpc_methods"]), 19)
 
     def test_reject_syntax_other_than_proto3(self):
         """Proto contracts must declare syntax = 'proto3'."""

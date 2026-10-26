@@ -75,6 +75,10 @@ public class JwtTestHelper {
         return createSignedUserToken(sub, roles, DEFAULT_USER_AUDIENCE, DEFAULT_ISSUER, Instant.now().plus(1, ChronoUnit.HOURS));
     }
 
+    public String createSignedUserToken(String sub, Collection<String> roles, Map<String, Object> additionalClaims) {
+        return createToken(trustedUserKey, sub, roles, DEFAULT_USER_AUDIENCE, DEFAULT_ISSUER, Instant.now().plus(1, ChronoUnit.HOURS), Instant.now(), additionalClaims);
+    }
+
     public String createSignedUserToken(String sub, Collection<String> roles, String audience, String issuer, Instant expiresAt) {
         return createToken(trustedUserKey, sub, roles, audience, issuer, expiresAt, Instant.now(), null);
     }
