@@ -1,0 +1,268 @@
+# ==============================================================================
+# SwiftDrop Platform — Private Internal ClusterIP Services (Issue #149)
+# All microservices and identity providers expose only private ClusterIP services.
+# No LoadBalancer, NodePort, or externalIPs are permitted.
+# ==============================================================================
+
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "frontend") | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "frontend") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.port }}
+      targetPort: 8080
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.apiGateway.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "api-gateway") | nindent 4 }}
+spec:
+  type: {{ .Values.apiGateway.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "api-gateway") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.apiGateway.service.port }}
+      targetPort: 8080
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.accounts.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "accounts-service") | nindent 4 }}
+spec:
+  type: {{ .Values.accounts.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "accounts-service") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.accounts.service.httpPort }}
+      targetPort: 8081
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.accounts.service.grpcPort }}
+      targetPort: 9081
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.pricing.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "pricing-service") | nindent 4 }}
+spec:
+  type: {{ .Values.pricing.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "pricing-service") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.pricing.service.httpPort }}
+      targetPort: 8082
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.pricing.service.grpcPort }}
+      targetPort: 9083
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.delivery.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "delivery-service") | nindent 4 }}
+spec:
+  type: {{ .Values.delivery.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "delivery-service") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.delivery.service.httpPort }}
+      targetPort: 8083
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.delivery.service.grpcPort }}
+      targetPort: 9082
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.communications.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: communications-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "communications-service") | nindent 4 }}
+spec:
+  type: {{ .Values.communications.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "communications-service") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.communications.service.httpPort }}
+      targetPort: 8084
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.graphql.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graphql-query-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
+spec:
+  type: {{ .Values.graphql.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.graphql.service.httpPort }}
+      targetPort: 8085
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.keycloak.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+spec:
+  type: {{ .Values.keycloak.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.keycloak.service.httpPort }}
+      targetPort: 8080
+      protocol: TCP
+    - name: management
+      port: {{ .Values.keycloak.service.managementPort }}
+      targetPort: 9000
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.statefulInterfaces.createPlaceholderServices }}
+# Placeholder ClusterIP services for test/CI verification prior to #154 deployment
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts-postgres
+  namespace: {{ .Values.namespaces.data }}
+spec:
+  type: ClusterIP
+  selector:
+    app: accounts-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: business-postgres
+  namespace: {{ .Values.namespaces.data }}
+spec:
+  type: ClusterIP
+  selector:
+    app: business-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-postgres
+  namespace: {{ .Values.namespaces.data }}
+spec:
+  type: ClusterIP
+  selector:
+    app: keycloak-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: {{ .Values.namespaces.messaging }}
+spec:
+  type: ClusterIP
+  selector:
+    app: kafka
+  ports:
+    - name: kraft-internal
+      port: 29092
+      targetPort: 29092
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: {{ .Values.namespaces.messaging }}
+spec:
+  type: ClusterIP
+  selector:
+    app: minio
+  ports:
+    - name: s3-api
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  namespace: {{ .Values.namespaces.messaging }}
+spec:
+  type: ClusterIP
+  selector:
+    app: mailpit
+  ports:
+    - name: smtp
+      port: 1025
+      targetPort: 1025
+{{- end }}
