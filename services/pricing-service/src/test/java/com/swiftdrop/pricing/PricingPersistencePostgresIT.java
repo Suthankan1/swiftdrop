@@ -21,10 +21,24 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import com.swiftdrop.pricing.v1.PricingAdminSummaryRequest;
+import com.swiftdrop.pricing.v1.PricingAdminSummaryResponse;
+import com.swiftdrop.pricing.v1.ValidateQuoteRequest;
+import com.swiftdrop.pricing.v1.ValidateQuoteResponse;
+import com.swiftdrop.security.grpc.DelegatedActorContext;
+import com.swiftdrop.security.grpc.SwiftDropGrpcContext;
+import com.swiftdrop.security.jwt.SwiftDropRoles;
+import com.swiftdrop.security.service.SwiftDropServiceIdentity;
+import io.grpc.Context;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,6 +78,9 @@ class PricingPersistencePostgresIT {
 
     @Autowired
     private com.swiftdrop.pricing.persistence.QuoteRepository quoteRepository;
+
+    @Autowired
+    private com.swiftdrop.pricing.grpc.PricingInternalServiceImpl pricingInternalService;
 
     @Test
     @DisplayName("Should successfully apply Flyway migrations and seed baseline data")
@@ -221,5 +238,208 @@ class PricingPersistencePostgresIT {
                         "30, 20, 15, 2.50, 1.80, 2.50, 'MEDIUM', 35000, 15000, 50000, 'LKR', true, " +
                         "'" + now + "', '" + now + "')"))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("gRPC Provider in PostgreSQL: ValidateQuote returns persisted immutable snapshot with zero database mutations")
+    void shouldValidateQuoteAgainstPostgresWithoutMutations() {
+        RateVersionEntity active = rateVersionRepository.findByVersionCode("RATE-2026-V1").orElseThrow();
+        UUID quoteId = UUID.randomUUID();
+        Instant now = Instant.now();
+        Instant expires = now.plusSeconds(900);
+        String customerSub = "postgres-cust-1";
+
+        com.swiftdrop.pricing.persistence.QuoteEntity quote = new com.swiftdrop.pricing.persistence.QuoteEntity(
+                quoteId,
+                active.getId(),
+                active.getVersionCode(),
+                null,
+                "ZONE_1",
+                "ZONE_2",
+                25,
+                15,
+                10,
+                new BigDecimal("1.20"),
+                new BigDecimal("0.75"),
+                new BigDecimal("1.20"),
+                SizeCategory.SMALL,
+                20000L,
+                5000L,
+                25000L,
+                "LKR",
+                customerSub,
+                null,
+                false,
+                now,
+                expires
+        );
+        quoteRepository.saveAndFlush(quote);
+
+        long countBefore = quoteRepository.count();
+
+        // Execute ValidateQuote through PricingInternalServiceImpl with valid customer delegation
+        DelegatedActorContext actor = new DelegatedActorContext(
+                customerSub,
+                Set.of(SwiftDropRoles.ROLE_CUSTOMER),
+                SwiftDropServiceIdentity.DELIVERY_SERVICE
+        );
+
+        TestStreamObserver<ValidateQuoteResponse> observer = new TestStreamObserver<>();
+        Context context = Context.current()
+                .withValue(SwiftDropGrpcContext.KEY_CALLING_SERVICE, SwiftDropServiceIdentity.DELIVERY_SERVICE)
+                .withValue(SwiftDropGrpcContext.KEY_DELEGATED_ACTOR, actor);
+
+        context.run(() -> pricingInternalService.validateQuote(
+                ValidateQuoteRequest.newBuilder()
+                        .setQuoteId(quoteId.toString())
+                        .setExpectedRateVersion("RATE-2026-V1")
+                        .setExpectedAmountMinorUnits(25000L)
+                        .setExpectedCurrency("LKR")
+                        .build(),
+                observer
+        ));
+
+        assertThat(observer.error).isNull();
+        assertThat(observer.completed).isTrue();
+        assertThat(observer.value).isNotNull();
+
+        ValidateQuoteResponse response = observer.value;
+        assertThat(response.getIsValid()).isTrue();
+        assertThat(response.getValidationCode()).isEqualTo("VALID");
+        assertThat(response.getQuoteId()).isEqualTo(quoteId.toString());
+        assertThat(response.getRateVersion()).isEqualTo("RATE-2026-V1");
+        assertThat(response.getVerifiedAmountMinorUnits()).isEqualTo(25000L);
+        assertThat(response.getCurrency()).isEqualTo("LKR");
+        assertThat(response.getPickupZone()).isEqualTo("ZONE_1");
+        assertThat(response.getDropoffZone()).isEqualTo("ZONE_2");
+        assertThat(response.getSubjectSub()).isEqualTo(customerSub);
+        assertThat(response.getBaseFeeMinorUnits()).isEqualTo(20000L);
+        assertThat(response.getWeightSurchargeMinorUnits()).isEqualTo(5000L);
+
+        // Verification of zero database mutations
+        long countAfter = quoteRepository.count();
+        assertThat(countAfter).isEqualTo(countBefore);
+    }
+
+    @Test
+    @DisplayName("gRPC Provider in PostgreSQL: Quote issued under older tariff remains valid after new rate version is added")
+    void quoteRemainsValidAfterNewRateVersionAdded() {
+        RateVersionEntity active = rateVersionRepository.findByVersionCode("RATE-2026-V1").orElseThrow();
+        UUID quoteId = UUID.randomUUID();
+        Instant now = Instant.now();
+        Instant expires = now.plusSeconds(900);
+        String customerSub = "postgres-cust-older";
+
+        com.swiftdrop.pricing.persistence.QuoteEntity quote = new com.swiftdrop.pricing.persistence.QuoteEntity(
+                quoteId,
+                active.getId(),
+                active.getVersionCode(),
+                null,
+                "ZONE_1",
+                "ZONE_3",
+                40,
+                30,
+                20,
+                new BigDecimal("5.00"),
+                new BigDecimal("4.80"),
+                new BigDecimal("5.00"),
+                SizeCategory.LARGE,
+                50000L,
+                25000L,
+                75000L,
+                "LKR",
+                customerSub,
+                null,
+                false,
+                now,
+                expires
+        );
+        quoteRepository.saveAndFlush(quote);
+
+        // Simulate admin creating another coexisting rate version (DRAFT/ARCHIVED)
+        RateVersionEntity newerVersion = new RateVersionEntity(
+                "RATE-2027-NEW", "LKR", RateVersionStatus.DRAFT, now, "Newer Rate"
+        );
+        rateVersionRepository.saveAndFlush(newerVersion);
+
+        // Older quote remains valid when evaluated
+        DelegatedActorContext actor = new DelegatedActorContext(
+                customerSub,
+                Set.of(SwiftDropRoles.ROLE_CUSTOMER),
+                SwiftDropServiceIdentity.DELIVERY_SERVICE
+        );
+
+        TestStreamObserver<ValidateQuoteResponse> observer = new TestStreamObserver<>();
+        Context context = Context.current()
+                .withValue(SwiftDropGrpcContext.KEY_CALLING_SERVICE, SwiftDropServiceIdentity.DELIVERY_SERVICE)
+                .withValue(SwiftDropGrpcContext.KEY_DELEGATED_ACTOR, actor);
+
+        context.run(() -> pricingInternalService.validateQuote(
+                ValidateQuoteRequest.newBuilder()
+                        .setQuoteId(quoteId.toString())
+                        .setExpectedRateVersion("RATE-2026-V1")
+                        .setExpectedAmountMinorUnits(75000L)
+                        .setExpectedCurrency("LKR")
+                        .build(),
+                observer
+        ));
+
+        assertThat(observer.error).isNull();
+        assertThat(observer.value.getIsValid()).isTrue();
+        assertThat(observer.value.getValidationCode()).isEqualTo("VALID");
+        assertThat(observer.value.getRateVersion()).isEqualTo("RATE-2026-V1");
+    }
+
+    @Test
+    @DisplayName("gRPC Provider in PostgreSQL: Admin summary query returns real zones and rate versions from pricing_db")
+    void adminSummaryQuery_returnsRealPostgresData() {
+        DelegatedActorContext adminActor = new DelegatedActorContext(
+                "admin-sub-pg",
+                Set.of(SwiftDropRoles.ROLE_ADMIN),
+                SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE
+        );
+
+        TestStreamObserver<PricingAdminSummaryResponse> observer = new TestStreamObserver<>();
+        Context context = Context.current()
+                .withValue(SwiftDropGrpcContext.KEY_CALLING_SERVICE, SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE)
+                .withValue(SwiftDropGrpcContext.KEY_DELEGATED_ACTOR, adminActor);
+
+        context.run(() -> pricingInternalService.getPricingAdminSummary(
+                PricingAdminSummaryRequest.newBuilder()
+                        .setActiveOnly(true)
+                        .setPage(0)
+                        .setPageSize(20)
+                        .build(),
+                observer
+        ));
+
+        assertThat(observer.error).isNull();
+        assertThat(observer.value).isNotNull();
+        PricingAdminSummaryResponse summary = observer.value;
+        assertThat(summary.getTotalZones()).isGreaterThanOrEqualTo(3);
+        assertThat(summary.getZonesList()).extracting(com.swiftdrop.pricing.v1.PricingZoneSummaryItem::getZoneCode)
+                .contains("ZONE_1", "ZONE_2", "ZONE_3");
+        assertThat(summary.getTotalRateVersions()).isGreaterThanOrEqualTo(1);
+    }
+
+    static class TestStreamObserver<T> implements StreamObserver<T> {
+        T value;
+        Throwable error;
+        boolean completed = false;
+
+        @Override
+        public void onNext(T value) {
+            this.value = value;
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            this.error = t;
+        }
+
+        @Override
+        public void onCompleted() {
+            this.completed = true;
+        }
     }
 }
