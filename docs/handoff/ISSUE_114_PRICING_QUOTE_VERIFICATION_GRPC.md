@@ -157,13 +157,19 @@ As documented in `BookingAuthorization.java` and `LATER_02_QUOTE_BOOKING.md`:
 |---|---|---|---|
 | Protobuf & Schema Compatibility | `tests/contracts/validate_contracts.py` | 4 Gates | **PASS** (0 errors, 0 breaking changes) |
 | Python Contract Tests | `tests/contracts/test_protobuf_contracts.py` | 10 tests | **PASS** |
-| Shared Proto Java Contracts | `com.swiftdrop.grpc.PricingContractTest`, `ContractDescriptorAndSerializationTest` | 24 tests | **PASS** |
+| Shared Proto Java Contracts | `com.swiftdrop.grpc.PricingContractTest`, `ContractDescriptorAndSerializationTest`, `DeliveryContractTest` | 28 tests | **PASS** |
 | Shared Security Adapter | `com.swiftdrop.security.grpc.*`, `JwtValidationTest` | 39 tests | **PASS** |
 | Pricing gRPC Provider Unit & Security | `com.swiftdrop.pricing.grpc.PricingInternalServiceGrpcTest` | 29 tests | **PASS** |
 | Pricing PostgreSQL Integration | `com.swiftdrop.pricing.PricingPersistencePostgresIT` | 12 tests | **PASS** |
 | Pricing Service Full Regression | `services/pricing-service` (`mvn clean verify`) | 108 tests | **PASS** (96 unit + 12 IT) |
 | Delivery Quote Provider Unit Tests | `com.swiftdrop.deliveryservice.quote.GrpcBookingQuoteProviderTest` | 5 tests | **PASS** |
 | Delivery Booking Foundation Tests | `com.swiftdrop.deliveryservice.BookingFoundationTest` | 11 tests | **PASS** |
+
+### Post-Merge Conflict Resolution Notes
+- Merged latest `origin/test` (incorporating PR #219: `feat/n10-b08-delivery-grpc-read-models`).
+- Reconciled RPC method count in `tests/contracts/test_protobuf_contracts.py` from 16/19 to 20 total RPC methods (Accounts: 8, Delivery: 10, Pricing: 2).
+- Clean auto-merge across `GrpcSecurityPolicy.java` and `ContractDescriptorAndSerializationTest.java`.
+- Verified 100% green across all 6 test suites and confirmed PR #220 status is `MERGEABLE`.
 
 ---
 
