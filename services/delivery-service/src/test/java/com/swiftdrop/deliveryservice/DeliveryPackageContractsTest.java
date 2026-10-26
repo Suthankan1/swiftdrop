@@ -219,4 +219,113 @@ class DeliveryPackageContractsTest {
         assertThat(resp.assignedBy()).isEqualTo("dispatcher-sub-999");
         assertThat(resp.newParcelVersion()).isEqualTo(2L);
     }
+
+    @Test
+    @DisplayName("Verify ParcelDetailResponse contract for Issue #94 REST reads")
+    void testParcelDetailResponseContract() {
+        UUID parcelId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        com.swiftdrop.deliveryservice.query.dto.ParcelDetailResponse resp =
+                new com.swiftdrop.deliveryservice.query.dto.ParcelDetailResponse(
+                        parcelId,
+                        "SWD-20261025-PST101",
+                        "customer-sub-1",
+                        merchantId,
+                        ParcelStatus.CREATED,
+                        1L,
+                        2.5,
+                        "STANDARD",
+                        125000L,
+                        "LKR",
+                        "RATE-V1",
+                        "123 Main St",
+                        "456 High St",
+                        "courier-sub-1",
+                        now
+                );
+
+        assertThat(resp.parcelId()).isEqualTo(parcelId);
+        assertThat(resp.trackingNumber()).isEqualTo("SWD-20261025-PST101");
+        assertThat(resp.createdBySub()).isEqualTo("customer-sub-1");
+        assertThat(resp.merchantId()).isEqualTo(merchantId);
+        assertThat(resp.currentStatus()).isEqualTo(ParcelStatus.CREATED);
+        assertThat(resp.version()).isEqualTo(1L);
+        assertThat(resp.weightKg()).isEqualTo(2.5);
+        assertThat(resp.dimensions()).isEqualTo("STANDARD");
+        assertThat(resp.amountMinorUnits()).isEqualTo(125000L);
+        assertThat(resp.currency()).isEqualTo("LKR");
+        assertThat(resp.rateVersion()).isEqualTo("RATE-V1");
+        assertThat(resp.pickupAddress()).isEqualTo("123 Main St");
+        assertThat(resp.dropoffAddress()).isEqualTo("456 High St");
+        assertThat(resp.activeCourierSub()).isEqualTo("courier-sub-1");
+        assertThat(resp.createdAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("Verify ParcelStatusHistoryResponse contract for Issue #94 append-only history reads")
+    void testParcelStatusHistoryResponseContract() {
+        UUID historyId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+        UUID proofId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        com.swiftdrop.deliveryservice.query.dto.ParcelStatusHistoryResponse resp =
+                new com.swiftdrop.deliveryservice.query.dto.ParcelStatusHistoryResponse(
+                        historyId,
+                        parcelId,
+                        ParcelStatus.OUT_FOR_DELIVERY,
+                        ParcelStatus.DELIVERED,
+                        null,
+                        "Signed by recipient",
+                        proofId,
+                        4L,
+                        now
+                );
+
+        assertThat(resp.historyId()).isEqualTo(historyId);
+        assertThat(resp.parcelId()).isEqualTo(parcelId);
+        assertThat(resp.previousStatus()).isEqualTo(ParcelStatus.OUT_FOR_DELIVERY);
+        assertThat(resp.newStatus()).isEqualTo(ParcelStatus.DELIVERED);
+        assertThat(resp.reason()).isNull();
+        assertThat(resp.note()).isEqualTo("Signed by recipient");
+        assertThat(resp.proofId()).isEqualTo(proofId);
+        assertThat(resp.resultingVersion()).isEqualTo(4L);
+        assertThat(resp.occurredAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("Verify PagedResponse pagination wrapper invariants")
+    void testPagedResponseContract() {
+        com.swiftdrop.deliveryservice.query.dto.PagedResponse<String> paged =
+                new com.swiftdrop.deliveryservice.query.dto.PagedResponse<>(
+                        java.util.List.of("item1", "item2"),
+                        0,
+                        2,
+                        5L,
+                        3,
+                        true,
+                        false
+                );
+
+        assertThat(paged.items()).containsExactly("item1", "item2");
+        assertThat(paged.currentPage()).isEqualTo(0);
+        assertThat(paged.pageSize()).isEqualTo(2);
+        assertThat(paged.totalElements()).isEqualTo(5L);
+        assertThat(paged.totalPages()).isEqualTo(3);
+        assertThat(paged.hasNext()).isTrue();
+        assertThat(paged.hasPrevious()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Verify ParcelAccessDeniedException invariants")
+    void testParcelAccessDeniedException() {
+        UUID parcelId = UUID.randomUUID();
+        com.swiftdrop.deliveryservice.query.exception.ParcelAccessDeniedException ex =
+                new com.swiftdrop.deliveryservice.query.exception.ParcelAccessDeniedException(parcelId);
+
+        assertThat(ex.getParcelId()).isEqualTo(parcelId);
+        assertThat(ex.getMessage()).contains(parcelId.toString());
+    }
 }

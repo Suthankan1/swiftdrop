@@ -37,7 +37,7 @@ public class ReceiptSecurityConfiguration {
                                         JwtDecoder jwtDecoder,
                                         KeycloakJwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
         return http
-                .securityMatcher("/api/v1/parcels/*/receipt", "/api/v1/parcels/*/status", "/api/v1/assignments", "/api/v1/assignments/**", "/actuator/health", "/actuator/health/**")
+                .securityMatcher("/api/v1/parcels", "/api/v1/parcels/**", "/api/v1/assignments", "/api/v1/assignments/**", "/actuator/health", "/actuator/health/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -50,6 +50,8 @@ public class ReceiptSecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/receipt").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/assignments").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/assignments", "/api/v1/assignments/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/parcels", "/api/v1/parcels/*", "/api/v1/parcels/*/history").authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
