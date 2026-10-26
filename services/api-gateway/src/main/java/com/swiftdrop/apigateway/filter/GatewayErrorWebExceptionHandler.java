@@ -1,5 +1,7 @@
 package com.swiftdrop.apigateway.filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
@@ -17,11 +19,14 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Handles errors occurring within the gateway routing pipeline, such as downstream connection failures,
- * emitting clean RFC 7807 Problem Details without exposing internal stack traces or secrets.
+ * upstream timeouts, or bad gateway responses, emitting clean RFC 7807 Problem Details without exposing
+ * internal stack traces, hostnames, IPs, or credentials.
  */
 @Component
 @Order(-1)
 public class GatewayErrorWebExceptionHandler implements WebExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GatewayErrorWebExceptionHandler.class);
 
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
@@ -36,24 +41,55 @@ public class GatewayErrorWebExceptionHandler implements WebExceptionHandler {
 
         if (ex instanceof ResponseStatusException rse) {
             HttpStatusCode statusCode = rse.getStatusCode();
-            if (statusCode.value() == 404) {
+            int code = statusCode.value();
+            if (code == 404) {
                 status = HttpStatus.NOT_FOUND;
                 title = "Not Found";
                 detail = "The requested resource was not found.";
-            } else if (statusCode.value() == 503) {
+            } else if (code == 405) {
+                status = HttpStatus.METHOD_NOT_ALLOWED;
+                title = "Method Not Allowed";
+                detail = "The HTTP method is not supported for this route.";
+            } else if (code == 503) {
                 status = HttpStatus.SERVICE_UNAVAILABLE;
                 title = "Service Unavailable";
                 detail = "Downstream service is currently unavailable.";
-            } else if (statusCode.value() == 502 || statusCode.value() == 504) {
+            } else if (code == 504) {
+                status = HttpStatus.GATEWAY_TIMEOUT;
+                title = "Gateway Timeout";
+                detail = "Downstream service request timed out.";
+            } else if (code == 502) {
                 status = HttpStatus.BAD_GATEWAY;
                 title = "Bad Gateway";
-                detail = "Downstream service error or timeout.";
+                detail = "Downstream service error or invalid response.";
+            } else {
+                HttpStatus resolved = HttpStatus.resolve(code);
+                if (resolved != null) {
+                    status = resolved;
+                    title = resolved.getReasonPhrase();
+                    detail = rse.getReason() != null ? rse.getReason() : "A gateway routing error occurred.";
+                }
             }
+        } else if (isTimeoutFailure(ex)) {
+            status = HttpStatus.GATEWAY_TIMEOUT;
+            title = "Gateway Timeout";
+            detail = "Downstream service request timed out.";
         } else if (isDownstreamConnectionFailure(ex)) {
             status = HttpStatus.SERVICE_UNAVAILABLE;
             title = "Service Unavailable";
             detail = "Downstream service is currently unavailable.";
+        } else if (isBadGatewayFailure(ex)) {
+            status = HttpStatus.BAD_GATEWAY;
+            title = "Bad Gateway";
+            detail = "Downstream service error or invalid response.";
         }
+
+        log.warn("Gateway error handling [{}] {} -> status={} {}: {}",
+                exchange.getRequest().getMethod(),
+                exchange.getRequest().getPath(),
+                status.value(),
+                title,
+                ex.getClass().getSimpleName());
 
         response.setStatusCode(status);
         response.getHeaders().setContentType(MediaType.valueOf("application/problem+json"));
@@ -70,12 +106,45 @@ public class GatewayErrorWebExceptionHandler implements WebExceptionHandler {
         return response.writeWith(Mono.just(buffer));
     }
 
+    private boolean isTimeoutFailure(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            String name = current.getClass().getName();
+            if (current instanceof java.util.concurrent.TimeoutException ||
+                    name.contains("TimeoutException") ||
+                    name.contains("ReadTimeoutException") ||
+                    name.contains("ConnectTimeoutException")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
     private boolean isDownstreamConnectionFailure(Throwable ex) {
         Throwable current = ex;
         while (current != null) {
+            String name = current.getClass().getName();
+            String message = current.getMessage();
             if (current instanceof ConnectException ||
-                    current.getClass().getName().contains("AnnotatedConnectException") ||
-                    (current.getMessage() != null && current.getMessage().contains("Connection refused"))) {
+                    name.contains("AnnotatedConnectException") ||
+                    current instanceof java.net.UnknownHostException ||
+                    current instanceof java.net.NoRouteToHostException ||
+                    (message != null && (message.contains("Connection refused") || message.contains("Failed to resolve")))) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private boolean isBadGatewayFailure(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            String name = current.getClass().getName();
+            String message = current.getMessage();
+            if (name.contains("PrematureCloseException") ||
+                    (message != null && (message.contains("Connection reset") || message.contains("Broken pipe")))) {
                 return true;
             }
             current = current.getCause();

@@ -39,14 +39,32 @@ In accordance with [SwiftDrop Architecture Baseline v1.3](../../docs/architectur
 
 ---
 
-## 3. Approved Route Specifications (November 1 Milestone)
+## 3. Approved Route Specifications (Architecture Baseline v1.3 & Issue #127)
 
-| Method | Public Gateway Path | Downstream Target URL | Downstream Service | Auth Required |
-|---|---|---|---|---|
-| `GET` | `http://localhost:8080/api/v1/users/me` | `http://localhost:8081/api/v1/users/me` | Accounts & Partners | Yes (Bearer JWT) |
-| `GET` | `http://localhost:8080/actuator/health` | Local actuator handler | API Gateway | No (Public) |
+| Method | Public Gateway Path | Downstream Target URL | Downstream Service | Auth Required | Route Order |
+|---|---|---|---|---|---|
+| `POST` | `/api/v1/merchants/webhooks` | `${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}/api/v1/merchants/webhooks` | Communications | Yes (`ROLE_MERCHANT`, `ROLE_ADMIN`) | 5 |
+| `GET` | `/api/v1/merchants/webhooks/deliveries` | `${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}/api/v1/merchants/webhooks/deliveries` | Communications | Yes (`ROLE_MERCHANT`, `ROLE_ADMIN`) | 5 |
+| `GET` | `/api/v1/users/me` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/users/me` | Accounts & Partners | Yes (`ROLE_CUSTOMER`, etc.) | 10 |
+| `POST` | `/api/v1/merchants` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/merchants` | Accounts & Partners | Yes (Authenticated) | 10 |
+| `POST` | `/api/v1/merchants/{id}/approve` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/merchants/{id}/approve` | Accounts & Partners | Yes (`ROLE_ADMIN`) | 10 |
+| `*` | `/api/v1/merchants/**` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/merchants/**` | Accounts & Partners | Yes (`ROLE_MERCHANT`, `ROLE_ADMIN`) | 10 |
+| `*` | `/api/v1/admin/**` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/admin/**` | Accounts & Partners | Yes (`ROLE_ADMIN`) | 10 |
+| `POST, GET` | `/api/v1/quotes/**` | `${PRICING_SERVICE_URL:http://localhost:8082}/api/v1/quotes/**` | Pricing & Zones | No (Public) | 10 |
+| `GET` | `/api/v1/zones/**` | `${PRICING_SERVICE_URL:http://localhost:8082}/api/v1/zones/**` | Pricing & Zones | Yes (Authenticated) | 10 |
+| `GET` | `/api/v1/tracking/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/tracking/**` | Delivery Operations | No (Public, SSE unbuffered) | 10 |
+| `POST` | `/api/v1/merchant/parcels/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/merchant/parcels/**` | Delivery Operations | Yes (`ROLE_MERCHANT` via JWT or `X-API-Key`) | 10 |
+| `POST, GET` | `/api/v1/assignments/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/assignments/**` | Delivery Operations | Yes (`ROLE_COURIER`, `ROLE_DISPATCHER`, `ROLE_ADMIN`) | 10 |
+| `*` | `/api/v1/parcels/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/parcels/**` | Delivery Operations | Yes (Authenticated, SSE unbuffered) | 10 |
+| `POST` | `/graphql` | `${GRAPHQL_SERVICE_URL:http://localhost:8084}/graphql` | GraphQL Query API | Yes (Authenticated) | 10 |
+| `GET` | `/actuator/health` | Local actuator handler | API Gateway | No (Public) | Local |
 
-The downstream target URL is fully configurable via the environment variable `ACCOUNTS_SERVICE_URL` (default: `http://localhost:8081`).
+Target service URLs are configured via environment variables:
+- `ACCOUNTS_SERVICE_URL` (default: `http://localhost:8081`)
+- `PRICING_SERVICE_URL` (default: `http://localhost:8082`)
+- `DELIVERY_SERVICE_URL` (default: `http://localhost:8083`)
+- `COMMUNICATIONS_SERVICE_URL` (default: `http://localhost:8084`)
+- `GRAPHQL_SERVICE_URL` (default: `http://localhost:8084`)
 
 ---
 
@@ -110,7 +128,7 @@ Payload too large requests receive:
 }
 ```
 
-When downstream Accounts Service is offline/unreachable:
+When downstream service is offline/unreachable (HTTP 503):
 ```json
 {
   "type": "about:blank",
@@ -118,6 +136,28 @@ When downstream Accounts Service is offline/unreachable:
   "status": 503,
   "detail": "Downstream service is currently unavailable.",
   "instance": "/api/v1/users/me"
+}
+```
+
+When downstream service times out (HTTP 504):
+```json
+{
+  "type": "about:blank",
+  "title": "Gateway Timeout",
+  "status": 504,
+  "detail": "The gateway timed out waiting for upstream service response.",
+  "instance": "/api/v1/quotes/standard"
+}
+```
+
+When downstream connection terminates prematurely or returns invalid upstream response (HTTP 502):
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Gateway",
+  "status": 502,
+  "detail": "Bad gateway or invalid response from upstream service.",
+  "instance": "/api/v1/parcels/SWD-101"
 }
 ```
 
@@ -133,6 +173,7 @@ When downstream Accounts Service is offline/unreachable:
 | **Pricing Service** | `http://localhost:8082` | HTTP (Spring Boot) | Zones & quote calculations |
 | **Delivery Service** | `http://localhost:8083` | HTTP (Spring Boot) | Parcels & lifecycle operations |
 | **GraphQL Query API** | `http://localhost:8084` | HTTP (Spring Boot) | Read-only composite queries |
+| **Communications Service** | `http://localhost:8084` | HTTP (Spring Boot) | Merchant notifications & webhooks |
 | **Keycloak Identity** | `http://localhost:8090` | HTTP (Docker) | OIDC provider & realm authority (Issue #2) |
 
 ---
@@ -150,7 +191,7 @@ cd services/api-gateway
 ./mvnw clean test
 ```
 
-**Test Coverage Summary (48 Automated Tests across 5 Test Classes):**
+**Test Coverage Summary (75 Automated Tests across 7 Test Classes):**
 1. Application context load (`ApiGatewayApplicationTests` - 1 test)
 2. Downstream service unavailable error mapping (`ApiGatewayDownstreamUnavailableTest` - 1 test)
 3. Target contract routing tests (`SwiftDropTargetContractGatewayTest` - 6 tests)
@@ -170,6 +211,21 @@ cd services/api-gateway
    - Public tracking SSE stream concurrency cap (HTTP 429 on > 5 concurrent streams)
    - Authenticated SSE stream Bearer token enforcement and concurrency limit
    - In-memory rate limiter capacity bounding and stale bucket pruning
+7. Gateway business routes integration tests (`GatewayBusinessRoutesIntegrationTest` - 12 tests, Issue #127)
+   - Verified routing to Accounts & Partners (`/api/v1/users/me`, `/api/v1/merchants/**`, `/api/v1/admin/**`)
+   - Verified routing to Pricing & Zones (`/api/v1/quotes/**`, `/api/v1/zones/**`)
+   - Verified routing to Delivery Operations (`/api/v1/merchant/parcels/**`, `/api/v1/assignments/**`, `/api/v1/parcels/**`)
+   - Verified unbuffered SSE live tracking stream forwarding (`/api/v1/tracking/**`)
+   - Verified routing to Communications webhooks (`/api/v1/merchants/webhooks/**`) with higher order precedence over generic merchants
+   - Verified routing to GraphQL Query API (`/graphql`)
+   - Edge security header sanitization and negative 401/403 authorization regressions
+8. Gateway upstream error handling and timeout tests (`GatewayUpstreamErrorHandlingTest` - 7 tests, Issue #127)
+   - Propagation of upstream 4xx client errors (`400 Bad Request`, `404 Not Found`, `409 Conflict`)
+   - Propagation of upstream 500 Internal Server Error
+   - Translation of connection refusal / unreachable upstream to RFC 7807 HTTP 503 Service Unavailable
+   - Translation of upstream timeout to RFC 7807 HTTP 504 Gateway Timeout
+   - Translation of premature upstream disconnect to RFC 7807 HTTP 502 Bad Gateway
+   - Sanitization of error responses to guarantee zero leakage of internal hostnames, IPs, or stack traces
 
 ### 6.3 Running the Gateway Locally
 ```bash
@@ -181,10 +237,10 @@ The gateway listens on `http://localhost:8080`.
 
 ---
 
-## 7. Downstream Route Integration Handoff (Issue #127)
+## 7. Downstream Route Integration Status (Issue #127)
 
-Issue #106 provides the security, authentication, and abuse policy foundation.
-Downstream route destination wiring, upstream timeout configuration, circuit breaking, and multi-service route integration tests are owned by **@Gajanthan23** under **Issue #127**.
-
-For complete integration instructions, route-to-service mapping, and policy requirements, see:
-[docs/handoff/ISSUE_127_GATEWAY_ROUTE_INTEGRATION.md](../../docs/handoff/ISSUE_127_GATEWAY_ROUTE_INTEGRATION.md)
+Implemented under **Issue #127** by **@Gajanthan23**:
+- All approved business routes integrated in programmatic `RouteLocator` (`GatewayRoutesConfig.java`) and declarative `application.yml`.
+- Unbuffered SSE forwarding configured for live parcel lifecycle updates and public tracking.
+- RFC 7807 Problem Detail error handling distinguishing 502, 503, and 504 without leaking internal network topology or Java traces.
+- All 75 unit, security, routing, and error handling integration tests verified passing.
