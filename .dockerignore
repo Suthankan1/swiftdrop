@@ -1,0 +1,64 @@
+# ==============================================================================
+# SwiftDrop Root Docker Ignore Configuration (Issue #128)
+# Canonical Reference: docs/development/GIT_WORKFLOW.md & ADR-0011
+# ==============================================================================
+
+# Git metadata
+.git
+.gitignore
+.gitattributes
+
+# Environment files and credentials (strict security invariant)
+**/.env*
+!**/.env.example
+
+# Local build artifacts and caches
+**/target
+**/dist
+**/build
+**/.gradle
+**/.m2/repository
+**/.mvn/.m2
+**/node_modules
+**/.pnpm-store
+
+# Terraform state and local caches
+**/.terraform
+**/.terraform*
+*.tfstate*
+*.tfplan
+
+# Persistent local cluster and database volumes
+platform/kubernetes/k3d/storage
+~/.swiftdrop
+*.db
+*.sqlite
+
+# Keys, certificates, and secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Test reports, coverage, and scanner outputs
+**/test-reports
+**/coverage
+**/playwright-report
+**/test-results
+identity-test-results.xml
+terraform-policy-results.xml
+kubernetes-policy-results.xml
+contract-validation-report.json
+*.log
+
+# OS and IDE temporary files
+**/.DS_Store
+Thumbs.db
+tmp/
+scratch/
+**/*.pyc
+**/__pycache__
+**/.pytest_cache
+**/.idea
+**/.vscode

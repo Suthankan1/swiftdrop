@@ -25,6 +25,8 @@
     <aws.sdk.version>2.57.3</aws.sdk.version>
     <pdfbox.version>3.0.5</pdfbox.version>
     <grpc.version>1.68.1</grpc.version>
+    <jackson-3.version>3.1.7</jackson-3.version>
+    <tomcat.version>11.0.25</tomcat.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -34,6 +36,21 @@
         <version>${grpc.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>tools.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson-3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>tools.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson-3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>at.yawk.lz4</groupId>
+        <artifactId>lz4-java</artifactId>
+        <version>1.11.4</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
