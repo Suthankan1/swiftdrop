@@ -91,3 +91,8 @@ server.error:
   include-message: never
   include-stacktrace: never
   include-binding-errors: never
+
+grpc:
+  server:
+    port: ${GRPC_SERVER_PORT:9083}
+    enabled: ${GRPC_SERVER_ENABLED:true}
