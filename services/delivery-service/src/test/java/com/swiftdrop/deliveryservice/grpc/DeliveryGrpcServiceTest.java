@@ -6,6 +6,7 @@ import com.swiftdrop.deliveryservice.assignment.DeliveryAssignmentRepository;
 import com.swiftdrop.deliveryservice.core.Parcel;
 import com.swiftdrop.deliveryservice.core.ParcelRepository;
 import com.swiftdrop.deliveryservice.core.ParcelStatus;
+import com.swiftdrop.deliveryservice.outbox.OutboxEventRepository;
 import com.swiftdrop.deliveryservice.query.ParcelProjection;
 import com.swiftdrop.deliveryservice.query.ParcelQueryService;
 import com.swiftdrop.deliveryservice.status.StatusHistoryRepository;
@@ -47,6 +48,7 @@ class DeliveryGrpcServiceTest {
     private final JwtTestHelper jwtHelper = new JwtTestHelper();
 
     private ParcelRepository parcelRepository;
+    private OutboxEventRepository outboxEventRepository;
     private DeliveryAssignmentRepository assignmentRepository;
     private StatusHistoryRepository historyRepository;
     private ParcelQueryService parcelQueryService;
@@ -61,12 +63,14 @@ class DeliveryGrpcServiceTest {
     @BeforeEach
     void setUp() throws Exception {
         parcelRepository = mock(ParcelRepository.class);
+        outboxEventRepository = mock(OutboxEventRepository.class);
         assignmentRepository = mock(DeliveryAssignmentRepository.class);
         historyRepository = mock(StatusHistoryRepository.class);
         parcelQueryService = mock(ParcelQueryService.class);
 
         DeliveryInternalServiceImpl serviceImpl = new DeliveryInternalServiceImpl(
                 parcelRepository,
+                outboxEventRepository,
                 assignmentRepository,
                 historyRepository,
                 parcelQueryService

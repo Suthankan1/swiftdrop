@@ -159,6 +159,14 @@ public class GrpcSecurityPolicy {
                 DelegationRequirement.REQUIRED,
                 Set.of(SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)
         ));
+
+        // IF-GRPC-11: Communications -> Delivery AuthorizeEventRecipient (Service-only, background job, #111)
+        register(new MethodPolicy(
+                "swiftdrop.delivery.v1.DeliveryInternalService/AuthorizeEventRecipient",
+                Set.of(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE),
+                DelegationRequirement.FORBIDDEN,
+                Collections.emptySet()
+        ));
     }
 
     public void register(MethodPolicy policy) {

@@ -35,7 +35,7 @@ class ContractDescriptorAndSerializationTest {
         // Verify Delivery service descriptor
         assertThat(DeliveryInternalServiceGrpc.getServiceDescriptor().getName())
                 .isEqualTo("swiftdrop.delivery.v1.DeliveryInternalService");
-        assertThat(DeliveryInternalServiceGrpc.getServiceDescriptor().getMethods()).hasSize(5);
+        assertThat(DeliveryInternalServiceGrpc.getServiceDescriptor().getMethods()).hasSize(6);
     }
 
     @Test

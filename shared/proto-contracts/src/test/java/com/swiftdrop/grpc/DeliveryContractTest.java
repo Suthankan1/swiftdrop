@@ -85,6 +85,36 @@ class DeliveryContractTest {
     }
 
     @Test
+    @DisplayName("AuthorizeEventRecipient: verifies event-to-recipient authorization contract roundtrip")
+    void testAuthorizeEventRecipientSuccess() {
+        String eventId = UUID.randomUUID().toString();
+        String parcelId = UUID.randomUUID().toString();
+        String recipientSub = UUID.randomUUID().toString();
+
+        AuthorizeEventRecipientRequest request = AuthorizeEventRecipientRequest.newBuilder()
+                .setEventId(eventId)
+                .setParcelId(parcelId)
+                .setRecipientSub(recipientSub)
+                .setAllowStale(false)
+                .build();
+
+        AuthorizeEventRecipientResponse response = blockingStub.authorizeEventRecipient(request);
+
+        assertThat(response.getIsAuthorized()).isTrue();
+        assertThat(response.getEventId()).isEqualTo(eventId);
+        assertThat(response.getParcelId()).isEqualTo(parcelId);
+        assertThat(response.getRecipientSub()).isEqualTo(recipientSub);
+        assertThat(response.getTrackingNumber()).isEqualTo("SWD-2026-000001");
+        assertThat(response.getCurrentStatus()).isEqualTo("IN_TRANSIT");
+        assertThat(response.getEventType()).isEqualTo("parcel.status.changed.v1");
+        assertThat(response.getEventVersion()).isEqualTo(3L);
+        assertThat(response.getCurrentVersion()).isEqualTo(3L);
+        assertThat(response.getIsTerminal()).isFalse();
+        assertThat(response.getIsStale()).isFalse();
+        assertThat(response.getAuthorizationReason()).isEqualTo("AUTHORIZED");
+    }
+
+    @Test
     @DisplayName("ListUnassignedParcels: returns paginated unassigned parcel summaries")
     void testListUnassignedParcelsSuccess() {
         ListUnassignedParcelsRequest request = ListUnassignedParcelsRequest.newBuilder()
@@ -247,6 +277,28 @@ class DeliveryContractTest {
                     .setInTransitCount(10L)
                     .setCreatedCount(55L)
                     .setAverageDeliveryHours(3.5)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void authorizeEventRecipient(AuthorizeEventRecipientRequest request,
+                                            StreamObserver<AuthorizeEventRecipientResponse> responseObserver) {
+            AuthorizeEventRecipientResponse response = AuthorizeEventRecipientResponse.newBuilder()
+                    .setIsAuthorized(true)
+                    .setEventId(request.getEventId())
+                    .setParcelId(request.getParcelId())
+                    .setRecipientSub(request.getRecipientSub())
+                    .setTrackingNumber("SWD-2026-000001")
+                    .setCurrentStatus("IN_TRANSIT")
+                    .setEventType("parcel.status.changed.v1")
+                    .setEventVersion(3L)
+                    .setCurrentVersion(3L)
+                    .setIsTerminal(false)
+                    .setIsStale(false)
+                    .setAuthorizationReason("AUTHORIZED")
                     .build();
 
             responseObserver.onNext(response);

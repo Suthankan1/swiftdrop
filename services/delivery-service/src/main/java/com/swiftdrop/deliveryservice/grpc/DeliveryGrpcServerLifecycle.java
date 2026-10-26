@@ -16,9 +16,9 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Manages the lifecycle of the Delivery gRPC server.
+ * Manages the lifecycle of the Delivery Operations gRPC server.
  * Binds SwiftDropGrpcServerSecurityInterceptor for M2M cryptographic authentication,
- * caller authorization, and actor delegation.
+ * caller authorization, and actor delegation enforcement.
  */
 @Component
 public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
@@ -40,7 +40,7 @@ public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
             ServiceTokenValidator serviceTokenValidator,
             ActorDelegationValidator actorDelegationValidator,
             GrpcSecurityPolicy grpcSecurityPolicy,
-            @Value("${grpc.server.port:9083}") int port,
+            @Value("${grpc.server.port:9082}") int port,
             @Value("${grpc.server.enabled:true}") boolean enabled) {
         this.deliveryInternalService = deliveryInternalService;
         this.serviceTokenValidator = serviceTokenValidator;

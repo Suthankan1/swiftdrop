@@ -213,6 +213,14 @@ mvn -f services/communications-service/pom.xml verify
 - [x] Strict data isolation: zero Communications SQL against Accounts or Keycloak databases; zero PII logged in Communications client.
 - [x] 8 automated unit/integration tests with in-process gRPC test server (`AccountsRecipientContactClientTest`).
 
+### IMPLEMENTED in Issue #111 (N10-B07):
+- [x] Type-safe gRPC client adapter `DeliveryRecipientAuthorizationClient` (`GrpcDeliveryRecipientAuthorizationClient`) implementing `IF-GRPC-11`.
+- [x] Delivery event authorization domain record `DeliveryEventAuthorization` (`isAuthorized`, `parcelId`, `eventId`, `recipientSub`, `merchantId`, `trackingNumber`, `currentStatus`, `eventType`, `eventVersion`, `currentVersion`, `isTerminal`, `isStale`, `authorizationReason`).
+- [x] Strict caller authentication (`SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE`) and forbidden actor delegation (`DelegationRequirement.FORBIDDEN`).
+- [x] Bounded timeout enforcement (default 2000ms deadline) and structured exception hierarchy (`DeliveryServiceUnavailableException` [retryable], `DeliverySecurityException`, `DeliveryAuthorizationException`).
+- [x] Strict data isolation: zero Communications SQL against Delivery database; zero PII in responses or client logs.
+- [x] 10 automated unit/integration tests with in-process gRPC test server (`DeliveryRecipientAuthorizationClientTest`).
+
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Kafka consumers and topic listener configurations (belongs to **Issue #32**).
 - ❌ External email or SMS transmission engines.
