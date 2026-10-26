@@ -93,6 +93,12 @@ class ProofPersistencePostgresIT {
     @Autowired
     private StatusTransitionService statusTransitionService;
 
+    @Autowired
+    private ProofCleanupTaskCoordinator taskCoordinator;
+
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     private UUID parcelId;
     private final String courierSub = "assigned-courier-pg-it";
     private final String customerSub = "customer-pg-it";
@@ -305,5 +311,51 @@ class ProofPersistencePostgresIT {
 
         assertThat(proofRepository.countByObjectReference(sharedRef)).isEqualTo(1L);
         assertThat(proofRepository.countByObjectReference("non-existent-ref")).isEqualTo(0L);
+    }
+
+    @Test
+    @DisplayName("ProofCleanupTaskCoordinator persists tasks and executes REQUIRES_NEW status transitions in PostgreSQL")
+    void proofCleanupTaskCoordinator_persistsAndTransitionsInPostgres() {
+        String orphanRef = "proofs/v1/" + UUID.randomUUID();
+        ProofCleanupTask created = taskCoordinator.recordDurableCleanup(orphanRef, "IT_TEST_REASON");
+
+        assertThat(created).isNotNull();
+        assertThat(created.getTaskId()).isNotNull();
+
+        // Verify task persisted in real PostgreSQL database
+        ProofCleanupTask inDb = cleanupRepository.findById(created.getTaskId()).orElseThrow();
+        assertThat(inDb.getObjectReference()).isEqualTo(orphanRef);
+        assertThat(inDb.getStatus()).isEqualTo("PENDING");
+
+        // Mark completed via coordinator
+        taskCoordinator.markCompleted(created.getTaskId());
+
+        ProofCleanupTask completedDb = cleanupRepository.findById(created.getTaskId()).orElseThrow();
+        assertThat(completedDb.getStatus()).isEqualTo("COMPLETED");
+
+        // Record failure attempt on new task
+        ProofCleanupTask task2 = taskCoordinator.recordDurableCleanup("proofs/v1/" + UUID.randomUUID(), "RETRY_TEST");
+        taskCoordinator.recordFailureAttempt(task2.getTaskId(), "TIMEOUT_1");
+
+        ProofCleanupTask retryDb = cleanupRepository.findById(task2.getTaskId()).orElseThrow();
+        assertThat(retryDb.getRetryCount()).isEqualTo(1);
+        assertThat(retryDb.getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("cleanupRepository.findByIdForUpdate acquires pessimistic row lock on cleanup task in PostgreSQL")
+    void cleanupRepository_findByIdForUpdate_acquiresLockInPostgres() {
+        String taskRef = "proofs/v1/" + UUID.randomUUID();
+        ProofCleanupTask task = new ProofCleanupTask(UUID.randomUUID(), taskRef, "LOCK_TEST");
+        cleanupRepository.saveAndFlush(task);
+
+        org.springframework.transaction.support.TransactionTemplate txTemplate =
+                new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        txTemplate.execute(status -> {
+            Optional<ProofCleanupTask> locked = cleanupRepository.findByIdForUpdate(task.getTaskId());
+            assertThat(locked).isPresent();
+            assertThat(locked.get().getObjectReference()).isEqualTo(taskRef);
+            return null;
+        });
     }
 }

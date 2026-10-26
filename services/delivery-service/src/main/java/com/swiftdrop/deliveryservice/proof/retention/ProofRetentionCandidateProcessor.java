@@ -103,16 +103,18 @@ public class ProofRetentionCandidateProcessor {
         try {
             proofObjectStorage.delete(reference);
             log.info("Physical storage object deleted for proof {} (parcel {})", proofId, parcel.getParcelId());
+        } catch (com.swiftdrop.deliveryservice.proof.storage.exception.ProofObjectNotFoundException notFound) {
+            log.info("Physical storage object was already absent for proof {} (parcel {})", proofId, parcel.getParcelId());
         } catch (RuntimeException ex) {
-            log.error("Physical storage deletion failed for proof {} (parcel {}): {}",
-                    proofId, parcel.getParcelId(), ex.getMessage());
+            log.error("Physical storage deletion failed for proof {} (parcel {})", proofId, parcel.getParcelId());
             // Roll back database transaction so proof metadata remains ACTIVE
             try {
                 TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             } catch (org.springframework.transaction.NoTransactionException ignored) {
                 // Running without Spring transaction context (e.g. standalone unit test)
             }
-            return RetentionCleanupResult.failedStorage(proofId, parcel.getParcelId(), ex.getMessage());
+            String sanitizedMessage = sanitizeStorageMessage(ex.getMessage());
+            return RetentionCleanupResult.failedStorage(proofId, parcel.getParcelId(), sanitizedMessage);
         }
 
         // 6. Atomically persist privacy tombstone in database
@@ -121,5 +123,12 @@ public class ProofRetentionCandidateProcessor {
         log.info("Proof metadata tombstoned for proof {} (parcel {})", proofId, parcel.getParcelId());
 
         return RetentionCleanupResult.purged(proofId, parcel.getParcelId());
+    }
+
+    private String sanitizeStorageMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "Physical storage deletion failed";
+        }
+        return message.replaceAll("proofs/v1/[0-9a-fA-F-]+", "[REDACTED_OBJECT_REF]");
     }
 }

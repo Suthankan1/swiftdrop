@@ -17,6 +17,7 @@ import com.swiftdrop.deliveryservice.proof.storage.ProofObjectStorage;
 import com.swiftdrop.deliveryservice.proof.storage.ProofObjectUpload;
 import com.swiftdrop.deliveryservice.proof.storage.RetrievedProofObject;
 import com.swiftdrop.deliveryservice.proof.storage.StoredProofObject;
+import com.swiftdrop.deliveryservice.proof.storage.exception.ProofObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +52,7 @@ public class ProofService {
     private final ProofObjectStorage proofObjectStorage;
     private final ProofCompensationService compensationService;
     private final ProofCleanupTaskRepository cleanupTaskRepository;
+    private final ProofCleanupTaskCoordinator taskCoordinator;
 
     public ProofService(
             ParcelRepository parcelRepository,
@@ -58,7 +60,17 @@ public class ProofService {
             @Autowired(required = false) CourierAssignmentContract courierAssignmentContract,
             @Autowired(required = false) ProofObjectStorage proofObjectStorage,
             ProofCompensationService compensationService) {
-        this(parcelRepository, proofRepository, courierAssignmentContract, proofObjectStorage, compensationService, null);
+        this(parcelRepository, proofRepository, courierAssignmentContract, proofObjectStorage, compensationService, null, null);
+    }
+
+    public ProofService(
+            ParcelRepository parcelRepository,
+            ProofOfDeliveryRepository proofRepository,
+            @Autowired(required = false) CourierAssignmentContract courierAssignmentContract,
+            @Autowired(required = false) ProofObjectStorage proofObjectStorage,
+            ProofCompensationService compensationService,
+            @Autowired(required = false) ProofCleanupTaskRepository cleanupTaskRepository) {
+        this(parcelRepository, proofRepository, courierAssignmentContract, proofObjectStorage, compensationService, cleanupTaskRepository, null);
     }
 
     @Autowired
@@ -68,13 +80,16 @@ public class ProofService {
             @Autowired(required = false) CourierAssignmentContract courierAssignmentContract,
             @Autowired(required = false) ProofObjectStorage proofObjectStorage,
             ProofCompensationService compensationService,
-            @Autowired(required = false) ProofCleanupTaskRepository cleanupTaskRepository) {
+            @Autowired(required = false) ProofCleanupTaskRepository cleanupTaskRepository,
+            @Autowired(required = false) ProofCleanupTaskCoordinator taskCoordinator) {
         this.parcelRepository = Objects.requireNonNull(parcelRepository, "parcelRepository cannot be null");
         this.proofRepository = Objects.requireNonNull(proofRepository, "proofRepository cannot be null");
         this.courierAssignmentContract = courierAssignmentContract;
         this.proofObjectStorage = proofObjectStorage;
         this.compensationService = Objects.requireNonNull(compensationService, "compensationService cannot be null");
         this.cleanupTaskRepository = cleanupTaskRepository;
+        this.taskCoordinator = taskCoordinator != null ? taskCoordinator
+                : (cleanupTaskRepository != null ? new ProofCleanupTaskCoordinator(cleanupTaskRepository) : null);
     }
 
     /**
@@ -193,7 +208,7 @@ public class ProofService {
         ProofObjectReference newRef = stored.reference();
 
         // Register rollback hook: if the database transaction rolls back, delete newly uploaded object from S3
-        registerRollbackCompensation(newRef);
+        registerRollbackCompensation(newRef, parcelId);
 
         // 2. Persist in database with transaction-safe replacement lifecycle
         try {
@@ -244,7 +259,7 @@ public class ProofService {
             log.info("Uploaded proof {} for parcel {}", saved.getProofId(), parcelId);
             return toResponse(saved);
         } catch (RuntimeException e) {
-            log.error("Database write failed after proof upload for parcel {}. Triggering compensation.", parcelId, e);
+            log.error("Database write failed after proof upload for parcel {}. Triggering compensation.", parcelId);
             if (newRef != null) {
                 compensationService.compensateOrphan(newRef, "DB_PERSISTENCE_FAILURE");
             }
@@ -252,13 +267,13 @@ public class ProofService {
         }
     }
 
-    private void registerRollbackCompensation(ProofObjectReference newRef) {
+    private void registerRollbackCompensation(ProofObjectReference newRef, UUID parcelId) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int status) {
                     if (status == STATUS_ROLLED_BACK) {
-                        log.info("Transaction rolled back: compensating newly uploaded orphan proof object {}", newRef.value());
+                        log.info("Transaction rolled back: compensating newly uploaded orphan proof object for parcel {}", parcelId);
                         compensationService.compensateOrphan(newRef, "TRANSACTION_ROLLBACK");
                     }
                 }
@@ -284,8 +299,10 @@ public class ProofService {
         try {
             // Re-verify that no active proof record in the DB still points to oldRef
             if (proofRepository.countByObjectReference(oldRef) > 0) {
-                log.warn("Replaced proof object {} is still referenced by another proof record. Skipping deletion.", oldRef);
-                if (cleanupTaskRepository != null && taskId != null) {
+                log.warn("Replaced proof object is still referenced by another proof record. Skipping deletion for task {}", taskId);
+                if (taskCoordinator != null && taskId != null) {
+                    taskCoordinator.markFailed(taskId, "STILL_REFERENCED");
+                } else if (cleanupTaskRepository != null && taskId != null) {
                     cleanupTaskRepository.findById(taskId).ifPresent(t -> {
                         t.setStatus("FAILED");
                         cleanupTaskRepository.save(t);
@@ -294,9 +311,16 @@ public class ProofService {
                 return;
             }
             if (proofObjectStorage != null) {
-                proofObjectStorage.delete(new ProofObjectReference(oldRef));
-                log.info("Post-commit successfully deleted replaced proof object {}", oldRef);
-                if (cleanupTaskRepository != null && taskId != null) {
+                try {
+                    proofObjectStorage.delete(new ProofObjectReference(oldRef));
+                    log.info("Post-commit successfully deleted replaced proof object for task {}", taskId);
+                } catch (ProofObjectNotFoundException ex) {
+                    log.info("Replaced proof object was already absent from storage for task {}", taskId);
+                }
+
+                if (taskCoordinator != null && taskId != null) {
+                    taskCoordinator.markCompleted(taskId);
+                } else if (cleanupTaskRepository != null && taskId != null) {
                     cleanupTaskRepository.findById(taskId).ifPresent(t -> {
                         t.setStatus("COMPLETED");
                         cleanupTaskRepository.save(t);
@@ -304,8 +328,11 @@ public class ProofService {
                 }
             }
         } catch (Exception ex) {
-            log.warn("Post-commit synchronous deletion of replaced proof {} failed: {}. Cleanup task remains durable for retry.",
-                    oldRef, ex.getMessage());
+            log.warn("Post-commit synchronous deletion of replaced proof failed for task {}. Cleanup task remains durable for retry.",
+                    taskId);
+            if (taskCoordinator != null && taskId != null) {
+                taskCoordinator.recordFailureAttempt(taskId, "POST_COMMIT_FAILED");
+            }
         }
     }
 

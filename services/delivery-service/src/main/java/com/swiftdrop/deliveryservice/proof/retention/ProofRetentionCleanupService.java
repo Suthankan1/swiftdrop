@@ -120,10 +120,10 @@ public class ProofRetentionCleanupService {
                 RetentionCleanupResult result = candidateProcessor.processCandidate(candidate.getProofId());
                 results.add(result);
             } catch (Exception ex) {
-                log.error("Unexpected failure processing retention candidate proof {}: {}",
-                        candidate.getProofId(), ex.getMessage());
+                log.error("Unexpected failure processing retention candidate proof {}",
+                        candidate.getProofId());
                 results.add(RetentionCleanupResult.failedDatabase(
-                        candidate.getProofId(), candidate.getParcelId(), ex.getMessage()));
+                        candidate.getProofId(), candidate.getParcelId(), "Database error during candidate processing"));
             }
         }
 
