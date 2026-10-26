@@ -186,7 +186,48 @@ describe('CourierProofWorkspace component', () => {
     expect(screen.queryByRole('heading', { name: /record failed delivery reason/i })).not.toBeInTheDocument()
   })
 
-  it('isolates state across different courier subjects (Courier A vs Courier B)', async () => {
+  it('immediately removes previous parcel details from DOM when switching parcels', async () => {
+    const user = userEvent.setup()
+    let resolveParcel2: ((p: ParcelDetailResponse) => void) | undefined
+    const parcel2Promise = new Promise<ParcelDetailResponse>((resolve) => {
+      resolveParcel2 = resolve
+    })
+
+    const api = createMockApi({
+      getParcel: vi.fn(async (id: string) => {
+        if (id === MOCK_PARCEL_2) {
+          return parcel2Promise
+        }
+        return mockParcel1
+      }),
+    })
+
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierProofWorkspace apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(await screen.findByText('SWD-20261026-0001')).toBeInTheDocument()
+    expect(screen.getByText('Colombo 03')).toBeInTheDocument()
+
+    // Switch to second parcel
+    const pills = screen.getAllByRole('tab')
+    await user.click(pills[1]!)
+
+    // Old parcel details must be IMMEDIATELY removed from DOM
+    expect(screen.queryByText('SWD-20261026-0001')).not.toBeInTheDocument()
+    expect(screen.queryByText('Colombo 03')).not.toBeInTheDocument()
+    expect(screen.getByText(/loading parcel handover context/i)).toBeInTheDocument()
+
+    // Resolve parcel 2
+    resolveParcel2!(mockParcel2)
+
+    expect(await screen.findByText('SWD-20261026-0002')).toBeInTheDocument()
+    expect(screen.getByText('Kandy Road, Kelaniya')).toBeInTheDocument()
+  })
+
+  it('immediately removes previous courier assignments and parcel data from visible DOM on logout or subject change', async () => {
     const api = createMockApi()
     const { rerender } = render(
       <TestProviders auth={courierAuth('courier-a')}>
@@ -195,16 +236,98 @@ describe('CourierProofWorkspace component', () => {
     )
 
     expect(await screen.findByText('SWD-20261026-0001')).toBeInTheDocument()
+    expect(screen.getByText('2 Parcels')).toBeInTheDocument()
 
-    // Switch subject to Courier B
+    // Courier logs out (unauthenticated / empty subject)
     rerender(
-      <TestProviders auth={courierAuth('courier-b')}>
+      <TestProviders auth={anonymousAuth}>
         <CourierProofWorkspace apiOverride={api} />
       </TestProviders>,
     )
 
-    await waitFor(() => {
-      expect(api.getMyAssignments).toHaveBeenCalledTimes(2)
+    // DOM must immediately remove all Courier A data
+    expect(screen.queryByText('SWD-20261026-0001')).not.toBeInTheDocument()
+    expect(screen.queryByText('2 Parcels')).not.toBeInTheDocument()
+    expect(screen.queryByText('Colombo 03')).not.toBeInTheDocument()
+    expect(screen.getByText('0 Parcels')).toBeInTheDocument()
+  })
+
+  it('fails closed and disables proof capture when proof metadata lookup encounters a server error', async () => {
+    const api = createMockApi({
+      getProofMetadata: vi.fn(async () => {
+        throw new CourierProofError('service-unavailable', 'Proof service timed out')
+      }),
     })
+
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierProofWorkspace apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(await screen.findByText('SWD-20261026-0001')).toBeInTheDocument()
+
+    // Fail-closed alert is shown
+    expect(await screen.findByText(/proof service timed out/i)).toBeInTheDocument()
+    expect(screen.getByText(/proof submission is locked/i)).toBeInTheDocument()
+
+    // Submit button is disabled
+    const submitBtn = screen.getByRole('button', { name: /submit proof of delivery/i })
+    expect(submitBtn).toBeDisabled()
+
+    // File input is disabled
+    const fileInput = document.getElementById(`proof-file-input-${MOCK_PARCEL_1}`) as HTMLInputElement
+    expect(fileInput).toBeDisabled()
+  })
+
+  it('fails closed and displays access denied when proof metadata lookup returns 403', async () => {
+    const api = createMockApi({
+      getProofMetadata: vi.fn(async () => {
+        throw new CourierProofError('forbidden', 'Forbidden: You are not assigned to this parcel')
+      }),
+    })
+
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierProofWorkspace apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(await screen.findByText('SWD-20261026-0001')).toBeInTheDocument()
+    expect(await screen.findByText(/forbidden: you are not assigned/i)).toBeInTheDocument()
+  })
+
+  it('allows retrying proof verification after an ambiguous error and unlocks form if clean 404', async () => {
+    const user = userEvent.setup()
+    let calls = 0
+    const getProofMetadata = vi.fn(async () => {
+      calls++
+      if (calls === 1) {
+        throw new CourierProofError('service-unavailable', 'Temporary storage failure')
+      }
+      throw new CourierProofError('not-found', 'No proof recorded')
+    })
+
+    const api = createMockApi({ getProofMetadata })
+
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierProofWorkspace apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(await screen.findByText(/temporary storage failure/i)).toBeInTheDocument()
+
+    const retryBtn = screen.getByRole('button', { name: /retry verification/i })
+    await user.click(retryBtn)
+
+    await waitFor(() => {
+      expect(getProofMetadata).toHaveBeenCalledTimes(2)
+    })
+
+    // Once clean 404 is confirmed, the lock alert is removed and file input is unlocked
+    expect(screen.queryByText(/proof submission is locked/i)).not.toBeInTheDocument()
+    const fileInput = document.getElementById(`proof-file-input-${MOCK_PARCEL_1}`) as HTMLInputElement
+    expect(fileInput).not.toBeDisabled()
   })
 })

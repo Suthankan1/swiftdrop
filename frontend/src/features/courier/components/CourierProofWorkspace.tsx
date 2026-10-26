@@ -12,6 +12,14 @@ import type {
 import { FailedDeliveryReason } from './FailedDeliveryReason'
 import { ProofCaptureForm } from './ProofCaptureForm'
 
+export type ProofLookupStatus =
+  | 'idle'
+  | 'checking'
+  | 'verified-none'
+  | 'verified-exists'
+  | 'error'
+  | 'forbidden'
+
 export interface CourierProofWorkspaceProps {
   apiOverride?: ReturnType<typeof createCourierProofApi>
 }
@@ -39,7 +47,24 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
   const [isLoadingParcel, setIsLoadingParcel] = useState(false)
   const [parcelError, setParcelError] = useState<string | null>(null)
   const [existingProof, setExistingProof] = useState<ProofDetailResponse | null>(null)
+  const [proofLookupStatus, setProofLookupStatus] = useState<ProofLookupStatus>('idle')
+  const [proofLookupError, setProofLookupError] = useState<string | null>(null)
   const [showExceptionSection, setShowExceptionSection] = useState(false)
+
+  // Clear stale data immediately on subject switch
+  const [prevSubject, setPrevSubject] = useState(subject)
+  if (subject !== prevSubject) {
+    setPrevSubject(subject)
+    setAssignments([])
+    setSelectedParcelId(null)
+    setSelectedParcel(null)
+    setExistingProof(null)
+    setProofLookupStatus('idle')
+    setProofLookupError(null)
+    setAssignmentError(null)
+    setParcelError(null)
+    setShowExceptionSection(false)
+  }
 
   // Fetch active assignments on load or subject change
   useEffect(() => {
@@ -56,7 +81,12 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
         if (active) {
           setAssignments(list)
           if (list.length > 0) {
-            setSelectedParcelId((prev) => prev || list[0]!.parcelId)
+            setSelectedParcelId((prev) => (prev && list.some((a) => a.parcelId === prev) ? prev : list[0]!.parcelId))
+          } else {
+            setSelectedParcelId(null)
+            setSelectedParcel(null)
+            setExistingProof(null)
+            setProofLookupStatus('idle')
           }
         }
       } catch (err) {
@@ -79,7 +109,7 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
     }
   }, [api, subject])
 
-  // Fetch selected parcel details & check existing proof
+  // Fetch selected parcel details & check authoritative existing proof
   useEffect(() => {
     if (!selectedParcelId || !subject) return
 
@@ -90,21 +120,47 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
       try {
         setIsLoadingParcel(true)
         setParcelError(null)
+        setProofLookupStatus('checking')
+        setProofLookupError(null)
+
         const parcelData = await api.getParcel(selectedParcelId, controller.signal)
         if (!active) return
         setSelectedParcel(parcelData)
 
-        // Try to fetch existing proof metadata
+        // Authoritative proof lookup
         try {
           const proofData = await api.getProofMetadata(selectedParcelId, controller.signal)
-          if (active) setExistingProof(proofData)
+          if (!active) return
+          setExistingProof(proofData)
+          setProofLookupStatus('verified-exists')
         } catch (proofErr) {
-          if (proofErr instanceof CourierProofError && proofErr.kind === 'not-found') {
-            if (active) setExistingProof(null)
+          if (!active || controller.signal.aborted) return
+          if (proofErr instanceof CourierProofError) {
+            if (proofErr.kind === 'not-found') {
+              // 404: Authoritatively confirmed NO proof exists on server
+              setExistingProof(null)
+              setProofLookupStatus('verified-none')
+            } else if (proofErr.kind === 'auth-required' || proofErr.kind === 'forbidden') {
+              setExistingProof(null)
+              setProofLookupStatus('forbidden')
+              setProofLookupError(proofErr.message)
+            } else {
+              // Server error / network failure / timeout: UNCERTAIN
+              setExistingProof(null)
+              setProofLookupStatus('error')
+              setProofLookupError(proofErr.message)
+            }
+          } else {
+            setExistingProof(null)
+            setProofLookupStatus('error')
+            setProofLookupError('Unable to reach server to verify existing proof records.')
           }
         }
       } catch (err) {
         if (!active || controller.signal.aborted) return
+        setSelectedParcel(null)
+        setExistingProof(null)
+        setProofLookupStatus('idle')
         if (err instanceof CourierProofError) {
           setParcelError(err.message)
         } else {
@@ -123,10 +179,14 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
     }
   }, [api, selectedParcelId, subject])
 
-
   const handleSelectParcel = (parcelId: string) => {
+    if (parcelId === selectedParcelId) return
     setSelectedParcelId(parcelId)
+    // Clear old parcel data immediately to prevent rendering previous parcel under new selection
+    setSelectedParcel(null)
     setExistingProof(null)
+    setProofLookupStatus('checking')
+    setProofLookupError(null)
     setParcelError(null)
     setShowExceptionSection(false)
   }
@@ -135,6 +195,7 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
     setSelectedParcelId(null)
     setSelectedParcel(null)
     setExistingProof(null)
+    setProofLookupStatus('idle')
     setIsLoadingAssignments(true)
     setAssignmentError(null)
     void api
@@ -149,6 +210,30 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
       .finally(() => {
         setIsLoadingAssignments(false)
       })
+  }
+
+  const handleRetryProofVerification = async () => {
+    if (!selectedParcelId) return
+    setProofLookupStatus('checking')
+    setProofLookupError(null)
+    try {
+      const proofData = await api.getProofMetadata(selectedParcelId)
+      setExistingProof(proofData)
+      setProofLookupStatus('verified-exists')
+    } catch (err) {
+      if (err instanceof CourierProofError && err.kind === 'not-found') {
+        setExistingProof(null)
+        setProofLookupStatus('verified-none')
+      } else if (err instanceof CourierProofError && (err.kind === 'auth-required' || err.kind === 'forbidden')) {
+        setExistingProof(null)
+        setProofLookupStatus('forbidden')
+        setProofLookupError(err.message)
+      } else {
+        setExistingProof(null)
+        setProofLookupStatus('error')
+        setProofLookupError(err instanceof Error ? err.message : 'Server verification failed.')
+      }
+    }
   }
 
   return (
@@ -234,22 +319,57 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
 
           {!isLoadingParcel && selectedParcel && (
             <>
+              {/* Fail-closed proof lookup warning */}
+              {proofLookupStatus === 'error' && (
+                <div className="feedback-banner is-error card" role="alert">
+                  <span>
+                    {proofLookupError ||
+                      'Unable to verify existing proof records on server. Proof capture is locked to prevent duplicate or conflicting submissions.'}
+                  </span>
+                  <button
+                    type="button"
+                    className="button button-secondary button-small"
+                    onClick={() => {
+                      void handleRetryProofVerification()
+                    }}
+                  >
+                    Retry Verification
+                  </button>
+                </div>
+              )}
+
+              {proofLookupStatus === 'forbidden' && (
+                <div className="feedback-banner is-error card" role="alert">
+                  <span>
+                    {proofLookupError ||
+                      'Access denied when verifying proof records for this parcel. Proof capture is locked.'}
+                  </span>
+                </div>
+              )}
+
               <ProofCaptureForm
                 key={`${subject}-${selectedParcel.parcelId}-${existingProof?.proofId || 'new'}`}
                 parcel={selectedParcel}
                 api={api}
                 subject={subject}
                 existingProof={existingProof}
+                proofLookupStatus={proofLookupStatus}
                 onSuccess={(proof) => {
-                  setExistingProof({
-                    ...proof,
-                    objectReference: '[SECURED]',
-                    evidenceType: 'PHOTO',
-                    contentType: 'image/jpeg',
-                    contentLength: null,
-                    recipientName: null,
-                    deliveryNote: null,
-                  })
+                  if ('contentType' in proof) {
+                    setExistingProof(proof as ProofDetailResponse)
+                    setProofLookupStatus('verified-exists')
+                    return
+                  }
+                  // Authoritatively fetch metadata from server to populate detail without fabricating fields
+                  void api
+                    .getProofMetadata(selectedParcel.parcelId)
+                    .then((detail) => {
+                      setExistingProof(detail)
+                      setProofLookupStatus('verified-exists')
+                    })
+                    .catch(() => {
+                      setProofLookupStatus('verified-exists')
+                    })
                 }}
               />
 

@@ -17,12 +17,21 @@ import {
 import { ProofPreview } from './ProofPreview'
 import { ProofStatus } from './ProofStatus'
 
+export type ProofLookupStatus =
+  | 'idle'
+  | 'checking'
+  | 'verified-none'
+  | 'verified-exists'
+  | 'error'
+  | 'forbidden'
+
 export interface ProofCaptureFormProps {
   parcel: ParcelDetailResponse
   api: ReturnType<typeof createCourierProofApi>
   subject: string
   existingProof?: ProofDetailResponse | null
-  onSuccess?: (proof: ProofResponse) => void
+  proofLookupStatus?: ProofLookupStatus
+  onSuccess?: (proof: ProofResponse | ProofDetailResponse) => void
 }
 
 export function ProofCaptureForm({
@@ -30,6 +39,7 @@ export function ProofCaptureForm({
   api,
   subject,
   existingProof = null,
+  proofLookupStatus,
   onSuccess,
 }: ProofCaptureFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -63,16 +73,18 @@ export function ProofCaptureForm({
     }
   }, [])
 
-
   // Lifecycle check: only OUT_FOR_DELIVERY allows proof upload per conservative rule
   const isTerminal = parcel.currentStatus === 'DELIVERED' || parcel.currentStatus === 'FAILED'
   const isEligibleStage = parcel.currentStatus === 'OUT_FOR_DELIVERY'
 
   const handleFileChange = (file: File | null) => {
     setValidationError(null)
-    setUploadError(null)
-    setIsAmbiguousFailure(false)
-    setReconciliationMessage(null)
+    // NOTE: When an upload outcome is uncertain, changing the selected file
+    // MUST NOT clear isAmbiguousFailure or bypass the reconciliation requirement.
+    if (!isAmbiguousFailure) {
+      setUploadError(null)
+      setReconciliationMessage(null)
+    }
 
     if (!file) {
       setSelectedFile(null)
@@ -118,12 +130,23 @@ export function ProofCaptureForm({
     }
     setIsUploading(false)
     setUploadProgress(0)
-    setUploadError('Upload was cancelled.')
+    setIsAmbiguousFailure(true)
+    setUploadError('Upload cancelled mid-flight. Server state is uncertain. Check server status before proceeding.')
   }
 
   const handleStartSubmit = () => {
     setValidationError(null)
     setUploadError(null)
+
+    if (proofLookupStatus !== undefined && proofLookupStatus !== 'verified-none') {
+      setValidationError('Cannot submit proof while server proof state is unverified or locked.')
+      return
+    }
+
+    if (isAmbiguousFailure) {
+      setValidationError('Previous upload outcome was uncertain. Server reconciliation is required before submitting.')
+      return
+    }
 
     if (!selectedFile) {
       setValidationError('Please select or capture a proof photo before submitting.')
@@ -151,7 +174,7 @@ export function ProofCaptureForm({
   }
 
   const handleConfirmUpload = async () => {
-    if (!selectedFile || isUploading) return
+    if (!selectedFile || isUploading || isAmbiguousFailure) return
 
     setShowConfirmation(false)
     setIsUploading(true)
@@ -179,7 +202,8 @@ export function ProofCaptureForm({
       if (onSuccess) onSuccess(response)
     } catch (err) {
       if (controller.signal.aborted) {
-        setUploadError('Upload cancelled.')
+        setIsAmbiguousFailure(true)
+        setUploadError('Upload was cancelled. Server state is uncertain. Check server status before proceeding.')
         return
       }
 
@@ -191,7 +215,7 @@ export function ProofCaptureForm({
           void handleReconcileServerState()
           return
         }
-        if (err.kind === 'ambiguous-failure') {
+        if (err.kind === 'ambiguous-failure' || err.kind === 'storage-timeout') {
           setIsAmbiguousFailure(true)
           setUploadError(err.message)
           return
@@ -218,9 +242,11 @@ export function ProofCaptureForm({
       setReconciliationMessage('Server reconciliation confirmed: Proof was successfully recorded!')
       setSelectedFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
+      if (onSuccess) onSuccess(serverProof)
     } catch (err) {
       if (err instanceof CourierProofError && err.kind === 'not-found') {
         setIsAmbiguousFailure(false)
+        setUploadError(null)
         setReconciliationMessage('Server check verified: No proof recorded on server. Safe to retry upload.')
       } else {
         setReconciliationMessage('Unable to reach server to verify proof status. Please check connection.')
@@ -290,6 +316,27 @@ export function ProofCaptureForm({
         </div>
       )}
 
+      {proofLookupStatus === 'checking' && (
+        <div className="feedback-banner feedback-banner-pending" role="status">
+          <span>Verifying parcel proof records with server...</span>
+        </div>
+      )}
+
+      {proofLookupStatus === 'error' && (
+        <div className="feedback-banner is-error" role="alert">
+          <span>
+            Unable to verify existing proof records on server (service unavailable or connection failure).
+            Proof submission is locked to prevent duplicate or conflicting submissions.
+          </span>
+        </div>
+      )}
+
+      {proofLookupStatus === 'forbidden' && (
+        <div className="feedback-banner is-error" role="alert">
+          <span>Access denied when verifying proof records for this parcel.</span>
+        </div>
+      )}
+
       {/* File Upload / Camera Zone */}
       <div className="form-section">
         <label className="field-label" htmlFor={`proof-file-input-${parcel.parcelId}`}>
@@ -298,13 +345,13 @@ export function ProofCaptureForm({
 
         {!selectedFile ? (
           <div
-            className={`file-dropzone ${isDragOver ? 'is-dragover' : ''} ${!isEligibleStage ? 'is-disabled' : ''}`}
+            className={`file-dropzone ${isDragOver ? 'is-dragover' : ''} ${!isEligibleStage || (proofLookupStatus !== undefined && proofLookupStatus !== 'verified-none') ? 'is-disabled' : ''}`}
             onDragOver={(e) => {
               e.preventDefault()
-              if (isEligibleStage) setIsDragOver(true)
+              if (isEligibleStage && (proofLookupStatus === undefined || proofLookupStatus === 'verified-none')) setIsDragOver(true)
             }}
             onDragLeave={() => setIsDragOver(false)}
-            onDrop={isEligibleStage ? onDrop : undefined}
+            onDrop={isEligibleStage && (proofLookupStatus === undefined || proofLookupStatus === 'verified-none') ? onDrop : undefined}
           >
             <input
               id={`proof-file-input-${parcel.parcelId}`}
@@ -314,7 +361,7 @@ export function ProofCaptureForm({
               capture="environment"
               className="file-input-hidden"
               onChange={onFileInputChange}
-              disabled={!isEligibleStage || isUploading}
+              disabled={!isEligibleStage || isUploading || (proofLookupStatus !== undefined && proofLookupStatus !== 'verified-none')}
             />
             <div className="dropzone-content">
               <svg className="dropzone-icon" width="36" height="36" viewBox="0 0 24 24" fill="none">
@@ -329,7 +376,7 @@ export function ProofCaptureForm({
                 type="button"
                 className="button button-secondary button-small"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={!isEligibleStage || isUploading}
+                disabled={!isEligibleStage || isUploading || (proofLookupStatus !== undefined && proofLookupStatus !== 'verified-none')}
               >
                 Select Photo
               </button>
@@ -502,7 +549,13 @@ export function ProofCaptureForm({
             type="button"
             className="button button-primary"
             onClick={handleStartSubmit}
-            disabled={!isEligibleStage || !selectedFile || isUploading}
+            disabled={
+              !isEligibleStage ||
+              !selectedFile ||
+              isUploading ||
+              isAmbiguousFailure ||
+              (proofLookupStatus !== undefined && proofLookupStatus !== 'verified-none')
+            }
           >
             Submit Proof of Delivery
           </button>

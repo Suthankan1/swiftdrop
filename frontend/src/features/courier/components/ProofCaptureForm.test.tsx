@@ -280,4 +280,143 @@ describe('ProofCaptureForm component', () => {
     expect(getProofMetadata).toHaveBeenCalledWith(MOCK_PARCEL_ID)
     expect(await screen.findByRole('heading', { name: /proof of delivery confirmed/i })).toBeInTheDocument()
   })
+
+  it('cancels in-flight upload, marks outcome as uncertain, and disables submission until reconciled', async () => {
+    const user = userEvent.setup()
+    let abortCallback: (() => void) | undefined
+    const uploadProof = vi.fn(async (params) => {
+      return new Promise<ProofResponse>((_, reject) => {
+        abortCallback = () => {
+          reject(new CourierProofError('ambiguous-failure', 'Upload operation was cancelled by caller.'))
+        }
+        if (params.signal) {
+          params.signal.addEventListener('abort', abortCallback)
+        }
+      })
+    })
+    const getProofMetadata = vi.fn(async () => {
+      throw new CourierProofError('not-found', 'No proof on server')
+    })
+    const api = createMockApi({ uploadProof, getProofMetadata })
+
+    render(
+      <ProofCaptureForm
+        parcel={outForDeliveryParcel}
+        api={api}
+        subject="courier-test-sub"
+      />,
+    )
+
+    const fileInput = document.getElementById(`proof-file-input-${MOCK_PARCEL_ID}`) as HTMLInputElement
+    const validFile = new File([new Uint8Array(1024)], 'photo.jpg', { type: 'image/jpeg' })
+    await user.upload(fileInput, validFile)
+
+    await user.click(screen.getByRole('button', { name: /submit proof of delivery/i }))
+    await user.click(screen.getByRole('button', { name: /yes, upload proof/i }))
+
+    // Progress bar and Cancel button should be visible
+    const cancelBtn = await screen.findByRole('button', { name: /cancel upload/i })
+    expect(cancelBtn).toBeInTheDocument()
+
+    // Trigger cancel
+    await user.click(cancelBtn)
+
+    // Outcome is marked as uncertain
+    expect(await screen.findByRole('alert')).toHaveTextContent(/uncertain/i)
+    const reconcileBtn = screen.getByRole('button', { name: /check server status & reconcile/i })
+    expect(reconcileBtn).toBeInTheDocument()
+
+    // Submit button remains disabled while uncertain
+    const submitBtn = screen.getByRole('button', { name: /submit proof of delivery/i })
+    expect(submitBtn).toBeDisabled()
+
+    // Reconcile with 404 unlocks submission
+    await user.click(reconcileBtn)
+    expect(await screen.findByText(/no proof recorded on server\. safe to retry upload/i)).toBeInTheDocument()
+    expect(submitBtn).toBeEnabled()
+  })
+
+  it('prevents changing the selected file from bypassing the reconciliation requirement when uncertain', async () => {
+    const user = userEvent.setup()
+    const uploadProof = vi.fn(async () => {
+      throw new CourierProofError('ambiguous-failure', 'Network connection interrupted.')
+    })
+    const api = createMockApi({ uploadProof })
+
+    render(
+      <ProofCaptureForm
+        parcel={outForDeliveryParcel}
+        api={api}
+        subject="courier-test-sub"
+      />,
+    )
+
+    const fileInput = document.getElementById(`proof-file-input-${MOCK_PARCEL_ID}`) as HTMLInputElement
+    const fileA = new File([new Uint8Array(1024)], 'photo-a.jpg', { type: 'image/jpeg' })
+    await user.upload(fileInput, fileA)
+
+    await user.click(screen.getByRole('button', { name: /submit proof of delivery/i }))
+    await user.click(screen.getByRole('button', { name: /yes, upload proof/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/interrupted/i)
+
+    // User attempts to change file to photo-b to bypass reconciliation
+    const removeBtn = screen.getByRole('button', { name: /remove selected proof image/i })
+    await user.click(removeBtn)
+
+    const fileInputNew = document.getElementById(`proof-file-input-${MOCK_PARCEL_ID}`) as HTMLInputElement
+    const fileB = new File([new Uint8Array(2048)], 'photo-b.png', { type: 'image/png' })
+    await user.upload(fileInputNew, fileB)
+
+    // Reconciliation panel and error must persist; submit button remains disabled
+    expect(screen.getByRole('region', { name: /ambiguous upload reconciliation/i })).toBeInTheDocument()
+    const submitBtn = screen.getByRole('button', { name: /submit proof of delivery/i })
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('fails closed and disables submission when proofLookupStatus is checking, error, or forbidden', () => {
+    const api = createMockApi()
+
+    // 1. Checking state
+    const { rerender } = render(
+      <ProofCaptureForm
+        parcel={outForDeliveryParcel}
+        api={api}
+        subject="courier-test-sub"
+        proofLookupStatus="checking"
+      />,
+    )
+
+    expect(screen.getByText(/verifying parcel proof records with server/i)).toBeInTheDocument()
+    const fileInput1 = document.getElementById(`proof-file-input-${MOCK_PARCEL_ID}`) as HTMLInputElement
+    expect(fileInput1).toBeDisabled()
+
+    // 2. Error state
+    rerender(
+      <ProofCaptureForm
+        parcel={outForDeliveryParcel}
+        api={api}
+        subject="courier-test-sub"
+        proofLookupStatus="error"
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/unable to verify existing proof records on server/i)
+    const fileInput2 = document.getElementById(`proof-file-input-${MOCK_PARCEL_ID}`) as HTMLInputElement
+    expect(fileInput2).toBeDisabled()
+
+    // 3. Forbidden state
+    rerender(
+      <ProofCaptureForm
+        parcel={outForDeliveryParcel}
+        api={api}
+        subject="courier-test-sub"
+        proofLookupStatus="forbidden"
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/access denied when verifying proof records/i)
+    const fileInput3 = document.getElementById(`proof-file-input-${MOCK_PARCEL_ID}`) as HTMLInputElement
+    expect(fileInput3).toBeDisabled()
+  })
 })

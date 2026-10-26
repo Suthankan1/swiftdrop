@@ -41,16 +41,17 @@ export function FailedDeliveryReason({
       <div className="failure-boundary-notice" role="note">
         <strong>Lifecycle Boundary Notice:</strong>
         <p className="muted">
-          Failed delivery status transitions require the authoritative lifecycle command
+          Delivery exception metadata is recorded locally in preparation for lifecycle dispatch.
+          Transitioning parcel status to <code>FAILED</code> requires the authoritative lifecycle command
           (<code>PATCH /api/v1/parcels/{'{parcelId}'}/status</code> owned by Issue #98 / #153).
-          This component prepares verified failure reason metadata without committing invalid state changes.
+          No status change has been committed to the backend.
         </p>
       </div>
 
       <div className="failure-form-wrap">
         <div className="field">
           <label htmlFor={`failure-reason-select-${parcelId}`} className="field-label">
-            Standard Failure Reason
+            Approved Failure Reason
           </label>
           <select
             id={`failure-reason-select-${parcelId}`}
@@ -87,7 +88,7 @@ export function FailedDeliveryReason({
               setFailureNotes(e.target.value)
               setIsReady(false)
             }}
-            placeholder="Add detailed context regarding the delivery attempt (e.g. intercom unanswered, gate locked)..."
+            placeholder="Add detailed context regarding the delivery attempt (e.g. recipient absent, gate locked)..."
             disabled={disabled}
           />
         </div>
@@ -108,7 +109,7 @@ export function FailedDeliveryReason({
             <span>
               Failure reason recorded locally: <strong>{selectedReason}</strong>
               {trackingNumber ? ` for parcel ${trackingNumber}` : ''}.
-              Ready for lifecycle dispatch (Issue #98/#153).
+              Held in local state for lifecycle dispatch (Issue #98/#153). Not committed to backend.
             </span>
           </div>
         )}

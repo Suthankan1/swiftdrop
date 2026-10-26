@@ -53,7 +53,7 @@ export function ProofStatus({
       <div className="feedback-banner is-success" role="status" aria-live="polite">
         <span>
           Proof photo and handover metadata successfully persisted in private storage.
-          Parcel is verified for completion.
+          Handover evidence is recorded. Final status transition to DELIVERED is managed via lifecycle status command.
         </span>
       </div>
 
@@ -99,7 +99,8 @@ export function ProofStatus({
         <strong>Conservative Delivery Policy:</strong>
         <p className="muted">
           Per platform integrity rules, verified delivery evidence cannot be arbitrarily overwritten or replaced.
-          Final status transition to <code>DELIVERED</code> is committed via status command (Issue #23 / #98).
+          Final status transition to <code>DELIVERED</code> is committed via separate status command (Issue #23 / #98).
+          Uploading proof records evidence but does not automatically transition the parcel status.
         </p>
       </div>
 

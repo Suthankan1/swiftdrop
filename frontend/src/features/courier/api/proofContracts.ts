@@ -105,13 +105,13 @@ export interface UploadProofParams {
 }
 
 export const STANDARD_FAILURE_REASONS = [
-  { code: 'RECIPIENT_UNAVAILABLE', label: 'Recipient not available at address' },
-  { code: 'INCORRECT_ADDRESS', label: 'Address could not be located or invalid' },
-  { code: 'ACCESS_RESTRICTED', label: 'Premises locked, gate code required, or access denied' },
-  { code: 'CUSTOMER_REJECTED', label: 'Recipient rejected delivery of the parcel' },
-  { code: 'DAMAGED_IN_TRANSIT', label: 'Parcel package damaged before handover' },
-  { code: 'SAFETY_CONCERN', label: 'Safety hazard or security restriction at location' },
-  { code: 'OTHER', label: 'Other operational reason' },
+  { code: 'RECIPIENT_UNAVAILABLE', label: 'Recipient unavailable or absent at address' },
+  { code: 'INCORRECT_ADDRESS', label: 'Incorrect or unlocatable destination address' },
+  { code: 'REFUSED_BY_RECIPIENT', label: 'Delivery refused by recipient' },
+  { code: 'PARCEL_DAMAGED', label: 'Parcel package physically damaged' },
+  { code: 'FORCE_MAJEURE', label: 'Force majeure / unforeseen transit interruption' },
+  { code: 'CANCELLED_BY_SENDER', label: 'Delivery cancelled by sender' },
+  { code: 'PICKUP_FAILED_SENDER_ABSENT', label: 'Pickup failed - sender absent' },
 ] as const
 
 export type FailureReasonCode = (typeof STANDARD_FAILURE_REASONS)[number]['code']
