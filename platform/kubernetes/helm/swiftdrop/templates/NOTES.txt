@@ -1,0 +1,44 @@
+================================================================================
+          SWIFTDROP PLATFORM HELM FOUNDATION DEPLOYED (Issue #149)
+================================================================================
+
+Release:   {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Chart:     {{ .Chart.Name }}-{{ .Chart.Version }}
+App:       SwiftDrop {{ .Chart.AppVersion }}
+
+--- 1. BROWSER & API ENDPOINTS (via embedded Traefik Ingress) ---
+{{- if .Values.ingress.enabled }}
+Primary Domain (Loopback Ingress via 127.0.0.1:18443):
+  * HTTPS Frontend SPA:  https://{{ .Values.ingress.host }}:18443/
+  * HTTPS API Gateway:   https://{{ .Values.ingress.host }}:18443/api/v1/
+  * HTTPS GraphQL Query: https://{{ .Values.ingress.host }}:18443/graphql
+  * HTTPS Keycloak IdP:  https://{{ .Values.ingress.host }}:18443/realms/swiftdrop/
+
+{{- if .Values.ingress.subdomains.enabled }}
+Subdomains (Add to /etc/hosts pointing to 127.0.0.1):
+  * SPA:      https://{{ .Values.ingress.subdomains.app }}:18443/
+  * Gateway:  https://{{ .Values.ingress.subdomains.api }}:18443/api/v1/
+  * Keycloak: https://{{ .Values.ingress.subdomains.auth }}:18443/realms/swiftdrop/
+{{- end }}
+{{- end }}
+
+--- 2. LOCAL TLS CERTIFICATE CONFIGURATION ---
+To establish browser and curl trust without insecure flags:
+  1. Generate local CA and leaf cert for swiftdrop.local and *.swiftdrop.local:
+     ./platform/kubernetes/helm/scripts/generate-tls-secret.sh
+  2. Add 'swiftdrop.local' and subdomains to your local /etc/hosts:
+     127.0.0.1 swiftdrop.local app.swiftdrop.local api.swiftdrop.local auth.swiftdrop.local
+
+--- 3. SECURITY & ISOLATION BOUNDARIES ENFORCED ---
+  * Non-Root Workloads: Java (UID 10001), Frontend (UID 101), Keycloak (UID 1000).
+  * API Token Mounting: Disabled on all microservice ServiceAccounts.
+  * Internal Services: ClusterIP only; no LoadBalancer or NodePort services.
+  * NetworkPolicy: Default-deny on ingress & egress with strict communication matrix.
+  * Secrets Decoupling: Referenced externally via Kubernetes Secrets; zero plaintext credentials.
+
+--- 4. POST-INSTALL VERIFICATION ---
+Run the automated security and isolation verification suite:
+  ./platform/kubernetes/helm/scripts/verify-security.sh
+
+================================================================================
