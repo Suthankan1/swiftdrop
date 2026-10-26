@@ -68,6 +68,15 @@ swiftdrop:
       backoff-multiplier: 2.0
       max-backoff-seconds: 300
       topic: ${KAFKA_TOPIC_PARCEL_LIFECYCLE:parcel.lifecycle.v1}
+  proof-storage:
+    enabled: ${SWIFTDROP_STORAGE_ENABLED:false}
+    endpoint: ${S3_ENDPOINT:}
+    bucket: ${SWIFTDROP_STORAGE_BUCKET:}
+    region: ${SWIFTDROP_STORAGE_REGION:}
+    access-key: ${SWIFTDROP_STORAGE_ACCESS_KEY:}
+    secret-key: ${SWIFTDROP_STORAGE_SECRET_KEY:}
+    api-call-timeout: ${SWIFTDROP_STORAGE_API_CALL_TIMEOUT:10s}
+    api-call-attempt-timeout: ${SWIFTDROP_STORAGE_API_CALL_ATTEMPT_TIMEOUT:3s}
 
 management:
   endpoints:
