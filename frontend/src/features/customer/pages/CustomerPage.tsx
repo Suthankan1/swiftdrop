@@ -39,6 +39,11 @@ export function CustomerPage() {
         ) : (
           <a href="/customer/history" className="button button-secondary">View delivery history</a>
         )}
+        {inRouter ? (
+          <Link to="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</Link>
+        ) : (
+          <a href="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</a>
+        )}
         <button onClick={() => { void auth.logout() }}>Sign out</button>
         {query.isError && <button onClick={() => { void query.refetch() }}>Retry profile</button>}
       </aside></div>
