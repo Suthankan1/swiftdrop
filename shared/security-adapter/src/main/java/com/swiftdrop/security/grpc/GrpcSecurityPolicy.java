@@ -120,6 +120,14 @@ public class GrpcSecurityPolicy {
                 Set.of(SwiftDropRoles.ROLE_CUSTOMER, SwiftDropRoles.ROLE_MERCHANT, SwiftDropRoles.ROLE_ADMIN)
         ));
 
+        // Pricing GetPricingAdminSummary: GraphQL / Admin -> Pricing (Actor: ADMIN, #114)
+        register(new MethodPolicy(
+                "swiftdrop.pricing.v1.PricingInternalService/GetPricingAdminSummary",
+                Set.of(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE, SwiftDropServiceIdentity.DELIVERY_SERVICE),
+                DelegationRequirement.REQUIRED,
+                Set.of(SwiftDropRoles.ROLE_ADMIN)
+        ));
+
         // IF-GRPC-05: GraphQL -> Delivery GetParcelInternal (Actor: CUSTOMER, COURIER, DISPATCHER, ADMIN)
         register(new MethodPolicy(
                 "swiftdrop.delivery.v1.DeliveryInternalService/GetParcelInternal",
