@@ -79,7 +79,7 @@ class WebhookSubscriptionControllerTest {
                 merchantId,
                 "https://api.example.com/webhooks",
                 List.of("parcel.status.changed.v1"),
-                "swd_whsec_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+                "swd_whsec_mock_signing_secret_for_controller_testing_only",
                 true,
                 Instant.now()
         );
@@ -97,7 +97,7 @@ class WebhookSubscriptionControllerTest {
                 .andExpect(jsonPath("$.merchantId").value(merchantId.toString()))
                 .andExpect(jsonPath("$.httpsUrl").value("https://api.example.com/webhooks"))
                 .andExpect(jsonPath("$.allowedEventTypes[0]").value("parcel.status.changed.v1"))
-                .andExpect(jsonPath("$.hmacSigningSecret").value("swd_whsec_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"))
+                .andExpect(jsonPath("$.hmacSigningSecret").value("swd_whsec_mock_signing_secret_for_controller_testing_only"))
                 .andExpect(jsonPath("$.active").value(true));
     }
 

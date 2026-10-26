@@ -63,7 +63,7 @@ class WebhookSubscriptionServiceTest {
         attemptRepository = mock(WebhookAttemptRepository.class);
         destinationValidator = mock(WebhookDestinationValidator.class);
         eventFilterValidator = new WebhookEventFilterValidator();
-        secretService = new WebhookSigningSecretService("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+        secretService = new WebhookSigningSecretService("");
         accountsEligibilityClient = mock(AccountsMerchantEligibilityClient.class);
 
         when(accountsEligibilityClient.resolveApprovedMerchant(callerSub)).thenReturn(approvedTenant);

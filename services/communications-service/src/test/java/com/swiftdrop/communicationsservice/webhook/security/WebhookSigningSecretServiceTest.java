@@ -17,8 +17,8 @@ class WebhookSigningSecretServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Use a 256-bit test key
-        secretService = new WebhookSigningSecretService("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+        // Use deterministic test key derivation fallback
+        secretService = new WebhookSigningSecretService("");
     }
 
     @Test
