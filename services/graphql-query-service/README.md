@@ -57,7 +57,12 @@ from the release SDL. This intentional breaking removal requires domain/Platform
 review; anonymous tracking remains REST-owned (#115/#133). The old shape remains
 in Git history and unused supporting types remain in the SDL as historical
 evidence. No anonymous GraphQL root is exposed. The compatibility validator
-should flag this one removal; do not waive unrelated changes.
+reports this exact retirement as accepted under #119. Other breaking changes
+remain failures; see `tests/contracts/test_graphql_compatibility.py`.
+
+The service aligns gRPC runtime libraries on **1.83.1**. The earlier shaded
+transport 1.68.1 is vulnerable to CVE-2025-55163; no scanner suppression is used.
+Shared generated contracts and security adapter source remain unchanged.
 
 ## Execution limits
 
