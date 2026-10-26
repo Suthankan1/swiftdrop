@@ -10,7 +10,12 @@ import com.swiftdrop.deliveryservice.core.Parcel;
 import com.swiftdrop.deliveryservice.core.ParcelNotFoundException;
 import com.swiftdrop.deliveryservice.core.ParcelRepository;
 import com.swiftdrop.deliveryservice.core.ParcelStatus;
+import com.swiftdrop.deliveryservice.query.dto.PagedResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +73,66 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
             return 0;
         }
         return assignmentRepository.countByCourierSubAndActiveTrue(courierSub.trim());
+    }
+
+    // --- Own-Assignment Read Implementation (Issue #94) ---
+
+    /**
+     * Retrieves the authenticated courier's assignments.
+     * Enforces COURIER role, trusted principal derivation, and bounded pagination.
+     */
+    @Transactional(readOnly = true)
+    public PagedResponse<AssignmentResponse> getMyAssignments(
+            String courierSub,
+            Collection<String> roles,
+            boolean activeOnly,
+            Pageable pageable) {
+
+        if (courierSub == null || courierSub.isBlank()) {
+            throw new AssignmentAccessDeniedException("Authenticated subject is required.");
+        }
+        if (roles == null || (!roles.contains("COURIER") && !roles.contains("ROLE_COURIER"))) {
+            throw new AssignmentAccessDeniedException("Caller does not hold required COURIER role.");
+        }
+
+        int pageSize = pageable != null && pageable.isPaged() ? pageable.getPageSize() : 20;
+        if (pageSize <= 0) {
+            pageSize = 20;
+        } else if (pageSize > 100) {
+            pageSize = 100;
+        }
+        int pageNumber = pageable != null && pageable.isPaged() ? Math.max(0, pageable.getPageNumber()) : 0;
+
+        Pageable safePageable = PageRequest.of(
+                pageNumber,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "assignedAt")
+        );
+
+        Page<DeliveryAssignment> page;
+        if (activeOnly) {
+            page = assignmentRepository.findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
+                    courierSub.trim(),
+                    safePageable
+            );
+        } else {
+            page = assignmentRepository.findByCourierSubOrderByAssignedAtDesc(
+                    courierSub.trim(),
+                    safePageable
+            );
+        }
+
+        Page<AssignmentResponse> dtoPage = page.map(a -> new AssignmentResponse(
+                a.getAssignmentId(),
+                a.getParcelId(),
+                a.getCourierSub(),
+                a.isActive(),
+                a.getAssignedAt(),
+                a.getAssignedBy(),
+                null
+        ));
+
+        return PagedResponse.of(dtoPage);
     }
 
     // --- Assignment Command Implementation ---

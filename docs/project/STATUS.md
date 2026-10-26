@@ -10,7 +10,31 @@ Last documentation update: **2026-10-25**. This file describes the **starter art
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | GitHub repository | **Official rename complete (`Suthankan1/swiftdrop`); Git remotes and documentation updated (Phase 3B)** | Merged PR #65 into `test`, release PR #66 into `main`; repository renamed; remote verified at `https://github.com/Suthankan1/swiftdrop.git` |
-| Spring Boot services | **Pending Merchant Enrollment Command IMPLEMENTED (Issue #97); API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Delivery Foundation Verified (Issue #126)** | `services/accounts-service/`: 174 tests passed (0 failures); `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, merchant enrollment command (`POST /api/v1/merchants`), CUSTOMER role gate, verified subject binding, PENDING status lifecycle, strict JSON rejection, and concurrency safety verified |
+| Spring Boot services | **Pending Merchant Enrollment Command IMPLEMENTED (Issue #97); API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Validated Expiring Quote REST API & Immutable Quote Snapshots IMPLEMENTED (Issue #108); Delivery Foundation Verified (Issue #126)** | `services/accounts-service/`: 174 tests passed (0 failures); `services/pricing-service/`: 67 tests passed (0 failures); `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, merchant enrollment command (`POST /api/v1/merchants`), CUSTOMER role gate, verified subject binding, PENDING status lifecycle, strict JSON rejection, expiring quote REST API (`POST /api/v1/quotes`, `GET /api/v1/quotes/{id}`, `GET /api/v1/zones`), immutable quote snapshots, and concurrency safety verified |
+
+## Issue #108 Validated Expiring Quote REST API & Immutable Quote Snapshots — 2026-10-26
+
+Primary Implementer: **Harithkeshan (@Harithkeshan)** (Pricing & Admin Lead); branch `feat/n10-b03-pricing-quotes`, targeting `test`.
+Reviewers: **Suthankan1 (@Suthankan1)** (Platform Identity & Delivery Boundary Coordination), **Thuvarahan (@thuvarahan-t)** (Merchant / Pricing Consumer Lead).
+
+Delivered validated expiring quote REST API and immutable quote snapshots in `services/pricing-service` per openapi-pricing.yaml and DEC-PRC-06:
+- **Flyway Schema Migration (`V3__create_pricing_quotes.sql`):**
+  - Added `pricing_quotes` table with non-nullable constraints, foreign key to `pricing_rate_versions(id)`, and strict checks (`expires_at > created_at`, positive dimensions/weights/fees).
+  - Added index on `(id, expires_at)` for performant quote verification and retrieval.
+- **Immutable Domain Model (`QuoteSnapshot`):**
+  - Domain value object enforcing all invariants, fee matching, and clock-based expiry checks (`isExpired(Clock)`).
+- **Application Orchestration (`QuoteApplicationService`):**
+  - Orchestrates deterministic tariff calculation, snapshot generation with configurable validity window (default 900s), JPA persistence, and secure retrieval enforcing `QuoteOwnershipPolicy`.
+- **Read/Insert-Only Persistence (`QuoteEntity` & `QuoteRepository`):**
+  - Read/insert-only JPA entity (`updatable = false` on all columns, `DynamicUpdate(false)`) mapping directly to `pricing_quotes`.
+- **Public & Authenticated REST API (`PricingController`):**
+  - Implements `POST /api/v1/quotes`, `GET /api/v1/quotes/{quoteId}`, and `GET /api/v1/zones`.
+  - Rejects unknown and client-injected pricing fields with HTTP 400 `MALFORMED_REQUEST_BODY`.
+  - RFC 7807 `PricingProblemHandler` providing uniform problem details (`ZONE_NOT_FOUND`, `ZONE_INACTIVE`, `INVALID_MEASUREMENTS`, `QUOTE_NOT_FOUND`, `VALIDATION_FAILED`).
+  - `SecurityContextCallerResolver` strictly extracts authenticated caller context from `SecurityContextHolder` (JWT subject and tenant ID) or defaults safely to anonymous caller.
+- **Automated Validation Evidence:**
+  - Automated Pricing test suite: **67 tests PASS** (0 failures, 0 skips, 0 errors).
+  - `PricingControllerTest` (10 PASS), `PricingCalculationServiceTest` (5 PASS), `QuoteApplicationServiceTest` (4 PASS), `RateVersionQueryServiceTest` (4 PASS), `QuoteSnapshotTest` (6 PASS), `QuoteOwnershipPolicyTest` (4 PASS), `MoneyTest` (7 PASS), `ParcelMeasurementsTest` (12 PASS), `RateVersionTest` (4 PASS), `TieredWeightPricingStrategyTest` (5 PASS), `PricingPackageContractsTest` (6 PASS).
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
 | Email Verification & MFA Policy (Issue #47) | **Native Email Verification (PR #48) & RFC 6238 TOTP (PR #49) VERIFIED; Production Policy & ADR-0009 Finalized** | 14/14 static invariant checks PASS; 93 unit tests PASS (pytest 49 subtests, unittest parity); production policy in `docs/security/EMAIL_VERIFICATION_MFA_POLICY.md`; ADR-0009 recommendation Outcome A (no typed email OTP); handoff to #150 and #159 |

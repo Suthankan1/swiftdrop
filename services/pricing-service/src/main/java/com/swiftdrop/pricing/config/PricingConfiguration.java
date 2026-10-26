@@ -17,4 +17,11 @@ public class PricingConfiguration {
     public PricingStrategy pricingStrategy() {
         return new TieredWeightPricingStrategy();
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public java.time.Clock clock() {
+        return java.time.Clock.systemUTC();
+    }
 }
+

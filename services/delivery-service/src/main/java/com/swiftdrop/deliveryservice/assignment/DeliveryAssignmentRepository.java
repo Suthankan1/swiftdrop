@@ -1,5 +1,7 @@
 package com.swiftdrop.deliveryservice.assignment;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -22,4 +24,8 @@ public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssi
     int countByCourierSubAndActiveTrue(String courierSub);
 
     List<DeliveryAssignment> findByParcelIdOrderByAssignedAtDesc(UUID parcelId);
+
+    Page<DeliveryAssignment> findByCourierSubAndActiveTrueOrderByAssignedAtDesc(String courierSub, Pageable pageable);
+
+    Page<DeliveryAssignment> findByCourierSubOrderByAssignedAtDesc(String courierSub, Pageable pageable);
 }
