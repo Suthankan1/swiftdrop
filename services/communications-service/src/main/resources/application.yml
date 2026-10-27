@@ -20,6 +20,23 @@ spring:
   flyway:
     enabled: true
     clean-disabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:communications.notifications.v1}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual_immediate
+
+swiftdrop:
+  kafka:
+    consumer:
+      enabled: ${COMMUNICATIONS_KAFKA_CONSUMER_ENABLED:true}
+    topics:
+      parcel-lifecycle: ${KAFKA_TOPIC_PARCEL_LIFECYCLE:parcel.lifecycle.v1}
 management:
   endpoints:
     web:

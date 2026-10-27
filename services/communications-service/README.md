@@ -221,9 +221,47 @@ mvn -f services/communications-service/pom.xml verify
 - [x] Strict data isolation: zero Communications SQL against Delivery database; zero PII in responses or client logs.
 - [x] 10 automated unit/integration tests with in-process gRPC test server (`DeliveryRecipientAuthorizationClientTest`).
 
+### IMPLEMENTED in Issue #32 (LATER-14):
+- [x] Kafka consumer `ParcelLifecycleKafkaConsumer` listening to topic `parcel.lifecycle.v1` under consumer group `communications.notifications.v1`.
+- [x] Strict manual offset acknowledgement (`AckMode.MANUAL_IMMEDIATE`) executed **only after** successful PostgreSQL transaction commit.
+- [x] Domain event validator and parser `ParcelLifecycleEventParser` enforcing `contracts/events/parcel.status.changed.v1.schema.json`:
+  - Envelope validation: `eventId` (UUID), `eventType` (`parcel.status.changed.v1`), `schemaVersion` (`^1\.[0-9]+\.[0-9]+$`), `aggregateId` equals `parcelId`, `aggregateType` (`PARCEL`), `aggregateVersion` (>= 1), `producer` (`delivery-operations`).
+  - Kafka partition key alignment: record key matches parcel UUID.
+  - Payload validation: `trackingNumber` pattern (`^SWD-[0-9]{8}-[A-Z0-9]{4,8}$`), valid lifecycle statuses, mandatory failure reason code when status is `FAILED`, null reason for non-failed statuses.
+- [x] Delivery provenance and recipient authorization integration (`DeliveryRecipientAuthorizationClient` / `IF-GRPC-11`):
+  - Authorizes event against parcel aggregate, verifying non-stale provenance and resolving authoritative `recipientSub`.
+  - Fails closed on unauthorized events, stale events, or Delivery service timeouts (`DeliveryAuthorizationException`).
+- [x] Accounts permitted contact resolution integration (`AccountsRecipientContactClient` / `IF-GRPC-03`):
+  - Queries permitted contact handles for channel `EMAIL` and purpose `PARCEL_STATUS_UPDATE`.
+  - Fails closed if recipient is not found (`RecipientNotFoundException`) or ineligible for email notifications (`NoEligibleNotificationTargetException`).
+- [x] Privacy-preserving durable job scheduling:
+  - Stores opaque destination reference `destination_ref = "sub:" + recipientSub` in `notifications` table.
+  - Zero raw email addresses or phone numbers stored in Communications PostgreSQL or Kafka events.
+  - Schedules job in `PENDING` state with `template = "PARCEL_" + newStatus` and `attempts = 0`.
+- [x] Atomic transactional boundary (`DurableJobPersistenceService.persistInboxAndNotification`):
+  - Commits both `consumed_events` inbox receipt and `notifications` job in a single PostgreSQL transaction.
+  - Fixed exception mapping: distinguishes composite PK uniqueness collision on `consumed_events` (`DuplicateEventException`) from `NotificationJob` database constraint failures (`DataIntegrityViolationException`).
+  - If a job constraint fails, transaction rolls back atomically without misclassifying as duplicate.
+- [x] Durable deduplication:
+  - If re-delivered or concurrent duplicate event is detected, state is verified and offset is safely acknowledged without duplicate job insertion.
+- [x] Bounded notification adapter boundary (`NotificationDispatchAdapter`, `LoggingNotificationDispatchAdapter`):
+  - Logs notification queueing safely without PII; retains job in `PENDING` status for future worker execution.
+- [x] Automated unit and integration tests:
+  - Unit tests for parser contract validation (`ParcelLifecycleEventParserTest`).
+  - Unit tests for scheduling, authorization, and contact boundaries (`NotificationSchedulingServiceTest`).
+  - Unit tests for manual Kafka offset commit ordering (`ParcelLifecycleKafkaConsumerTest`).
+  - Unit tests for database exception mapping regression (`DurableJobPersistenceServiceTest`).
+  - Real Kafka and PostgreSQL integration tests (`CommunicationsKafkaConsumerIT`) with `@EmbeddedKafka` and `@Testcontainers(disabledWithoutDocker = true)`.
+
+### Webhook Worker Handoff Boundary:
+- Merchant webhook processing is completely decoupled from customer notification processing.
+- When the webhook consumer is implemented, it consumes the same topic `parcel.lifecycle.v1` using its own independent consumer group (e.g. `communications.webhooks.v1`).
+- The composite PK `(consumer_name, event_id)` in `consumed_events` ensures that notification and webhook consumer groups maintain independent inbox receipts for the same domain event without key collisions.
+- Notification consumer offset acknowledgements never represent webhook delivery.
+
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
-- ❌ Kafka consumers and topic listener configurations (belongs to **Issue #32**).
-- ❌ External email or SMS transmission engines.
-- ❌ Merchant webhook HTTPS dispatcher or retry background scheduler (belongs to **Issue #21** / Platform extra slice).
+- ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
+- ❌ External SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).
+- ❌ Merchant webhook HTTPS dispatcher and signature verification worker (belongs to **Issue #21** / webhook worker).
 - ❌ Public REST API controllers for webhook subscription management.
-- ❌ Shared API Gateway or Keycloak configuration changes.
+- ❌ Cross-service SQL joins or direct database access to Accounts or Delivery databases.
