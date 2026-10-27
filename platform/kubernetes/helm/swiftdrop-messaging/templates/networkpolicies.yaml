@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-messaging-traffic
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow intra-namespace communication for Kafka KRaft quorum and topic provisioner
+    - from:
+        - podSelector: {}
+

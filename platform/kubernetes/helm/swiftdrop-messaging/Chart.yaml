@@ -1,0 +1,16 @@
+apiVersion: v2
+name: swiftdrop-messaging
+description: SwiftDrop Platform — Persistent Kafka KRaft, Private MinIO, and Dev Mailpit
+type: application
+version: 1.0.0
+appVersion: "4.2.1"
+keywords:
+  - swiftdrop
+  - kafka
+  - kraft
+  - minio
+  - mailpit
+maintainers:
+  - name: Suthankan1
+    url: https://github.com/Suthankan1
+
