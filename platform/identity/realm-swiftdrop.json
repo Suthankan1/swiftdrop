@@ -17,8 +17,8 @@
     "contentSecurityPolicyReportOnly": "",
     "xContentTypeOptions": "nosniff",
     "xRobotsTag": "none",
-    "xFrameOptions": "",
-    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self' http://localhost:5173 http://localhost:3000 https://swiftdrop.local:18443 https://app.swiftdrop.local:18443; object-src 'none';",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
     "xXSSProtection": "1; mode=block",
     "strictTransportSecurity": "max-age=31536000"
   },

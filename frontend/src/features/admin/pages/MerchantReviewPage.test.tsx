@@ -106,7 +106,7 @@ describe('Merchant review route and production boundary', () => {
       <QueryClientProvider client={new QueryClient()}>
         <AuthContext value={auth()}>
           <MemoryRouter>
-            <MerchantReviewPage api={null as any} />
+            <MerchantReviewPage api={null} />
           </MemoryRouter>
         </AuthContext>
       </QueryClientProvider>,

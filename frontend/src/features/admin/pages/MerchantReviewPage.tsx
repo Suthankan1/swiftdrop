@@ -12,7 +12,7 @@ function Status({ status }: { status: string }) {
   return <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>
 }
 
-export function MerchantReviewPage({ api }: { api?: MerchantReviewApi } = {}) {
+export function MerchantReviewPage({ api }: { api?: MerchantReviewApi | null } = {}) {
   const auth = useAuth()
   const allowed = auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN')
   const defaultApi = useMemo(() => {
@@ -20,7 +20,7 @@ export function MerchantReviewPage({ api }: { api?: MerchantReviewApi } = {}) {
     return createMerchantReviewApi({ getAccessToken: auth.getAccessToken, fetch: auth.profileFetch })
   }, [allowed, auth.getAccessToken, auth.profileFetch])
 
-  const effectiveApi = api !== undefined ? api : (merchantReviewApi ?? defaultApi)
+  const effectiveApi = api === null ? undefined : (api !== undefined ? api : (merchantReviewApi ?? defaultApi))
 
   return <div className="page-container merchant-review-page">
     <Link to="/admin">Back to administration</Link>
