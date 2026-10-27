@@ -65,6 +65,12 @@ export function MerchantPage() {
             Batch order dispatching, shipping labels, and real-time webhook tracking will arrive in the upcoming delivery milestone.
           </p>
           <Link
+            to="/merchant/orders"
+            className="button button-primary"
+          >
+            Orders Dashboard ↗
+          </Link>
+          <Link
             to="/merchant/credentials"
             className="button button-secondary"
           >

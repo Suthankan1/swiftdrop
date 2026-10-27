@@ -9,6 +9,8 @@ import { CustomerBookingConfirmedPage } from '../../features/customer/pages/Cust
 import { CustomerHistoryPage } from '../../features/customer/pages/CustomerHistoryPage'
 import { DispatcherPage } from '../../features/dispatcher/pages/DispatcherPage'
 import { MerchantPage } from '../../features/merchant/pages/MerchantPage'
+import { MerchantOrdersDashboardPage } from '../../features/merchant/pages/MerchantOrdersDashboardPage'
+import { MerchantOrderDetailPage } from '../../features/merchant/pages/MerchantOrderDetailPage'
 import { MerchantWebhooksPage } from '../../features/merchant/pages/MerchantWebhooksPage'
 import { MerchantEnrollmentPage } from '../../features/merchant/pages/MerchantEnrollmentPage'
 import { MerchantCredentialsPage } from '../../features/merchant/pages/MerchantCredentialsPage'
@@ -32,6 +34,8 @@ export function AppRoutes() {
         </Route>
         <Route element={<ProtectedRoute role="MERCHANT" />}>
           <Route path="merchant" element={<MerchantPage />} />
+          <Route path="merchant/orders" element={<MerchantOrdersDashboardPage />} />
+          <Route path="merchant/orders/:parcelId" element={<MerchantOrderDetailPage />} />
           <Route path="merchant/credentials" element={<MerchantCredentialsPage />} />
           <Route path="merchant/webhooks" element={<MerchantWebhooksPage />} />
         </Route>
