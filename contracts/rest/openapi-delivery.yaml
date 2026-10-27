@@ -407,6 +407,56 @@ paths:
               schema:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
 
+  /api/v1/parcels/{parcelId}/events:
+    get:
+      summary: Stream real-time parcel lifecycle events via Server-Sent Events (SSE)
+      description: |
+        Authorized Server-Sent Events (SSE) stream for real-time parcel lifecycle updates.
+        Accessible to parcel creator (Customer), approved merchant, assigned courier, or dispatcher/admin.
+        Emits 'parcel.status.changed' events with stable event IDs and aggregate versions.
+        Streams are bounded by token expiration and heartbeat pings every 15 seconds.
+      operationId: streamParcelLifecycleEvents
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parcelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Real-time event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller unauthorized to view this parcel
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Parcel not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '429':
+          description: Concurrent SSE connection limit exceeded
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
 components:
   securitySchemes:
     BearerAuth:
