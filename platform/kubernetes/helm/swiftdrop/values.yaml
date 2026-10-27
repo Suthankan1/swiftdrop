@@ -28,6 +28,8 @@ ingress:
   tls:
     enabled: true
     secretName: swiftdrop-tls-cert
+  keycloak:
+    exposeAdmin: true
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
@@ -423,6 +425,9 @@ keycloak:
     tag: b8ac497
     digest: sha256:75effccfc0bf90a2947bbc9dee322ad7a644ea26477e655a5f0e9d5895cd8501
     pullPolicy: IfNotPresent
+  args:
+    - "start"
+    - "--http-enabled=true"
   service:
     type: ClusterIP
     httpPort: 8080
@@ -461,6 +466,8 @@ keycloak:
     httpPort: 8080
     managementPort: 9000
     proxyHeaders: xforwarded
+    httpEnabled: "true"
+    healthEnabled: "true"
     javaOptsAppend: "-Dkeycloak.migration.replace-placeholders=true -Xms192m -Xmx384m"
   secretRefs:
     adminSecretName: keycloak-admin-secret
@@ -472,6 +479,15 @@ keycloak:
     googleSecretName: swiftdrop-google-oidc-secret
     googleClientIdKey: client-id
     googleClientSecretKey: client-secret
+    smtpSecretName: swiftdrop-smtp-secret
+    smtpHostKey: host
+    smtpPortKey: port
+    smtpUserKey: username
+    smtpPasswordKey: password
+    smtpFromKey: from
+    smtpAuthKey: auth
+    smtpSslKey: ssl
+    smtpStarttlsKey: starttls
 
 # ------------------------------------------------------------------------------
 # Stateful Interface Placeholders (Contract interfaces for Issue #154)
