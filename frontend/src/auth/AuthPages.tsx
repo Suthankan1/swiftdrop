@@ -3,40 +3,13 @@ import { Link, Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from './context'
 import { FeedbackState } from '../components/ui/FeedbackState'
 import type { SwiftDropRole } from './contracts'
+import { sanitizeRedirectUrl } from './redirect'
 
 const messages = {
   cancelled: 'Sign-in was cancelled. You can try again.',
   'invalid-callback': 'Sign-in could not be verified. Please start again.',
   'provider-unavailable': 'The identity provider is unavailable. Please try again later.',
   'session-expired': 'Your session expired. Please sign in again.',
-}
-
-/**
- * Validates that redirect paths are strictly safe relative application routes.
- * Rejects protocol-relative URLs (//attacker.com), external schemas, and auth-internal routes.
- */
-export function sanitizeRedirectUrl(url: string | null | undefined): string | null {
-  if (!url || typeof url !== 'string') return null
-  const trimmed = url.trim()
-  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
-    return null
-  }
-  const firstSlash = trimmed.indexOf('/')
-  const firstColon = trimmed.indexOf(':')
-  if (firstColon !== -1 && firstColon < firstSlash) {
-    return null
-  }
-  // Exclude auth control loops
-  if (
-    trimmed === '/login' ||
-    trimmed.startsWith('/login?') ||
-    trimmed === '/auth/callback' ||
-    trimmed.startsWith('/auth/callback?') ||
-    trimmed === '/logout'
-  ) {
-    return null
-  }
-  return trimmed
 }
 
 export function LoginPage() {

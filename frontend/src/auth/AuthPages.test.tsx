@@ -1,15 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
-import { AuthContext } from './context'
-import type { AuthContextValue, AuthSnapshot } from './contracts'
+import { AuthContext, type AuthContextValue } from './context'
+import type { AuthSnapshot } from './contracts'
 import {
   CallbackPage,
   LoginPage,
   LogoutPage,
   ProtectedRoute,
-  sanitizeRedirectUrl,
 } from './AuthPages'
+import { sanitizeRedirectUrl } from './redirect'
 
 function createMockAuthContext(overrides?: Partial<AuthContextValue>): AuthContextValue {
   const defaultSnapshot: AuthSnapshot = {
