@@ -5,11 +5,15 @@ import type {
   PaginationParams,
   ParcelDetailResponse,
   ParcelStatus,
+  ParcelStatusHistoryItem,
+  ParcelStatusHistoryPage,
   ProblemDetail,
   PublicTrackingResponse,
   ReceiptDownloadResult,
   TrackingTimelineItem,
 } from './deliveryContracts'
+
+export type { ParcelStatusHistoryItem, ParcelStatusHistoryPage }
 
 export type DeliveryFailureKind =
   | 'auth-required'
@@ -137,6 +141,35 @@ export function isCustomerDeliveriesPage(value: unknown): value is CustomerDeliv
   )
 }
 
+export function isParcelStatusHistoryItem(value: unknown): value is ParcelStatusHistoryItem {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.historyId === 'string' &&
+    typeof value.parcelId === 'string' &&
+    (value.previousStatus === null || isParcelStatus(value.previousStatus)) &&
+    isParcelStatus(value.newStatus) &&
+    (value.reason === null || typeof value.reason === 'string') &&
+    (value.note === null || typeof value.note === 'string') &&
+    (value.proofId === null || typeof value.proofId === 'string') &&
+    typeof value.resultingVersion === 'number' &&
+    typeof value.occurredAt === 'string'
+  )
+}
+
+export function isParcelStatusHistoryPage(value: unknown): value is ParcelStatusHistoryPage {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.items) &&
+    value.items.every(isParcelStatusHistoryItem) &&
+    typeof value.totalElements === 'number' &&
+    typeof value.totalPages === 'number' &&
+    typeof value.currentPage === 'number' &&
+    typeof value.pageSize === 'number' &&
+    typeof value.hasNext === 'boolean' &&
+    typeof value.hasPrevious === 'boolean'
+  )
+}
+
 /**
  * Extracts and sanitizes the PDF filename from the Content-Disposition header.
  * Disallows path traversal characters, guarantees .pdf extension, and applies safe fallback.
@@ -248,6 +281,89 @@ export function createDeliveryApi({
       }
 
       return payload
+    },
+
+    /**
+     * Retrieve status transition history for a parcel with object-level authorization (IF-REST-05).
+     * Connects to GET /api/v1/parcels/{parcelId}/history.
+     */
+    async getParcelHistory(
+      parcelId: string,
+      params: PaginationParams = {},
+      signal?: AbortSignal,
+    ): Promise<ParcelStatusHistoryPage> {
+      const token = await resolveAuthToken()
+      const page = Math.max(0, params.page ?? 0)
+      const size = Math.max(1, Math.min(100, params.size ?? 20))
+
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        size: size.toString(),
+      })
+
+      const url = `${normalizedGateway}/api/v1/parcels/${encodeURIComponent(parcelId)}/history?${queryParams.toString()}`
+
+      let response: Response
+      try {
+        response = await fetchRequest(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json, application/problem+json',
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'omit',
+          cache: 'no-store',
+          signal,
+        })
+      } catch (error) {
+        if (signal?.aborted) throw error
+        throw new DeliveryError('unavailable', 'Parcel history service is currently unreachable.')
+      }
+
+      if (response.status === 401) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError('auth-required', 'Session expired. Please sign in again.', problem, 401)
+      }
+      if (response.status === 403) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError('forbidden', 'You do not have permission to view parcel history.', problem, 403)
+      }
+      if (response.status === 404) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError('not-found', 'Parcel not found.', problem, 404)
+      }
+      if (!response.ok) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError('unavailable', `Parcel history request failed (${response.status}).`, problem, response.status)
+      }
+
+      let payload: unknown
+      try {
+        payload = await response.json()
+      } catch {
+        throw new DeliveryError('invalid-response', 'Invalid JSON payload received for parcel history.')
+      }
+
+      if (isParcelStatusHistoryPage(payload)) {
+        return payload
+      }
+
+      if (Array.isArray(payload) && payload.every(isParcelStatusHistoryItem)) {
+        const total = payload.length
+        const totalPages = Math.max(1, Math.ceil(total / size))
+        const pagedItems = payload.slice(page * size, (page + 1) * size)
+        return {
+          items: pagedItems,
+          totalElements: total,
+          totalPages,
+          currentPage: page,
+          pageSize: size,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+        }
+      }
+
+      throw new DeliveryError('invalid-response', 'Parcel history response does not match the expected schema.')
     },
 
     /**

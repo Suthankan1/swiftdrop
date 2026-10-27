@@ -10,6 +10,9 @@ export * from './credentialsContracts'
 export * from './credentials'
 export * from './enrollmentContracts'
 export * from './enrollment'
+export * from './merchantDashboardContracts'
+export * from './merchantDashboard'
+export * from './merchantOrders'
 
 /**
  * Normalizes raw backend status into canonical domain states.

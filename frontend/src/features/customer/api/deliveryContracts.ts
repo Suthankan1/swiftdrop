@@ -30,6 +30,28 @@ export interface TrackingTimelineItem {
   cityOrZone?: string
 }
 
+export interface ParcelStatusHistoryItem {
+  historyId: string
+  parcelId: string
+  previousStatus: ParcelStatus | null
+  newStatus: ParcelStatus
+  reason: string | null
+  note: string | null
+  proofId: string | null
+  resultingVersion: number
+  occurredAt: string
+}
+
+export interface ParcelStatusHistoryPage {
+  items: ParcelStatusHistoryItem[]
+  totalElements: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+  hasNext: boolean
+  hasPrevious: boolean
+}
+
 export interface PublicTrackingResponse {
   trackingNumber: string
   currentStatus: ParcelStatus
