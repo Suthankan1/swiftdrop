@@ -507,4 +507,84 @@ class CommunicationsPersistencePostgresIT {
                 WebhookDeliveryStatus.PROCESSING, Instant.now().plusSeconds(60));
         assertThat(stuck).extracting(WebhookDelivery::getDeliveryId).contains(delivery.getDeliveryId());
     }
+
+    @Test
+    @DisplayName("I. Concurrent worker lease safety, due query ordering, and exhaustion terminal status")
+    void testConcurrentWorkerLeaseAndExhaustionLifecycle() {
+        UUID merchantId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                UUID.randomUUID(),
+                merchantId,
+                "https://merchant.example.test/webhooks/scheduler",
+                "parcel.status.changed.v1",
+                "enc:v1:test-key"
+        );
+        webhookSubscriptionRepository.saveAndFlush(sub);
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                UUID.randomUUID(),
+                sub.getSubscriptionId(),
+                eventId,
+                parcelId,
+                merchantId,
+                1,
+                "payload_sha256"
+        );
+        Instant now = Instant.now();
+        delivery.setStatus(WebhookDeliveryStatus.PENDING);
+        delivery.setNextAttemptAt(now.minusSeconds(10));
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // 1. Query for due deliveries returns the candidate job
+        List<WebhookDelivery> due = webhookDeliveryRepository.findDueDeliveries(
+                WebhookDeliveryStatus.PENDING, now, org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(due).extracting(WebhookDelivery::getDeliveryId).contains(delivery.getDeliveryId());
+
+        // 2. Worker 1 claims lease via atomic UPDATE -> succeeds (returns 1)
+        int worker1Claim = webhookDeliveryRepository.claimDelivery(
+                delivery.getDeliveryId(),
+                WebhookDeliveryStatus.PENDING,
+                WebhookDeliveryStatus.PROCESSING,
+                now
+        );
+        assertThat(worker1Claim).isEqualTo(1);
+
+        // 3. Concurrent Worker 2 attempts to claim same job -> fails (returns 0) because status is no longer PENDING
+        int worker2Claim = webhookDeliveryRepository.claimDelivery(
+                delivery.getDeliveryId(),
+                WebhookDeliveryStatus.PENDING,
+                WebhookDeliveryStatus.PROCESSING,
+                now
+        );
+        assertThat(worker2Claim).isEqualTo(0);
+
+        // 4. Job is verified in PROCESSING state in database
+        WebhookDelivery claimedDelivery = webhookDeliveryRepository.findById(delivery.getDeliveryId()).orElseThrow();
+        assertThat(claimedDelivery.getStatus()).isEqualTo(WebhookDeliveryStatus.PROCESSING);
+
+        // 5. If job crashes and remains in PROCESSING past lease cutoff, claimDeliveryWithLease recovers it
+        Instant leaseCutoff = now.plusSeconds(10); // simulate cutoff where job's updated_at <= leaseCutoff
+        int recoveryClaim = webhookDeliveryRepository.claimDeliveryWithLease(
+                delivery.getDeliveryId(),
+                WebhookDeliveryStatus.PENDING,
+                WebhookDeliveryStatus.PROCESSING,
+                now.plusSeconds(300),
+                leaseCutoff
+        );
+        assertThat(recoveryClaim).isEqualTo(1);
+
+        // 6. Transition to terminal EXHAUSTED status
+        claimedDelivery.setStatus(WebhookDeliveryStatus.EXHAUSTED);
+        claimedDelivery.setAttemptCount(5);
+        claimedDelivery.setNextAttemptAt(null);
+        webhookDeliveryRepository.saveAndFlush(claimedDelivery);
+
+        // 7. Exhausted job is never returned by findDueDeliveries
+        List<WebhookDelivery> dueAfterExhaustion = webhookDeliveryRepository.findDueDeliveries(
+                WebhookDeliveryStatus.PENDING, now.plusSeconds(600), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(dueAfterExhaustion).extracting(WebhookDelivery::getDeliveryId).doesNotContain(delivery.getDeliveryId());
+    }
 }

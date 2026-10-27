@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,6 +28,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.DoubleSupplier;
 
 /**
  * Service responsible for executing signed HTTPS webhook deliveries, persisting attempt history,
@@ -57,6 +60,8 @@ public class WebhookDeliveryExecutionService {
     private final WebhookDestinationValidator destinationValidator;
     private final WebhookDispatchProperties dispatchProperties;
     private final JsonMapper jsonMapper;
+    private final Clock clock;
+    private final DoubleSupplier randomSupplier;
 
     public WebhookDeliveryExecutionService(
             WebhookDeliveryRepository webhookDeliveryRepository,
@@ -70,7 +75,8 @@ public class WebhookDeliveryExecutionService {
             WebhookDispatchProperties dispatchProperties) {
         this(webhookDeliveryRepository, webhookAttemptRepository, webhookSubscriptionRepository,
                 webhookSigningSecretService, webhookSigner, webhookHttpClient, responseClassifier,
-                destinationValidator, dispatchProperties, JsonMapper.builder().build());
+                destinationValidator, dispatchProperties, JsonMapper.builder().build(), Clock.systemUTC(),
+                ThreadLocalRandom.current()::nextDouble);
     }
 
     public WebhookDeliveryExecutionService(
@@ -84,6 +90,25 @@ public class WebhookDeliveryExecutionService {
             WebhookDestinationValidator destinationValidator,
             WebhookDispatchProperties dispatchProperties,
             JsonMapper jsonMapper) {
+        this(webhookDeliveryRepository, webhookAttemptRepository, webhookSubscriptionRepository,
+                webhookSigningSecretService, webhookSigner, webhookHttpClient, responseClassifier,
+                destinationValidator, dispatchProperties, jsonMapper, Clock.systemUTC(),
+                ThreadLocalRandom.current()::nextDouble);
+    }
+
+    public WebhookDeliveryExecutionService(
+            WebhookDeliveryRepository webhookDeliveryRepository,
+            WebhookAttemptRepository webhookAttemptRepository,
+            WebhookSubscriptionRepository webhookSubscriptionRepository,
+            WebhookSigningSecretService webhookSigningSecretService,
+            WebhookSigner webhookSigner,
+            WebhookHttpClient webhookHttpClient,
+            WebhookResponseClassifier responseClassifier,
+            WebhookDestinationValidator destinationValidator,
+            WebhookDispatchProperties dispatchProperties,
+            JsonMapper jsonMapper,
+            Clock clock,
+            DoubleSupplier randomSupplier) {
         this.webhookDeliveryRepository = Objects.requireNonNull(webhookDeliveryRepository, "webhookDeliveryRepository cannot be null");
         this.webhookAttemptRepository = Objects.requireNonNull(webhookAttemptRepository, "webhookAttemptRepository cannot be null");
         this.webhookSubscriptionRepository = Objects.requireNonNull(webhookSubscriptionRepository, "webhookSubscriptionRepository cannot be null");
@@ -94,6 +119,8 @@ public class WebhookDeliveryExecutionService {
         this.destinationValidator = Objects.requireNonNull(destinationValidator, "destinationValidator cannot be null");
         this.dispatchProperties = Objects.requireNonNull(dispatchProperties, "dispatchProperties cannot be null");
         this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper cannot be null");
+        this.clock = clock != null ? clock : Clock.systemUTC();
+        this.randomSupplier = randomSupplier != null ? randomSupplier : ThreadLocalRandom.current()::nextDouble;
     }
 
     /**
@@ -162,6 +189,19 @@ public class WebhookDeliveryExecutionService {
             );
         }
 
+        if (delivery.getStatus() == WebhookDeliveryStatus.FAILED) {
+            log.info("Delivery job already in terminal FAILED status [deliveryId={}]. Skipping execution.", deliveryId);
+            Optional<WebhookAttempt> latest = webhookAttemptRepository.findTopByDeliveryIdOrderByAttemptedAtDesc(deliveryId);
+            return new WebhookAttemptResult(
+                    deliveryId,
+                    latest.map(WebhookAttempt::getAttemptId).orElse(null),
+                    delivery.getStatus(),
+                    delivery.getAttemptCount() != null ? delivery.getAttemptCount() : 0,
+                    new WebhookResponseClassification(WebhookOutcomeCategory.CLIENT_ERROR, false, false, null, 0, "Terminal failure", null),
+                    latest.orElse(null)
+            );
+        }
+
         // 2. Resolve subscription
         WebhookSubscription subscription = webhookSubscriptionRepository.findById(delivery.getSubscriptionId())
                 .orElse(null);
@@ -223,7 +263,7 @@ public class WebhookDeliveryExecutionService {
         log.info("Dispatching webhook attempt #{} [deliveryId={}, subscriptionId={}, eventId={}]",
                 currentAttemptNumber, deliveryId, delivery.getSubscriptionId(), delivery.getEventId());
 
-        long startTime = System.currentTimeMillis();
+        long startTime = clock.millis();
         WebhookResponseClassification classification;
         try {
             WebhookHttpRequest request = new WebhookHttpRequest(
@@ -238,7 +278,7 @@ public class WebhookDeliveryExecutionService {
             classification = responseClassifier.classify(response);
 
         } catch (Exception ex) {
-            int elapsed = (int) (System.currentTimeMillis() - startTime);
+            int elapsed = (int) (clock.millis() - startTime);
             classification = responseClassifier.classifyException(ex, elapsed);
         }
 
@@ -264,7 +304,7 @@ public class WebhookDeliveryExecutionService {
      */
     public List<WebhookAttemptResult> processPendingDeliveries(int limit) {
         List<WebhookDelivery> pendingJobs = webhookDeliveryRepository
-                .findByStatusAndNextAttemptAtLessThanEqual(WebhookDeliveryStatus.PENDING, Instant.now());
+                .findByStatusAndNextAttemptAtLessThanEqual(WebhookDeliveryStatus.PENDING, clock.instant());
 
         List<WebhookAttemptResult> results = new ArrayList<>();
         int count = 0;
@@ -286,21 +326,39 @@ public class WebhookDeliveryExecutionService {
      */
     @Transactional
     public int recoverStuckProcessingJobs(Duration leaseTimeout) {
-        Instant cutoff = Instant.now().minus(leaseTimeout);
+        Instant cutoff = clock.instant().minus(leaseTimeout);
         List<WebhookDelivery> stuck = webhookDeliveryRepository
                 .findByStatusAndUpdatedAtLessThanEqual(WebhookDeliveryStatus.PROCESSING, cutoff);
 
         int count = 0;
+        Instant now = clock.instant();
         for (WebhookDelivery delivery : stuck) {
             log.warn("Recovering stuck PROCESSING delivery job [deliveryId={}, lastUpdated={}]",
                     delivery.getDeliveryId(), delivery.getUpdatedAt());
             delivery.setStatus(WebhookDeliveryStatus.PENDING);
-            delivery.setNextAttemptAt(Instant.now());
-            delivery.setUpdatedAt(Instant.now());
+            delivery.setNextAttemptAt(now);
+            delivery.setUpdatedAt(now);
             webhookDeliveryRepository.save(delivery);
             count++;
         }
         return count;
+    }
+
+    /**
+     * Atomically claims a delivery job for processing if it is in PENDING status or has an expired PROCESSING lease.
+     * Returns true if the claim was successfully acquired, false otherwise.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean tryClaimDelivery(UUID deliveryId, Instant leaseCutoff) {
+        Instant now = clock.instant();
+        int updated = webhookDeliveryRepository.claimDeliveryWithLease(
+                deliveryId,
+                WebhookDeliveryStatus.PENDING,
+                WebhookDeliveryStatus.PROCESSING,
+                now,
+                leaseCutoff
+        );
+        return updated > 0;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -308,7 +366,7 @@ public class WebhookDeliveryExecutionService {
         webhookDeliveryRepository.findById(deliveryId).ifPresent(d -> {
             if (d.getStatus() == WebhookDeliveryStatus.PENDING) {
                 d.setStatus(WebhookDeliveryStatus.PROCESSING);
-                d.setUpdatedAt(Instant.now());
+                d.setUpdatedAt(clock.instant());
                 webhookDeliveryRepository.save(d);
             }
         });
@@ -325,7 +383,7 @@ public class WebhookDeliveryExecutionService {
             WebhookAttempt attempt = new WebhookAttempt(
                     UUID.randomUUID(),
                     delivery.getDeliveryId(),
-                    Instant.now(),
+                    clock.instant(),
                     classification.httpStatusCode(),
                     classification.responseTimeMs(),
                     classification.errorSummary()
@@ -335,7 +393,7 @@ public class WebhookDeliveryExecutionService {
 
             int newAttemptCount = (delivery.getAttemptCount() != null ? delivery.getAttemptCount() : 0) + 1;
             delivery.setAttemptCount(newAttemptCount);
-            delivery.setUpdatedAt(Instant.now());
+            delivery.setUpdatedAt(clock.instant());
 
             if (classification.isSuccess()) {
                 delivery.setStatus(WebhookDeliveryStatus.SUCCESS);
@@ -349,7 +407,7 @@ public class WebhookDeliveryExecutionService {
                 } else {
                     delivery.setStatus(WebhookDeliveryStatus.PENDING);
                     long backoffSeconds = calculateBackoff(newAttemptCount, classification.retryAfterSeconds());
-                    delivery.setNextAttemptAt(Instant.now().plusSeconds(backoffSeconds));
+                    delivery.setNextAttemptAt(clock.instant().plusSeconds(backoffSeconds));
                     log.info("Scheduled retry attempt #{} in {}s [deliveryId={}]",
                             newAttemptCount + 1, backoffSeconds, delivery.getDeliveryId());
                 }
@@ -387,7 +445,23 @@ public class WebhookDeliveryExecutionService {
             return max;
         }
         long delay = base * (1L << exponent);
-        return Math.min(delay, max);
+        long cappedDelay = Math.min(delay, max);
+
+        if (!dispatchProperties.isJitterEnabled() || cappedDelay <= 1) {
+            return cappedDelay;
+        }
+
+        return applyJitter(cappedDelay);
+    }
+
+    protected long applyJitter(long delaySeconds) {
+        double factor = Math.max(0.0, Math.min(1.0, dispatchProperties.getJitterFactor()));
+        double delta = delaySeconds * factor;
+        double min = Math.max(1.0, delaySeconds - delta);
+        double max = Math.min(dispatchProperties.getMaxBackoffSeconds(), delaySeconds + delta);
+        double r = randomSupplier != null ? randomSupplier.getAsDouble() : 0.5;
+        long jittered = Math.round(min + r * (max - min));
+        return Math.max(1, Math.min(dispatchProperties.getMaxBackoffSeconds(), jittered));
     }
 
     /**
@@ -401,7 +475,7 @@ public class WebhookDeliveryExecutionService {
         root.put("aggregateId", delivery.getParcelId().toString());
         root.put("aggregateType", "PARCEL");
         root.put("aggregateVersion", delivery.getStateVersion());
-        root.put("occurredAt", (delivery.getCreatedAt() != null ? delivery.getCreatedAt() : Instant.now()).toString());
+        root.put("occurredAt", (delivery.getCreatedAt() != null ? delivery.getCreatedAt() : clock.instant()).toString());
         root.put("correlationId", delivery.getDeliveryId().toString());
         root.put("producer", "delivery-operations");
 

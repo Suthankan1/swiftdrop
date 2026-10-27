@@ -35,6 +35,16 @@ public class WebhookDispatchProperties {
      */
     private long maxBackoffSeconds = 300L; // 5 minutes
 
+    /**
+     * Whether to apply randomized jitter to exponential backoff delays.
+     */
+    private boolean jitterEnabled = false;
+
+    /**
+     * Scaling factor for jitter spread (e.g. 0.2 represents +/- 20% delay variation).
+     */
+    private double jitterFactor = 0.2;
+
     public long getConnectTimeoutMs() {
         return connectTimeoutMs;
     }
@@ -73,5 +83,21 @@ public class WebhookDispatchProperties {
 
     public void setMaxBackoffSeconds(long maxBackoffSeconds) {
         this.maxBackoffSeconds = maxBackoffSeconds;
+    }
+
+    public boolean isJitterEnabled() {
+        return jitterEnabled;
+    }
+
+    public void setJitterEnabled(boolean jitterEnabled) {
+        this.jitterEnabled = jitterEnabled;
+    }
+
+    public double getJitterFactor() {
+        return jitterFactor;
+    }
+
+    public void setJitterFactor(double jitterFactor) {
+        this.jitterFactor = jitterFactor;
     }
 }
