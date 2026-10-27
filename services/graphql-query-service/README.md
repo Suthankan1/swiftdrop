@@ -44,7 +44,7 @@ Mutation/Subscription type. Exposed fields:
 | merchantDashboard | MERCHANT | Merchant pair; Accounts approval/tenant binding and Delivery reads |
 | courierDashboard | COURIER | Courier pair; Accounts eligibility and Delivery assigned-only reads |
 | dispatcherDashboard | DISPATCHER or ADMIN | Dispatcher pair; Accounts/Delivery queue and workload |
-| adminDashboard | ADMIN | Admin pair; Accounts pending summary plus Delivery aggregates |
+| adminDashboard | ADMIN | Pushmitha, #139; Accounts pending review summary (IF-GRPC-06) plus Delivery operational aggregates (IF-GRPC-12) |
 | deliveryStats | DISPATCHER or ADMIN | Pushmitha, #30/#113; preserve PR #213's SDL contract |
 
 **All six production resolvers are deferred.** A permitted root returns sanitized
