@@ -8,17 +8,20 @@ import { CourierParcelDetails } from '../components/CourierParcelDetails'
 import type { createCourierDashboardApi } from '../api/courierDashboard'
 import type { createCourierAssignmentsApi } from '../api/courierAssignments'
 import type { createCourierProofApi } from '../api/proof'
+import type { createCourierStatusApi } from '../api/status'
 
 export interface CourierPageProps {
   summaryApiOverride?: ReturnType<typeof createCourierDashboardApi>
   assignmentsApiOverride?: ReturnType<typeof createCourierAssignmentsApi>
   proofApiOverride?: ReturnType<typeof createCourierProofApi>
+  statusApiOverride?: ReturnType<typeof createCourierStatusApi>
 }
 
 export function CourierPage({
   summaryApiOverride,
   assignmentsApiOverride,
   proofApiOverride,
+  statusApiOverride,
 }: CourierPageProps = {}) {
   const auth = useAuth()
   const { state, query, refetch } = useStaffProfile('COURIER')
@@ -29,12 +32,14 @@ export function CourierPage({
     state.profile.role === 'COURIER'
 
   const [selectedParcelId, setSelectedParcelId] = useState<string | null>(null)
+  const [assignmentNotice, setAssignmentNotice] = useState<string | null>(null)
 
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
   const [prevSubject, setPrevSubject] = useState(subject)
   if (subject !== prevSubject) {
     setPrevSubject(subject)
     setSelectedParcelId(null)
+    setAssignmentNotice(null)
   }
 
   return (
@@ -59,9 +64,9 @@ export function CourierPage({
         />
 
         <aside className="card courier-note" aria-labelledby="courier-next-heading">
-          <h2 id="courier-next-heading">Built for the work ahead.</h2>
+          <h2 id="courier-next-heading">Your active delivery workflow.</h2>
           <p className="muted">
-            Secure handover proof capture is active for assigned parcels. Status updates and queue management will arrive in separately reviewed features.
+            Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
           </p>
           <button
             className="button button-secondary"
@@ -88,6 +93,18 @@ export function CourierPage({
 
       {isOperationalCourier && (
         <div className="courier-dashboard-container" aria-label="Courier Operations Dashboard">
+          {assignmentNotice && (
+            <div className="feedback-banner is-error" role="alert">
+              <span>{assignmentNotice}</span>
+              <button
+                type="button"
+                className="button button-secondary button-small"
+                onClick={() => setAssignmentNotice(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
           <CourierDashboardSummary
             key={`summary-${subject}`}
             apiOverride={summaryApiOverride}
@@ -99,12 +116,20 @@ export function CourierPage({
               parcelId={selectedParcelId}
               onClose={() => setSelectedParcelId(null)}
               apiOverride={proofApiOverride}
+              statusApiOverride={statusApiOverride}
+              onAssignmentLost={(message) => {
+                setAssignmentNotice(message)
+                setSelectedParcelId(null)
+              }}
             />
           ) : (
             <CourierAssignmentList
               key={`assignments-${subject}`}
               selectedParcelId={selectedParcelId}
-              onSelectParcel={(id) => setSelectedParcelId(id)}
+              onSelectParcel={(id) => {
+                setAssignmentNotice(null)
+                setSelectedParcelId(id)
+              }}
               apiOverride={assignmentsApiOverride}
             />
           )}
