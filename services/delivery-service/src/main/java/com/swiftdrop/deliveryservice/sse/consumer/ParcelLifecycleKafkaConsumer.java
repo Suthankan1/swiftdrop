@@ -40,7 +40,7 @@ public class ParcelLifecycleKafkaConsumer {
 
     @KafkaListener(
             topics = "${swiftdrop.kafka.topics.parcel-lifecycle:parcel.lifecycle.v1}",
-            groupId = "${spring.kafka.consumer.group-id:delivery-service-sse}",
+            groupId = "#{sseConsumerGroupId}",
             containerFactory = "sseKafkaListenerContainerFactory"
     )
     public void onLifecycleEvent(

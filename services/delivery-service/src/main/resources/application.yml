@@ -103,6 +103,10 @@ swiftdrop:
     kafka:
       consumer:
         enabled: ${SSE_KAFKA_CONSUMER_ENABLED:true}
+        group-prefix: ${SSE_KAFKA_GROUP_PREFIX:tracking.}
+        group-id: ${SSE_KAFKA_CONSUMER_GROUP_ID:}
+        replica-id: ${SSE_REPLICA_ID:${POD_NAME:${INSTANCE_ID:${HOSTNAME:}}}}
+        auto-offset-reset: ${SSE_KAFKA_AUTO_OFFSET_RESET:latest}
 
 management:
   endpoints:

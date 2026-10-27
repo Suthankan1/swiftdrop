@@ -132,7 +132,13 @@ public class SseSubscriberSession {
             return false;
         }
 
-        // 3. Emit SSE formatted message
+        // 3. Detect version gap (missed events): log warning for client REST recovery
+        if (currentVersion > 0 && event.aggregateVersion() > currentVersion + 1) {
+            log.warn("Detected aggregate version gap for session {} on parcel {} [lastDelivered={}, received={}]. Emitting event; client must reconcile via canonical REST GET /api/v1/parcels/{}.",
+                    sessionId, parcelId, currentVersion, event.aggregateVersion(), parcelId);
+        }
+
+        // 4. Emit SSE formatted message
         try {
             lastDeliveredVersion.set(event.aggregateVersion());
             emitter.send(SseEmitter.event()
