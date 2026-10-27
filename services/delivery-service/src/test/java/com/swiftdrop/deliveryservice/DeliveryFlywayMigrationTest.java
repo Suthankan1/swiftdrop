@@ -92,4 +92,39 @@ class DeliveryFlywayMigrationTest {
         assertThat(sql).doesNotContain("REFERENCES account_profiles");
         assertThat(sql).doesNotContain("REFERENCES quotes");
     }
+
+    @Test
+    @DisplayName("Verify V7 Flyway migration script contains assignment audit table, indexes, backfill, and zero cross-service references")
+    void verifyV7FlywayMigrationScript() throws Exception {
+        ClassPathResource resource = new ClassPathResource("db/migration/V7__create_assignment_audit_schema.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            sql = reader.lines().collect(Collectors.joining("\n"));
+        }
+
+        assertThat(sql).contains("CREATE TABLE delivery_assignment_audits");
+        assertThat(sql).contains("audit_id UUID PRIMARY KEY");
+        assertThat(sql).contains("parcel_id UUID NOT NULL REFERENCES parcels(parcel_id)");
+        assertThat(sql).contains("assignment_id UUID NOT NULL REFERENCES delivery_assignments(assignment_id)");
+        assertThat(sql).contains("courier_sub VARCHAR(64) NOT NULL");
+        assertThat(sql).contains("action VARCHAR(32) NOT NULL");
+        assertThat(sql).contains("actor_sub VARCHAR(64) NOT NULL");
+        assertThat(sql).contains("actor_role VARCHAR(32) NOT NULL");
+        assertThat(sql).contains("parcel_version BIGINT NOT NULL");
+        assertThat(sql).contains("occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()");
+        assertThat(sql).contains("CREATE INDEX idx_assignment_audits_parcel ON delivery_assignment_audits");
+        assertThat(sql).contains("CREATE INDEX idx_assignment_audits_assignment ON delivery_assignment_audits");
+        assertThat(sql).contains("INSERT INTO delivery_assignment_audits");
+
+        // Strict cross-service boundary verification
+        assertThat(sql).doesNotContain("accounts_db");
+        assertThat(sql).doesNotContain("communications_db");
+        assertThat(sql).doesNotContain("pricing_db");
+        assertThat(sql).doesNotContain("REFERENCES merchants");
+        assertThat(sql).doesNotContain("REFERENCES account_profiles");
+        assertThat(sql).doesNotContain("REFERENCES staff_profiles");
+        assertThat(sql).doesNotContain("REFERENCES quotes");
+    }
 }

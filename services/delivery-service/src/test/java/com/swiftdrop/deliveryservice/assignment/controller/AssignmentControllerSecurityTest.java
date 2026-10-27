@@ -358,4 +358,170 @@ class AssignmentControllerSecurityTest {
                 .andExpect(jsonPath("newParcelVersion").value(2))
                 .andExpect(jsonPath("assignedAt").isNotEmpty());
     }
+
+    @Test
+    @DisplayName("12. Authorized dispatcher reassignment returns 200 OK with AssignmentResponse")
+    void authorizedReassignmentReturns200() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        UUID newAssignmentId = UUID.randomUUID();
+        String replacementCourierSub = "courier-sub-repl";
+        String dispatcherSub = "dispatcher-007";
+        String token = createTestToken(issuerUrl, "swiftdrop-api", dispatcherSub, List.of("DISPATCHER"), null, null, trustedRsaKey);
+
+        Instant now = Instant.now();
+        AssignmentResponse response = new AssignmentResponse(
+                newAssignmentId,
+                parcelId,
+                replacementCourierSub,
+                true,
+                now,
+                dispatcherSub,
+                3L,
+                null,
+                "BREAKDOWN"
+        );
+
+        when(deliveryAssignmentService.reassignCourier(any(com.swiftdrop.deliveryservice.assignment.dto.ReassignCourierRequest.class), eq(dispatcherSub), any()))
+                .thenReturn(response);
+
+        mvc.perform(post("/api/v1/assignments/reassign")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"parcelId\":\"" + parcelId + "\",\"replacementCourierSub\":\"" + replacementCourierSub + "\",\"expectedVersion\":2,\"reason\":\"BREAKDOWN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("assignmentId").value(newAssignmentId.toString()))
+                .andExpect(jsonPath("parcelId").value(parcelId.toString()))
+                .andExpect(jsonPath("courierSub").value(replacementCourierSub))
+                .andExpect(jsonPath("active").value(true))
+                .andExpect(jsonPath("newParcelVersion").value(3))
+                .andExpect(jsonPath("reason").value("BREAKDOWN"));
+    }
+
+    @Test
+    @DisplayName("13. Unauthorized courier role denied reassignment with 403 Forbidden")
+    void courierRoleDeniedReassignment403() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        String token = createTestToken(issuerUrl, "swiftdrop-api", "courier-user", List.of("COURIER"), null, null, trustedRsaKey);
+
+        when(deliveryAssignmentService.reassignCourier(any(), any(), any()))
+                .thenThrow(new AssignmentAccessDeniedException("Forbidden - DISPATCHER or ADMIN role required for courier assignment."));
+
+        mvc.perform(post("/api/v1/assignments/reassign")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"parcelId\":\"" + parcelId + "\",\"replacementCourierSub\":\"c-new\",\"expectedVersion\":2}"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("status").value(403))
+                .andExpect(jsonPath("code").value("ASSIGNMENT_FORBIDDEN"));
+    }
+
+    @Test
+    @DisplayName("14. Reassignment on picked up parcel returns 400 Bad Request ProblemDetail")
+    void reassignPickedUpParcelReturns400() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        String dispatcherSub = "dispatcher-007";
+        String token = createTestToken(issuerUrl, "swiftdrop-api", dispatcherSub, List.of("DISPATCHER"), null, null, trustedRsaKey);
+
+        when(deliveryAssignmentService.reassignCourier(any(), eq(dispatcherSub), any()))
+                .thenThrow(new InvalidParcelStateException("Parcel " + parcelId + " is in status PICKED_UP and cannot be reassigned."));
+
+        mvc.perform(post("/api/v1/assignments/reassign")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"parcelId\":\"" + parcelId + "\",\"replacementCourierSub\":\"c-new\",\"expectedVersion\":2}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("status").value(400))
+                .andExpect(jsonPath("code").value("INVALID_PARCEL_STATE"));
+    }
+
+    @Test
+    @DisplayName("15. Authorized dispatcher closure returns 200 OK with active=false")
+    void authorizedClosureReturns200() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        UUID assignmentId = UUID.randomUUID();
+        String courierSub = "courier-sub-123";
+        String dispatcherSub = "dispatcher-007";
+        String token = createTestToken(issuerUrl, "swiftdrop-api", dispatcherSub, List.of("DISPATCHER"), null, null, trustedRsaKey);
+
+        Instant now = Instant.now();
+        AssignmentResponse response = new AssignmentResponse(
+                assignmentId,
+                parcelId,
+                courierSub,
+                false,
+                now.minusSeconds(100),
+                dispatcherSub,
+                3L,
+                now,
+                "UNASSIGNED"
+        );
+
+        when(deliveryAssignmentService.closeAssignment(any(com.swiftdrop.deliveryservice.assignment.dto.CloseAssignmentRequest.class), eq(dispatcherSub), any()))
+                .thenReturn(response);
+
+        mvc.perform(post("/api/v1/assignments/close")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"parcelId\":\"" + parcelId + "\",\"expectedVersion\":2,\"reason\":\"UNASSIGNED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("assignmentId").value(assignmentId.toString()))
+                .andExpect(jsonPath("active").value(false))
+                .andExpect(jsonPath("endedAt").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("16. Authorized dispatcher retrieves assignment audit history")
+    void authorizedAuditHistoryReturns200() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        String dispatcherSub = "dispatcher-007";
+        String token = createTestToken(issuerUrl, "swiftdrop-api", dispatcherSub, List.of("DISPATCHER"), null, null, trustedRsaKey);
+
+        com.swiftdrop.deliveryservice.assignment.dto.AssignmentAuditResponse audit =
+                new com.swiftdrop.deliveryservice.assignment.dto.AssignmentAuditResponse(
+                        UUID.randomUUID(),
+                        parcelId,
+                        UUID.randomUUID(),
+                        "courier-sub",
+                        "REASSIGNED",
+                        dispatcherSub,
+                        "DISPATCHER",
+                        "prev-courier",
+                        UUID.randomUUID(),
+                        "BREAKDOWN",
+                        3L,
+                        Instant.now()
+                );
+
+        when(deliveryAssignmentService.getAssignmentAuditHistory(eq(parcelId), eq(dispatcherSub), any()))
+                .thenReturn(List.of(audit));
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/assignments/parcels/" + parcelId + "/history")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].action").value("REASSIGNED"))
+                .andExpect(jsonPath("$[0].previousCourierSub").value("prev-courier"));
+    }
+
+    @Test
+    @DisplayName("17. Non-dispatcher role denied access to audit history with 403 Forbidden")
+    void nonDispatcherDeniedAuditHistory403() throws Exception {
+        UUID parcelId = UUID.randomUUID();
+        String token = createTestToken(issuerUrl, "swiftdrop-api", "customer-1", List.of("CUSTOMER"), null, null, trustedRsaKey);
+
+        when(deliveryAssignmentService.getAssignmentAuditHistory(eq(parcelId), any(), any()))
+                .thenThrow(new AssignmentAccessDeniedException("Forbidden - DISPATCHER or ADMIN role required for courier assignment."));
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/assignments/parcels/" + parcelId + "/history")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("status").value(403))
+                .andExpect(jsonPath("code").value("ASSIGNMENT_FORBIDDEN"));
+    }
 }
