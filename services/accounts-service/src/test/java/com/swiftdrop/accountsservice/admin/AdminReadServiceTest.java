@@ -21,16 +21,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.swiftdrop.accountsservice.merchant.Merchant;
+import com.swiftdrop.accountsservice.merchant.MerchantBusinessAudit;
+import com.swiftdrop.accountsservice.merchant.MerchantBusinessAuditRepository;
+import com.swiftdrop.accountsservice.merchant.MerchantNotFoundException;
+import com.swiftdrop.accountsservice.merchant.MerchantRepository;
+import com.swiftdrop.accountsservice.merchant.MerchantStatus;
+
 class AdminReadServiceTest {
     private AccountProfileRepository accounts;
     private StaffProfileRepository staff;
+    private MerchantRepository merchants;
+    private MerchantBusinessAuditRepository businessAudits;
     private AdminReadService service;
 
     @BeforeEach
     void setUp() {
         accounts = mock(AccountProfileRepository.class);
         staff = mock(StaffProfileRepository.class);
-        service = new AdminReadService(accounts, staff);
+        merchants = mock(MerchantRepository.class);
+        businessAudits = mock(MerchantBusinessAuditRepository.class);
+        service = new AdminReadService(accounts, staff, merchants, businessAudits);
     }
 
     @Test
@@ -75,5 +86,84 @@ class AdminReadServiceTest {
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.staff(id))
                 .isInstanceOf(AdminStaffNotFoundException.class);
+    }
+
+    @Test
+    void merchantsArePagedAndFilteredByStatus() {
+        UUID merchantId = UUID.randomUUID();
+        Merchant merchant = new Merchant(
+                merchantId, UUID.randomUUID(), "sub-1",
+                "Store Direct LK", "PV-123456", MerchantStatus.PENDING,
+                Instant.now(), Instant.now()
+        );
+        when(merchants.findByStatus(eq(MerchantStatus.PENDING), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(merchant)));
+
+        AdminPageResponse<AdminMerchantSummaryResponse> result = service.merchants(0, 100, MerchantStatus.PENDING);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().getFirst().businessName()).isEqualTo("Store Direct LK");
+        assertThat(result.content().getFirst().status()).isEqualTo(MerchantStatus.PENDING);
+        assertThat(result.content().getFirst().reviewToken()).isNotBlank();
+        // Clamped page size to 50
+        verify(merchants).findByStatus(eq(MerchantStatus.PENDING), argThat(page -> page.getPageSize() == 50));
+    }
+
+    @Test
+    void merchantDetailBuildsActionListAndAudits() {
+        UUID merchantId = UUID.randomUUID();
+        Merchant merchant = new Merchant(
+                merchantId, UUID.randomUUID(), "sub-1",
+                "Store Direct LK", "PV-123456", MerchantStatus.PENDING,
+                Instant.now(), Instant.now()
+        );
+        when(merchants.findById(merchantId)).thenReturn(Optional.of(merchant));
+
+        MerchantBusinessAudit audit = new MerchantBusinessAudit(
+                UUID.randomUUID(), merchantId, "admin-sub-1", "APPROVE", "PENDING", "APPROVED",
+                null, Instant.now(), null, 0L, "SUCCESS", "SUCCESS", null
+        );
+        when(businessAudits.findByMerchantIdOrderByOccurredAtDesc(merchantId)).thenReturn(List.of(audit));
+
+        AdminMerchantDetailResponse detail = service.merchantDetail(merchantId);
+
+        assertThat(detail.id()).isEqualTo(merchantId);
+        assertThat(detail.businessName()).isEqualTo("Store Direct LK");
+        assertThat(detail.actions()).isNotEmpty();
+        assertThat(detail.actions().getFirst().action()).isEqualTo("approve");
+        assertThat(detail.audit()).hasSize(1);
+        assertThat(detail.audit().getFirst().action()).isEqualTo("APPROVE");
+    }
+
+    @Test
+    void merchantDetailThrowsNotFoundForMissingMerchant() {
+        UUID missingId = UUID.randomUUID();
+        when(merchants.findById(missingId)).thenReturn(Optional.empty());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.merchantDetail(missingId))
+                .isInstanceOf(MerchantNotFoundException.class);
+    }
+
+    @Test
+    void merchantAuditReturnsMappedHistory() {
+        UUID merchantId = UUID.randomUUID();
+        Merchant merchant = new Merchant(
+                merchantId, UUID.randomUUID(), "sub-1",
+                "Store Direct LK", "PV-123456", MerchantStatus.APPROVED,
+                Instant.now(), Instant.now()
+        );
+        when(merchants.findById(merchantId)).thenReturn(Optional.of(merchant));
+
+        MerchantBusinessAudit audit = new MerchantBusinessAudit(
+                UUID.randomUUID(), merchantId, "admin-sub-1", "SUSPEND", "APPROVED", "SUSPENDED",
+                "Suspended for fraud", Instant.now(), null, 0L, "SUCCESS", "SUCCESS", null
+        );
+        when(businessAudits.findByMerchantIdOrderByOccurredAtDesc(merchantId)).thenReturn(List.of(audit));
+
+        List<AdminMerchantAuditResponse> audits = service.merchantAudit(merchantId);
+
+        assertThat(audits).hasSize(1);
+        assertThat(audits.getFirst().action()).isEqualTo("SUSPEND");
+        assertThat(audits.getFirst().reason()).isEqualTo("Suspended for fraud");
     }
 }

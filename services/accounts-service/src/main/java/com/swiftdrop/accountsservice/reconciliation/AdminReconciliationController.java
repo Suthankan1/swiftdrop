@@ -109,9 +109,12 @@ public class AdminReconciliationController {
      * Approves a merchant profile in Accounts and reconciles their MERCHANT role in Keycloak.
      */
     @PostMapping("/merchant/{id}/approve")
-    public ResponseEntity<ReconciliationResult> approveMerchant(@PathVariable("id") UUID id) {
+    public ResponseEntity<ReconciliationResult> approveMerchant(
+            @PathVariable("id") UUID id,
+            @RequestBody(required = false) com.swiftdrop.accountsservice.merchant.AdminMerchantDecisionRequest request) {
         TrustedIdentity admin = identityProvider.currentIdentity();
-        ReconciliationResult result = merchantReconciliationService.approveMerchant(admin, id);
+        Long expectedVersion = request != null ? request.resolveExpectedVersion() : null;
+        ReconciliationResult result = merchantReconciliationService.approveMerchant(admin, id, expectedVersion, null);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(result);
@@ -121,9 +124,15 @@ public class AdminReconciliationController {
      * Suspends a merchant in Accounts and revokes their MERCHANT role in Keycloak.
      */
     @PostMapping("/merchant/{id}/suspend")
-    public ResponseEntity<ReconciliationResult> suspendMerchant(@PathVariable("id") UUID id) {
+    public ResponseEntity<ReconciliationResult> suspendMerchant(
+            @PathVariable("id") UUID id,
+            @RequestBody(required = false) com.swiftdrop.accountsservice.merchant.AdminMerchantDecisionRequest request) {
         TrustedIdentity admin = identityProvider.currentIdentity();
-        ReconciliationResult result = merchantReconciliationService.suspendMerchant(admin, id, "ADMIN_INITIATED");
+        String reason = (request != null && request.reason() != null && !request.reason().isBlank())
+                ? request.reason()
+                : "ADMIN_INITIATED";
+        Long expectedVersion = request != null ? request.resolveExpectedVersion() : null;
+        ReconciliationResult result = merchantReconciliationService.suspendMerchant(admin, id, reason, expectedVersion, null);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(result);

@@ -1,5 +1,7 @@
 package com.swiftdrop.accountsservice.merchant;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.Repository;
 
 import java.util.Optional;
@@ -26,7 +28,15 @@ public interface MerchantRepository extends Repository<Merchant, UUID> {
 
     java.util.List<Merchant> findByStatusOrderByCreatedAtAsc(MerchantStatus status);
 
+    Page<Merchant> findAll(Pageable pageable);
+
+    Page<Merchant> findByStatus(MerchantStatus status, Pageable pageable);
+
     long countByStatus(MerchantStatus status);
 
     Merchant save(Merchant merchant);
+
+    default Merchant saveAndFlush(Merchant merchant) {
+        return save(merchant);
+    }
 }

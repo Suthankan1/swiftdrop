@@ -18,6 +18,10 @@ import com.swiftdrop.security.grpc.SwiftDropGrpcContext;
 import com.swiftdrop.security.service.SwiftDropServiceIdentity;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -480,13 +484,39 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
     @Override
     public void getPendingMerchantsSummary(PendingMerchantsSummaryRequest request,
                                            StreamObserver<PendingMerchantsSummaryResponse> responseObserver) {
+        // 1. Calling service verification (defense-in-depth)
+        var callingServiceOpt = SwiftDropGrpcContext.currentCallingService();
+        if (callingServiceOpt.isPresent() && callingServiceOpt.get() != SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("Calling service is not authorized to invoke GetPendingMerchantsSummary: " + callingServiceOpt.get().getServiceName())
+                    .asRuntimeException());
+            return;
+        }
+
+        // 2. Delegated human actor verification: must be present and must hold ADMIN role
+        var actorOpt = SwiftDropGrpcContext.currentDelegatedActor();
+        if (actorOpt.isEmpty() || !actorOpt.get().isAdmin()) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("GetPendingMerchantsSummary requires delegated ADMIN actor context")
+                    .asRuntimeException());
+            return;
+        }
+
+        // 3. Validate pagination parameters
         int page = request.getPage();
         if (page < 0) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("page must be >= 0").asRuntimeException());
             return;
         }
-        int pageSize = request.getPageSize() <= 0 ? DEFAULT_PAGE_SIZE : Math.min(request.getPageSize(), MAX_PAGE_SIZE);
+        if (request.getPageSize() < 0 || request.getPageSize() > MAX_PAGE_SIZE) {
+            responseObserver.onError(Status.INVALID_ARGUMENT
+                    .withDescription("page_size must be between 1 and " + MAX_PAGE_SIZE)
+                    .asRuntimeException());
+            return;
+        }
+        int pageSize = request.getPageSize() <= 0 ? DEFAULT_PAGE_SIZE : request.getPageSize();
 
+        // 4. Validate status filter
         String filterStr = request.getStatusFilter() == null || request.getStatusFilter().isBlank()
                 ? "PENDING"
                 : request.getStatusFilter().trim().toUpperCase();
@@ -495,23 +525,22 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
         try {
             status = MerchantStatus.valueOf(filterStr);
         } catch (IllegalArgumentException ex) {
-            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid status_filter: " + filterStr).asRuntimeException());
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Unsupported status_filter: " + filterStr).asRuntimeException());
             return;
         }
 
-        List<Merchant> merchants = merchantRepository.findByStatusOrderByCreatedAtAsc(status);
-        int totalCount = merchants.size();
-
-        int fromIndex = Math.min(page * pageSize, totalCount);
-        int toIndex = Math.min(fromIndex + pageSize, totalCount);
-        List<Merchant> pageItems = merchants.subList(fromIndex, toIndex);
+        // 5. Database bounded pagination with deterministic sorting
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Direction.ASC, "createdAt")
+                .and(Sort.by(Sort.Direction.ASC, "id")));
+        Page<Merchant> pageResult = merchantRepository.findByStatus(status, pageable);
+        int totalCount = (int) Math.min(pageResult.getTotalElements(), Integer.MAX_VALUE);
 
         PendingMerchantsSummaryResponse.Builder builder = PendingMerchantsSummaryResponse.newBuilder()
                 .setTotalPendingCount(totalCount)
                 .setPage(page)
                 .setPageSize(pageSize);
 
-        for (Merchant m : pageItems) {
+        for (Merchant m : pageResult.getContent()) {
             Instant created = m.getCreatedAt();
             Timestamp ts = created != null ? Timestamp.newBuilder()
                     .setSeconds(created.getEpochSecond())

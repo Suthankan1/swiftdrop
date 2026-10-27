@@ -83,6 +83,32 @@ public class MerchantProblemHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Merchant unique constraint violated");
     }
 
+    @ExceptionHandler(MerchantIllegalStateTransitionException.class)
+    ProblemDetail handleIllegalStateTransition(MerchantIllegalStateTransitionException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(MerchantConcurrencyConflictException.class)
+    ProblemDetail handleConcurrencyConflict(MerchantConcurrencyConflictException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    ProblemDetail handleOptimisticLockingFailure(org.springframework.dao.OptimisticLockingFailureException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "Merchant record changed concurrently; retry against current state.");
+    }
+
+    @ExceptionHandler(MerchantDecisionValidationException.class)
+    ProblemDetail handleDecisionValidation(MerchantDecisionValidationException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(com.swiftdrop.accountsservice.staff.StaffAccessDeniedException.class)
+    ProblemDetail handleStaffAccessDenied(com.swiftdrop.accountsservice.staff.StaffAccessDeniedException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
         String detail = (ex.getMessage() != null && !ex.getMessage().isBlank())
