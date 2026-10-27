@@ -105,7 +105,12 @@ public class StatusTransitionService {
                 request.proofId()
         );
 
-        if (request.newStatus() == ParcelStatus.DELIVERED && proofMetadataContract != null) {
+        if (request.newStatus() == ParcelStatus.DELIVERED) {
+            if (proofMetadataContract == null) {
+                throw new InvalidTransitionParametersException(
+                        "Proof verification service is unavailable for DELIVERED transition"
+                );
+            }
             if (!proofMetadataContract.isProofValid(parcelId, request.proofId())) {
                 throw new InvalidTransitionParametersException(
                         "Proof reference " + request.proofId() + " not found or does not belong to parcel " + parcelId

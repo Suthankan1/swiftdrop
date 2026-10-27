@@ -104,6 +104,61 @@ class DeliveryLifecycleContractTest {
     }
 
     @Test
+    @DisplayName("Stage-specific failure reasons are strictly enforced per Runtime Decision Register v1.3")
+    void testStageSpecificFailureReasons() {
+        // CREATED -> FAILED
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.CREATED, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_CANCELLED_BY_SENDER, null))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.CREATED, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_PICKUP_FAILED_SENDER_ABSENT, null))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.CREATED, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_RECIPIENT_UNAVAILABLE, null))
+                .isInstanceOf(InvalidTransitionException.class)
+                .hasMessageContaining("not permitted when transitioning from stage CREATED");
+
+        // PICKED_UP -> FAILED
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.PICKED_UP, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_PARCEL_DAMAGED, null))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.PICKED_UP, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_FORCE_MAJEURE, null))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.PICKED_UP, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_CANCELLED_BY_SENDER, null))
+                .isInstanceOf(InvalidTransitionException.class)
+                .hasMessageContaining("not permitted when transitioning from stage PICKED_UP");
+
+        // IN_TRANSIT -> FAILED
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.IN_TRANSIT, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_PARCEL_DAMAGED, null))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.IN_TRANSIT, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_FORCE_MAJEURE, null))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.IN_TRANSIT, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_REFUSED_BY_RECIPIENT, null))
+                .isInstanceOf(InvalidTransitionException.class)
+                .hasMessageContaining("not permitted when transitioning from stage IN_TRANSIT");
+
+        // OUT_FOR_DELIVERY -> FAILED
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.OUT_FOR_DELIVERY, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_RECIPIENT_UNAVAILABLE, null))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.OUT_FOR_DELIVERY, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_INCORRECT_ADDRESS, null))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.OUT_FOR_DELIVERY, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_REFUSED_BY_RECIPIENT, null))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> ParcelLifecycleTransitionContract.validateTransition(
+                ParcelStatus.OUT_FOR_DELIVERY, ParcelStatus.FAILED, ParcelLifecycleTransitionContract.REASON_CANCELLED_BY_SENDER, null))
+                .isInstanceOf(InvalidTransitionException.class)
+                .hasMessageContaining("not permitted when transitioning from stage OUT_FOR_DELIVERY");
+    }
+
+    @Test
     @DisplayName("DELIVERED transition requires mandatory proofId")
     void testDeliveredTransitionProofRequirement() {
         assertThatThrownBy(() -> ParcelLifecycleTransitionContract.validateTransition(ParcelStatus.OUT_FOR_DELIVERY, ParcelStatus.DELIVERED, null, null))
