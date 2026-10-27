@@ -29,4 +29,6 @@ public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery
     List<WebhookDelivery> findBySubscriptionIdAndParcelId(UUID subscriptionId, UUID parcelId);
 
     List<WebhookDelivery> findByEventId(UUID eventId);
+
+    List<WebhookDelivery> findByStatusAndUpdatedAtLessThanEqual(WebhookDeliveryStatus status, Instant cutoff);
 }

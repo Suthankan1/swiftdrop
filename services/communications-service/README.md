@@ -309,10 +309,46 @@ mvn -f services/communications-service/pom.xml verify
 - Materialized jobs are left in `status = PENDING`, `attempt_count = 0`, `next_attempt_at = now` for discovery by the downstream delivery engine (`idx_webhook_deliveries_pending`).
 - Outbound HTTP dispatch, HMAC signing headers, and backoff retries are owned by downstream Issue #33 / #142 / #151.
 
+### IMPLEMENTED in Issue #142 (N10-B20):
+- [x] Cryptographic HMAC-SHA256 Webhook Request Signing (`WebhookSigner`, `DefaultWebhookSigner`):
+  - Signature header `X-SwiftDrop-Signature: t={timestamp},v1={hex_digest}` matching RFC standard practices.
+  - Signed payload string: `timestamp + "." + payload_json` using UTF-8 encoding.
+  - Secret management: decrypts stored AES-256-GCM secret (`enc:v1:...`) via `WebhookSigningSecretService.decryptSecret`.
+  - Constant-time signature verification (`MessageDigest.isEqual`) with configurable replay tolerance window (default 300 seconds).
+  - Strict input validation rejecting null/blank payloads, secrets, or malformed header formats.
+- [x] Safe Outbound HTTPS Client (`WebhookHttpClient`, `DefaultWebhookHttpClient`):
+  - Strict HTTPS enforcement with valid TLS certificates and hostname validation.
+  - DNS resolution and SSRF defense: delegates destination validation to `WebhookDestinationValidator` before initiating connection.
+  - Redirects strictly prohibited (`Redirect.NEVER`) to prevent SSRF filtering bypass and protocol downgrade to HTTP.
+  - Configurable timeouts (`connectTimeoutMs = 3000`, `requestTimeoutMs = 5000`) via `WebhookDispatchProperties`.
+  - Standard headers: `Content-Type: application/json; charset=utf-8`, `X-SwiftDrop-Signature`, `User-Agent: SwiftDrop-Webhook/1.0`, and `x-swiftdrop-correlation-id`.
+  - Wall-clock response latency tracking in milliseconds.
+- [x] Webhook Response & Exception Classification (`WebhookResponseClassifier`, `WebhookOutcomeCategory`, `WebhookResponseClassification`):
+  - 2xx (`SUCCESS`): Successful delivery, terminal `status = SUCCESS`, non-retryable.
+  - 3xx (`REDIRECT`): Security-relevant redirection rejected, classified as non-retryable `FAILED`.
+  - 4xx (`CLIENT_ERROR`, except 408/429): Merchant endpoint client error (400, 401, 403, 404, 410, 422), classified as non-retryable `FAILED` to prevent futile retries.
+  - 429 (`RATE_LIMITED`): Retryable with honor for `Retry-After` header (numeric seconds or RFC 1123 HTTP date).
+  - 408 & Timeouts (`TIMEOUT`): `HttpConnectTimeoutException`, `HttpTimeoutException`, or socket timeouts classified as retryable `TIMEOUT` with null `httpStatusCode`.
+  - 5xx (`SERVER_ERROR`): Server errors (500, 502, 503, 504) classified as retryable with exponential backoff.
+  - Security failures (`SECURITY_FAILURE`): `SSLException`, `InvalidWebhookDestinationException` classified as non-retryable `FAILED`.
+  - Error sanitization: strips control characters, masks secrets and bearer tokens, truncates diagnostic message to 500 characters.
+- [x] Durable Delivery Execution & Attempt Persistence (`WebhookDeliveryExecutionService`):
+  - Architectural separation: outbound HTTP network calls are executed **strictly outside** database transactions to avoid holding connection pool resources.
+  - Atomic persistence boundary: attempt recording in `webhook_attempts` and job status update in `webhook_deliveries` commit together in a single PostgreSQL transaction.
+  - Multi-attempt audit preservation: subsequent attempts append new rows to `webhook_attempts` without overwriting prior attempt history.
+  - Retry scheduling: calculates exponential backoff (`baseBackoffSeconds * 2^(attempt-1)`) capped at `maxBackoffSeconds` (300s); sets `next_attempt_at` when retryable.
+  - Attempt exhaustion: when `attemptCount >= maxAttempts` (5), transitions delivery status to terminal `EXHAUSTED`.
+  - Concurrency & crash recovery: optimistic state transition to `PROCESSING` prevents concurrent worker duplicate executions; `recoverStuckProcessingJobs` recovers stalled attempts after lease expiration.
+- [x] Automated Test Coverage:
+  - 10 unit tests in `WebhookSignerTest` (HMAC computation, header formatting, tamper detection, replay window, timing resistance).
+  - 14 unit tests in `WebhookResponseClassifierTest` (2xx, 3xx, 4xx, 429 Retry-After parsing, 408/5xx, timeouts, SSLException, sanitization).
+  - 3 unit tests in `DefaultWebhookHttpClientTest` (destination validation, required headers, timeout propagation).
+  - 13 unit tests in `WebhookDeliveryExecutionServiceTest` (success, backoff retry, rate limiting, terminal failures, exhaustion, multi-attempt audit, crash recovery).
+  - PostgreSQL schema and attempt persistence integration tests in `CommunicationsPersistencePostgresIT`.
+
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
-- ❌ Webhook outbound HTTP worker, HMAC dispatch execution, and attempt recording (belongs to **Issue #142**).
-- ❌ Durable webhook retry scheduler and exhaustion handling (belongs to **Issue #151**).
+- ❌ Recurring cron / polling scheduler bean for periodic webhook pending job dispatch (belongs to **Issue #151**; execution methods `processPendingDeliveries` and `recoverStuckProcessingJobs` are implemented and ready for bean wiring).
 - ❌ External SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).
 - ❌ Shared API Gateway or Keycloak configuration changes.
 - ❌ Cross-service SQL joins or direct database access to Accounts or Delivery databases.
