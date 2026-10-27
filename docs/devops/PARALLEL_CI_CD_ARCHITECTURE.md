@@ -325,3 +325,4 @@ When a new container package is published for the first time by GitHub Actions u
 - **Residual Risks**:
   - High concurrency on GitHub-hosted free runners may occasionally encounter runner queuing during peak GitHub load. `max-parallel: 4` (Java) and `max-parallel: 3` (Containers) are tuned to prevent runner pool throttling.
   - Human package administration is required if a newly initialized GHCR package defaults to read-only actions access.
+
