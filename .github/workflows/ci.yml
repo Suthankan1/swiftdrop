@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -63,113 +63,6 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist
-          retention-days: 7
-
-  java-services:
-    name: Java 21 Services Build & Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup Java 21 LTS
-        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Build and verify shared proto contracts
-        run: |
-          echo "================================================================================"
-          echo "            SWIFTDROP PROTOBUF CONTRACT & GENERATION GATE                      "
-          echo "================================================================================"
-          chmod +x shared/proto-contracts/mvnw
-          if (cd shared/proto-contracts && ./mvnw -B clean install); then
-            echo "✓ shared/proto-contracts build, generation, and verification SUCCEEDED."
-          else
-            echo "✗ shared/proto-contracts build failed."
-            exit 1
-          fi
-
-      - name: Build and verify shared security adapter
-        run: |
-          echo "================================================================================"
-          echo "            SWIFTDROP SHARED SECURITY ADAPTER GATE                             "
-          echo "================================================================================"
-          chmod +x shared/security-adapter/mvnw
-          if (cd shared/security-adapter && ./mvnw -B clean install); then
-            echo "✓ shared/security-adapter build, verification, and tests SUCCEEDED."
-          else
-            echo "✗ shared/security-adapter build failed."
-            exit 1
-          fi
-
-      - name: Discover and verify Spring Boot microservices
-        run: |
-          echo "================================================================================"
-          echo "                  SWIFTDROP JAVA SERVICE BUILD & VERIFY GATE                    "
-          echo "================================================================================"
-          
-          SERVICES_DIR="services"
-          FAILED_SERVICES=()
-          VERIFIED_SERVICES=()
-          NOT_IMPLEMENTED=()
-          
-          for service_dir in "$SERVICES_DIR"/*; do
-            if [ -d "$service_dir" ]; then
-              service_name=$(basename "$service_dir")
-              if [ -f "$service_dir/pom.xml" ] && [ -f "$service_dir/mvnw" ]; then
-                echo ""
-                echo "--------------------------------------------------------------------------------"
-                echo "BUILDING & VERIFYING: $service_name"
-                echo "--------------------------------------------------------------------------------"
-                chmod +x "$service_dir/mvnw"
-                if (cd "$service_dir" && ./mvnw -B clean verify); then
-                  echo "✓ $service_name build and verification SUCCEEDED."
-                  VERIFIED_SERVICES+=("$service_name")
-                else
-                  echo "✗ $service_name build/test FAILED."
-                  FAILED_SERVICES+=("$service_name")
-                fi
-              else
-                echo "ℹ [SERVICE STATUS] $service_name: NOT YET IMPLEMENTED (Design placeholder only, skipping build)"
-                NOT_IMPLEMENTED+=("$service_name")
-              fi
-            fi
-          done
-          
-          echo ""
-          echo "================================================================================"
-          echo "JAVA SERVICE SUMMARY"
-          echo "Verified services:    ${VERIFIED_SERVICES[*]:-None}"
-          echo "Pending services:     ${NOT_IMPLEMENTED[*]:-None}"
-          echo "Failed services:      ${FAILED_SERVICES[*]:-None}"
-          echo "================================================================================"
-          
-          if [ ${#FAILED_SERVICES[@]} -gt 0 ]; then
-            echo "ERROR: One or more implemented Java services failed verification!"
-            exit 1
-          fi
-          
-          if [ ${#VERIFIED_SERVICES[@]} -eq 0 ]; then
-            echo "ERROR: No active Java services were verified!"
-            exit 1
-          fi
-
-      - name: Collect Surefire & Failsafe test reports
-        if: always()
-        run: |
-          mkdir -p test-reports
-          find services shared -type d \( -name "surefire-reports" -o -name "failsafe-reports" \) -exec cp -r {} test-reports/ \; 2>/dev/null || true
-
-      - name: Upload Java test reports
-        if: always()
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
-        with:
-          name: java-test-reports
-          path: test-reports
           retention-days: 7
 
   identity-tests:
@@ -418,15 +311,463 @@ jobs:
       - name: Validate Docker Compose specification and policies
         run: python3 -m unittest discover -s tests/platform-compose -p "test_*.py" -v
 
+  secret-scanning:
+    name: Secret & Credential Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks secret scanner
+        uses: gitleaks/gitleaks-action@bcfb9cce635345aac9996cedc19b2de8e01b894f # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  dependency-scanning:
+    name: Dependency Vulnerability Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 12.11.2
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 24.21.0
+
+      - name: Run frontend dependency audit
+        run: pnpm --dir frontend audit --audit-level=high
+
+      - name: Run Trivy filesystem dependency vulnerability scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: false
+
+  contract-validation:
+    name: Contract Validation & Compatibility Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 24.21.0
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Install contract testing dependencies
+        run: pip install pyyaml jsonschema graphql-core
+
+      - name: Lint OpenAPI 3.0.3 contracts (Redocly CLI)
+        run: npx -y @redocly/cli lint contracts/rest/openapi-*.yaml
+
+      - name: Run contract validation & backward compatibility suite
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            BASE_REF="origin/test"
+          fi
+          echo "Comparing contract compatibility against base reference: $BASE_REF"
+          python3 tests/contracts/validate_contracts.py --check-compatibility --base-ref="$BASE_REF" --output-json=contract-validation-report.json
+
+      - name: Run contract unit tests
+        run: python3 -m unittest discover -s tests/contracts -p "test_*.py" -v
+
+      - name: Upload contract validation report
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: contract-validation-report
+          path: contract-validation-report.json
+          retention-days: 7
+
+  java-shared-libraries:
+    name: Java / Shared Libraries Preparation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Java 21 LTS
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and verify shared proto contracts
+        run: |
+          echo "================================================================================"
+          echo "            SWIFTDROP PROTOBUF CONTRACT & GENERATION GATE                      "
+          echo "================================================================================"
+          chmod +x shared/proto-contracts/mvnw
+          if (cd shared/proto-contracts && ./mvnw -B clean install); then
+            echo "✓ shared/proto-contracts build, generation, and verification SUCCEEDED."
+          else
+            echo "✗ shared/proto-contracts build failed."
+            exit 1
+          fi
+
+      - name: Build and verify shared security adapter
+        run: |
+          echo "================================================================================"
+          echo "            SWIFTDROP SHARED SECURITY ADAPTER GATE                             "
+          echo "================================================================================"
+          chmod +x shared/security-adapter/mvnw
+          if (cd shared/security-adapter && ./mvnw -B clean install); then
+            echo "✓ shared/security-adapter build, verification, and tests SUCCEEDED."
+          else
+            echo "✗ shared/security-adapter build failed."
+            exit 1
+          fi
+
+      - name: Package verified shared Maven artifacts
+        run: |
+          mkdir -p shared-artifacts
+          tar -czf shared-artifacts/swiftdrop-shared-m2.tar.gz -C ~/.m2/repository com/swiftdrop
+          ls -la shared-artifacts/swiftdrop-shared-m2.tar.gz
+          echo "✓ Packaged verified shared Maven artifacts for downstream matrix consumption."
+
+      - name: Upload shared Maven artifacts
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: java-shared-artifacts
+          path: shared-artifacts/swiftdrop-shared-m2.tar.gz
+          retention-days: 1
+
+  java-service-tests:
+    name: Java / ${{ matrix.service }}
+    needs:
+      - java-shared-libraries
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        service:
+          - api-gateway
+          - accounts-service
+          - pricing-service
+          - delivery-service
+          - communications-service
+          - graphql-query-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Java 21 LTS
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download verified shared Maven artifacts
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          name: java-shared-artifacts
+          path: shared-artifacts
+
+      - name: Install verified shared Maven artifacts
+        run: |
+          mkdir -p ~/.m2/repository
+          tar -xzf shared-artifacts/swiftdrop-shared-m2.tar.gz -C ~/.m2/repository
+          test -f ~/.m2/repository/com/swiftdrop/proto-contracts/0.0.1-SNAPSHOT/proto-contracts-0.0.1-SNAPSHOT.jar || { echo "ERROR: proto-contracts jar missing!"; exit 1; }
+          test -f ~/.m2/repository/com/swiftdrop/security-adapter/0.0.1-SNAPSHOT/security-adapter-0.0.1-SNAPSHOT.jar || { echo "ERROR: security-adapter jar missing!"; exit 1; }
+          echo "✓ Verified shared Maven artifacts successfully installed in local repository."
+
+      - name: Verify service with Maven
+        run: |
+          echo "================================================================================"
+          echo "BUILDING & VERIFYING SERVICE: ${{ matrix.service }}"
+          echo "================================================================================"
+          SERVICE_DIR="services/${{ matrix.service }}"
+          test -f "$SERVICE_DIR/pom.xml" || { echo "ERROR: $SERVICE_DIR/pom.xml missing!"; exit 1; }
+          test -f "$SERVICE_DIR/mvnw" || { echo "ERROR: $SERVICE_DIR/mvnw missing!"; exit 1; }
+          chmod +x "$SERVICE_DIR/mvnw"
+          (cd "$SERVICE_DIR" && ./mvnw -B verify)
+          echo "✓ ${{ matrix.service }} build and verification SUCCEEDED."
+
+      - name: Collect Surefire & Failsafe test reports
+        if: always()
+        run: |
+          mkdir -p "test-reports/${{ matrix.service }}"
+          find "services/${{ matrix.service }}" -type d \( -name "surefire-reports" -o -name "failsafe-reports" \) -exec cp -r {} "test-reports/${{ matrix.service }}/" \; 2>/dev/null || true
+
+      - name: Upload service test reports
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: java-test-reports-${{ matrix.service }}
+          path: test-reports/${{ matrix.service }}
+          retention-days: 7
+
+  container-security:
+    name: Container Security / ${{ matrix.target.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        target:
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+            context: .
+            tag: swiftdrop/frontend:ci-scan
+            extra_trivy_args: ""
+          - name: api-gateway
+            dockerfile: services/api-gateway/Dockerfile
+            context: .
+            tag: swiftdrop/api-gateway:ci-scan
+            extra_trivy_args: ""
+          - name: accounts-service
+            dockerfile: services/accounts-service/Dockerfile
+            context: .
+            tag: swiftdrop/accounts:ci-scan
+            extra_trivy_args: ""
+          - name: pricing-service
+            dockerfile: services/pricing-service/Dockerfile
+            context: .
+            tag: swiftdrop/pricing:ci-scan
+            extra_trivy_args: ""
+          - name: delivery-service
+            dockerfile: services/delivery-service/Dockerfile
+            context: .
+            tag: swiftdrop/delivery:ci-scan
+            extra_trivy_args: ""
+          - name: communications-service
+            dockerfile: services/communications-service/Dockerfile
+            context: .
+            tag: swiftdrop/communications:ci-scan
+            extra_trivy_args: ""
+          - name: graphql-query-service
+            dockerfile: services/graphql-query-service/Dockerfile
+            context: .
+            tag: swiftdrop/graphql:ci-scan
+            extra_trivy_args: ""
+          - name: keycloak
+            dockerfile: platform/identity/Dockerfile
+            context: .
+            tag: swiftdrop/keycloak:ci-scan
+            extra_trivy_args: "--ignore-unfixed"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Validate Dockerfile exists
+        run: |
+          test -f "${{ matrix.target.dockerfile }}" || {
+            echo "ERROR: Dockerfile missing at ${{ matrix.target.dockerfile }}"
+            exit 1
+          }
+
+      - name: Build container image
+        run: |
+          echo "Building ${{ matrix.target.name }} (${{ matrix.target.tag }}) using ${{ matrix.target.dockerfile }}..."
+          docker build -f "${{ matrix.target.dockerfile }}" -t "${{ matrix.target.tag }}" "${{ matrix.target.context }}"
+
+      - name: Scan container image with Trivy
+        run: |
+          echo "Scanning ${{ matrix.target.tag }} for HIGH and CRITICAL vulnerabilities..."
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.59.1 image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            ${{ matrix.target.extra_trivy_args }} \
+            "${{ matrix.target.tag }}"
+          echo "✓ Image ${{ matrix.target.tag }} passed vulnerability scan gate."
+
+  workflow-regression-tests:
+    name: CI/CD Workflow & Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: pip install pyyaml
+
+      - name: Install actionlint
+        run: |
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          sudo mv actionlint /usr/local/bin/
+
+      - name: Run actionlint against all workflows
+        run: actionlint .github/workflows/*.yml
+
+      - name: Run CI/CD regression test suite
+        run: python3 -m unittest discover -s tests/ci -p "test_*.py" -v
+
+  required-ci-gate:
+    name: SwiftDrop Required CI Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs:
+      - frontend-quality
+      - java-shared-libraries
+      - java-service-tests
+      - identity-tests
+      - terraform-policy
+      - kubernetes-cluster-policy
+      - container-images-validation
+      - platform-compose-validation
+      - secret-scanning
+      - dependency-scanning
+      - contract-validation
+      - container-security
+      - workflow-regression-tests
+
+    steps:
+      - name: Evaluate fail-closed gate policy
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'EOF'
+          import json, os, sys
+
+          raw = os.environ.get("NEEDS_CONTEXT", "{}")
+          needs = json.loads(raw)
+          event_name = os.environ.get("EVENT_NAME", "")
+          ref = os.environ.get("REF", "")
+          repo = os.environ.get("REPO", "")
+
+          required_jobs = [
+              "frontend-quality",
+              "java-shared-libraries",
+              "java-service-tests",
+              "identity-tests",
+              "terraform-policy",
+              "kubernetes-cluster-policy",
+              "container-images-validation",
+              "platform-compose-validation",
+              "secret-scanning",
+              "dependency-scanning",
+              "contract-validation",
+              "container-security",
+              "workflow-regression-tests"
+          ]
+
+          print("=" * 80)
+          print("             SWIFTDROP MANDATORY CI & RELEASE SECURITY GATE EVALUATION          ")
+          print("=" * 80)
+          print(f"Repository:  {repo}")
+          print(f"Event:       {event_name}")
+          print(f"Reference:   {ref}")
+          print("-" * 80)
+
+          failures = []
+          summary_rows = []
+
+          for job_id in required_jobs:
+              job_info = needs.get(job_id)
+              if not job_info:
+                  status = "MISSING"
+                  failures.append((job_id, "Job was not reported in workflow execution context"))
+                  symbol = "✗"
+              else:
+                  res = job_info.get("result", "unknown")
+                  if res == "success":
+                      status = "PASSED"
+                      symbol = "✓"
+                  else:
+                      status = res.upper()
+                      symbol = "✗"
+                      failures.append((job_id, f"Expected 'success', found '{res}'"))
+              print(f"[{symbol}] {job_id:<32} -> {status}")
+              summary_rows.append((job_id, symbol, status))
+
+          print("=" * 80)
+
+          trusted_pub = False
+          pub_reason = "PR or untrusted event - image publication intentionally not eligible"
+          if event_name == "push" and repo == "Suthankan1/swiftdrop" and (ref == "refs/heads/test" or ref.startswith("refs/tags/")):
+              if not failures:
+                  trusted_pub = True
+                  pub_reason = "Approved test branch push - all required checks passed, eligible for GHCR publication"
+              else:
+                  pub_reason = "Push event, but required checks failed - publication blocked"
+
+          summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_file:
+              with open(summary_file, "a", encoding="utf-8") as f:
+                  f.write("## SwiftDrop CI Quality & Release Gate Summary\n\n")
+                  f.write(f"- **Event**: `{event_name}`\n")
+                  f.write(f"- **Reference**: `{ref}`\n")
+                  f.write(f"- **Gate Decision**: `{'PASSED' if not failures else 'FAILED'}`\n")
+                  f.write(f"- **Trusted Publication Eligibility**: `{'ELIGIBLE' if trusted_pub else 'INELIGIBLE'}` ({pub_reason})\n\n")
+                  f.write("| Job / Gate ID | Status | Outcome |\n")
+                  f.write("|---|:---:|---|\n")
+                  for j_id, sym, st in summary_rows:
+                      f.write(f"| `{j_id}` | {sym} | **{st}** |\n")
+                  f.write("\n")
+                  if failures:
+                      f.write("### ❌ Gate Failures\n\n")
+                      for f_id, reason in failures:
+                          f.write(f"- **`{f_id}`**: {reason}\n")
+                      f.write("\n")
+
+          if failures:
+              print(f"FATAL: Gate evaluation failed on {len(failures)} required check(s)!")
+              for f_id, reason in failures:
+                  print(f"  - {f_id}: {reason}")
+              sys.exit(1)
+
+          print("✓ ALL 13 REQUIRED QUALITY & SECURITY GATES PASSED CLEANLY.")
+          print(f"Publication eligibility: {trusted_pub} ({pub_reason})")
+          EOF
+
   publish-runtime-images:
     name: Trusted GHCR Runtime Image Publication
     needs:
-      - frontend-quality
-      - java-services
-      - container-images-validation
-      - platform-compose-validation
-      - terraform-policy
-      - kubernetes-cluster-policy
+      - required-ci-gate
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: github.event_name == 'push' && github.repository == 'Suthankan1/swiftdrop' && (github.ref == 'refs/heads/test' || startsWith(github.ref, 'refs/tags/'))
@@ -451,7 +792,7 @@ jobs:
           echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "sha_full=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push all 8 runtime images to private GHCR
+      - name: Build and push all 8 runtime images to private GHCR with retry
         env:
           SHA_SHORT: ${{ steps.vars.outputs.sha_short }}
           SHA_FULL: ${{ steps.vars.outputs.sha_full }}
@@ -472,20 +813,77 @@ jobs:
           )
 
           mkdir -p build/artifacts/digests
+          MANIFEST_FILE="build/artifacts/digests/published-images.txt"
+          rm -f "$MANIFEST_FILE"
+          touch "$MANIFEST_FILE"
 
+          push_with_retry() {
+            local tag="$1"
+            local max_attempts=3
+            local attempt=1
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "Pushing $tag (attempt $attempt/$max_attempts)..."
+              if docker push "$tag"; then
+                echo "✓ Successfully pushed $tag"
+                return 0
+              fi
+              echo "⚠ Push failed for $tag (attempt $attempt/$max_attempts). Retrying in 5s..."
+              sleep 5
+              attempt=$((attempt + 1))
+            done
+            echo "✗ Failed to push $tag after $max_attempts attempts."
+            return 1
+          }
+
+          FAILED_IMAGES=()
           for entry in "${TARGETS[@]}"; do
             IFS=':' read -r name df ctx base_img <<< "$entry"
             tag_short="${base_img}:${SHA_SHORT}"
             tag_full="${base_img}:${SHA_FULL}"
 
-            echo "Building and pushing $name ($tag_short, $tag_full)..."
-            docker build -f "$df" -t "$tag_short" -t "$tag_full" "$ctx"
-            docker push "$tag_short"
-            docker push "$tag_full"
-            digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag_short" 2>/dev/null || echo "digest-pending")
-            echo "$name: $tag_short ($digest)" >> build/artifacts/digests/published-images.txt
+            echo "--------------------------------------------------------------------------------"
+            echo "Building $name: $tag_short, $tag_full"
+            echo "--------------------------------------------------------------------------------"
+            if ! docker build -f "$df" -t "$tag_short" -t "$tag_full" "$ctx"; then
+              echo "✗ Build failed for $name"
+              FAILED_IMAGES+=("$name")
+              continue
+            fi
+
+            if ! push_with_retry "$tag_short"; then
+              echo "✗ Failed pushing short tag for $name"
+              FAILED_IMAGES+=("$name")
+              continue
+            fi
+
+            if ! push_with_retry "$tag_full"; then
+              echo "✗ Failed pushing full tag for $name"
+              FAILED_IMAGES+=("$name")
+              continue
+            fi
+
+            digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag_full" 2>/dev/null || docker inspect --format '{{index .RepoDigests 0}}' "$tag_short" 2>/dev/null || echo "digest-pending")
+            echo "$name: $tag_full ($digest)" >> "$MANIFEST_FILE"
+            echo "✓ Recorded publication digest for $name: $digest"
           done
-          echo "✓ All 8 runtime images published to private GHCR."
+
+          if [ ${#FAILED_IMAGES[@]} -gt 0 ]; then
+            echo ""
+            echo "================================================================================"
+            echo "✗ PUBLICATION INCOMPLETE: The following ${#FAILED_IMAGES[@]} image(s) failed:"
+            for img in "${FAILED_IMAGES[@]}"; do
+              echo "  - $img"
+            done
+            echo "Release will be marked failed. No partial release is accepted as successful."
+            echo "================================================================================"
+            exit 1
+          fi
+
+          echo ""
+          echo "================================================================================"
+          echo "✓ ALL 8 RUNTIME IMAGES PUBLISHED TO GHCR SUCCESSFULLY WITH FULL DIGESTS."
+          echo "================================================================================"
+          cat "$MANIFEST_FILE"
 
       - name: Upload publication manifests
         if: always()

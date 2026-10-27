@@ -1,11 +1,8 @@
 name: SwiftDrop Security Quality Gates
 
 on:
-  pull_request:
-    branches: [test, main]
-  push:
-    branches: [test]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
@@ -68,93 +65,79 @@ jobs:
           ignore-unfixed: false
 
   container-security:
-    name: Container Security & Missing-Target Gate
+    name: Container Security / ${{ matrix.target.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        target:
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+            context: .
+            tag: swiftdrop/frontend:ci-scan
+            extra_trivy_args: ""
+          - name: api-gateway
+            dockerfile: services/api-gateway/Dockerfile
+            context: .
+            tag: swiftdrop/api-gateway:ci-scan
+            extra_trivy_args: ""
+          - name: accounts-service
+            dockerfile: services/accounts-service/Dockerfile
+            context: .
+            tag: swiftdrop/accounts:ci-scan
+            extra_trivy_args: ""
+          - name: pricing-service
+            dockerfile: services/pricing-service/Dockerfile
+            context: .
+            tag: swiftdrop/pricing:ci-scan
+            extra_trivy_args: ""
+          - name: delivery-service
+            dockerfile: services/delivery-service/Dockerfile
+            context: .
+            tag: swiftdrop/delivery:ci-scan
+            extra_trivy_args: ""
+          - name: communications-service
+            dockerfile: services/communications-service/Dockerfile
+            context: .
+            tag: swiftdrop/communications:ci-scan
+            extra_trivy_args: ""
+          - name: graphql-query-service
+            dockerfile: services/graphql-query-service/Dockerfile
+            context: .
+            tag: swiftdrop/graphql:ci-scan
+            extra_trivy_args: ""
+          - name: keycloak
+            dockerfile: platform/identity/Dockerfile
+            context: .
+            tag: swiftdrop/keycloak:ci-scan
+            extra_trivy_args: "--ignore-unfixed"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Discover, build, and evaluate all 8 container targets
+      - name: Validate Dockerfile exists
         run: |
-          echo "================================================================================"
-          echo "                  SWIFTDROP CONTAINER SECURITY QUALITY GATE                    "
-          echo "================================================================================"
-
-          TARGETS=(
-            "frontend:frontend/Dockerfile:.:swiftdrop/frontend:ci-scan"
-            "api-gateway:services/api-gateway/Dockerfile:.:swiftdrop/api-gateway:ci-scan"
-            "accounts-service:services/accounts-service/Dockerfile:.:swiftdrop/accounts:ci-scan"
-            "pricing-service:services/pricing-service/Dockerfile:.:swiftdrop/pricing:ci-scan"
-            "delivery-service:services/delivery-service/Dockerfile:.:swiftdrop/delivery:ci-scan"
-            "communications-service:services/communications-service/Dockerfile:.:swiftdrop/communications:ci-scan"
-            "graphql-query-service:services/graphql-query-service/Dockerfile:.:swiftdrop/graphql:ci-scan"
-            "keycloak:platform/identity/Dockerfile:.:swiftdrop/keycloak:ci-scan"
-          )
-
-          TARGET_COUNT=${#TARGETS[@]}
-          echo "Required runtime image count: 8"
-          echo "Target definitions provided: $TARGET_COUNT"
-
-          if [ "$TARGET_COUNT" -ne 8 ]; then
-            echo "✗ Error: Expected exactly 8 approved container targets, found $TARGET_COUNT"
+          test -f "${{ matrix.target.dockerfile }}" || {
+            echo "ERROR: Dockerfile missing at ${{ matrix.target.dockerfile }}"
             exit 1
-          fi
+          }
 
-          for entry in "${TARGETS[@]}"; do
-            IFS=':' read -r name df ctx tag <<< "$entry"
-            if [ ! -f "$df" ]; then
-              echo "✗ Error: Dockerfile for $name not found at $df"
-              exit 1
-            fi
-            echo "--------------------------------------------------------------------------------"
-            echo "Building $name using Dockerfile $df with context $ctx"
-            echo "--------------------------------------------------------------------------------"
-            docker build -f "$df" -t "$tag" "$ctx"
-          done
-          echo "✓ All 8 runtime container images successfully built."
-
-      - name: Run container vulnerability scans with Trivy
+      - name: Build container image
         run: |
-          echo "================================================================================"
-          echo "              SWIFTDROP CONTAINER IMAGE VULNERABILITY AUDIT                     "
-          echo "================================================================================"
+          echo "Building ${{ matrix.target.name }} (${{ matrix.target.tag }}) using ${{ matrix.target.dockerfile }}..."
+          docker build -f "${{ matrix.target.dockerfile }}" -t "${{ matrix.target.tag }}" "${{ matrix.target.context }}"
 
-          IMAGES=(
-            "swiftdrop/frontend:ci-scan"
-            "swiftdrop/api-gateway:ci-scan"
-            "swiftdrop/accounts:ci-scan"
-            "swiftdrop/pricing:ci-scan"
-            "swiftdrop/delivery:ci-scan"
-            "swiftdrop/communications:ci-scan"
-            "swiftdrop/graphql:ci-scan"
-            "swiftdrop/keycloak:ci-scan"
-          )
-
-          FAILURES=0
-          for img in "${IMAGES[@]}"; do
-            echo "Scanning image: $img"
-            EXTRA_ARGS=""
-            if [[ "$img" == *"keycloak"* ]]; then
-              EXTRA_ARGS="--ignore-unfixed"
-            fi
-            if docker run --rm \
-              -v /var/run/docker.sock:/var/run/docker.sock \
-              aquasec/trivy:0.59.1 image \
-              --severity HIGH,CRITICAL \
-              --exit-code 1 \
-              $EXTRA_ARGS \
-              "$img"; then
-              echo "✓ $img PASSED vulnerability scan"
-            else
-              echo "✗ $img FAILED vulnerability scan"
-              FAILURES=$((FAILURES + 1))
-            fi
-          done
-
-          if [ $FAILURES -gt 0 ]; then
-            echo "✗ Container vulnerability scan failed on $FAILURES image(s)."
-            exit 1
-          fi
-          echo "✓ All 8 container images passed vulnerability scan gates with 0 High/Critical findings."
+      - name: Scan container image with Trivy
+        run: |
+          echo "Scanning ${{ matrix.target.tag }} for HIGH and CRITICAL vulnerabilities..."
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.59.1 image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            ${{ matrix.target.extra_trivy_args }} \
+            "${{ matrix.target.tag }}"
+          echo "✓ Image ${{ matrix.target.tag }} passed vulnerability scan gate."
