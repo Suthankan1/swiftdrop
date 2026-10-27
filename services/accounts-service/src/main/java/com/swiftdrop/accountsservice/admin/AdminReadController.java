@@ -30,6 +30,25 @@ public class AdminReadController {
         return noStore(service.users(page, size));
     }
 
+    @GetMapping("/merchants")
+    public ResponseEntity<AdminPageResponse<AdminMerchantSummaryResponse>> merchants(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) com.swiftdrop.accountsservice.merchant.MerchantStatus status) {
+        validatePage(page, size);
+        return noStore(service.merchants(page, size, status));
+    }
+
+    @GetMapping("/merchants/{merchantId}")
+    public ResponseEntity<AdminMerchantDetailResponse> merchantDetail(@PathVariable UUID merchantId) {
+        return noStore(service.merchantDetail(merchantId));
+    }
+
+    @GetMapping("/merchants/{merchantId}/audit")
+    public ResponseEntity<java.util.List<AdminMerchantAuditResponse>> merchantAudit(@PathVariable UUID merchantId) {
+        return noStore(service.merchantAudit(merchantId));
+    }
+
     @GetMapping("/staff")
     public ResponseEntity<AdminPageResponse<AdminStaffSummaryResponse>> staff(
             @RequestParam(defaultValue = "0") int page,

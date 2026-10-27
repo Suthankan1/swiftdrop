@@ -57,6 +57,7 @@ public class ReceiptSecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/merchant/parcels").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/receipt").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/events").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/parcels/*/proof").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/proof", "/api/v1/parcels/*/proof/**").authenticated()

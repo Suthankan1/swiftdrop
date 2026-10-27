@@ -37,8 +37,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -1103,5 +1107,177 @@ class AccountsInternalServiceGrpcTest {
         assertThat(response.getIsValid()).isTrue();
         assertThat(response.getMerchantId()).isEqualTo(merchantId.toString());
         assertThat(response.getBusinessName()).isEqualTo("Acme");
+    }
+
+    @Test
+    @DisplayName("GetPendingMerchantsSummary succeeds for GRAPHQL_QUERY_SERVICE with delegated ADMIN actor")
+    void testPendingMerchantsSummary_AdminActor_ReturnsPagedResults() {
+        Merchant merchant = new Merchant(
+                merchantId, UUID.randomUUID(), "sub-1",
+                "Store Direct LK", "PV-123456", MerchantStatus.PENDING,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findByStatus(eq(MerchantStatus.PENDING), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(merchant), org.springframework.data.domain.PageRequest.of(0, 10), 1));
+
+        String serviceToken = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName());
+        String adminToken = jwtHelper.createSignedUserToken(adminSub, List.of("ADMIN"));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN, serviceToken);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, adminSub);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_ROLES, "ADMIN");
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_TOKEN, adminToken);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        PendingMerchantsSummaryResponse response = stub.getPendingMerchantsSummary(
+                PendingMerchantsSummaryRequest.newBuilder().setPage(0).setPageSize(10).build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotalPendingCount()).isEqualTo(1);
+        assertThat(response.getPage()).isEqualTo(0);
+        assertThat(response.getPageSize()).isEqualTo(10);
+        assertThat(response.getItemsList()).hasSize(1);
+        PendingMerchantItem item = response.getItems(0);
+        assertThat(item.getMerchantId()).isEqualTo(merchantId.toString());
+        assertThat(item.getBusinessName()).isEqualTo("Store Direct LK");
+        assertThat(item.getRegistrationNumber()).isEqualTo("PV-123456");
+        assertThat(item.getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("GetPendingMerchantsSummary applies default page size 20 when pageSize is 0")
+    void testPendingMerchantsSummary_DefaultPageSizeApplied() {
+        when(merchantRepository.findByStatus(eq(MerchantStatus.PENDING), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        String serviceToken = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName());
+        String adminToken = jwtHelper.createSignedUserToken(adminSub, List.of("ADMIN"));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN, serviceToken);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, adminSub);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_ROLES, "ADMIN");
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_TOKEN, adminToken);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        PendingMerchantsSummaryResponse response = stub.getPendingMerchantsSummary(
+                PendingMerchantsSummaryRequest.newBuilder().setPage(0).setPageSize(0).build()
+        );
+
+        assertThat(response.getPageSize()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("GetPendingMerchantsSummary rejects page size exceeding 50 with INVALID_ARGUMENT")
+    void testPendingMerchantsSummary_PageSizeAboveFifty_ReturnsInvalidArgument() {
+        String serviceToken = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName());
+        String adminToken = jwtHelper.createSignedUserToken(adminSub, List.of("ADMIN"));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN, serviceToken);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, adminSub);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_ROLES, "ADMIN");
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_TOKEN, adminToken);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() -> stub.getPendingMerchantsSummary(
+                PendingMerchantsSummaryRequest.newBuilder().setPage(0).setPageSize(100).build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
+                    assertThat(ex.getStatus().getDescription()).contains("page_size must be between 1 and 50");
+                });
+    }
+
+    @Test
+    @DisplayName("GetPendingMerchantsSummary rejects negative page index with INVALID_ARGUMENT")
+    void testPendingMerchantsSummary_NegativePage_ReturnsInvalidArgument() {
+        String serviceToken = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName());
+        String adminToken = jwtHelper.createSignedUserToken(adminSub, List.of("ADMIN"));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN, serviceToken);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, adminSub);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_ROLES, "ADMIN");
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_TOKEN, adminToken);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() -> stub.getPendingMerchantsSummary(
+                PendingMerchantsSummaryRequest.newBuilder().setPage(-1).setPageSize(10).build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
+                    assertThat(ex.getStatus().getDescription()).contains("page must be >= 0");
+                });
+    }
+
+    @Test
+    @DisplayName("GetPendingMerchantsSummary rejects non-admin actor with PERMISSION_DENIED")
+    void testPendingMerchantsSummary_NonAdminActor_RejectedWithPermissionDenied() {
+        String serviceToken = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName());
+        String customerToken = jwtHelper.createSignedUserToken("customer-sub", List.of("CUSTOMER"));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN, serviceToken);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, "customer-sub");
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_ROLES, "CUSTOMER");
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_TOKEN, customerToken);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() -> stub.getPendingMerchantsSummary(
+                PendingMerchantsSummaryRequest.newBuilder().setPage(0).setPageSize(10).build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
+                });
+    }
+
+    @Test
+    @DisplayName("GetPendingMerchantsSummary rejects unauthorized calling service with PERMISSION_DENIED")
+    void testPendingMerchantsSummary_UnauthorizedService_Rejected() {
+        String serviceToken = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.DELIVERY_SERVICE.getServiceName());
+        String adminToken = jwtHelper.createSignedUserToken(adminSub, List.of("ADMIN"));
+
+        Metadata headers = new Metadata();
+        headers.put(SwiftDropGrpcMetadata.KEY_SERVICE_TOKEN, serviceToken);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_SUB, adminSub);
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_ROLES, "ADMIN");
+        headers.put(SwiftDropGrpcMetadata.KEY_ACTOR_TOKEN, adminToken);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+
+        assertThatThrownBy(() -> stub.getPendingMerchantsSummary(
+                PendingMerchantsSummaryRequest.newBuilder().setPage(0).setPageSize(10).build()
+        ))
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(e -> {
+                    StatusRuntimeException ex = (StatusRuntimeException) e;
+                    assertThat(ex.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED);
+                });
     }
 }

@@ -48,6 +48,7 @@ public class ProfileSecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/merchants").hasAnyRole("CUSTOMER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/merchants/me").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/merchants/{merchantId}/status").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/merchants/*/approve", "/api/v1/merchants/*/suspend").hasRole("ADMIN")
                         .requestMatchers("/api/v1/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
                         .requestMatchers("/api/v1/staff/**").hasAnyRole("COURIER", "DISPATCHER", "ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

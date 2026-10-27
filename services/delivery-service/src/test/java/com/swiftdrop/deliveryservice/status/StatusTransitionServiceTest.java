@@ -37,8 +37,12 @@ class StatusTransitionServiceTest {
     @Mock
     private CourierAssignmentContract courierAssignmentContract;
 
+    @Mock
+    private com.swiftdrop.deliveryservice.proof.ProofMetadataContract proofMetadataContract;
+
     private StatusTransitionService serviceWithAssignment;
     private StatusTransitionService serviceWithoutAssignment;
+    private StatusTransitionService serviceWithoutProof;
 
     private final UUID parcelId = UUID.randomUUID();
     private final String courierSub = "courier-sub-101";
@@ -49,12 +53,26 @@ class StatusTransitionServiceTest {
         serviceWithAssignment = new StatusTransitionService(
                 parcelRepository,
                 statusHistoryRepository,
-                courierAssignmentContract
+                courierAssignmentContract,
+                null,
+                null,
+                proofMetadataContract
         );
         serviceWithoutAssignment = new StatusTransitionService(
                 parcelRepository,
                 statusHistoryRepository,
-                null // Simulates production runtime where Issue #24 bean is absent
+                null,
+                null,
+                null,
+                proofMetadataContract
+        );
+        serviceWithoutProof = new StatusTransitionService(
+                parcelRepository,
+                statusHistoryRepository,
+                courierAssignmentContract,
+                null,
+                null,
+                null // Simulates runtime where proof verification service is absent
         );
     }
 
@@ -509,5 +527,238 @@ class StatusTransitionServiceTest {
         assertThat(savedEvent.getTopic()).isEqualTo("parcel.lifecycle.v1");
         assertThat(savedEvent.getPartitionKey()).isEqualTo(parcelId.toString());
         assertThat(savedEvent.getStatus()).isEqualTo(com.swiftdrop.deliveryservice.outbox.OutboxStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("15. OUT_FOR_DELIVERY -> DELIVERED with valid proof succeeds and records proofId in audit history")
+    void testDeliveredWithValidProofSucceeds() {
+        UUID proofId = UUID.randomUUID();
+        Parcel parcel = createParcel(ParcelStatus.OUT_FOR_DELIVERY, 4L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+        when(proofMetadataContract.isProofValid(parcelId, proofId)).thenReturn(true);
+        when(parcelRepository.saveAndFlush(any(Parcel.class))).thenAnswer(invocation -> {
+            Parcel p = invocation.getArgument(0);
+            p.setVersion(5L);
+            return p;
+        });
+
+        UpdateStatusRequest request = new UpdateStatusRequest(
+                ParcelStatus.DELIVERED,
+                4L,
+                "Handed to recipient in person.",
+                null,
+                proofId
+        );
+
+        ParcelStatusChangeResponse response = serviceWithAssignment.updateStatus(
+                parcelId,
+                request,
+                courierSub,
+                List.of("ROLE_COURIER")
+        );
+
+        assertThat(response.previousStatus()).isEqualTo("OUT_FOR_DELIVERY");
+        assertThat(response.currentStatus()).isEqualTo("DELIVERED");
+        assertThat(response.stateVersion()).isEqualTo(5L);
+
+        ArgumentCaptor<StatusHistory> historyCaptor = ArgumentCaptor.forClass(StatusHistory.class);
+        verify(statusHistoryRepository).save(historyCaptor.capture());
+        StatusHistory savedHistory = historyCaptor.getValue();
+        assertThat(savedHistory.getNewStatus()).isEqualTo(ParcelStatus.DELIVERED);
+        assertThat(savedHistory.getProofId()).isEqualTo(proofId);
+    }
+
+    @Test
+    @DisplayName("16. OUT_FOR_DELIVERY -> DELIVERED without proofId throws InvalidTransitionParametersException")
+    void testDeliveredWithoutProofIdThrows() {
+        Parcel parcel = createParcel(ParcelStatus.OUT_FOR_DELIVERY, 4L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+
+        UpdateStatusRequest request = new UpdateStatusRequest(
+                ParcelStatus.DELIVERED,
+                4L,
+                "Missing proof",
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> serviceWithAssignment.updateStatus(
+                parcelId,
+                request,
+                courierSub,
+                List.of("ROLE_COURIER")
+        )).isInstanceOf(InvalidTransitionParametersException.class)
+                .hasMessageContaining("Proof of delivery (proofId) is mandatory");
+
+        verify(parcelRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(statusHistoryRepository);
+    }
+
+    @Test
+    @DisplayName("17. OUT_FOR_DELIVERY -> DELIVERED fails-closed when proof verification service is unavailable")
+    void testDeliveredFailsClosedWhenProofServiceMissing() {
+        UUID proofId = UUID.randomUUID();
+        Parcel parcel = createParcel(ParcelStatus.OUT_FOR_DELIVERY, 4L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+
+        UpdateStatusRequest request = new UpdateStatusRequest(
+                ParcelStatus.DELIVERED,
+                4L,
+                "Handover complete",
+                null,
+                proofId
+        );
+
+        assertThatThrownBy(() -> serviceWithoutProof.updateStatus(
+                parcelId,
+                request,
+                courierSub,
+                List.of("ROLE_COURIER")
+        )).isInstanceOf(InvalidTransitionParametersException.class)
+                .hasMessageContaining("Proof verification service is unavailable");
+
+        verify(parcelRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(statusHistoryRepository);
+    }
+
+    @Test
+    @DisplayName("18. OUT_FOR_DELIVERY -> DELIVERED fails when proof is invalid, forged, or belongs to another parcel")
+    void testDeliveredWithInvalidProofThrows() {
+        UUID forgedProofId = UUID.randomUUID();
+        Parcel parcel = createParcel(ParcelStatus.OUT_FOR_DELIVERY, 4L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+        when(proofMetadataContract.isProofValid(parcelId, forgedProofId)).thenReturn(false);
+
+        UpdateStatusRequest request = new UpdateStatusRequest(
+                ParcelStatus.DELIVERED,
+                4L,
+                "Invalid proof reference",
+                null,
+                forgedProofId
+        );
+
+        assertThatThrownBy(() -> serviceWithAssignment.updateStatus(
+                parcelId,
+                request,
+                courierSub,
+                List.of("ROLE_COURIER")
+        )).isInstanceOf(InvalidTransitionParametersException.class)
+                .hasMessageContaining("not found or does not belong to parcel");
+
+        verify(parcelRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(statusHistoryRepository);
+    }
+
+    @Test
+    @DisplayName("19. Stage-specific failure reasons: CREATED->FAILED allows pre-pickup reasons, rejects delivery failure reasons")
+    void testStageSpecificFailureReasonsInService() {
+        Parcel parcel = createParcel(ParcelStatus.CREATED, 1L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+
+        // Disallowed reason for CREATED stage
+        UpdateStatusRequest badRequest = new UpdateStatusRequest(
+                ParcelStatus.FAILED,
+                1L,
+                "Disallowed reason",
+                ParcelLifecycleTransitionContract.REASON_RECIPIENT_UNAVAILABLE,
+                null
+        );
+
+        assertThatThrownBy(() -> serviceWithAssignment.updateStatus(
+                parcelId,
+                badRequest,
+                courierSub,
+                List.of("ROLE_COURIER")
+        )).isInstanceOf(InvalidTransitionParametersException.class)
+                .hasMessageContaining("not permitted when transitioning from stage CREATED");
+
+        // Allowed reason for CREATED stage
+        when(parcelRepository.saveAndFlush(any(Parcel.class))).thenAnswer(inv -> {
+            Parcel p = inv.getArgument(0);
+            p.setVersion(2L);
+            return p;
+        });
+
+        UpdateStatusRequest validRequest = new UpdateStatusRequest(
+                ParcelStatus.FAILED,
+                1L,
+                "Sender cancelled before pickup",
+                ParcelLifecycleTransitionContract.REASON_CANCELLED_BY_SENDER,
+                null
+        );
+
+        ParcelStatusChangeResponse response = serviceWithAssignment.updateStatus(
+                parcelId,
+                validRequest,
+                courierSub,
+                List.of("ROLE_COURIER")
+        );
+
+        assertThat(response.currentStatus()).isEqualTo("FAILED");
+        assertThat(response.stateVersion()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("20. Dispatcher can abort unassigned CREATED parcel to FAILED without courier assignment")
+    void testDispatcherAbortUnassignedCreatedParcel() {
+        Parcel parcel = createParcel(ParcelStatus.CREATED, 1L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(parcelRepository.saveAndFlush(any(Parcel.class))).thenAnswer(inv -> {
+            Parcel p = inv.getArgument(0);
+            p.setVersion(2L);
+            return p;
+        });
+
+        UpdateStatusRequest request = new UpdateStatusRequest(
+                ParcelStatus.FAILED,
+                1L,
+                "Dispatcher cancelled unassigned order upon sender request.",
+                ParcelLifecycleTransitionContract.REASON_CANCELLED_BY_SENDER,
+                null
+        );
+
+        ParcelStatusChangeResponse response = serviceWithoutAssignment.updateStatus(
+                parcelId,
+                request,
+                "dispatcher-user-01",
+                List.of("ROLE_DISPATCHER")
+        );
+
+        assertThat(response.previousStatus()).isEqualTo("CREATED");
+        assertThat(response.currentStatus()).isEqualTo("FAILED");
+        assertThat(response.stateVersion()).isEqualTo(2L);
+        verify(statusHistoryRepository).save(any(StatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("21. Mutation from terminal FAILED throws TerminalStateMutationException")
+    void testMutationFromTerminalFailed() {
+        Parcel parcel = createParcel(ParcelStatus.FAILED, 5L);
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(true);
+
+        UpdateStatusRequest request = new UpdateStatusRequest(
+                ParcelStatus.PICKED_UP,
+                5L,
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> serviceWithAssignment.updateStatus(
+                parcelId,
+                request,
+                courierSub,
+                List.of("ROLE_COURIER")
+        )).isInstanceOf(TerminalStateMutationException.class)
+                .hasMessageContaining("Cannot transition from terminal state");
+
+        verify(parcelRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(statusHistoryRepository);
     }
 }

@@ -270,4 +270,144 @@ class WebhookSubscriptionServiceTest {
         assertThat(sub.getSecretRef()).isNotEqualTo(oldSecretRef);
         assertThat(secretService.decryptSecret(sub.getSecretRef())).isEqualTo(response.hmacSigningSecret());
     }
+
+    @Test
+    @DisplayName("Replaying EXHAUSTED delivery schedules PENDING retry and persists audit record")
+    void replayDelivery_Exhausted_Success() {
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAuditRepository mockReplayAuditRepo =
+                mock(com.swiftdrop.communicationsservice.webhook.WebhookReplayAuditRepository.class);
+
+        WebhookSubscriptionService serviceWithAudit = new WebhookSubscriptionService(
+                subscriptionRepository,
+                deliveryRepository,
+                attemptRepository,
+                destinationValidator,
+                eventFilterValidator,
+                secretService,
+                accountsEligibilityClient,
+                mockReplayAuditRepo
+        );
+
+        UUID subscriptionId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                subscriptionId, callerMerchantId, "https://api.com", "parcel.status.changed.v1", "enc:v1:secret");
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                deliveryId, subscriptionId, eventId, parcelId, callerMerchantId, 1, "digest123");
+        delivery.setStatus(WebhookDeliveryStatus.EXHAUSTED);
+        delivery.setAttemptCount(5);
+
+        when(subscriptionRepository.findById(subscriptionId)).thenReturn(Optional.of(sub));
+        when(deliveryRepository.findById(deliveryId)).thenReturn(Optional.of(delivery));
+        when(deliveryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        com.swiftdrop.communicationsservice.webhook.dto.WebhookDeliveryItem result =
+                serviceWithAudit.replayDelivery(callerSub, List.of("MERCHANT"), subscriptionId, deliveryId, "Customer network restored");
+
+        assertThat(result.status()).isEqualTo("PENDING");
+        assertThat(result.attemptCount()).isEqualTo(0);
+        assertThat(delivery.getStatus()).isEqualTo(WebhookDeliveryStatus.PENDING);
+        assertThat(delivery.getAttemptCount()).isEqualTo(0);
+        assertThat(delivery.getNextAttemptAt()).isNotNull();
+
+        // Verify original identity preserved
+        assertThat(delivery.getEventId()).isEqualTo(eventId);
+        assertThat(delivery.getParcelId()).isEqualTo(parcelId);
+        assertThat(delivery.getStateVersion()).isEqualTo(1);
+        assertThat(delivery.getSignedPayloadDigest()).isEqualTo("digest123");
+
+        // Verify audit record saved
+        ArgumentCaptor<com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit> auditCaptor =
+                ArgumentCaptor.forClass(com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit.class);
+        verify(mockReplayAuditRepo).save(auditCaptor.capture());
+
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit savedAudit = auditCaptor.getValue();
+        assertThat(savedAudit.getDeliveryId()).isEqualTo(deliveryId);
+        assertThat(savedAudit.getSubscriptionId()).isEqualTo(subscriptionId);
+        assertThat(savedAudit.getMerchantId()).isEqualTo(callerMerchantId);
+        assertThat(savedAudit.getActorSub()).isEqualTo(callerSub);
+        assertThat(savedAudit.getActorRole()).isEqualTo("MERCHANT");
+        assertThat(savedAudit.getReason()).isEqualTo("Customer network restored");
+        assertThat(savedAudit.getPreviousStatus()).isEqualTo("EXHAUSTED");
+    }
+
+    @Test
+    @DisplayName("Replaying delivery in SUCCESS state throws InvalidWebhookReplayException (409)")
+    void replayDelivery_SuccessStatus_Throws409() {
+        UUID subscriptionId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                subscriptionId, callerMerchantId, "https://api.com", "parcel.status.changed.v1", "enc:v1:secret");
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                deliveryId, subscriptionId, UUID.randomUUID(), UUID.randomUUID(), callerMerchantId, 1, "digest123");
+        delivery.setStatus(WebhookDeliveryStatus.SUCCESS);
+
+        when(subscriptionRepository.findById(subscriptionId)).thenReturn(Optional.of(sub));
+        when(deliveryRepository.findById(deliveryId)).thenReturn(Optional.of(delivery));
+
+        assertThatThrownBy(() -> service.replayDelivery(callerSub, List.of("MERCHANT"), subscriptionId, deliveryId, "Retry delivered job"))
+                .isInstanceOf(com.swiftdrop.communicationsservice.webhook.exception.InvalidWebhookReplayException.class)
+                .hasMessageContaining("Only FAILED or EXHAUSTED deliveries can be replayed");
+    }
+
+    @Test
+    @DisplayName("Replaying delivery cross-tenant throws CrossTenantAccessException (403)")
+    void replayDelivery_CrossTenant_Throws403() {
+        UUID subscriptionId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID otherMerchantId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                subscriptionId, otherMerchantId, "https://api.com", "parcel.status.changed.v1", "enc:v1:secret");
+
+        when(subscriptionRepository.findById(subscriptionId)).thenReturn(Optional.of(sub));
+
+        assertThatThrownBy(() -> service.replayDelivery(callerSub, List.of("MERCHANT"), subscriptionId, deliveryId, "Cross-tenant replay"))
+                .isInstanceOf(CrossTenantAccessException.class);
+    }
+
+    @Test
+    @DisplayName("Admin operator can replay failed delivery across tenants")
+    void replayDelivery_AdminOperator_Allowed() {
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAuditRepository mockReplayAuditRepo =
+                mock(com.swiftdrop.communicationsservice.webhook.WebhookReplayAuditRepository.class);
+
+        WebhookSubscriptionService serviceWithAudit = new WebhookSubscriptionService(
+                subscriptionRepository,
+                deliveryRepository,
+                attemptRepository,
+                destinationValidator,
+                eventFilterValidator,
+                secretService,
+                accountsEligibilityClient,
+                mockReplayAuditRepo
+        );
+
+        UUID subscriptionId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID otherMerchantId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                subscriptionId, otherMerchantId, "https://api.com", "parcel.status.changed.v1", "enc:v1:secret");
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                deliveryId, subscriptionId, UUID.randomUUID(), UUID.randomUUID(), otherMerchantId, 1, "digest123");
+        delivery.setStatus(WebhookDeliveryStatus.FAILED);
+
+        when(subscriptionRepository.findById(subscriptionId)).thenReturn(Optional.of(sub));
+        when(deliveryRepository.findById(deliveryId)).thenReturn(Optional.of(delivery));
+        when(deliveryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        com.swiftdrop.communicationsservice.webhook.dto.WebhookDeliveryItem item =
+                serviceWithAudit.replayDelivery("admin-sub-999", List.of("ROLE_ADMIN"), subscriptionId, deliveryId, "Operator manual intervention");
+
+        assertThat(item.status()).isEqualTo("PENDING");
+        assertThat(delivery.getStatus()).isEqualTo(WebhookDeliveryStatus.PENDING);
+    }
 }

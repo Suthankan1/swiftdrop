@@ -350,6 +350,85 @@ class AdminReconciliationHttpSecurityTest {
                 .andExpect(jsonPath("$.status").value(404));
     }
 
+    @Test
+    @DisplayName("GET /api/v1/admin/merchants without token returns 401 Unauthorized")
+    void getAdminMerchants_unauthenticated_returns401() throws Exception {
+        mvc.perform(get("/api/v1/admin/merchants"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/admin/merchants with non-admin role returns 403 Forbidden")
+    void getAdminMerchants_nonAdmin_returns403() throws Exception {
+        String token = createSignedJwt(subCustomer, List.of("CUSTOMER"), trustedRsaKey);
+        mvc.perform(get("/api/v1/admin/merchants")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/admin/merchants with ADMIN role returns 200 OK and paged response")
+    void getAdminMerchants_admin_returns200() throws Exception {
+        String token = createSignedJwt(subAdmin, List.of(KeycloakRoleAllowlist.ADMIN), trustedRsaKey);
+        UUID mId = UUID.randomUUID();
+        var summary = new com.swiftdrop.accountsservice.admin.AdminMerchantSummaryResponse(
+                mId, "Store Direct", "PV-1234", com.swiftdrop.accountsservice.merchant.MerchantStatus.PENDING,
+                Instant.now(), "rvw_123"
+        );
+        when(adminReadService.merchants(0, 20, null))
+                .thenReturn(new AdminPageResponse<>(List.of(summary), 0, 20, 1L, 1, true, true));
+
+        mvc.perform(get("/api/v1/admin/merchants")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.content[0].businessName").value("Store Direct"))
+                .andExpect(jsonPath("$.content[0].status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/admin/merchants/{id} with ADMIN role returns 200 OK")
+    void getAdminMerchantDetail_admin_returns200() throws Exception {
+        String token = createSignedJwt(subAdmin, List.of(KeycloakRoleAllowlist.ADMIN), trustedRsaKey);
+        UUID mId = UUID.randomUUID();
+        var detail = new com.swiftdrop.accountsservice.admin.AdminMerchantDetailResponse(
+                mId, "Store Direct", "PV-1234",
+                com.swiftdrop.accountsservice.merchant.MerchantStatus.APPROVED,
+                Instant.now(), "rvw_123",
+                List.of(new com.swiftdrop.accountsservice.admin.AdminMerchantDetailResponse.AdminActionOption(
+                        "suspend", new com.swiftdrop.accountsservice.admin.AdminMerchantDetailResponse.AdminReasonConfig(true, 500)
+                )),
+                List.of()
+        );
+        when(adminReadService.merchantDetail(mId)).thenReturn(detail);
+
+        mvc.perform(get("/api/v1/admin/merchants/{id}", mId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.id").value(mId.toString()))
+                .andExpect(jsonPath("$.actions[0].action").value("suspend"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/admin/merchants/{id}/audit with ADMIN role returns 200 OK")
+    void getAdminMerchantAudit_admin_returns200() throws Exception {
+        String token = createSignedJwt(subAdmin, List.of(KeycloakRoleAllowlist.ADMIN), trustedRsaKey);
+        UUID mId = UUID.randomUUID();
+        var audit = new com.swiftdrop.accountsservice.admin.AdminMerchantAuditResponse(
+                UUID.randomUUID(), "admin-sub-1", "SUSPEND", "APPROVED", "SUSPENDED",
+                Instant.now(), "Fraud detected", "SUCCESS"
+        );
+        when(adminReadService.merchantAudit(mId)).thenReturn(List.of(audit));
+
+        mvc.perform(get("/api/v1/admin/merchants/{id}/audit", mId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$[0].action").value("SUSPEND"))
+                .andExpect(jsonPath("$[0].reason").value("Fraud detected"));
+    }
+
     private static String createSignedJwt(String subject, List<String> roles, RSAKey key) throws Exception {
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()

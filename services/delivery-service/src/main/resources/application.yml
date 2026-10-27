@@ -50,6 +50,11 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       retries: 3
+    consumer:
+      group-id: ${KAFKA_SSE_CONSUMER_GROUP_ID:delivery-service-sse}
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 devarom:
   jwt:
@@ -88,6 +93,16 @@ swiftdrop:
       policy-approved: ${PROOF_RETENTION_POLICY_APPROVED:false}
       scheduler-enabled: ${PROOF_RETENTION_SCHEDULER_ENABLED:false}
       batch-size: ${PROOF_RETENTION_BATCH_SIZE:50}
+  sse:
+    heartbeat-interval-seconds: ${SSE_HEARTBEAT_INTERVAL_SECONDS:15}
+    max-connections: ${SSE_MAX_CONNECTIONS:100}
+    max-connections-per-user: ${SSE_MAX_CONNECTIONS_PER_USER:10}
+    max-connections-per-parcel: ${SSE_MAX_CONNECTIONS_PER_PARCEL:5}
+    connection-timeout-seconds: ${SSE_CONNECTION_TIMEOUT_SECONDS:1800}
+    buffer-size: ${SSE_BUFFER_SIZE:50}
+    kafka:
+      consumer:
+        enabled: ${SSE_KAFKA_CONSUMER_ENABLED:true}
 
 management:
   endpoints:

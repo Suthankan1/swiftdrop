@@ -279,16 +279,140 @@ mvn -f services/communications-service/pom.xml verify
 - [x] 118 automated tests passing across unit, MockMvc, Spring Security, gRPC, and PostgreSQL integration suites with 100% pass rate.
 - [x] Verified full compatibility with merged Merchant UI (`#21`, `src/features/merchant/api/webhooks.test.ts`).
 
+### IMPLEMENTED in Issue #131 (N10-B18):
+- [x] Dedicated Kafka consumer `WebhookLifecycleKafkaConsumer` listening to topic `parcel.lifecycle.v1` under independent consumer group `communications.webhooks.v1`.
+- [x] Independent consumer infrastructure: dedicated `webhookConsumerFactory` and `webhookKafkaListenerContainerFactory` configured with `read_committed` isolation, manual offset commit (`AckMode.MANUAL_IMMEDIATE`), and bounded error handling (`DefaultErrorHandler`).
+- [x] Strict manual offset acknowledgement: Kafka partition offsets are committed **strictly after** the PostgreSQL inbox receipt and durable webhook delivery jobs have committed.
+- [x] Webhook delivery job materialization service `WebhookJobMaterializationService`:
+  - Envelope parsing & validation via `ParcelLifecycleEventParser` enforcing `contracts/events/parcel.status.changed.v1.schema.json`.
+  - Direct retail parcel bypass: parcels with `merchantId == null` record inbox receipt in `consumed_events` and advance offset with zero webhook jobs.
+  - Merchant tenant subscription selection: queries `webhookSubscriptionRepository.findByMerchantIdAndActiveTrue(merchantId)`.
+  - Event filter validation: checks `allowedEventTypes` via `WebhookEventFilterValidator` against `parcel.status.changed.v1`.
+  - Stale-version & reordering guard: checks `findTopBySubscriptionIdAndParcelIdOrderByStateVersionDesc`. Events with `state_version <= current_version` are recognized as stale and skipped from job creation while committing inbox receipt to prevent redelivery loops.
+  - Cryptographic payload integrity: computes deterministic SHA-256 digest (`signed_payload_digest`) stored with delivery job.
+  - Materializes durable delivery jobs in `webhook_deliveries` with initial state `PENDING`, `attempt_count = 0`, `next_attempt_at = now`.
+- [x] Dual-layer durable idempotency:
+  - Table 1 `consumed_events`: PK `(consumer_name, event_id)` with `consumer_name = 'communications.webhooks.v1'`.
+  - Table 4 `webhook_deliveries`: `uq_webhook_deliveries_subscription_event UNIQUE (subscription_id, event_id)`.
+  - Atomic persistence via `DurableJobPersistenceService.persistInboxAndWebhookDeliveries`.
+  - Graceful concurrent duplicate detection via `DuplicateEventException`.
+- [x] Zero customer PII stored in `consumed_events` or `webhook_deliveries`.
+- [x] Automated test coverage:
+  - 11 unit tests in `WebhookJobMaterializationServiceTest` covering single/multiple subscriptions, retail parcels, disabled subscriptions, stale versions, duplicate events, concurrent collisions, and zero PII.
+  - 5 unit tests in `WebhookLifecycleKafkaConsumerTest` verifying commit ordering, parser failure backoff, and exception handling.
+  - 7 integration tests in `WebhookKafkaConsumerIT` with `@EmbeddedKafka` and `@Testcontainers(disabledWithoutDocker = true)`.
+
 ### Webhook Worker Handoff Boundary:
 - Merchant webhook processing is completely decoupled from customer notification processing.
-- When the webhook consumer is implemented, it consumes the same topic `parcel.lifecycle.v1` using its own independent consumer group (e.g. `communications.webhooks.v1`).
-- The composite PK `(consumer_name, event_id)` in `consumed_events` ensures that notification and webhook consumer groups maintain independent inbox receipts for the same domain event without key collisions.
-- Notification consumer offset acknowledgements never represent webhook delivery.
+- The webhook consumer group `communications.webhooks.v1` consumes `parcel.lifecycle.v1` independently of `communications.notifications.v1`.
+- The composite PK `(consumer_name, event_id)` in `consumed_events` ensures both consumer groups maintain independent inbox receipts for the same domain event without key collisions.
+- Materialized jobs are left in `status = PENDING`, `attempt_count = 0`, `next_attempt_at = now` for discovery by the downstream delivery engine (`idx_webhook_deliveries_pending`).
+- Outbound HTTP dispatch, HMAC signing headers, and backoff retries are owned by downstream Issue #33 / #142 / #151.
+
+### IMPLEMENTED in Issue #142 (N10-B20):
+- [x] Cryptographic HMAC-SHA256 Webhook Request Signing (`WebhookSigner`, `DefaultWebhookSigner`):
+  - Signature header `X-SwiftDrop-Signature: t={timestamp},v1={hex_digest}` matching RFC standard practices.
+  - Signed payload string: `timestamp + "." + payload_json` using UTF-8 encoding.
+  - Secret management: decrypts stored AES-256-GCM secret (`enc:v1:...`) via `WebhookSigningSecretService.decryptSecret`.
+  - Constant-time signature verification (`MessageDigest.isEqual`) with configurable replay tolerance window (default 300 seconds).
+  - Strict input validation rejecting null/blank payloads, secrets, or malformed header formats.
+- [x] Safe Outbound HTTPS Client (`WebhookHttpClient`, `DefaultWebhookHttpClient`):
+  - Strict HTTPS enforcement with valid TLS certificates and hostname validation.
+  - DNS resolution and SSRF defense: delegates destination validation to `WebhookDestinationValidator` before initiating connection.
+  - Redirects strictly prohibited (`Redirect.NEVER`) to prevent SSRF filtering bypass and protocol downgrade to HTTP.
+  - Configurable timeouts (`connectTimeoutMs = 3000`, `requestTimeoutMs = 5000`) via `WebhookDispatchProperties`.
+  - Standard headers: `Content-Type: application/json; charset=utf-8`, `X-SwiftDrop-Signature`, `User-Agent: SwiftDrop-Webhook/1.0`, and `x-swiftdrop-correlation-id`.
+  - Wall-clock response latency tracking in milliseconds.
+- [x] Webhook Response & Exception Classification (`WebhookResponseClassifier`, `WebhookOutcomeCategory`, `WebhookResponseClassification`):
+  - 2xx (`SUCCESS`): Successful delivery, terminal `status = SUCCESS`, non-retryable.
+  - 3xx (`REDIRECT`): Security-relevant redirection rejected, classified as non-retryable `FAILED`.
+  - 4xx (`CLIENT_ERROR`, except 408/429): Merchant endpoint client error (400, 401, 403, 404, 410, 422), classified as non-retryable `FAILED` to prevent futile retries.
+  - 429 (`RATE_LIMITED`): Retryable with honor for `Retry-After` header (numeric seconds or RFC 1123 HTTP date).
+  - 408 & Timeouts (`TIMEOUT`): `HttpConnectTimeoutException`, `HttpTimeoutException`, or socket timeouts classified as retryable `TIMEOUT` with null `httpStatusCode`.
+  - 5xx (`SERVER_ERROR`): Server errors (500, 502, 503, 504) classified as retryable with exponential backoff.
+  - Security failures (`SECURITY_FAILURE`): `SSLException`, `InvalidWebhookDestinationException` classified as non-retryable `FAILED`.
+  - Error sanitization: strips control characters, masks secrets and bearer tokens, truncates diagnostic message to 500 characters.
+- [x] Durable Delivery Execution & Attempt Persistence (`WebhookDeliveryExecutionService`):
+  - Architectural separation: outbound HTTP network calls are executed **strictly outside** database transactions to avoid holding connection pool resources.
+  - Atomic persistence boundary: attempt recording in `webhook_attempts` and job status update in `webhook_deliveries` commit together in a single PostgreSQL transaction.
+  - Multi-attempt audit preservation: subsequent attempts append new rows to `webhook_attempts` without overwriting prior attempt history.
+  - Retry scheduling: calculates exponential backoff (`baseBackoffSeconds * 2^(attempt-1)`) capped at `maxBackoffSeconds` (300s); sets `next_attempt_at` when retryable.
+  - Attempt exhaustion: when `attemptCount >= maxAttempts` (5), transitions delivery status to terminal `EXHAUSTED`.
+  - Concurrency & crash recovery: optimistic state transition to `PROCESSING` prevents concurrent worker duplicate executions; `recoverStuckProcessingJobs` recovers stalled attempts after lease expiration.
+- [x] Automated Test Coverage:
+  - 10 unit tests in `WebhookSignerTest` (HMAC computation, header formatting, tamper detection, replay window, timing resistance).
+  - 14 unit tests in `WebhookResponseClassifierTest` (2xx, 3xx, 4xx, 429 Retry-After parsing, 408/5xx, timeouts, SSLException, sanitization).
+  - 3 unit tests in `DefaultWebhookHttpClientTest` (destination validation, required headers, timeout propagation).
+  - 13 unit tests in `WebhookDeliveryExecutionServiceTest` (success, backoff retry, rate limiting, terminal failures, exhaustion, multi-attempt audit, crash recovery).
+  - PostgreSQL schema and attempt persistence integration tests in `CommunicationsPersistencePostgresIT`.
+
+### IMPLEMENTED in Issue #151 (N10-B21):
+- [x] Durable Webhook Polling Scheduler (`WebhookDeliveryScheduler`):
+  - Scheduled background bean configured with `@Scheduled(fixedDelayString = "${swiftdrop.webhooks.scheduler.poll-interval-ms:5000}")` discovering due deliveries (`status == PENDING` and `next_attempt_at <= now`).
+  - Non-blocking batch processing: queries due jobs with pagination (`Pageable.ofSize(batchSize)`), ordered by `nextAttemptAt ASC` to ensure oldest eligible deliveries execute first.
+  - Safe error containment: individual job failures do not abort scheduler batch loop or stop future scheduled executions.
+- [x] Atomic Leasing & Multi-Worker Concurrency Defense:
+  - Atomic database lease method `claimDeliveryWithLease` (`WebhookDeliveryRepository`) using atomic JPQL `UPDATE WebhookDelivery d SET d.status = 'PROCESSING', d.updatedAt = :now WHERE d.deliveryId = :id AND (d.status = 'PENDING' OR (d.status = 'PROCESSING' AND d.updatedAt <= :leaseCutoff))`.
+  - Operates under PostgreSQL row locking: when two or more concurrent workers poll the same due delivery, exactly one worker updates the row (update count = 1), while other workers receive 0 and safely skip execution without duplicate HTTP requests.
+- [x] Exponential Backoff Engine with Jitter & Ceilings:
+  - Configurable backoff parameters via `WebhookDispatchProperties` (`initialBackoffSeconds = 5`, `backoffMultiplier = 2.0`, `maxBackoffSeconds = 300`).
+  - Standard delay sequence: attempt 1 = 5s, attempt 2 = 10s, attempt 3 = 20s, attempt 4 = 40s, attempt 5 = 80s, capped at 300s ceiling.
+  - Optional full jitter support (`jitterEnabled = false`, `jitterFactor = 0.2` for +/- 20%) calculating backoff in range $[(1 - f) \times d, \min(d_{\max}, (1 + f) \times d)]$.
+  - Rate-limit override: HTTP 429 `Retry-After` header values (integer seconds or RFC 1123 HTTP dates) strictly override exponential backoff calculations.
+- [x] Retry Exhaustion & Terminal State Protection:
+  - When `attemptCount >= maxAttempts` (default 5), transitions delivery status to terminal `EXHAUSTED`.
+  - Non-retryable outcomes (client errors 4xx except 408/429, redirects 3xx, SSRF/TLS security rejections, and disabled subscriptions) transition immediately to terminal `FAILED`.
+  - Terminal statuses (`SUCCESS`, `FAILED`, `EXHAUSTED`) are guarded against re-execution (`isTerminal()` check in `executeDelivery`).
+  - Partial index `idx_webhook_deliveries_pending` (`WHERE status IN ('PENDING', 'PROCESSING')`) automatically excludes terminal deliveries from scheduler query plans.
+- [x] Crash Recovery & Stalled Delivery Reclamation:
+  - Scheduled recovery job `@Scheduled(fixedDelayString = "${swiftdrop.webhooks.scheduler.recovery-interval-ms:60000}")` (`recoverStalledDeliveries`) reclaims deliveries orphaned in `PROCESSING` status beyond `leaseTimeoutSeconds` (default 300s).
+  - Resets stalled jobs back to `PENDING` with `next_attempt_at = now`, preserving at-least-once delivery semantics across worker crashes and network partitions.
+- [x] Process Restart Durability:
+  - All scheduling state (`next_attempt_at`, `status`, `attempt_count`, `updated_at`) is persisted in PostgreSQL; scheduled retries survive pod restarts, deployments, and scheduler reinitialization.
+- [x] Configuration & Testability:
+  - Dedicated configuration properties `WebhookSchedulerProperties` (`swiftdrop.webhooks.scheduler.*`): `enabled`, `pollIntervalMs`, `recoveryIntervalMs`, `leaseTimeoutSeconds`, `batchSize`.
+  - Conditional scheduler activation via `WebhookSchedulerConfiguration` (`@ConditionalOnProperty(name = "swiftdrop.webhooks.scheduler.enabled", matchIfMissing = true)`).
+  - Injectable `Clock` bean in `WebhookDispatchConfiguration` (`@ConditionalOnMissingBean(Clock.class)`) allowing deterministic time simulation in tests.
+- [x] Automated Test Coverage:
+  - 14 comprehensive unit tests in `WebhookDeliverySchedulerTest` covering due polling, two-worker lease race conditions, disabled scheduler, future job exclusion, error handling, stalled job recovery, deterministic backoff sequences, jitter bounds, disabled subscriptions, terminal state guards, retry budget exhaustion, and restart recovery.
+  - 2 unit tests in `WebhookSchedulerPropertiesTest`.
+  - Real PostgreSQL concurrency integration test in `CommunicationsPersistencePostgresIT.testConcurrentWorkerLeaseAndExhaustionLifecycle`.
+  - Total communications-service test count increased to 254 passing tests.
+
+### IMPLEMENTED in Issue #155 (N10-B22):
+- [x] Webhook Egress SSRF Hardening & DNS Pinning:
+  - Exact send-time destination validation enforcing HTTPS-only, no embedded credentials, valid hostname, and valid port.
+  - Comprehensive rejection of local/loopback (127.0.0.0/8, 0.0.0.0, ::1), RFC 1918 private IPv4, link-local (169.254.0.0/16, fe80::/10), multicast, any-local, and internal suffixes (.local, .internal, .localhost).
+  - Cloud metadata rejection: AWS IMDSv4 (169.254.169.254), AWS IMDSv2 IPv6 (fd00:ec2::254), AWS task metadata (169.254.170.2), and Alibaba metadata (100.100.100.200).
+  - IPv4-mapped IPv6 bypass defense: unpacks mapped IPv4 addresses and executes full security checks.
+  - DNS Rebinding / TOCTOU defense: `resolveAndCheckAddresses` checks all resolved A/AAAA records (mixed safe/unsafe answers fail closed).
+  - Outbound socket pinning: `PinnedSSLSocketFactory` connects outbound TCP socket strictly to the pre-validated `pinnedAddress` while maintaining TLS SNI and standard HTTPS certificate hostname verification.
+  - Redirect protection: redirects strictly disabled (`followRedirects = NEVER` / `setInstanceFollowRedirects(false)`).
+  - Memory & timeout bounds: bounded connect/request timeouts, bounded 64KB response body read (`maxResponseBytes`), and zero logging of secrets, raw PII, or auth headers.
+- [x] HMAC Secret Rotation:
+  - Added REST endpoint `POST /api/v1/merchants/webhooks/{subscriptionId}/rotate-secret` with `Cache-Control: no-store`.
+  - Generates new secret, encrypts with AES-256-GCM, and returns plaintext secret once.
+  - Preserves event identity, payload digest, and queued deliveries.
+- [x] Authorized Failed-Job Replay:
+  - Added REST endpoint `POST /api/v1/merchants/webhooks/{subscriptionId}/deliveries/{deliveryId}/replay` accepting `ReplayWebhookDeliveryRequest(reason)`.
+  - Requires verified JWT with merchant ownership or operator/admin (`ADMIN`, `DISPATCHER`) authority.
+  - Strict terminal state guard: only `FAILED` or `EXHAUSTED` jobs can be replayed; non-terminal jobs (`SUCCESS`, `PENDING`, `PROCESSING`) rejected with 409 Conflict.
+  - Flyway migration `V2__create_webhook_replays_table.sql` creating durable audit table `webhook_replays` recording `replay_id`, `delivery_id`, `subscription_id`, `merchant_id`, `actor_sub`, `actor_role`, `reason`, `previous_status`, `replayed_at`.
+  - Resets job status to `PENDING` with `next_attempt_at = now`, resets `attempt_count = 0` while preserving complete historical attempt lineage in `webhook_attempts`.
+- [x] Automated Test Coverage:
+  - 14 additional unit tests in `WebhookDestinationValidatorTest` (DNS rebinding, mixed safe/unsafe answers, IPv4-mapped IPv6 bypass, cloud metadata IPv4/IPv6, CGNAT, ValidatedWebhookDestination).
+  - 2 additional unit tests in `DefaultWebhookHttpClientTest` (PinnedSSLSocketFactory SNI/HTTPS endpoint identification, socket pinning dispatch).
+  - 4 additional unit tests in `WebhookSubscriptionControllerTest` (rotate-secret endpoint, replay endpoint, blank reason rejection, non-terminal 409 conflict).
+  - 4 additional unit tests in `WebhookSubscriptionServiceTest` (replay EXHAUSTED delivery, replay FAILED delivery, SUCCESS status 409 rejection, cross-tenant 403 rejection, admin operator authorization).
+  - V2 Flyway migration verification in `CommunicationsFlywayMigrationTest.verifyV2FlywayMigrationScript`.
+  - Entity lifecycle test for `WebhookReplayAudit` in `CommunicationsEntityTest`.
+  - Data ownership verification for `webhook_replays` in `CommunicationsDataOwnershipTest`.
+  - Real PostgreSQL replay and audit constraint integration test in `CommunicationsPersistencePostgresIT.testWebhookDeliveryReplayAndAuditPersistence`.
+  - Total test count increased from 254 to 280 passing tests.
 
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
-- ❌ Webhook outbound HTTP worker, HMAC dispatch execution, and attempt recording (belongs to **Issue #142**).
-- ❌ Durable webhook retry scheduler and exhaustion handling (belongs to **Issue #151**).
 - ❌ External SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).
 - ❌ Shared API Gateway or Keycloak configuration changes.
 - ❌ Cross-service SQL joins or direct database access to Accounts or Delivery databases.
+

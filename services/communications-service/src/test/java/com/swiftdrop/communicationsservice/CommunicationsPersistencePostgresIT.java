@@ -80,16 +80,19 @@ class CommunicationsPersistencePostgresIT {
     private WebhookAttemptRepository webhookAttemptRepository;
 
     @Autowired
+    private com.swiftdrop.communicationsservice.webhook.WebhookReplayAuditRepository webhookReplayAuditRepository;
+
+    @Autowired
     private DurableJobPersistenceService durableJobPersistenceService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
 
     @Test
-    @DisplayName("A. Flyway applies V1 migration cleanly on real PostgreSQL communications_db")
+    @DisplayName("A. Flyway applies V1 and V2 migrations cleanly on real PostgreSQL communications_db")
     void testFlywayMigrationCleanApplication() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("communications_db");
 
         List<String> tables = jdbc.queryForList("""
@@ -103,6 +106,7 @@ class CommunicationsPersistencePostgresIT {
                 "webhook_subscriptions",
                 "webhook_deliveries",
                 "webhook_attempts",
+                "webhook_replays",
                 "flyway_schema_history"
         );
     }
@@ -400,5 +404,263 @@ class CommunicationsPersistencePostgresIT {
         WebhookSubscription readback = webhookSubscriptionRepository.findById(subA.getSubscriptionId()).orElseThrow();
         assertThat(readback.getActive()).isFalse();
         assertThat(webhookDeliveryRepository.findById(deliveryId)).isPresent();
+    }
+
+    @Test
+    @DisplayName("H. Multiple webhook attempts persist with accurate sequence, error summary, and latency")
+    void testWebhookMultipleAttemptHistoryAndStateTransitions() {
+        UUID merchantId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                UUID.randomUUID(),
+                merchantId,
+                "https://merchant.example.test/webhooks/orders",
+                "parcel.status.changed.v1",
+                "enc:v1:test-key"
+        );
+        webhookSubscriptionRepository.saveAndFlush(sub);
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                UUID.randomUUID(),
+                sub.getSubscriptionId(),
+                eventId,
+                parcelId,
+                merchantId,
+                1,
+                "payload_sha256"
+        );
+        delivery.setStatus(WebhookDeliveryStatus.PENDING);
+        delivery.setAttemptCount(0);
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // First attempt: timeout failure (null status code, has error summary)
+        Instant t1 = Instant.now().minusSeconds(120);
+        WebhookAttempt attempt1 = new WebhookAttempt(
+                UUID.randomUUID(),
+                delivery.getDeliveryId(),
+                t1,
+                null,
+                5002,
+                "Connect to merchant.example.test:443 timed out after 5000ms"
+        );
+        webhookAttemptRepository.saveAndFlush(attempt1);
+
+        delivery.setAttemptCount(1);
+        delivery.setNextAttemptAt(t1.plusSeconds(10));
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Second attempt: 502 Bad Gateway
+        Instant t2 = Instant.now().minusSeconds(60);
+        WebhookAttempt attempt2 = new WebhookAttempt(
+                UUID.randomUUID(),
+                delivery.getDeliveryId(),
+                t2,
+                502,
+                320,
+                "HTTP 502 Bad Gateway"
+        );
+        webhookAttemptRepository.saveAndFlush(attempt2);
+
+        delivery.setAttemptCount(2);
+        delivery.setNextAttemptAt(t2.plusSeconds(30));
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Third attempt: 200 OK
+        Instant t3 = Instant.now();
+        WebhookAttempt attempt3 = new WebhookAttempt(
+                UUID.randomUUID(),
+                delivery.getDeliveryId(),
+                t3,
+                200,
+                142,
+                null
+        );
+        webhookAttemptRepository.saveAndFlush(attempt3);
+
+        delivery.setAttemptCount(3);
+        delivery.setStatus(WebhookDeliveryStatus.SUCCESS);
+        delivery.setNextAttemptAt(null);
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Verify all 3 attempts are preserved in order
+        List<WebhookAttempt> history = webhookAttemptRepository.findByDeliveryIdOrderByAttemptedAtDesc(delivery.getDeliveryId());
+        assertThat(history).hasSize(3);
+        assertThat(history.get(0).getHttpStatusCode()).isEqualTo(200);
+        assertThat(history.get(0).getResponseTimeMs()).isEqualTo(142);
+        assertThat(history.get(0).getErrorSummary()).isNull();
+
+        assertThat(history.get(1).getHttpStatusCode()).isEqualTo(502);
+        assertThat(history.get(1).getResponseTimeMs()).isEqualTo(320);
+        assertThat(history.get(1).getErrorSummary()).isEqualTo("HTTP 502 Bad Gateway");
+
+        assertThat(history.get(2).getHttpStatusCode()).isNull();
+        assertThat(history.get(2).getResponseTimeMs()).isEqualTo(5002);
+        assertThat(history.get(2).getErrorSummary()).contains("timed out");
+
+        WebhookDelivery finalDelivery = webhookDeliveryRepository.findById(delivery.getDeliveryId()).orElseThrow();
+        assertThat(finalDelivery.getStatus()).isEqualTo(WebhookDeliveryStatus.SUCCESS);
+        assertThat(finalDelivery.getAttemptCount()).isEqualTo(3);
+        assertThat(finalDelivery.getNextAttemptAt()).isNull();
+
+        // Verify query for stuck jobs
+        finalDelivery.setStatus(WebhookDeliveryStatus.PROCESSING);
+        webhookDeliveryRepository.saveAndFlush(finalDelivery);
+        List<WebhookDelivery> stuck = webhookDeliveryRepository.findByStatusAndUpdatedAtLessThanEqual(
+                WebhookDeliveryStatus.PROCESSING, Instant.now().plusSeconds(60));
+        assertThat(stuck).extracting(WebhookDelivery::getDeliveryId).contains(delivery.getDeliveryId());
+    }
+
+    @Test
+    @DisplayName("I. Concurrent worker lease safety, due query ordering, and exhaustion terminal status")
+    void testConcurrentWorkerLeaseAndExhaustionLifecycle() {
+        UUID merchantId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                UUID.randomUUID(),
+                merchantId,
+                "https://merchant.example.test/webhooks/scheduler",
+                "parcel.status.changed.v1",
+                "enc:v1:test-key"
+        );
+        webhookSubscriptionRepository.saveAndFlush(sub);
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                UUID.randomUUID(),
+                sub.getSubscriptionId(),
+                eventId,
+                parcelId,
+                merchantId,
+                1,
+                "payload_sha256"
+        );
+        Instant now = Instant.now();
+        delivery.setStatus(WebhookDeliveryStatus.PENDING);
+        delivery.setNextAttemptAt(now.minusSeconds(10));
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // 1. Query for due deliveries returns the candidate job
+        List<WebhookDelivery> due = webhookDeliveryRepository.findDueDeliveries(
+                WebhookDeliveryStatus.PENDING, now, org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(due).extracting(WebhookDelivery::getDeliveryId).contains(delivery.getDeliveryId());
+
+        // 2. Worker 1 claims lease via atomic UPDATE -> succeeds (returns 1)
+        int worker1Claim = webhookDeliveryRepository.claimDelivery(
+                delivery.getDeliveryId(),
+                WebhookDeliveryStatus.PENDING,
+                WebhookDeliveryStatus.PROCESSING,
+                now
+        );
+        assertThat(worker1Claim).isEqualTo(1);
+
+        // 3. Concurrent Worker 2 attempts to claim same job -> fails (returns 0) because status is no longer PENDING
+        int worker2Claim = webhookDeliveryRepository.claimDelivery(
+                delivery.getDeliveryId(),
+                WebhookDeliveryStatus.PENDING,
+                WebhookDeliveryStatus.PROCESSING,
+                now
+        );
+        assertThat(worker2Claim).isEqualTo(0);
+
+        // 4. Job is verified in PROCESSING state in database
+        WebhookDelivery claimedDelivery = webhookDeliveryRepository.findById(delivery.getDeliveryId()).orElseThrow();
+        assertThat(claimedDelivery.getStatus()).isEqualTo(WebhookDeliveryStatus.PROCESSING);
+
+        // 5. If job crashes and remains in PROCESSING past lease cutoff, claimDeliveryWithLease recovers it
+        Instant leaseCutoff = now.plusSeconds(10); // simulate cutoff where job's updated_at <= leaseCutoff
+        int recoveryClaim = webhookDeliveryRepository.claimDeliveryWithLease(
+                delivery.getDeliveryId(),
+                WebhookDeliveryStatus.PENDING,
+                WebhookDeliveryStatus.PROCESSING,
+                now.plusSeconds(300),
+                leaseCutoff
+        );
+        assertThat(recoveryClaim).isEqualTo(1);
+
+        // 6. Transition to terminal EXHAUSTED status
+        claimedDelivery.setStatus(WebhookDeliveryStatus.EXHAUSTED);
+        claimedDelivery.setAttemptCount(5);
+        claimedDelivery.setNextAttemptAt(null);
+        webhookDeliveryRepository.saveAndFlush(claimedDelivery);
+
+        // 7. Exhausted job is never returned by findDueDeliveries
+        List<WebhookDelivery> dueAfterExhaustion = webhookDeliveryRepository.findDueDeliveries(
+                WebhookDeliveryStatus.PENDING, now.plusSeconds(600), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(dueAfterExhaustion).extracting(WebhookDelivery::getDeliveryId).doesNotContain(delivery.getDeliveryId());
+    }
+
+    @Test
+    @DisplayName("N. Replaying exhausted delivery transitions state to PENDING and persists durable replay audit")
+    void testWebhookDeliveryReplayAndAuditPersistence() {
+        UUID merchantId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                null, merchantId, "https://api.partner.com/wh", "parcel.status.changed.v1", "enc:v1:token");
+        sub = webhookSubscriptionRepository.saveAndFlush(sub);
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                null, sub.getSubscriptionId(), eventId, parcelId, merchantId, 1, "digest-replay-test");
+        delivery.setStatus(WebhookDeliveryStatus.EXHAUSTED);
+        delivery.setAttemptCount(5);
+        delivery.setNextAttemptAt(null);
+        delivery = webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Replay: reset to PENDING and record audit
+        Instant now = Instant.now();
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit audit =
+                new com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit(
+                        null,
+                        delivery.getDeliveryId(),
+                        sub.getSubscriptionId(),
+                        merchantId,
+                        "operator-sub-456",
+                        "ADMIN",
+                        "Manual operator unblock after endpoint recovery",
+                        "EXHAUSTED",
+                        now
+                );
+        audit = webhookReplayAuditRepository.saveAndFlush(audit);
+
+        assertThat(audit.getReplayId()).isNotNull();
+        assertThat(audit.getPreviousStatus()).isEqualTo("EXHAUSTED");
+        assertThat(audit.getActorRole()).isEqualTo("ADMIN");
+
+        // Verify audit can be queried by deliveryId
+        List<com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit> audits =
+                webhookReplayAuditRepository.findByDeliveryIdOrderByReplayedAtDesc(delivery.getDeliveryId());
+        assertThat(audits).hasSize(1);
+        assertThat(audits.get(0).getReason()).contains("Manual operator unblock");
+
+        // Replay updates the delivery
+        delivery.setStatus(WebhookDeliveryStatus.PENDING);
+        delivery.setAttemptCount(0);
+        delivery.setNextAttemptAt(now);
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Verify replayed job is immediately discoverable by findDueDeliveries
+        List<WebhookDelivery> dueReplayed = webhookDeliveryRepository.findDueDeliveries(
+                WebhookDeliveryStatus.PENDING, now.plusSeconds(10), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(dueReplayed).extracting(WebhookDelivery::getDeliveryId).contains(delivery.getDeliveryId());
+
+        // Verify database constraint: non-failed status violates CHECK constraint
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit invalidAudit =
+                new com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit(
+                        null,
+                        delivery.getDeliveryId(),
+                        sub.getSubscriptionId(),
+                        merchantId,
+                        "operator-sub-456",
+                        "ADMIN",
+                        "Invalid replay test",
+                        "SUCCESS",
+                        now
+                );
+        assertThatThrownBy(() -> webhookReplayAuditRepository.saveAndFlush(invalidAudit))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

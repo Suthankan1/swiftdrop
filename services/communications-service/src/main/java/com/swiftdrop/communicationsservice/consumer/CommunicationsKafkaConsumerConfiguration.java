@@ -19,6 +19,8 @@ import java.util.Map;
 
 /**
  * Spring Kafka consumer infrastructure configuration for Communications Service.
+ * Provides independent consumer factories and container factories for notifications
+ * (communications.notifications.v1) and webhooks (communications.webhooks.v1).
  * Enforces manual offset commit mode, bounded retry handling, and String deserialization.
  */
 @Configuration
@@ -30,22 +32,17 @@ public class CommunicationsKafkaConsumerConfiguration {
     private String bootstrapServers;
 
     @Value("${spring.kafka.consumer.group-id:communications.notifications.v1}")
-    private String groupId;
+    private String notificationGroupId;
+
+    @Value("${swiftdrop.kafka.consumer.webhooks.group-id:communications.webhooks.v1}")
+    private String webhookGroupId;
 
     @Value("${spring.kafka.consumer.auto-offset-reset:earliest}")
     private String autoOffsetReset;
 
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
-        return new DefaultKafkaConsumerFactory<>(props);
+        return createConsumerFactory(notificationGroupId);
     }
 
     @Bean
@@ -55,8 +52,39 @@ public class CommunicationsKafkaConsumerConfiguration {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-        // Bounded error handler with backoff (Issue #117 delivers dead-letter topic quarantine and manual replay)
-        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 3L)));
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(1000L, 3L));
+        errorHandler.addNotRetryableExceptions(EventValidationException.class);
+        factory.setCommonErrorHandler(errorHandler);
         return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, String> webhookConsumerFactory() {
+        return createConsumerFactory(webhookGroupId);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> webhookKafkaListenerContainerFactory(
+            ConsumerFactory<String, String> webhookConsumerFactory) {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(webhookConsumerFactory);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(1000L, 3L));
+        errorHandler.addNotRetryableExceptions(EventValidationException.class);
+        factory.setCommonErrorHandler(errorHandler);
+        return factory;
+    }
+
+    private ConsumerFactory<String, String> createConsumerFactory(String groupId) {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+        return new DefaultKafkaConsumerFactory<>(props);
     }
 }

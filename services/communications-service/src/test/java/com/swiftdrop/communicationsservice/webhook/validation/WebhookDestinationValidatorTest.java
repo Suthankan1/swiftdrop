@@ -206,4 +206,116 @@ class WebhookDestinationValidatorTest {
                 .isInstanceOf(InvalidWebhookDestinationException.class)
                 .hasMessageContaining("forbidden control characters");
     }
+
+    @Test
+    @DisplayName("Mixed safe and unsafe DNS answers fail closed (DNS rebinding defense)")
+    void mixedDnsAnswers_FailsClosed() throws Exception {
+        when(mockDnsResolver.resolve("rebind.attacker.com"))
+                .thenReturn(new InetAddress[]{
+                        InetAddress.getByName("93.184.216.34"),
+                        InetAddress.getByName("127.0.0.1")
+                });
+
+        assertThatThrownBy(() -> validator.validate("https://rebind.attacker.com/webhook"))
+                .isInstanceOf(InvalidWebhookDestinationException.class)
+                .hasMessageContaining("resolves to loopback");
+    }
+
+    @Test
+    @DisplayName("Mixed safe and private RFC 1918 DNS answers fail closed")
+    void mixedDnsAnswers_PrivateIp_FailsClosed() throws Exception {
+        when(mockDnsResolver.resolve("rebind.internal.attacker.com"))
+                .thenReturn(new InetAddress[]{
+                        InetAddress.getByName("93.184.216.34"),
+                        InetAddress.getByName("192.168.1.100")
+                });
+
+        assertThatThrownBy(() -> validator.validate("https://rebind.internal.attacker.com/webhook"))
+                .isInstanceOf(InvalidWebhookDestinationException.class)
+                .hasMessageContaining("resolves to private RFC 1918");
+    }
+
+    @Test
+    @DisplayName("Mixed safe and cloud metadata DNS answers fail closed")
+    void mixedDnsAnswers_CloudMetadata_FailsClosed() throws Exception {
+        when(mockDnsResolver.resolve("rebind.metadata.attacker.com"))
+                .thenReturn(new InetAddress[]{
+                        InetAddress.getByName("93.184.216.34"),
+                        InetAddress.getByName("169.254.169.254")
+                });
+
+        assertThatThrownBy(() -> validator.validate("https://rebind.metadata.attacker.com/webhook"))
+                .isInstanceOf(InvalidWebhookDestinationException.class)
+                .hasMessageContaining("cloud instance metadata");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "169.254.169.254",
+            "169.254.170.2",
+            "100.100.100.200"
+    })
+    @DisplayName("Cloud metadata IP addresses are strictly rejected")
+    void cloudMetadataAddresses_Rejected(String metadataIp) throws Exception {
+        when(mockDnsResolver.resolve("metadata-service.target.com"))
+                .thenReturn(new InetAddress[]{InetAddress.getByName(metadataIp)});
+
+        assertThatThrownBy(() -> validator.validate("https://metadata-service.target.com/callback"))
+                .isInstanceOf(InvalidWebhookDestinationException.class);
+    }
+
+    @Test
+    @DisplayName("IPv6 unique-local (AWS IMDSv2 fd00:ec2::254) is rejected via DNS check")
+    void ipv6CloudMetadata_Rejected() throws Exception {
+        when(mockDnsResolver.resolve("imds.ipv6.attacker.com"))
+                .thenReturn(new InetAddress[]{InetAddress.getByName("fd00:ec2::254")});
+
+        assertThatThrownBy(() -> validator.validate("https://imds.ipv6.attacker.com/wh"))
+                .isInstanceOf(InvalidWebhookDestinationException.class)
+                .hasMessageContaining("IPv6 unique-local address");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "::ffff:127.0.0.1",
+            "::ffff:10.0.0.1",
+            "::ffff:172.16.0.1",
+            "::ffff:192.168.1.1",
+            "::ffff:169.254.169.254"
+    })
+    @DisplayName("IPv4-mapped IPv6 bypass attempts are rejected via DNS check")
+    void ipv4MappedIpv6Bypass_Rejected(String mappedIp) throws Exception {
+        when(mockDnsResolver.resolve("ipv4mapped.attacker.com"))
+                .thenReturn(new InetAddress[]{InetAddress.getByName(mappedIp)});
+
+        assertThatThrownBy(() -> validator.validate("https://ipv4mapped.attacker.com/wh"))
+                .isInstanceOf(InvalidWebhookDestinationException.class);
+    }
+
+    @Test
+    @DisplayName("Carrier-grade NAT shared space (RFC 6598) is rejected via DNS check")
+    void carrierGradeNat_Rejected() throws Exception {
+        when(mockDnsResolver.resolve("cgnat.attacker.com"))
+                .thenReturn(new InetAddress[]{InetAddress.getByName("100.64.0.1")});
+
+        assertThatThrownBy(() -> validator.validate("https://cgnat.attacker.com/wh"))
+                .isInstanceOf(InvalidWebhookDestinationException.class)
+                .hasMessageContaining("carrier-grade shared address space");
+    }
+
+    @Test
+    @DisplayName("validateAndResolve returns ValidatedWebhookDestination with pinned address")
+    void validateAndResolve_ReturnsPinnedDestination() throws Exception {
+        InetAddress safeAddr = InetAddress.getByName("93.184.216.34");
+        when(mockDnsResolver.resolve("api.valid-destination.com"))
+                .thenReturn(new InetAddress[]{safeAddr});
+
+        ValidatedWebhookDestination result = validator.validateAndResolve("https://api.valid-destination.com:8443/wh");
+
+        assertThat(result.normalizedUrl()).isEqualTo("https://api.valid-destination.com:8443/wh");
+        assertThat(result.host()).isEqualTo("api.valid-destination.com");
+        assertThat(result.port()).isEqualTo(8443);
+        assertThat(result.pinnedAddress()).isEqualTo(safeAddr);
+        assertThat(result.allAddresses()).containsExactly(safeAddr);
+    }
 }
