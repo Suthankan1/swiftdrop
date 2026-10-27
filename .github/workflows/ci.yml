@@ -422,7 +422,7 @@ jobs:
       - java-services
       - container-images-validation
       - platform-compose-validation
-      - terraform-quality-gates
+      - terraform-policy
       - kubernetes-cluster-policy
     runs-on: ubuntu-latest
     timeout-minutes: 30
