@@ -67,6 +67,27 @@ public class Parcel {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "merchant_reference", length = 255)
+    private String merchantReference;
+
+    @Column(name = "pickup_address", length = 2000)
+    private String pickupAddress;
+
+    @Column(name = "dropoff_address", length = 2000)
+    private String dropoffAddress;
+
+    @Column(name = "recipient_name", length = 255)
+    private String recipientName;
+
+    @Column(name = "recipient_phone", length = 50)
+    private String recipientPhone;
+
+    @Column(name = "delivery_notes", length = 2000)
+    private String deliveryNotes;
+
+    @Column(name = "quote_snapshot", columnDefinition = "jsonb")
+    private String quoteSnapshot;
+
     public Parcel() {
     }
 
@@ -221,6 +242,62 @@ public class Parcel {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getMerchantReference() {
+        return merchantReference;
+    }
+
+    public void setMerchantReference(String merchantReference) {
+        this.merchantReference = merchantReference;
+    }
+
+    public String getPickupAddress() {
+        return pickupAddress;
+    }
+
+    public void setPickupAddress(String pickupAddress) {
+        this.pickupAddress = pickupAddress;
+    }
+
+    public String getDropoffAddress() {
+        return dropoffAddress;
+    }
+
+    public void setDropoffAddress(String dropoffAddress) {
+        this.dropoffAddress = dropoffAddress;
+    }
+
+    public String getRecipientName() {
+        return recipientName;
+    }
+
+    public void setRecipientName(String recipientName) {
+        this.recipientName = recipientName;
+    }
+
+    public String getRecipientPhone() {
+        return recipientPhone;
+    }
+
+    public void setRecipientPhone(String recipientPhone) {
+        this.recipientPhone = recipientPhone;
+    }
+
+    public String getDeliveryNotes() {
+        return deliveryNotes;
+    }
+
+    public void setDeliveryNotes(String deliveryNotes) {
+        this.deliveryNotes = deliveryNotes;
+    }
+
+    public String getQuoteSnapshot() {
+        return quoteSnapshot;
+    }
+
+    public void setQuoteSnapshot(String quoteSnapshot) {
+        this.quoteSnapshot = quoteSnapshot;
     }
 
     @Override

@@ -204,8 +204,8 @@ public class DefaultParcelQueryService implements ParcelQueryService {
                 amount,
                 currency,
                 rateVersion,
-                "", // Non-null pickupAddress for consumer contract
-                "", // Non-null dropoffAddress for consumer contract
+                parcel.getPickupAddress() != null ? parcel.getPickupAddress() : "",
+                parcel.getDropoffAddress() != null ? parcel.getDropoffAddress() : "",
                 activeCourier,
                 parcel.getCreatedAt()
         );

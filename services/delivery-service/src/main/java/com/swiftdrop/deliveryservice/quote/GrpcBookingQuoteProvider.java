@@ -6,8 +6,14 @@ import com.swiftdrop.pricing.v1.ValidateQuoteResponse;
 import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.swiftdrop.security.grpc.DelegatedActorContext;
+import com.swiftdrop.security.grpc.SwiftDropGrpcContext;
+import com.swiftdrop.security.jwt.SwiftDropRoles;
+import com.swiftdrop.security.service.SwiftDropServiceIdentity;
+
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -29,6 +35,32 @@ public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
 
     public GrpcBookingQuoteProvider(PricingInternalServiceGrpc.PricingInternalServiceBlockingStub pricingStub) {
         this.pricingStub = Objects.requireNonNull(pricingStub, "pricingStub must not be null");
+    }
+
+    @Override
+    public QuoteValidation validateMerchantQuote(UUID quoteId, UUID merchantId, String authenticatedSubject) {
+        Objects.requireNonNull(quoteId, "quoteId must not be null");
+        Objects.requireNonNull(merchantId, "merchantId must not be null");
+
+        String actorSub = authenticatedSubject != null && !authenticatedSubject.isBlank()
+                ? authenticatedSubject
+                : "merchant:" + merchantId;
+
+        DelegatedActorContext actor = new DelegatedActorContext(
+                actorSub,
+                Set.of(SwiftDropRoles.ROLE_MERCHANT),
+                SwiftDropServiceIdentity.DELIVERY_SERVICE,
+                merchantId.toString()
+        );
+
+        try {
+            return io.grpc.Context.current()
+                    .withValue(SwiftDropGrpcContext.KEY_DELEGATED_ACTOR, actor)
+                    .call(() -> validate(quoteId, actorSub));
+        } catch (Exception e) {
+            if (e instanceof RuntimeException re) throw re;
+            throw new IllegalStateException("Failed to validate merchant quote via gRPC", e);
+        }
     }
 
     @Override

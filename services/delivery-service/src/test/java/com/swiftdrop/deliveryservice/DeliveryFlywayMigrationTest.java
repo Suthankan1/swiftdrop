@@ -61,4 +61,35 @@ class DeliveryFlywayMigrationTest {
         assertThat(sql).doesNotContain("REFERENCES staff_profiles");
         assertThat(sql).doesNotContain("REFERENCES quotes");
     }
+
+    @Test
+    @DisplayName("Verify V6 Flyway migration script contains merchant booking columns, indexes, and zero cross-service references")
+    void verifyV6FlywayMigrationScript() throws Exception {
+        ClassPathResource resource = new ClassPathResource("db/migration/V6__add_booking_fields_and_quote_uniqueness.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            sql = reader.lines().collect(Collectors.joining("\n"));
+        }
+
+        assertThat(sql).contains("ALTER TABLE parcels");
+        assertThat(sql).contains("ADD COLUMN IF NOT EXISTS merchant_reference");
+        assertThat(sql).contains("ADD COLUMN IF NOT EXISTS pickup_address");
+        assertThat(sql).contains("ADD COLUMN IF NOT EXISTS dropoff_address");
+        assertThat(sql).contains("ADD COLUMN IF NOT EXISTS recipient_name");
+        assertThat(sql).contains("ADD COLUMN IF NOT EXISTS recipient_phone");
+        assertThat(sql).contains("ADD COLUMN IF NOT EXISTS delivery_notes");
+        assertThat(sql).contains("ADD COLUMN IF NOT EXISTS quote_snapshot");
+        assertThat(sql).contains("CREATE UNIQUE INDEX IF NOT EXISTS uq_parcels_quote_id ON parcels (quote_id) WHERE quote_id IS NOT NULL");
+        assertThat(sql).contains("CREATE INDEX IF NOT EXISTS idx_parcels_merchant_reference ON parcels (merchant_id, merchant_reference)");
+
+        // Strict cross-service boundary verification
+        assertThat(sql).doesNotContain("accounts_db");
+        assertThat(sql).doesNotContain("communications_db");
+        assertThat(sql).doesNotContain("pricing_db");
+        assertThat(sql).doesNotContain("REFERENCES merchants");
+        assertThat(sql).doesNotContain("REFERENCES account_profiles");
+        assertThat(sql).doesNotContain("REFERENCES quotes");
+    }
 }
