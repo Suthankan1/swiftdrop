@@ -1048,3 +1048,23 @@ main:focus { outline: none; }
   .courier-summary-grid { grid-template-columns: 1fr; }
   .parcel-specs-grid { grid-template-columns: 1fr 1fr; }
 }
+.merchant-review-page { max-width: 1120px; }
+.merchant-review-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-block: 1rem; }
+.merchant-review-table-scroll { overflow-x: auto; max-width: 100%; }
+.merchant-review-table { width: 100%; border-collapse: collapse; text-align: left; }
+.merchant-review-table caption { text-align: left; padding-block: .75rem; font-weight: 600; }
+.merchant-review-table th, .merchant-review-table td { padding: .8rem; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; vertical-align: top; }
+.merchant-review-id { display: block; font-weight: 400; color: var(--color-muted); margin-top: .4rem; }
+.merchant-review-detail { margin-top: 1.5rem; overflow-wrap: anywhere; }
+.merchant-review-detail dd { margin: .3rem 0 1rem; }
+.merchant-review-detail dt { font-weight: 600; }
+.merchant-review-audit { padding-left: 1.5rem; }
+.merchant-review-confirmation { overflow-wrap: anywhere; }
+.merchant-review-confirmation textarea { width: 100%; min-height: 6rem; margin-top: .5rem; }
+.merchant-review-page :focus-visible, .merchant-review-confirmation :focus-visible { outline: 3px solid var(--color-teal); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .merchant-review-toolbar > .button { width: 100%; }
+  .merchant-review-table th, .merchant-review-table td { padding: .5rem; min-width: 7rem; }
+  .merchant-review-confirmation .modal-actions { flex-wrap: wrap; }
+  .merchant-review-confirmation .modal-actions .button { width: 100%; }
+}

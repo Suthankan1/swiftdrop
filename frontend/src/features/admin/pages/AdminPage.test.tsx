@@ -168,11 +168,12 @@ describe('Admin role landing', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('offers no self-provisioning or working merchant/pricing controls', () => {
+  it('links merchant review without self-provisioning or pricing controls', () => {
     render(entry(authenticated()))
     const main = within(screen.getByRole('main'))
     expect(main.getByText(/staff access is provisioned by an authorized administrator/i)).toBeInTheDocument()
-    expect(main.getByText(/merchant approval management.*future features/i)).toBeInTheDocument()
+    expect(main.getByRole('link', { name: 'Review merchant applications' })).toHaveAttribute('href', '/admin/merchants')
+    expect(main.getByText(/staff administration.*future features/i)).toBeInTheDocument()
     expect(main.queryByRole('combobox')).not.toBeInTheDocument()
     expect(main.queryByRole('textbox')).not.toBeInTheDocument()
     expect(main.getAllByRole('button')).toHaveLength(1)

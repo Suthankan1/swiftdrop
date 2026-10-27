@@ -1,4 +1,5 @@
 import { useAuth } from '../../../auth/context'
+import { Link } from 'react-router'
 import { StaffProfile } from '../../staff/components/StaffProfile'
 import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 
@@ -22,9 +23,11 @@ export function AdminPage() {
           <p className="muted">
             Staff access is provisioned by an authorized administrator. Signing in does not grant unrestricted access to business records.
           </p>
-          <h3>Administration tools are coming later</h3>
+          <h3>Merchant review</h3>
+          <p><Link to="/admin/merchants">Review merchant applications</Link></p>
+          <h3>More administration tools are coming later</h3>
           <p className="muted">
-            Merchant approval management, staff administration, zone and pricing management, and operational reporting are future features.
+            Staff administration, zone and pricing management, and operational reporting are future features.
           </p>
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out

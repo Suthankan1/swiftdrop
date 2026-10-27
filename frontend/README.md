@@ -39,7 +39,8 @@ pnpm lint
 | `/merchant` | Merchant role entry; guarded for `MERCHANT` role, presents approval states (Pending, Approved, Rejected, Suspended, Unknown) and merchant business details |
 | `/courier` | Courier role entry; guarded for `COURIER` role with denial feedback |
 | `/dispatcher` | Dispatcher-only staff entry; verified ACTIVE profile gates bounded queue/workload reads and manual assignment; live integration blocked on #135 and Gateway routing |
-| `/admin` | Admin-only landing; controlled-access information, unavailable staff profile until #14; no provisioning/approval/pricing controls |
+| `/admin` | Admin-only landing, staff self-read and merchant-review navigation |
+| `/admin/merchants` | Admin-only merchant review presentation; production review reads/commands await the reviewed #121 provider |
 | `/login` | Keycloak login, Google broker and registration entries; authenticated role navigation |
 | `/auth/callback` | Single adapter-managed code exchange; scrub callback parameters and return to login/session page |
 | `/logout` | Clear local session and POST to Keycloak end-session |
