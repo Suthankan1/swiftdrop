@@ -428,6 +428,7 @@ keycloak:
   args:
     - "start"
     - "--http-enabled=true"
+    - "--import-realm"
   service:
     type: ClusterIP
     httpPort: 8080

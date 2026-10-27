@@ -61,6 +61,7 @@ data:
   KEYCLOAK_ISSUER_URI: {{ .Values.pricing.config.keycloakIssuerUri | quote }}
   KEYCLOAK_JWKS_URI: {{ .Values.pricing.config.keycloakJwksUri | quote }}
   JWT_AUDIENCE: {{ .Values.pricing.config.jwtAudience | quote }}
+  SPRING_MAIN_SOURCES: "com.swiftdrop.security.jwt.SwiftDropSecurityConfiguration"
   JAVA_TOOL_OPTIONS: {{ .Values.pricing.config.javaToolOptions | quote }}
 {{- end }}
 
@@ -122,8 +123,12 @@ metadata:
     {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
 data:
   GRAPHQL_SERVER_PORT: {{ .Values.graphql.config.serverPort | quote }}
+  {{- if .Values.graphql.config.accountsGrpcTarget }}
   SWIFTDROP_GRPC_ACCOUNTS_TARGET: {{ .Values.graphql.config.accountsGrpcTarget | quote }}
+  {{- end }}
+  {{- if .Values.graphql.config.deliveryGrpcTarget }}
   SWIFTDROP_GRPC_DELIVERY_TARGET: {{ .Values.graphql.config.deliveryGrpcTarget | quote }}
+  {{- end }}
   JAVA_TOOL_OPTIONS: {{ .Values.graphql.config.javaToolOptions | quote }}
 {{- end }}
 
@@ -145,4 +150,15 @@ data:
   KC_HTTP_ENABLED: {{ .Values.keycloak.config.httpEnabled | default "true" | quote }}
   KC_HEALTH_ENABLED: {{ .Values.keycloak.config.healthEnabled | default "true" | quote }}
   JAVA_OPTS_APPEND: {{ .Values.keycloak.config.javaOptsAppend | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-keycloak-realm
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+data:
+  realm-swiftdrop.json: |-
+{{ .Files.Get "files/realm-swiftdrop.json" | indent 4 }}
 {{- end }}
