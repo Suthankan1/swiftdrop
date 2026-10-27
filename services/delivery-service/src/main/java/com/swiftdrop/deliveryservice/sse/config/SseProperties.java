@@ -87,4 +87,62 @@ public class SseProperties {
     public void setBufferSize(int bufferSize) {
         this.bufferSize = bufferSize;
     }
+
+    private KafkaConsumerProperties kafka = new KafkaConsumerProperties();
+
+    public KafkaConsumerProperties getKafka() {
+        return kafka;
+    }
+
+    public void setKafka(KafkaConsumerProperties kafka) {
+        this.kafka = kafka;
+    }
+
+    public static class KafkaConsumerProperties {
+        private boolean enabled = true;
+        private String groupPrefix = "tracking.";
+        private String groupId = "";
+        private String replicaId = "";
+        private String autoOffsetReset = "latest";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getGroupPrefix() {
+            return groupPrefix;
+        }
+
+        public void setGroupPrefix(String groupPrefix) {
+            this.groupPrefix = groupPrefix;
+        }
+
+        public String getGroupId() {
+            return groupId;
+        }
+
+        public void setGroupId(String groupId) {
+            this.groupId = groupId;
+        }
+
+        public String getReplicaId() {
+            return replicaId;
+        }
+
+        public void setReplicaId(String replicaId) {
+            this.replicaId = replicaId;
+        }
+
+        public String getAutoOffsetReset() {
+            return autoOffsetReset;
+        }
+
+        public void setAutoOffsetReset(String autoOffsetReset) {
+            this.autoOffsetReset = autoOffsetReset;
+        }
+    }
 }

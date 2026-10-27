@@ -5,8 +5,7 @@
 **Endpoint:** `GET /api/v1/parcels/{parcelId}/events`  
 **Media Type:** `text/event-stream`  
 **Security:** Verified Keycloak OIDC JWT (`Authorization: Bearer <token>`)  
-**Scope:** Single-Replica Baseline (Issue #130)  
-*Note: Multi-replica Kafka-to-SSE fan-out topology is tracked under Issue #161.*
+**Scope:** Multi-Replica Broadcast Fan-Out & REST Recovery (Issue #130 & Issue #161)
 
 ---
 
@@ -160,3 +159,49 @@ When any threshold is breached, the server rejects the connection with **HTTP 42
 ```
 
 Clients receiving HTTP 429 must not immediately retry; they should fall back to graceful polling via REST at an interval not less than 30 seconds.
+
+---
+
+## 6. Multi-Replica Kafka-to-SSE Fan-Out Topology (Issue #161)
+
+### 6.1 The Fan-Out Problem & Partition Starvation
+In a horizontally scaled deployment where Delivery Service runs multiple replicas (e.g., Replica A and Replica B), SSE client HTTP connections are distributed across replicas by Gateway/Ingress.
+- If replicas share a single Kafka consumer group (e.g. `delivery-service-sse`), Kafka assigns disjoint topic partitions to each replica (load-balancing).
+- Under this misconfiguration, Replica A would consume partition 0 while Replica B consumed partition 1. A client connected to Replica B whose parcel updates are routed to partition 0 would **never receive live events** (partition starvation).
+- To achieve true broadcast fan-out, **both replicas must consume 100% of topic partitions independently**.
+
+### 6.2 Independent Consumer Group Architecture
+Each active Delivery replica registers an independent, unique Kafka consumer group formatted as:
+```
+tracking.<stable-replica-instance-id>
+```
+
+#### Naming & Identity Invariants:
+1. **Prefix:** `tracking.` (configurable via `swiftdrop.sse.kafka.consumer.group-prefix`).
+2. **Stable Replica Identifier:** Resolved deterministically in the following priority order:
+   - Config property: `swiftdrop.sse.kafka.consumer.replica-id`
+   - Environment variables: `SWIFTDROP_SSE_REPLICA_ID`, `SSE_REPLICA_ID`, `POD_NAME`, `INSTANCE_ID`, `HOSTNAME`
+   - Local hostname fallback (sanitized).
+3. **No Dynamic Random IDs:** Replicas do not generate random UUIDs on restart. Reusing a stable pod or instance name (e.g., `delivery-service-0`, `delivery-service-1`, `replica-a`) ensures Kafka retains committed offsets across restarts without leaking dangling consumer groups.
+4. **Collision Detection:** The application validates that simultaneous replicas do not configure duplicate replica identifiers, failing closed with a descriptive configuration error.
+
+### 6.3 Consumer Lifecycle & Offset Policy
+- **Auto Offset Reset:** Configured to `latest` (`swiftdrop.sse.kafka.consumer.auto-offset-reset = latest`).
+  - New replicas or replicas recovering after prolonged downtime attach to the head of the topic.
+  - Historical replay is strictly avoided. Reconnecting clients must resynchronize state via canonical REST snapshot before listening to live events.
+- **Kafka Offset Retention & Scale-Down:**
+  - Active replicas continuously heartbeat to maintain their consumer groups.
+  - When a replica is permanently scaled down or decommissioned, the Kafka broker automatically purges its consumer group offsets after the cluster's `offsets.retention.minutes` (default 7 days).
+- **Graceful Termination:** On SIGTERM / application shutdown, Spring Kafka listener containers terminate gracefully, committing offsets and leaving the group cleanly.
+
+### 6.4 Version Deduplication & Gap Handling
+- Each replica independently maintains an in-memory session registry (`ParcelSseConnectionManager`).
+- For every active connection, `SseSubscriberSession` tracks `lastDeliveredVersion`:
+  - **Duplicate/Stale Drop:** Events with `aggregateVersion <= lastDeliveredVersion` are dropped without emission.
+  - **Gap Detection:** If `event.aggregateVersion > lastDeliveredVersion + 1`, a warning is logged (`Detected aggregate version gap`). The event is emitted, and the client triggers the canonical REST recovery protocol (`GET /api/v1/parcels/{parcelId}`).
+- Re-delivery of events by Kafka does not result in duplicate SSE notifications or stale UI states.
+
+### 6.5 Authorization Invariants Across Replicas
+- **Replica-Local Routing:** Each replica routes Kafka events strictly to its locally connected, authorized sessions. No cross-replica in-memory session synchronization is required.
+- **Dynamic Courier Revocation:** Before dispatching an event to an active courier SSE stream, the replica re-verifies active courier assignment (`existsByParcelIdAndCourierSubAndActiveTrue`). If unassigned or reassigned, the stream is closed immediately and the event is dropped.
+- **Token Expiry Enforced:** Session lifetimes remain bounded by JWT token expiry across all replicas.
