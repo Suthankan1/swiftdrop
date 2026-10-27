@@ -35,9 +35,17 @@ public class ReceiptSecurityConfiguration {
     @Order(1)
     SecurityFilterChain receiptSecurity(HttpSecurity http,
                                         JwtDecoder jwtDecoder,
-                                        KeycloakJwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+                                        KeycloakJwtAuthenticationConverter jwtAuthenticationConverter,
+                                        org.springframework.beans.factory.ObjectProvider<com.swiftdrop.deliveryservice.security.merchant.AccountsMerchantKeyValidator> accountsMerchantKeyValidatorProvider) throws Exception {
+        var keyValidator = accountsMerchantKeyValidatorProvider.getIfAvailable();
+        if (keyValidator != null) {
+            http.addFilterBefore(
+                    new com.swiftdrop.deliveryservice.security.merchant.MerchantApiKeyAuthenticationFilter(keyValidator),
+                    org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class
+            );
+        }
         return http
-                .securityMatcher("/api/v1/parcels", "/api/v1/parcels/**", "/api/v1/assignments", "/api/v1/assignments/**", "/actuator/health", "/actuator/health/**")
+                .securityMatcher("/api/v1/parcels", "/api/v1/parcels/**", "/api/v1/merchant/parcels", "/api/v1/merchant/parcels/**", "/api/v1/assignments", "/api/v1/assignments/**", "/actuator/health", "/actuator/health/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -47,6 +55,7 @@ public class ReceiptSecurityConfiguration {
                 .anonymous(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/merchant/parcels").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/receipt").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/events").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").authenticated()
