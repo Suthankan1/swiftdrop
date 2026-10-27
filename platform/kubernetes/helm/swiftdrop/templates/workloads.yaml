@@ -513,7 +513,7 @@ spec:
           image: {{ include "swiftdrop.image" .Values.keycloak.image }}
           imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
           args:
-            - "start-dev"
+            {{- toYaml .Values.keycloak.args | nindent 12 }}
           securityContext:
             {{- toYaml .Values.keycloak.securityContext | nindent 12 }}
           ports:
@@ -558,6 +558,54 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.keycloak.secretRefs.googleSecretName }}
                   key: {{ .Values.keycloak.secretRefs.googleClientSecretKey }}
+                  optional: true
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpHostKey }}
+                  optional: true
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpPortKey }}
+                  optional: true
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpUserKey }}
+                  optional: true
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpPasswordKey }}
+                  optional: true
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpFromKey }}
+                  optional: true
+            - name: SMTP_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpAuthKey }}
+                  optional: true
+            - name: SMTP_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpSslKey }}
+                  optional: true
+            - name: SMTP_STARTTLS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpStarttlsKey }}
                   optional: true
           resources:
             {{- toYaml .Values.keycloak.resources | nindent 12 }}
