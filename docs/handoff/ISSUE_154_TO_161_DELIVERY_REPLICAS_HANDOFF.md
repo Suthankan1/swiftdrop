@@ -100,3 +100,4 @@ kubectl --context k3d-swiftdrop-local exec -n swiftdrop-apps delivery-service-7f
 # Verify Kafka connection from replica
 kubectl --context k3d-swiftdrop-local exec -n swiftdrop-apps delivery-service-7f85df9db7-4x5nc -- nc -zv kafka.swiftdrop-messaging.svc.cluster.local 29092
 ```
+

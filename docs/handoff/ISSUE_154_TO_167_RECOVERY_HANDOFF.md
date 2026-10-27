@@ -129,3 +129,4 @@ rsync -a ~/.swiftdrop/k3d/storage/ ~/.swiftdrop/k3d/backups/snapshot-$(date +%Y%
    - PostgreSQL and Kafka KRaft both utilize Write-Ahead Logging (WAL). Unclean pod terminations trigger automatic crash recovery upon container restart without requiring manual intervention.
 3. **Migration Rollbacks:**
    - Flyway Community Edition does not support automated down migrations (`flyway undo`). Schema rollbacks must be executed via forward compensating migrations (e.g. `V6__revert_...sql`).
+
