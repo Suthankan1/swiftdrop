@@ -5,6 +5,7 @@ import com.swiftdrop.communicationsservice.webhook.WebhookDeliveryRepository;
 import com.swiftdrop.communicationsservice.webhook.WebhookDeliveryStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -49,6 +50,7 @@ public class WebhookDeliveryScheduler {
         this(webhookDeliveryRepository, executionService, schedulerProperties, Clock.systemUTC());
     }
 
+    @Autowired
     public WebhookDeliveryScheduler(
             WebhookDeliveryRepository webhookDeliveryRepository,
             WebhookDeliveryExecutionService executionService,

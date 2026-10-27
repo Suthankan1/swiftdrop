@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +31,7 @@ public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery
         Pageable pageable
     );
 
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE WebhookDelivery d
@@ -43,6 +45,7 @@ public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery
         @Param("now") Instant now
     );
 
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE WebhookDelivery d

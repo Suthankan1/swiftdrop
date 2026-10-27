@@ -16,6 +16,7 @@ import com.swiftdrop.communicationsservice.webhook.security.WebhookSigningSecret
 import com.swiftdrop.communicationsservice.webhook.validation.WebhookDestinationValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,6 +77,24 @@ public class WebhookDeliveryExecutionService {
         this(webhookDeliveryRepository, webhookAttemptRepository, webhookSubscriptionRepository,
                 webhookSigningSecretService, webhookSigner, webhookHttpClient, responseClassifier,
                 destinationValidator, dispatchProperties, JsonMapper.builder().build(), Clock.systemUTC(),
+                ThreadLocalRandom.current()::nextDouble);
+    }
+
+    @Autowired
+    public WebhookDeliveryExecutionService(
+            WebhookDeliveryRepository webhookDeliveryRepository,
+            WebhookAttemptRepository webhookAttemptRepository,
+            WebhookSubscriptionRepository webhookSubscriptionRepository,
+            WebhookSigningSecretService webhookSigningSecretService,
+            WebhookSigner webhookSigner,
+            WebhookHttpClient webhookHttpClient,
+            WebhookResponseClassifier responseClassifier,
+            WebhookDestinationValidator destinationValidator,
+            WebhookDispatchProperties dispatchProperties,
+            Clock clock) {
+        this(webhookDeliveryRepository, webhookAttemptRepository, webhookSubscriptionRepository,
+                webhookSigningSecretService, webhookSigner, webhookHttpClient, responseClassifier,
+                destinationValidator, dispatchProperties, JsonMapper.builder().build(), clock,
                 ThreadLocalRandom.current()::nextDouble);
     }
 
