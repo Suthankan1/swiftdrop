@@ -235,6 +235,43 @@ public class GatewayAbuseAndSsePolicyTest {
                 .jsonPath("$.instance").isEqualTo("/api/v1/tracking/SWD-TRACK-001");
     }
 
+    @Test
+    @DisplayName("Public rate limiting: Repeated invalid references count toward rate limit")
+    void publicRateLimiting_RepeatedInvalidReferencesCountTowardLimit() {
+        for (int i = 0; i < 5; i++) {
+            webTestClient.get()
+                    .uri("/api/v1/tracking/INVALID-TRACK-" + i)
+                    .exchange()
+                    .expectStatus().isOk();
+        }
+
+        webTestClient.get()
+                .uri("/api/v1/tracking/INVALID-TRACK-OVERFLOW")
+                .exchange()
+                .expectStatus().isEqualTo(429)
+                .expectHeader().contentType(MediaType.valueOf("application/problem+json"))
+                .expectHeader().value("Retry-After", value -> assertThat(Integer.parseInt(value)).isGreaterThanOrEqualTo(1));
+    }
+
+    @Test
+    @DisplayName("Public tracking route: Accessible anonymously while private routes require authentication")
+    void publicTrackingRoute_AccessibleAnonymously_WhilePrivateRoutesRequireAuth() {
+        webTestClient.get()
+                .uri("/api/v1/tracking/SWD-20261023-A1B2C3")
+                .exchange()
+                .expectStatus().isOk();
+
+        webTestClient.get()
+                .uri("/api/v1/parcels")
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+        webTestClient.get()
+                .uri("/api/v1/assignments")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
     // =========================================================================
     // 2. Merchant Machine Rate Limiting Tests
     // =========================================================================
