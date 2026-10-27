@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Pageable;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -40,6 +41,7 @@ class ProofServiceTest {
     private CourierAssignmentContract courierAssignmentContract;
     private ProofObjectStorage proofObjectStorage;
     private ProofCleanupTaskRepository cleanupTaskRepository;
+    private ProofCleanupTaskCoordinator taskCoordinator;
     private ProofCompensationService compensationService;
     private ProofService proofService;
     private ProofMetadataService proofMetadataService;
@@ -57,14 +59,19 @@ class ProofServiceTest {
         courierAssignmentContract = mock(CourierAssignmentContract.class);
         proofObjectStorage = mock(ProofObjectStorage.class);
         cleanupTaskRepository = mock(ProofCleanupTaskRepository.class);
+        taskCoordinator = mock(ProofCleanupTaskCoordinator.class);
 
-        compensationService = new ProofCompensationService(proofObjectStorage, cleanupTaskRepository);
+        compensationService = new ProofCompensationService(
+                proofObjectStorage, cleanupTaskRepository, proofRepository, taskCoordinator
+        );
         proofService = new ProofService(
                 parcelRepository,
                 proofRepository,
                 courierAssignmentContract,
                 proofObjectStorage,
-                compensationService
+                compensationService,
+                cleanupTaskRepository,
+                taskCoordinator
         );
         proofMetadataService = new ProofMetadataService(proofRepository);
     }
@@ -266,8 +273,8 @@ class ProofServiceTest {
                     parcelId, new ByteArrayInputStream(bytes), 1024L, "image/jpeg", "Recipient", "Delivered", courierSub, List.of("COURIER")
             )).isInstanceOf(RuntimeException.class);
 
-            // Verify durable cleanup task was saved in repository
-            verify(cleanupTaskRepository).saveAndFlush(any(ProofCleanupTask.class));
+            // Verify the proxied coordinator owns durable compensation persistence.
+            verify(taskCoordinator).recordDurableCleanup(validRef, "DB_PERSISTENCE_FAILURE");
         }
 
         @Test
@@ -390,6 +397,56 @@ class ProofServiceTest {
             when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.empty());
             assertThat(proofMetadataService.isProofValid(parcelId, UUID.randomUUID())).isFalse();
         }
+
+        @Test
+        @DisplayName("isProofValid returns false when proof has been purged per retention policy")
+        void isProofValid_purged_returnsFalse() {
+            UUID proofId = UUID.randomUUID();
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    proofId, parcelId, validRef, "PHOTO", "image/jpeg", 512L, "K.", "Note", courierSub, Instant.now()
+            );
+            proof.markPurged(Instant.now());
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+
+            assertThat(proofMetadataService.isProofValid(parcelId, proofId)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("Purged Proof Safeguards")
+    class PurgedProofSafeguardTests {
+
+        @Test
+        @DisplayName("getProofMetadata throws ProofNotFoundException when proof has been purged")
+        void getProofMetadata_purged_throwsNotFound() {
+            Parcel parcel = createParcel(ParcelStatus.DELIVERED);
+            when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    UUID.randomUUID(), parcelId, validRef, "PHOTO", "image/jpeg", 512L, "K.", "Note", courierSub, Instant.now()
+            );
+            proof.markPurged(Instant.now());
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+
+            assertThatThrownBy(() -> proofService.getProofMetadata(parcelId, customerSub, List.of("CUSTOMER")))
+                    .isInstanceOf(ProofNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("getProofContent throws ProofNotFoundException when proof has been purged")
+        void getProofContent_purged_throwsNotFound() {
+            Parcel parcel = createParcel(ParcelStatus.DELIVERED);
+            when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    UUID.randomUUID(), parcelId, validRef, "PHOTO", "image/jpeg", 512L, "K.", "Note", courierSub, Instant.now()
+            );
+            proof.markPurged(Instant.now());
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+
+            assertThatThrownBy(() -> proofService.getProofContent(parcelId, customerSub, List.of("CUSTOMER")))
+                    .isInstanceOf(ProofNotFoundException.class);
+        }
     }
 
     @Nested
@@ -400,14 +457,15 @@ class ProofServiceTest {
         @DisplayName("processPendingCleanups processes pending tasks and marks completed")
         void processPendingCleanups_success() {
             ProofCleanupTask task = new ProofCleanupTask(UUID.randomUUID(), validRef, "DB_FAILURE");
-            when(cleanupTaskRepository.findByStatus("PENDING")).thenReturn(List.of(task));
+            when(cleanupTaskRepository.findByStatusOrderByCreatedAtAsc(eq("PENDING"), any(Pageable.class)))
+                    .thenReturn(List.of(task));
+            when(taskCoordinator.processTask(task.getTaskId()))
+                    .thenReturn(ProofCleanupTaskCoordinator.ProcessingResult.COMPLETED);
 
             int completed = compensationService.processPendingCleanups();
 
             assertThat(completed).isEqualTo(1);
-            assertThat(task.getStatus()).isEqualTo("COMPLETED");
-            verify(proofObjectStorage).delete(new ProofObjectReference(validRef));
-            verify(cleanupTaskRepository).save(task);
+            verify(taskCoordinator).processTask(task.getTaskId());
         }
     }
 }

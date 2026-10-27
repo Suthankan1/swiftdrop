@@ -128,6 +128,7 @@ spec:
                 name: keycloak
                 port:
                   number: 8080
+          {{- if .Values.ingress.keycloak.exposeAdmin }}
           - path: /admin
             pathType: Prefix
             backend:
@@ -135,11 +136,13 @@ spec:
                 name: keycloak
                 port:
                   number: 8080
+          {{- end }}
     {{- if .Values.ingress.subdomains.enabled }}
     # Subdomain routing: auth.swiftdrop.local -> Keycloak
     - host: {{ .Values.ingress.subdomains.auth }}
       http:
         paths:
+          {{- if .Values.ingress.keycloak.exposeAdmin }}
           - path: /
             pathType: Prefix
             backend:
@@ -147,6 +150,29 @@ spec:
                 name: keycloak
                 port:
                   number: 8080
+          {{- else }}
+          - path: /realms
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          - path: /resources
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          - path: /js
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
+          {{- end }}
     {{- end }}
 {{- end }}
 {{- end }}

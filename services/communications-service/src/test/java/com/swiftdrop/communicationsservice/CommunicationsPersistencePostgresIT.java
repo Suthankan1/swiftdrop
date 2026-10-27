@@ -36,6 +36,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -285,7 +287,7 @@ class CommunicationsPersistencePostgresIT {
         // recipientSub is null -> violates NOT NULL
 
         assertThatThrownBy(() -> durableJobPersistenceService.persistInboxAndNotification(event, invalidJob))
-                .isInstanceOf(Exception.class);
+                .isInstanceOf(DataIntegrityViolationException.class);
 
         // Verify inbox receipt was NOT persisted (rolled back atomically)
         assertThat(consumedEventRepository.existsByIdConsumerNameAndIdEventId(consumer, eventId)).isFalse();

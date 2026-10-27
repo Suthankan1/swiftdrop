@@ -1,5 +1,6 @@
 package com.swiftdrop.deliveryservice.proof;
 
+import com.swiftdrop.deliveryservice.proof.retention.RetentionStatus;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Objects;
@@ -21,7 +22,7 @@ public class ProofOfDelivery {
     @Column(name = "parcel_id", nullable = false, unique = true)
     private UUID parcelId;
 
-    @Column(name = "object_reference", nullable = false, length = 128)
+    @Column(name = "object_reference", length = 128)
     private String objectReference;
 
     @Column(name = "evidence_type", nullable = false, length = 32)
@@ -41,6 +42,13 @@ public class ProofOfDelivery {
 
     @Column(name = "uploaded_by_sub", nullable = false, length = 64)
     private String uploadedBySub;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "retention_status", nullable = false, length = 32)
+    private RetentionStatus retentionStatus = RetentionStatus.ACTIVE;
+
+    @Column(name = "purged_at")
+    private Instant purgedAt;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -72,6 +80,8 @@ public class ProofOfDelivery {
         this.deliveryNote = deliveryNote;
         this.uploadedBySub = Objects.requireNonNull(uploadedBySub, "uploadedBySub cannot be null");
         this.createdAt = createdAt != null ? createdAt : Instant.now();
+        this.retentionStatus = RetentionStatus.ACTIVE;
+        this.purgedAt = null;
     }
 
     public UUID getProofId() {
@@ -118,8 +128,48 @@ public class ProofOfDelivery {
         return version;
     }
 
+    public RetentionStatus getRetentionStatus() {
+        return retentionStatus;
+    }
+
+    public Instant getPurgedAt() {
+        return purgedAt;
+    }
+
+    public boolean isPurged() {
+        return retentionStatus == RetentionStatus.PURGED;
+    }
+
     public void updateMetadata(String recipientName, String deliveryNote) {
         this.recipientName = recipientName;
         this.deliveryNote = deliveryNote;
+    }
+
+    /**
+     * Safely updates active evidence details during an authorized proof replacement.
+     */
+    public void replaceEvidence(String newObjectReference,
+                                String newContentType,
+                                Long newContentLength,
+                                String newRecipientName,
+                                String newDeliveryNote) {
+        this.objectReference = Objects.requireNonNull(newObjectReference, "newObjectReference cannot be null");
+        this.contentType = newContentType != null ? newContentType : "image/jpeg";
+        this.contentLength = Objects.requireNonNull(newContentLength, "newContentLength cannot be null");
+        this.recipientName = newRecipientName;
+        this.deliveryNote = newDeliveryNote;
+    }
+
+    /**
+     * Atomically transitions this record into a privacy-safe tombstone outcome.
+     * Clears all private storage references, contact details, and notes while preserving
+     * minimal non-sensitive audit metadata (proofId, parcelId, created_at, purged_at).
+     */
+    public void markPurged(Instant purgeInstant) {
+        this.retentionStatus = RetentionStatus.PURGED;
+        this.purgedAt = purgeInstant != null ? purgeInstant : Instant.now();
+        this.objectReference = null;
+        this.recipientName = null;
+        this.deliveryNote = null;
     }
 }

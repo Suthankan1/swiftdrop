@@ -23,6 +23,7 @@ public class ProofMetadataService implements ProofMetadataContract {
             return false;
         }
         return proofRepository.findByParcelId(parcelId)
+                .filter(proof -> !proof.isPurged())
                 .map(proof -> Objects.equals(proof.getProofId(), proofId))
                 .orElse(false);
     }

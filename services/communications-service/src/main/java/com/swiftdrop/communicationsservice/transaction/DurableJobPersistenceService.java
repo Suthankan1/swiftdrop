@@ -53,13 +53,15 @@ public class DurableJobPersistenceService {
             throw new DuplicateEventException(consumerName, eventId);
         }
 
+        ConsumedEvent savedEvent;
         try {
-            ConsumedEvent savedEvent = consumedEventRepository.saveAndFlush(event);
-            NotificationJob savedJob = notificationJobRepository.saveAndFlush(job);
-            return new InboxAndNotificationResult(savedEvent, savedJob, true);
+            savedEvent = consumedEventRepository.saveAndFlush(event);
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateEventException(consumerName, eventId);
         }
+
+        NotificationJob savedJob = notificationJobRepository.saveAndFlush(job);
+        return new InboxAndNotificationResult(savedEvent, savedJob, true);
     }
 
     /**
@@ -84,16 +86,18 @@ public class DurableJobPersistenceService {
             throw new DuplicateEventException(consumerName, eventId);
         }
 
+        ConsumedEvent savedEvent;
         try {
-            ConsumedEvent savedEvent = consumedEventRepository.saveAndFlush(event);
-            List<WebhookDelivery> savedDeliveries = new ArrayList<>();
-            for (WebhookDelivery delivery : deliveries) {
-                savedDeliveries.add(webhookDeliveryRepository.saveAndFlush(delivery));
-            }
-            return new InboxAndWebhookDeliveriesResult(savedEvent, savedDeliveries, true);
+            savedEvent = consumedEventRepository.saveAndFlush(event);
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateEventException(consumerName, eventId);
         }
+
+        List<WebhookDelivery> savedDeliveries = new ArrayList<>();
+        for (WebhookDelivery delivery : deliveries) {
+            savedDeliveries.add(webhookDeliveryRepository.saveAndFlush(delivery));
+        }
+        return new InboxAndWebhookDeliveriesResult(savedEvent, savedDeliveries, true);
     }
 
     /**

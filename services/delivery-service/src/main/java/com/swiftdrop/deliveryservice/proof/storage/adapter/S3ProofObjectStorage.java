@@ -110,6 +110,11 @@ public final class S3ProofObjectStorage implements ProofObjectStorage {
         }
     }
 
+    @Override
+    public boolean supportsDeletion() {
+        return true;
+    }
+
     private ProofStorageException mapFailure(String operation, RuntimeException exception) {
         if (hasCause(exception, EOFException.class)) {
             return new InvalidProofObjectException("Proof content did not match its declared length", exception);

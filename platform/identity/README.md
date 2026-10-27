@@ -602,3 +602,31 @@ decision regarding typed Email OTP codes in SwiftDrop's Keycloak platform (Issue
    - Feasibility Study: [`docs/architecture/EMAIL_OTP_FEASIBILITY.md`](../../docs/architecture/EMAIL_OTP_FEASIBILITY.md)
    - Threat Model & Invariants: [`docs/security/EMAIL_OTP_THREAT_MODEL.md`](../../docs/security/EMAIL_OTP_THREAT_MODEL.md)
    - Architecture Decision Record: [`docs/architecture/adr/ADR-0009.md`](../../docs/architecture/adr/ADR-0009.md)
+
+---
+
+## 12. Issue #150 — Production Identity, SMTP, Headers & Secret Rotation Readiness
+
+Owner: **Suthankan1** (Platform & Security Lead) · **Issue:** [Refs #150](https://github.com/Suthankan1/swiftdrop/issues/150) · **Handoff:** [ISSUE_150_TO_159_IDENTITY_HANDOFF.md](../../docs/handoff/ISSUE_150_TO_159_IDENTITY_HANDOFF.md)
+
+Delivers production-grade identity hardening for SwiftDrop's local-first architecture:
+1. **Authoritative Ingress & HTTPS Issuer:**
+   - Ingress Origin: `https://swiftdrop.local:18443` (and subdomains `app.`, `api.`, `auth.swiftdrop.local:18443`).
+   - Canonical Issuer: `https://swiftdrop.local:18443/realms/swiftdrop` (matches `iss` claim in all issued tokens).
+   - Ingress Admin Surface: `/admin` path gated via `ingress.keycloak.exposeAdmin` in Helm chart values.
+2. **Reverse Proxy & Runtime Mode:**
+   - Keycloak container runs in production mode (`start --http-enabled=true`).
+   - Proxy header handling: `KC_PROXY_HEADERS=xforwarded` strictly processes headers from embedded Traefik.
+3. **Role-Based TOTP MFA Enforcement:**
+   - `ADMIN` and `DISPATCHER` roles require mandatory TOTP pairing via `configure-totp.py enforce-staff`.
+   - `CUSTOMER` retains voluntary MFA configuration.
+   - Non-destructive administrative reset helper: `configure-totp.py reset-user --user-id <UUID> --require-re-enroll`.
+4. **Strict $0 SMTP Policy:**
+   - Local Mailpit capture sink (`mailpit:1025`) used for synthetic verification testing.
+   - Real external SMTP delivery remains gated and marked `BLOCKED` until a verified $0 provider is authorized.
+5. **Security Headers & CSP:**
+   - Keycloak `browserSecurityHeaders` and SPA `nginx.conf` enforce CSP, HSTS (`max-age=31536000`), `X-Content-Type-Options: nosniff`, and frame restrictions.
+6. **Secret Externalization & Rotation Readiness:**
+   - All credentials externalized to Kubernetes Secrets (`keycloak-admin-secret`, `keycloak-db-secret`, `swiftdrop-google-oidc-secret`, `swiftdrop-smtp-secret`, `swiftdrop-tls-cert`).
+   - Reversible rotation tool: [`rotate-identity-secrets.py`](rotate-identity-secrets.py) (`inventory`, `dry-run`, `simulate-key-rotation`).
+   - Comprehensive operator documentation: [`docs/security/PRODUCTION_IDENTITY_OPERATOR_RUNBOOK.md`](../../docs/security/PRODUCTION_IDENTITY_OPERATOR_RUNBOOK.md).

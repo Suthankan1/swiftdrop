@@ -25,6 +25,8 @@ ingress:
   tls:
     enabled: true
     secretName: swiftdrop-tls-cert
+  keycloak:
+    exposeAdmin: true
 
 networkPolicies:
   enabled: true
