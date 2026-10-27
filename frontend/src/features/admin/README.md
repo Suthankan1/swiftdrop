@@ -2,59 +2,105 @@
 
 Owner: @pushmitha20. Frontend/provider reviewer: @thuvarahan-t. Base: `test`.
 
-## Frontend slice
+## Implemented frontend slice
 
 `/admin/merchants` reuses the shared ADMIN route guard and existing Admin entry.
-It lists merchants awaiting review (server pages of 20, filterable by status),
-shows safe details and audit history, and offers only the approve/suspend
-actions Accounts advertises. Confirmation names the business, merchant ID and
-registration; it traps focus, supports Escape/Cancel before submission and
-restores focus. Status badges are text, not colour alone.
+The presentation supports server pages (20 records), safe merchant details,
+text status badges, authoritative audit metadata, confirmation/reason policy,
+loading/empty/retry/denial/gone/conflict feedback and responsive horizontal table
+scrolling. Confirmation names the business, merchant ID and supplied registration;
+it traps keyboard focus, supports Escape before submission and restores focus.
 
-## Accounts contract consumed (via the Gateway)
+`api/merchantReview.ts` is a **transport-free internal presentation port**, not
+an approved REST schema or a production mock. Its optional fields represent UI
+needs; they do not declare that Accounts exposes them. The future adapter must
+project authorized fields only and validate its actual response. An absent audit
+read differs from an exposed empty audit result. No timeline is synthesized.
 
-Implemented by #121 (`AdminReadController`, `MerchantController`). Only
-`POST /approve` is documented in `contracts/rest/openapi-accounts.yaml`; the
-other operations below exist in code but are not yet in the OpenAPI contract.
+The production port is deliberately `undefined`. The route displays a service
+unavailable explanation and disabled commands, with **no review HTTP requests or
+fake merchant records**. Functional presentation tests inject synthetic ports only
+inside the test file. The feature is ready for provider integration, not business
+acceptance.
 
-| Use | Endpoint | Notes |
+## Provider evidence and blockers (2026-10-27)
+
+Inspected `test` 654a72c, #136, #121, #97, #88, current Accounts controllers,
+README, OpenAPI and provider PR searches. #121 is OPEN with no issue comments or
+integrated review-command PR found. #97 and #88 are CLOSED; this does not approve
+all PROPOSED policies in the runtime decision register.
+
+| Capability | Current evidence | Frontend integration |
 | --- | --- | --- |
-| Review list | `GET /api/v1/admin/merchants?page&size&status` | `status=PENDING` by default; backend orders by `createdAt`, `id`; size ≤ 50 |
-| Detail | `GET /api/v1/admin/merchants/{id}` | `reviewToken` (entity version), advertised `actions` and reason policy |
-| Audit | `GET /api/v1/admin/merchants/{id}/audit` | actor subject, action, previous/new status, outcome, reason |
-| Approve | `POST /api/v1/merchants/{id}/approve` | body `{ reviewToken }`; PENDING only |
-| Suspend | `POST /api/v1/merchants/{id}/suspend` | body `{ reviewToken, reason }`; APPROVED only; reason required, ≤ 500 |
+| Paged merchant review REST | No list operation under `/api/v1/merchants` in OpenAPI/controller | Blocked on #121; no route invented |
+| Merchant detail | `GET /api/v1/merchants/{id}` exists; runtime `MerchantRecord` differs from OpenAPI `MerchantProfileResponse` | Not connected independently of the missing review projection |
+| Approve | OpenAPI specifies `POST /api/v1/merchants/{id}/approve`; merchant controller has no handler. #107 implements `POST /api/v1/admin/reconciliation/merchant/{id}/approve` returning `ReconciliationResult` | Disabled pending #121 reconciliation of routes, lifecycle/concurrency and response semantics |
+| Suspend | #107 implements `POST /api/v1/admin/reconciliation/merchant/{id}/suspend` with fixed `ADMIN_INITIATED` reason | Disabled pending reviewed #121 command/reason/version policy |
+| Audit read | #107 implements `GET /api/v1/admin/reconciliation/audit/{sub}`, returning reconciliation entities with error messages | No reviewed minimal merchant-review projection; do not display raw entities |
+| Concurrency | Existing detail DTO has no version/review token | Commands require provider evidence; no client-generated version |
 
-Commands return `MerchantProfileResponse`; the UI treats a command as confirmed
-only when that body names the same merchant with the expected resulting status.
-Anything else is reported as an unconfirmed outcome.
+Gateway has `/api/v1/merchants/**` and `/api/v1/admin/**` routes; route existence
+does not implement the missing Accounts operations. Existing staff/user admin
+reads from #122 are separate projections and are not used as merchant reads.
+The internal gRPC pending-summary contract is not a browser REST substitute.
 
-## Safeguards
+The #107 `MerchantRoleReconciliationService` sets APPROVED/SUSPENDED without a
+PENDING/expected-version guard, and treats identity reconciliation outcome
+separately from HTTP success. Its audit service can swallow persistence failures.
+Do not interpret HTTP 200 as accepted #121 business/audit semantics or add a
+browser workaround. @thuvarahan-t must reconcile these existing candidates with
+the #121 contract, rather than duplicate them or silently adopt the mismatch.
 
-- Requests use the in-memory token getter with plain `fetch` to the Gateway
-  (`credentials: 'omit'`, `cache: 'no-store'`, `redirect: 'error'`). The shared
-  `profileFetch` is restricted to profile reads and must not be used here.
-- Responses are validated: rows without an id or business name are rejected,
-  unknown statuses become `UNKNOWN`, unknown actions or malformed reason
-  policies are dropped, and a malformed or failed audit read is shown as
-  unavailable rather than synthesized.
-- Errors map by HTTP status to fixed messages; ProblemDetail text is never
-  rendered (it can include caller roles). 409/412 are conflicts, 429 is rate
-  limited, 5xx/network/unreadable 2xx are ambiguous outcomes.
-- Commands are never retried. Success, conflict and ambiguous outcomes close
-  the confirmation and refresh list and details; a new action needs a fresh
-  confirmation with the refreshed `reviewToken`.
-- Query keys include private scope, subject and mounted session; logout,
-  subject change and role loss abort requests and remove the feature cache.
-- Frontend checks are UX only. Accounts enforces ADMIN on `/api/v1/admin/**`
-  and on approve/suspend (security filter chain and controller). The Gateway
-  explicitly requires ADMIN for `/approve` and `/api/v1/admin/**`; `/suspend`
-  currently falls under its `/api/v1/merchants/**` MERCHANT/ADMIN rule, so a
-  merchant token reaches Accounts and is rejected there (platform follow-up).
+## Session and command safeguards
 
-## Verification status
+- Queries include private scope, verified subject, mounted session identity,
+  page and size or merchant ID. Selection and feedback reset on subject changes.
+- Reads consume abort signals and reject late responses after cancellation.
+  Unmount/logout/role loss cancels and removes the feature cache; shared
+  AuthProvider also clears private cache on subject change/logout/expiry.
+- Approval requires PENDING, a supplied action, integrated provider capability,
+  command method and opaque concurrency evidence. Suspension uses only supplied
+  action/reason policy. No local role/status grants or lifecycle rules are added.
+- Explicit confirmation, synchronous in-flight guard, no command retries or
+  optimistic changes. Success, conflict and unknown outcomes invalidate list and
+  detail. A conflict closes confirmation and requires reviewing fresh details.
+- 401 delegates to shared `handleSessionExpiry`; 403/404/409/400/422 and network
+  failures use fixed safe messages. Raw provider exception/problem bodies are
+  never rendered or logged. Only explicitly selected fields appear in UI.
+- Future HTTP integration must reuse the shared in-memory token getter, Gateway
+  origin, approved session refresh, no-store/omit-credentials policy, and must
+  never replay a command on 401. Shared OIDC code is unchanged in this slice.
+- Frontend role gates are UX only. Gateway/Accounts must independently validate
+  JWTs, ADMIN privileges, lifecycle/concurrency and durable audit writes.
 
-Component and adapter tests use synthetic data and do not prove backend
-integration. A real React → Gateway → Accounts → PostgreSQL approval, with a
-non-admin and stale-token attempt, still needs a running stack and a controlled
-synthetic pending merchant.
+## Acceptance and next task
+
+Local validation on 2026-10-27 (Node 24.21.0; pinned pnpm 12.11.2):
+
+- `corepack pnpm install --frozen-lockfile` — PASS; lockfile unchanged.
+- `corepack pnpm typecheck` — PASS.
+- `corepack pnpm test --run` — PASS, 515 tests in 41 files.
+- `corepack pnpm lint` — PASS.
+- `corepack pnpm build` — PASS; Vite reports a >500 kB JavaScript chunk warning.
+- `git diff --check` — PASS.
+
+Scripts ran via `npm exec --yes --package=node@24.21.0 -- corepack pnpm ...`;
+`corepack pnpm exec node --version` in that environment confirmed v24.21.0.
+The frozen install required access to pnpm's external cache. No dependency or
+toolchain pins were changed. Production build output remains ignored.
+
+These isolated tests do not prove JWT validation, persistence, business
+transitions or durable audit. Visual desktop/mobile browser QA was not performed.
+**Real admin approval, backend non-admin denial, persisted audit and browser E2E:
+BLOCKED on #121 and controlled full-stack acceptance.** No privileged identities,
+business records, infrastructure or external configuration are created here.
+
+Next small task: @thuvarahan-t reviews the port needs and supplies #121's bounded
+REST list/detail, supported commands, exact reason/version/error/audit projection;
+then wire the reviewed authenticated adapter and verify one persisted approval.
+
+GitHub Project: available tools cannot read/write Projects fields and GitHub CLI
+is absent. Actual linked board/status remains unverified. Open #136 in GitHub,
+identify its currently linked Project and set In Review after the PR is opened;
+keep the issue open pending provider integration and human acceptance. Do not
+assume a historical Project number or mark Done based on isolated tests.

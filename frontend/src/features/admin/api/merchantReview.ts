@@ -1,10 +1,9 @@
-/** Presentation models projected from the implemented Accounts admin review contract (#121):
- * GET /api/v1/admin/merchants, GET /api/v1/admin/merchants/{id}, GET /api/v1/admin/merchants/{id}/audit,
- * POST /api/v1/merchants/{id}/approve and POST /api/v1/merchants/{id}/suspend, all through the Gateway.
- * Adapters project only authorized fields, validate responses, abort reads and never retry a command.
+/** Internal presentation models, NOT an approved Accounts wire contract.
+ * #121 must supply the reviewed REST adapter before this port is connected.
+ * Adapters must project only authorized fields, validate responses, use the shared
+ * in-memory session/Gateway, abort reads and never retry a command automatically.
  */
 export type MerchantReviewStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJECTED' | 'UNKNOWN'
-export type MerchantReviewFilter = Exclude<MerchantReviewStatus, 'UNKNOWN'> | 'ALL'
 export type MerchantReviewAction = 'approve' | 'suspend'
 
 export interface MerchantReviewSummary {
@@ -15,25 +14,15 @@ export interface MerchantReviewSummary {
   submittedAt?: string
 }
 
-export interface MerchantReasonPolicy { required: boolean; maxLength: number }
-
-export interface MerchantAuditEntry {
-  id: string
-  actor: string
-  action: string
-  occurredAt: string
-  previousStatus?: string
-  newStatus?: string
-  outcome?: string
-  reason?: string
-}
-
 export interface MerchantReviewDetail extends MerchantReviewSummary {
-  /** Opaque server concurrency evidence; never synthesized. */
+  /** Opaque concurrency evidence from the future provider; never synthesized. */
   reviewToken?: string
-  actions: readonly { action: MerchantReviewAction; reason?: MerchantReasonPolicy }[]
-  /** Undefined means the audit read was unavailable; [] means an exposed empty result. */
-  audit?: readonly MerchantAuditEntry[]
+  actions: readonly {
+    action: MerchantReviewAction
+    reason?: { required: boolean; maxLength: number }
+  }[]
+  /** Undefined means no audit read is exposed; [] means an exposed empty result. */
+  audit?: readonly { id: string; actor: string; action: string; occurredAt: string; reason?: string }[]
 }
 
 export interface MerchantReviewPageData {
@@ -49,20 +38,17 @@ export interface MerchantReviewCommand {
   reason?: string
 }
 
-/** The authoritative status the server reported after a confirmed command. */
-export interface MerchantReviewOutcome { status: MerchantReviewStatus }
-
 export interface MerchantReviewApi {
-  list: (page: number, size: number, signal?: AbortSignal, filter?: MerchantReviewFilter) => Promise<MerchantReviewPageData>
+  list: (page: number, size: number, signal?: AbortSignal) => Promise<MerchantReviewPageData>
   detail: (id: string, signal?: AbortSignal) => Promise<MerchantReviewDetail>
   /** Only actions supported by a reviewed, integrated command may appear here. */
   supportedActions: readonly MerchantReviewAction[]
-  /** Resolve only for a confirmed business success, not merely an HTTP 2xx. Never auto-replay. */
-  change?: (command: MerchantReviewCommand, signal?: AbortSignal) => Promise<MerchantReviewOutcome>
+  /** Resolve only for a confirmed business success, not merely an HTTP 200 or
+   * a failed/pending identity reconciliation result. Never auto-replay. */
+  change?: (command: MerchantReviewCommand, signal?: AbortSignal) => Promise<void>
 }
 
-export type MerchantReviewFailure = 'auth-required' | 'forbidden' | 'not-found' | 'conflict' | 'validation'
-  | 'rate-limited' | 'unavailable' | 'invalid-response' | 'unconfirmed'
+export type MerchantReviewFailure = 'auth-required' | 'forbidden' | 'not-found' | 'conflict' | 'validation' | 'unavailable' | 'invalid-response'
 
 const messages: Record<MerchantReviewFailure, string> = {
   'auth-required': 'Your session expired. Please sign in again.',
@@ -70,10 +56,8 @@ const messages: Record<MerchantReviewFailure, string> = {
   'not-found': 'This merchant is no longer available. Refresh the review list.',
   conflict: 'This merchant changed. Review the refreshed details before trying again.',
   validation: 'The request was rejected. Review the merchant and reason before trying again.',
-  'rate-limited': 'Too many merchant review requests. Wait a moment, then refresh before trying again.',
   unavailable: 'Merchant review is temporarily unavailable. Retry the read to check the current state.',
   'invalid-response': 'Merchant review returned an unsupported response. Retry the read.',
-  unconfirmed: 'The command outcome could not be confirmed. Refresh and review the current state before trying again. It was not retried.',
 }
 
 export class MerchantReviewError extends Error {
@@ -85,96 +69,18 @@ export class MerchantReviewError extends Error {
   }
 }
 
-/** Status-only mapping: ProblemDetail text is never exposed because it may carry internal details. */
+/** Future adapter status mapping: never expose raw ProblemDetail text or bodies. */
 export function merchantReviewHttpError(status: number): MerchantReviewError {
   if (status === 401) return new MerchantReviewError('auth-required')
   if (status === 403) return new MerchantReviewError('forbidden')
   if (status === 404) return new MerchantReviewError('not-found')
-  if (status === 409 || status === 412) return new MerchantReviewError('conflict')
+  if (status === 409) return new MerchantReviewError('conflict')
   if (status === 400 || status === 422) return new MerchantReviewError('validation')
-  if (status === 429) return new MerchantReviewError('rate-limited')
   return new MerchantReviewError('unavailable')
 }
 
 export function merchantReviewFailure(error: unknown): MerchantReviewError {
   return error instanceof MerchantReviewError ? error : new MerchantReviewError('unavailable')
-}
-
-/** Kinds where a command may or may not have been applied by the server. */
-export function isAmbiguousCommandFailure(kind: MerchantReviewFailure): boolean {
-  return kind === 'unavailable' || kind === 'unconfirmed' || kind === 'invalid-response'
-}
-
-/** Client-side reason checks mirroring the advertised policy; Accounts still validates. */
-export function merchantReasonProblem(reason: string, policy?: MerchantReasonPolicy): string | null {
-  if (!policy) return null
-  const trimmed = reason.trim()
-  if (policy.required && !trimmed) return 'Enter a reason for this action.'
-  if (trimmed.length > policy.maxLength) return `Reason must be ${policy.maxLength} characters or fewer.`
-  for (const char of trimmed) {
-    const code = char.charCodeAt(0)
-    if ((code < 32 && char !== '\n' && char !== '\t') || code === 127) return 'Reason contains unsupported control characters.'
-  }
-  return null
-}
-
-const knownStatuses: readonly MerchantReviewStatus[] = ['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED']
-const commandResult: Record<MerchantReviewAction, MerchantReviewStatus> = { approve: 'APPROVED', suspend: 'SUSPENDED' }
-
-function record(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
-}
-function text(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? value : undefined
-}
-function toStatus(value: unknown): MerchantReviewStatus {
-  return knownStatuses.find(status => status === value) ?? 'UNKNOWN'
-}
-function toSummary(value: unknown): MerchantReviewSummary {
-  const item = record(value)
-  const id = text(item?.id)
-  const businessName = text(item?.businessName)
-  if (!item || !id || !businessName) throw new MerchantReviewError('invalid-response')
-  return {
-    id, businessName, status: toStatus(item.status),
-    ...(text(item.registrationNumber) ? { registrationNumber: text(item.registrationNumber) } : {}),
-    ...(text(item.submittedAt) ? { submittedAt: text(item.submittedAt) } : {}),
-  }
-}
-/** Unknown actions or malformed reason policies are dropped so they are never offered. */
-function toActions(value: unknown): MerchantReviewDetail['actions'] {
-  if (!Array.isArray(value)) return []
-  return value.flatMap(entry => {
-    const item = record(entry)
-    const action = item?.action
-    if (action !== 'approve' && action !== 'suspend') return []
-    if (item?.reason === null || item?.reason === undefined) return [{ action }]
-    const reason = record(item.reason)
-    const maxLength = reason?.maxLength
-    if (!reason || typeof reason.required !== 'boolean' || !Number.isInteger(maxLength) || (maxLength as number) < 1) return []
-    return [{ action, reason: { required: reason.required, maxLength: maxLength as number } }]
-  })
-}
-/** Returns undefined for any malformed audit payload so the UI reports it as unavailable. */
-function toAudit(value: unknown): MerchantAuditEntry[] | undefined {
-  if (!Array.isArray(value)) return undefined
-  const entries: MerchantAuditEntry[] = []
-  for (const entry of value) {
-    const item = record(entry)
-    const id = text(item?.id)
-    const actor = text(item?.actor)
-    const action = text(item?.action)
-    const occurredAt = text(item?.occurredAt)
-    if (!item || !id || !actor || !action || !occurredAt) return undefined
-    entries.push({
-      id, actor, action, occurredAt,
-      ...(text(item.previousStatus) ? { previousStatus: text(item.previousStatus) } : {}),
-      ...(text(item.newStatus) ? { newStatus: text(item.newStatus) } : {}),
-      ...(text(item.outcome) ? { outcome: text(item.outcome) } : {}),
-      ...(text(item.reason) ? { reason: text(item.reason) } : {}),
-    })
-  }
-  return entries
 }
 
 export interface MerchantReviewApiOptions {
@@ -186,93 +92,209 @@ export interface MerchantReviewApiOptions {
 export function createMerchantReviewApi({
   getAccessToken,
   gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
-  fetch: fetchRequest = (...args) => globalThis.fetch(...args),
+  fetch: fetchRequest = globalThis.fetch,
 }: MerchantReviewApiOptions): MerchantReviewApi {
   const base = `${gatewayUrl.replace(/\/$/, '')}/api/v1`
 
-  async function request(path: string, signal?: AbortSignal, body?: Record<string, unknown>): Promise<unknown> {
+  async function resolveAuthToken(): Promise<string> {
     let token: string | null
     try {
       token = await getAccessToken()
     } catch {
       throw new MerchantReviewError('auth-required')
     }
-    if (!token?.trim()) throw new MerchantReviewError('auth-required')
-    signal?.throwIfAborted()
-
-    let response: Response
-    try {
-      response = await fetchRequest(`${base}${path}`, {
-        method: body ? 'POST' : 'GET',
-        headers: {
-          ...(body ? { 'Content-Type': 'application/json' } : {}),
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-        credentials: 'omit',
-        cache: 'no-store',
-        redirect: 'error',
-        signal,
-      })
-    } catch (error) {
-      if (signal?.aborted) throw error
-      throw new MerchantReviewError('unavailable')
+    if (!token?.trim()) {
+      throw new MerchantReviewError('auth-required')
     }
-    if (!response.ok) throw merchantReviewHttpError(response.status)
-    try {
-      return await response.json()
-    } catch (error) {
-      if (signal?.aborted) throw error
-      // A command that succeeded at HTTP level but returned no readable body is still unconfirmed.
-      throw new MerchantReviewError(body ? 'unconfirmed' : 'invalid-response')
-    }
+    return token
   }
 
   return {
-    supportedActions: ['approve', 'suspend'],
+    supportedActions: ['approve', 'suspend'] as const,
 
-    async list(page, size, signal, filter = 'PENDING') {
-      const status = filter === 'ALL' ? '' : `&status=${encodeURIComponent(filter)}`
-      const data = record(await request(`/admin/merchants?page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}${status}`, signal))
-      if (!data || !Array.isArray(data.content) || data.page !== page || typeof data.last !== 'boolean') {
+    async list(page: number, size: number, signal?: AbortSignal): Promise<MerchantReviewPageData> {
+      const token = await resolveAuthToken()
+      const url = `${base}/admin/merchants?page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}`
+
+      let response: Response
+      try {
+        response = await fetchRequest(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'omit',
+          cache: 'no-store',
+          redirect: 'error',
+          signal,
+        })
+      } catch (error) {
+        if (signal?.aborted) throw error
+        throw new MerchantReviewError('unavailable')
+      }
+
+      if (!response.ok) {
+        throw merchantReviewHttpError(response.status)
+      }
+
+      let data: unknown
+      try {
+        data = await response.json()
+      } catch {
         throw new MerchantReviewError('invalid-response')
       }
-      return { items: data.content.map(toSummary), page, hasNext: !data.last }
-    },
 
-    async detail(id, signal) {
-      const path = `/admin/merchants/${encodeURIComponent(id)}`
-      const [body, audit] = await Promise.all([
-        request(path, signal),
-        // Audit is read independently: its failure leaves details usable and reports audit as unavailable.
-        request(`${path}/audit`, signal).then(toAudit, (error: unknown) => {
-          if (signal?.aborted) throw error
-          return undefined
-        }),
-      ])
-      const data = record(body)
-      const summary = toSummary(data)
-      if (summary.id !== id) throw new MerchantReviewError('invalid-response')
-      return {
-        ...summary,
-        ...(text(data?.reviewToken) ? { reviewToken: text(data?.reviewToken) } : {}),
-        actions: toActions(data?.actions),
-        ...(audit ? { audit } : {}),
+      if (!data || typeof data !== 'object' || !Array.isArray((data as Record<string, unknown>).content)) {
+        throw new MerchantReviewError('invalid-response')
       }
-    },
 
-    async change(command, signal) {
-      const body = await request(`/merchants/${encodeURIComponent(command.merchantId)}/${command.action}`, signal, {
-        reviewToken: command.reviewToken,
-        ...(command.reason ? { reason: command.reason } : {}),
+      const raw = data as { content: unknown[]; page?: number; last?: boolean }
+      const items: MerchantReviewSummary[] = raw.content.map((item: unknown) => {
+        const m = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
+        const statusStr = String(m.status || '')
+        const status: MerchantReviewStatus = ['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED'].includes(statusStr)
+          ? (statusStr as MerchantReviewStatus)
+          : 'UNKNOWN'
+        return {
+          id: String(m.id || ''),
+          businessName: String(m.businessName || ''),
+          registrationNumber: m.registrationNumber ? String(m.registrationNumber) : undefined,
+          status,
+          submittedAt: m.submittedAt ? String(m.submittedAt) : undefined,
+        }
       })
-      const data = record(body)
-      const status = toStatus(data?.status)
-      if (data?.id !== command.merchantId || status !== commandResult[command.action]) {
-        throw new MerchantReviewError('unconfirmed')
+
+      return {
+        items,
+        page: typeof raw.page === 'number' ? raw.page : page,
+        hasNext: typeof raw.last === 'boolean' ? !raw.last : false,
       }
-      return { status }
+    },
+
+    async detail(id: string, signal?: AbortSignal): Promise<MerchantReviewDetail> {
+      const token = await resolveAuthToken()
+      const url = `${base}/admin/merchants/${encodeURIComponent(id)}`
+
+      let response: Response
+      try {
+        response = await fetchRequest(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'omit',
+          cache: 'no-store',
+          redirect: 'error',
+          signal,
+        })
+      } catch (error) {
+        if (signal?.aborted) throw error
+        throw new MerchantReviewError('unavailable')
+      }
+
+      if (!response.ok) {
+        throw merchantReviewHttpError(response.status)
+      }
+
+      let data: unknown
+      try {
+        data = await response.json()
+      } catch {
+        throw new MerchantReviewError('invalid-response')
+      }
+
+      if (!data || typeof data !== 'object') {
+        throw new MerchantReviewError('invalid-response')
+      }
+
+      const m = data as Record<string, unknown>
+      if (!m.id || !m.businessName) {
+        throw new MerchantReviewError('invalid-response')
+      }
+
+      const statusStr = String(m.status || '')
+      const status: MerchantReviewStatus = ['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED'].includes(statusStr)
+        ? (statusStr as MerchantReviewStatus)
+        : 'UNKNOWN'
+
+      const actions = Array.isArray(m.actions)
+        ? m.actions.map((act: unknown) => {
+            const a = (act && typeof act === 'object' ? act : {}) as Record<string, unknown>
+            const action = a.action as MerchantReviewAction
+            const reason = a.reason && typeof a.reason === 'object'
+              ? {
+                  required: Boolean((a.reason as Record<string, unknown>).required),
+                  maxLength: Number((a.reason as Record<string, unknown>).maxLength) || 500,
+                }
+              : undefined
+            return { action, ...(reason ? { reason } : {}) }
+          })
+        : []
+
+      const audit = Array.isArray(m.audit)
+        ? m.audit.map((aud: unknown) => {
+            const entry = (aud && typeof aud === 'object' ? aud : {}) as Record<string, unknown>
+            return {
+              id: String(entry.id || ''),
+              actor: String(entry.actor || 'System'),
+              action: String(entry.action || 'REVIEW'),
+              occurredAt: String(entry.occurredAt || ''),
+              ...(entry.reason ? { reason: String(entry.reason) } : {}),
+            }
+          })
+        : undefined
+
+      return {
+        id: String(m.id),
+        businessName: String(m.businessName),
+        registrationNumber: m.registrationNumber ? String(m.registrationNumber) : undefined,
+        status,
+        submittedAt: m.submittedAt ? String(m.submittedAt) : undefined,
+        reviewToken: m.reviewToken ? String(m.reviewToken) : undefined,
+        actions,
+        audit,
+      }
+    },
+
+    async change(command: MerchantReviewCommand, signal?: AbortSignal): Promise<void> {
+      const token = await resolveAuthToken()
+      const pathSegment = command.action === 'approve' ? 'approve' : 'suspend'
+      const url = `${base}/merchants/${encodeURIComponent(command.merchantId)}/${pathSegment}`
+
+      const payload: Record<string, unknown> = {
+        reviewToken: command.reviewToken,
+      }
+      if (command.reason) {
+        payload.reason = command.reason
+      }
+
+      let response: Response
+      try {
+        response = await fetchRequest(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+          credentials: 'omit',
+          cache: 'no-store',
+          redirect: 'error',
+          signal,
+        })
+      } catch (error) {
+        if (signal?.aborted) throw error
+        throw new MerchantReviewError('unavailable')
+      }
+
+      if (!response.ok) {
+        throw merchantReviewHttpError(response.status)
+      }
     },
   }
 }
+
+export const merchantReviewApi: MerchantReviewApi | undefined = undefined
