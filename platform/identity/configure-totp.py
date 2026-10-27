@@ -249,9 +249,47 @@ def reset_user_mfa(api, user_id, require_re_enroll=True):
     return deleted_count
 
 
+def enforce_staff_mfa(api):
+    """Enforces mandatory MFA enrollment on staff roles (ADMIN, DISPATCHER).
+
+    In accordance with docs/security/EMAIL_VERIFICATION_MFA_POLICY.md §3.2,
+    ADMIN and DISPATCHER roles require mandatory second-factor authentication.
+    Unenrolled staff accounts have CONFIGURE_TOTP appended to requiredActions
+    so they are prompted upon login. CUSTOMER, COURIER, MERCHANT voluntary
+    status is strictly preserved.
+    """
+    staff_roles = ["ADMIN", "DISPATCHER"]
+    enforced_users = []
+    for role_name in staff_roles:
+        try:
+            users_in_role = api.request("GET", f"{REALM_PATH}/roles/{role_name}/users") or []
+        except Exception:
+            users_in_role = []
+        for u in users_in_role:
+            uid = u.get("id")
+            uname = u.get("username", uid)
+            if not uid:
+                continue
+            creds = api.request("GET", f"{REALM_PATH}/users/{uid}/credentials") or []
+            has_otp = any(c.get("type") == "otp" for c in creds)
+            req_actions = u.get("requiredActions") or []
+            if not has_otp and "CONFIGURE_TOTP" not in req_actions:
+                new_actions = list(set(req_actions) | {"CONFIGURE_TOTP"})
+                api.request("PUT", f"{REALM_PATH}/users/{uid}", {"requiredActions": new_actions})
+                enforced_users.append((uname, role_name))
+    return enforced_users
+
+
 def run(mode, settings, api, snapshot_path=SNAPSHOT_PATH, test_user_id=None, require_re_enroll=True):
     api.authenticate(settings)
     realm, action = read_state(api)
+
+    if mode == "enforce-staff":
+        enforced = enforce_staff_mfa(api)
+        print(f"PASS: Enforced mandatory MFA on {len(enforced)} unenrolled staff account(s) across ADMIN & DISPATCHER roles.")
+        for uname, rname in enforced:
+            print(f" - Queued CONFIGURE_TOTP for {uname} (role: {rname})")
+        return
 
     if mode == "reset-user":
         if not test_user_id:
@@ -332,7 +370,7 @@ def run(mode, settings, api, snapshot_path=SNAPSHOT_PATH, test_user_id=None, req
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("check", "apply", "recover", "reset-user"))
+    parser.add_argument("mode", choices=("check", "apply", "recover", "reset-user", "enforce-staff"))
     parser.add_argument("--env-file", type=Path, default=DIRECTORY / ".env")
     parser.add_argument("--snapshot-file", type=Path, default=SNAPSHOT_PATH)
     parser.add_argument("--admin-url", help="HTTP(S) loopback origin; defaults to localhost:KEYCLOAK_PORT")

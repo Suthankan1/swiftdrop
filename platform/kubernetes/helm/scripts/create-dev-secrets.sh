@@ -60,6 +60,16 @@ create_or_update_secret swiftdrop-identity swiftdrop-google-oidc-secret \
   --from-literal=client-id="${GOOGLE_CLIENT_ID:-dummy-client-id}" \
   --from-literal=client-secret="${GOOGLE_CLIENT_SECRET:-dummy-client-secret}"
 
+create_or_update_secret swiftdrop-identity swiftdrop-smtp-secret \
+  --from-literal=host="${SMTP_HOST:-mailpit.swiftdrop-messaging.svc.cluster.local}" \
+  --from-literal=port="${SMTP_PORT:-1025}" \
+  --from-literal=username="${SMTP_USER:-}" \
+  --from-literal=password="${SMTP_PASSWORD:-}" \
+  --from-literal=from="${SMTP_FROM:-no-reply@swiftdrop.test}" \
+  --from-literal=auth="${SMTP_AUTH:-false}" \
+  --from-literal=ssl="${SMTP_SSL:-false}" \
+  --from-literal=starttls="${SMTP_STARTTLS:-false}"
+
 echo ""
 echo "================================================================================"
 echo "✓ All required local development Kubernetes secrets provisioned successfully."

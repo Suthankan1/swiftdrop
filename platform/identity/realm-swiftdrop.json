@@ -13,6 +13,15 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "loginTheme": "swiftdrop",
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000"
+  },
   "otpPolicyType": "totp",
   "otpPolicyAlgorithm": "HmacSHA1",
   "otpPolicyInitialCounter": 0,
@@ -109,13 +118,17 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
+        "https://swiftdrop.local:18443/auth/callback",
+        "https://app.swiftdrop.local:18443/auth/callback",
         "http://localhost:5173/auth/callback"
       ],
       "webOrigins": [
+        "https://swiftdrop.local:18443",
+        "https://app.swiftdrop.local:18443",
         "http://localhost:5173"
       ],
-      "rootUrl": "http://localhost:5173",
-      "baseUrl": "http://localhost:5173",
+      "rootUrl": "https://swiftdrop.local:18443",
+      "baseUrl": "https://swiftdrop.local:18443",
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -128,7 +141,7 @@
       "protocol": "openid-connect",
       "attributes": {
         "oidc.ciba.grant.enabled": "false",
-        "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:5173",
+        "post.logout.redirect.uris": "https://swiftdrop.local:18443/##https://swiftdrop.local:18443##https://app.swiftdrop.local:18443/##https://app.swiftdrop.local:18443##http://localhost:5173/##http://localhost:5173",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false",

@@ -142,5 +142,7 @@ data:
   KC_HOSTNAME: {{ .Values.keycloak.config.hostname | quote }}
   KC_HTTP_PORT: {{ .Values.keycloak.config.httpPort | quote }}
   KC_PROXY_HEADERS: {{ .Values.keycloak.config.proxyHeaders | quote }}
+  KC_HTTP_ENABLED: {{ .Values.keycloak.config.httpEnabled | default "true" | quote }}
+  KC_HEALTH_ENABLED: {{ .Values.keycloak.config.healthEnabled | default "true" | quote }}
   JAVA_OPTS_APPEND: {{ .Values.keycloak.config.javaOptsAppend | quote }}
 {{- end }}
