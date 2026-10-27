@@ -47,7 +47,7 @@ export class DeliveryError extends Error {
 }
 
 export interface DeliveryApiOptions {
-  getAccessToken: () => Promise<string | null>
+  getAccessToken?: () => Promise<string | null>
   gatewayUrl?: string
   fetch?: typeof globalThis.fetch
 }
@@ -207,10 +207,10 @@ async function parseProblemDetail(response: Response): Promise<ProblemDetail | u
 }
 
 export function createDeliveryApi({
-  getAccessToken,
+  getAccessToken = async () => null,
   gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
   fetch: fetchRequest = globalThis.fetch,
-}: DeliveryApiOptions) {
+}: DeliveryApiOptions = {}) {
   const normalizedGateway = gatewayUrl.replace(/\/$/, '')
 
   async function resolveAuthToken(): Promise<string> {

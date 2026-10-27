@@ -9,6 +9,7 @@ import com.swiftdrop.deliveryservice.receipt.controller.ReceiptController;
 import com.swiftdrop.deliveryservice.sse.controller.ParcelSseController;
 import com.swiftdrop.deliveryservice.status.controller.StatusController;
 import com.swiftdrop.deliveryservice.booking.controller.MerchantParcelBookingController;
+import com.swiftdrop.deliveryservice.tracking.controller.PublicTrackingController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {ReceiptController.class, StatusController.class, AssignmentController.class, ParcelQueryController.class, ProofController.class, ParcelSseController.class, ParcelBookingController.class, MerchantParcelBookingController.class}))
+@WebMvcTest(excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {ReceiptController.class, StatusController.class, AssignmentController.class, ParcelQueryController.class, ProofController.class, ParcelSseController.class, ParcelBookingController.class, MerchantParcelBookingController.class, PublicTrackingController.class}))
 @Import(BookingFoundationSecurity.class)
 class BookingExposureTest {
     @Autowired MockMvc mvc;
