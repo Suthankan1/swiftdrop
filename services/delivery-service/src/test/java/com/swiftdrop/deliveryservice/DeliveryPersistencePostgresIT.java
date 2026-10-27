@@ -70,7 +70,7 @@ class DeliveryPersistencePostgresIT {
     @DisplayName("Verify clean Flyway V1 migration execution on real PostgreSQL")
     void testFlywayMigrationExecution() {
         var info = flyway.info();
-        assertThat(info.applied()).hasSize(6);
+        assertThat(info.applied()).hasSize(7);
         assertThat(info.applied()[0].getDescription()).isEqualTo("create delivery schema");
         assertThat(info.applied()[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(info.applied()[1].getDescription()).isEqualTo("create delivery assignments schema");
@@ -83,13 +83,15 @@ class DeliveryPersistencePostgresIT {
         assertThat(info.applied()[4].getVersion().getVersion()).isEqualTo("5");
         assertThat(info.applied()[5].getDescription()).isEqualTo("add booking fields and quote uniqueness");
         assertThat(info.applied()[5].getVersion().getVersion()).isEqualTo("6");
+        assertThat(info.applied()[6].getDescription()).isEqualTo("create assignment audit schema");
+        assertThat(info.applied()[6].getVersion().getVersion()).isEqualTo("7");
 
         // Verify tables exist in public schema
         List<String> tables = jdbc.queryForList(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;",
                 String.class
         );
-        assertThat(tables).contains("flyway_schema_history", "idempotency_records", "parcels", "status_history", "delivery_assignments", "outbox_events", "proof_of_deliveries", "proof_cleanup_tasks");
+        assertThat(tables).contains("flyway_schema_history", "idempotency_records", "parcels", "status_history", "delivery_assignments", "outbox_events", "proof_of_deliveries", "proof_cleanup_tasks", "delivery_assignment_audits");
     }
 
     @Test

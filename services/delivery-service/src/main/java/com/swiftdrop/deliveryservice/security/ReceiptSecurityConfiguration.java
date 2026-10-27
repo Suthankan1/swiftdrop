@@ -62,7 +62,7 @@ public class ReceiptSecurityConfiguration {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/parcels/*/proof").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/proof", "/api/v1/parcels/*/proof/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/assignments").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/assignments", "/api/v1/assignments/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/assignments", "/api/v1/assignments/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels", "/api/v1/parcels/*", "/api/v1/parcels/*/history").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/parcels").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
