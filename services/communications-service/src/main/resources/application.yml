@@ -40,6 +40,14 @@ swiftdrop:
         group-id: ${KAFKA_WEBHOOKS_CONSUMER_GROUP_ID:communications.webhooks.v1}
     topics:
       parcel-lifecycle: ${KAFKA_TOPIC_PARCEL_LIFECYCLE:parcel.lifecycle.v1}
+  webhooks:
+    encryption-key: ${WEBHOOK_ENCRYPTION_KEY:}
+    dispatch:
+      connect-timeout-ms: ${WEBHOOK_CONNECT_TIMEOUT_MS:3000}
+      request-timeout-ms: ${WEBHOOK_REQUEST_TIMEOUT_MS:5000}
+      max-attempts: ${WEBHOOK_MAX_ATTEMPTS:5}
+      base-backoff-seconds: ${WEBHOOK_BASE_BACKOFF_SECONDS:5}
+      max-backoff-seconds: ${WEBHOOK_MAX_BACKOFF_SECONDS:300}
 management:
   endpoints:
     web:

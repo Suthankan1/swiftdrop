@@ -401,4 +401,110 @@ class CommunicationsPersistencePostgresIT {
         assertThat(readback.getActive()).isFalse();
         assertThat(webhookDeliveryRepository.findById(deliveryId)).isPresent();
     }
+
+    @Test
+    @DisplayName("H. Multiple webhook attempts persist with accurate sequence, error summary, and latency")
+    void testWebhookMultipleAttemptHistoryAndStateTransitions() {
+        UUID merchantId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                UUID.randomUUID(),
+                merchantId,
+                "https://merchant.example.test/webhooks/orders",
+                "parcel.status.changed.v1",
+                "enc:v1:test-key"
+        );
+        webhookSubscriptionRepository.saveAndFlush(sub);
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                UUID.randomUUID(),
+                sub.getSubscriptionId(),
+                eventId,
+                parcelId,
+                merchantId,
+                1,
+                "payload_sha256"
+        );
+        delivery.setStatus(WebhookDeliveryStatus.PENDING);
+        delivery.setAttemptCount(0);
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // First attempt: timeout failure (null status code, has error summary)
+        Instant t1 = Instant.now().minusSeconds(120);
+        WebhookAttempt attempt1 = new WebhookAttempt(
+                UUID.randomUUID(),
+                delivery.getDeliveryId(),
+                t1,
+                null,
+                5002,
+                "Connect to merchant.example.test:443 timed out after 5000ms"
+        );
+        webhookAttemptRepository.saveAndFlush(attempt1);
+
+        delivery.setAttemptCount(1);
+        delivery.setNextAttemptAt(t1.plusSeconds(10));
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Second attempt: 502 Bad Gateway
+        Instant t2 = Instant.now().minusSeconds(60);
+        WebhookAttempt attempt2 = new WebhookAttempt(
+                UUID.randomUUID(),
+                delivery.getDeliveryId(),
+                t2,
+                502,
+                320,
+                "HTTP 502 Bad Gateway"
+        );
+        webhookAttemptRepository.saveAndFlush(attempt2);
+
+        delivery.setAttemptCount(2);
+        delivery.setNextAttemptAt(t2.plusSeconds(30));
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Third attempt: 200 OK
+        Instant t3 = Instant.now();
+        WebhookAttempt attempt3 = new WebhookAttempt(
+                UUID.randomUUID(),
+                delivery.getDeliveryId(),
+                t3,
+                200,
+                142,
+                null
+        );
+        webhookAttemptRepository.saveAndFlush(attempt3);
+
+        delivery.setAttemptCount(3);
+        delivery.setStatus(WebhookDeliveryStatus.SUCCESS);
+        delivery.setNextAttemptAt(null);
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Verify all 3 attempts are preserved in order
+        List<WebhookAttempt> history = webhookAttemptRepository.findByDeliveryIdOrderByAttemptedAtDesc(delivery.getDeliveryId());
+        assertThat(history).hasSize(3);
+        assertThat(history.get(0).getHttpStatusCode()).isEqualTo(200);
+        assertThat(history.get(0).getResponseTimeMs()).isEqualTo(142);
+        assertThat(history.get(0).getErrorSummary()).isNull();
+
+        assertThat(history.get(1).getHttpStatusCode()).isEqualTo(502);
+        assertThat(history.get(1).getResponseTimeMs()).isEqualTo(320);
+        assertThat(history.get(1).getErrorSummary()).isEqualTo("HTTP 502 Bad Gateway");
+
+        assertThat(history.get(2).getHttpStatusCode()).isNull();
+        assertThat(history.get(2).getResponseTimeMs()).isEqualTo(5002);
+        assertThat(history.get(2).getErrorSummary()).contains("timed out");
+
+        WebhookDelivery finalDelivery = webhookDeliveryRepository.findById(delivery.getDeliveryId()).orElseThrow();
+        assertThat(finalDelivery.getStatus()).isEqualTo(WebhookDeliveryStatus.SUCCESS);
+        assertThat(finalDelivery.getAttemptCount()).isEqualTo(3);
+        assertThat(finalDelivery.getNextAttemptAt()).isNull();
+
+        // Verify query for stuck jobs
+        finalDelivery.setStatus(WebhookDeliveryStatus.PROCESSING);
+        webhookDeliveryRepository.saveAndFlush(finalDelivery);
+        List<WebhookDelivery> stuck = webhookDeliveryRepository.findByStatusAndUpdatedAtLessThanEqual(
+                WebhookDeliveryStatus.PROCESSING, Instant.now().plusSeconds(60));
+        assertThat(stuck).extracting(WebhookDelivery::getDeliveryId).contains(delivery.getDeliveryId());
+    }
 }
