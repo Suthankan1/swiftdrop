@@ -3,34 +3,24 @@ import { Link } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import {
-  createMerchantReviewApi, isAmbiguousCommandFailure, merchantReasonProblem, merchantReviewFailure, MerchantReviewError,
-  type MerchantReviewApi, type MerchantReviewAction, type MerchantReviewDetail, type MerchantReviewFilter,
+  merchantReviewApi, merchantReviewFailure, MerchantReviewError, createMerchantReviewApi,
+  type MerchantReviewApi, type MerchantReviewAction, type MerchantReviewDetail,
 } from '../api/merchantReview'
 import { MerchantReviewConfirmation } from '../components/MerchantReviewConfirmation'
-
-const PAGE_SIZE = 20
-const filters: readonly { value: MerchantReviewFilter; label: string }[] = [
-  { value: 'PENDING', label: 'Awaiting review' }, { value: 'APPROVED', label: 'Approved' },
-  { value: 'SUSPENDED', label: 'Suspended' }, { value: 'REJECTED', label: 'Rejected' }, { value: 'ALL', label: 'All merchants' },
-]
 
 function Status({ status }: { status: string }) {
   return <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>
 }
 
-function Timestamp({ value }: { value: string }) {
-  const date = new Date(value)
-  return <time dateTime={value}>{Number.isNaN(date.getTime()) ? value : date.toLocaleString()}</time>
-}
-
 export function MerchantReviewPage({ api }: { api?: MerchantReviewApi | null } = {}) {
   const auth = useAuth()
   const allowed = auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN')
-  // Uses the in-memory token getter with the Gateway; profileFetch is restricted to profile reads.
-  const defaultApi = useMemo(() => allowed ? createMerchantReviewApi({ getAccessToken: auth.getAccessToken }) : undefined,
-    [allowed, auth.getAccessToken])
+  const defaultApi = useMemo(() => {
+    if (!allowed) return undefined
+    return createMerchantReviewApi({ getAccessToken: auth.getAccessToken, fetch: auth.profileFetch })
+  }, [allowed, auth.getAccessToken, auth.profileFetch])
 
-  const effectiveApi = api === null ? undefined : api ?? defaultApi
+  const effectiveApi = api === null ? undefined : (api !== undefined ? api : (merchantReviewApi ?? defaultApi))
 
   return <div className="page-container merchant-review-page">
     <Link to="/admin">Back to administration</Link>
@@ -57,22 +47,20 @@ function MerchantReviewWorkspace({ api }: { api: MerchantReviewApi }) {
   const sessionId = useId()
   const prefix = ['private', 'admin-merchant-review', auth.snapshot.subject, sessionId] as const
   const [page, setPage] = useState(0)
-  const [filter, setFilter] = useState<MerchantReviewFilter>('PENDING')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const detailTrigger = useRef<HTMLButtonElement | null>(null)
-  const filterLabel = filters.find(item => item.value === filter)?.label
   // The shared AuthProvider also cancels/clears all private queries at logout.
   useEffect(() => {
     const queryKey = ['private', 'admin-merchant-review', auth.snapshot.subject, sessionId]
     return () => { void cache.cancelQueries({ queryKey }); cache.removeQueries({ queryKey }) }
   }, [cache, auth.snapshot.subject, sessionId])
   const query = useQuery({
-    queryKey: [...prefix, 'list', filter, page, PAGE_SIZE],
+    queryKey: [...prefix, 'list', page, 20],
     queryFn: async ({ signal }) => {
       try {
-        const result = await api.list(page, PAGE_SIZE, signal, filter)
+        const result = await api.list(page, 20, signal)
         signal.throwIfAborted()
-        if (result.page !== page || result.items.length > PAGE_SIZE) throw new MerchantReviewError('invalid-response')
+        if (result.page !== page || result.items.length > 20) throw new MerchantReviewError('invalid-response')
         return result
       } catch (error) {
         if (!signal.aborted && merchantReviewFailure(error).kind === 'auth-required') await auth.handleSessionExpiry()
@@ -83,11 +71,6 @@ function MerchantReviewWorkspace({ api }: { api: MerchantReviewApi }) {
   })
   return <section aria-label="Merchant applications" aria-busy={query.isFetching}>
     <div className="merchant-review-toolbar"><h2 className="section-heading">Merchant applications</h2>
-      <label htmlFor="merchant-review-filter">Show</label>
-      <select id="merchant-review-filter" value={filter} disabled={query.isFetching}
-        onChange={event => { setSelectedId(null); setPage(0); setFilter(event.target.value as MerchantReviewFilter) }}>
-        {filters.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-      </select>
       <button className="button button-secondary" disabled={query.isFetching} onClick={() => { setSelectedId(null); void query.refetch() }}>Refresh list</button>
     </div>
     {query.isFetching && <p role="status">Loading merchant applications…</p>}
@@ -97,12 +80,12 @@ function MerchantReviewWorkspace({ api }: { api: MerchantReviewApi }) {
     {query.data && !query.isError && <>
       {query.data.items.length === 0 ? <p role="status">No merchant applications on this page.</p> :
         <div className="merchant-review-table-scroll" tabIndex={0} role="region" aria-label="Scrollable merchant applications table"><table className="merchant-review-table">
-          <caption>Merchant applications · {filterLabel} · Page {page + 1}</caption>
+          <caption>Merchant applications · Page {page + 1}</caption>
           <thead><tr><th scope="col">Business</th><th scope="col">Registration</th><th scope="col">Status</th><th scope="col">Submitted</th><th scope="col">Review</th></tr></thead>
           <tbody>{query.data.items.map(item => <tr key={item.id}>
             <th scope="row">{item.businessName}<small className="merchant-review-id">{item.id}</small></th>
             <td>{item.registrationNumber ?? 'Not provided'}</td><td><Status status={item.status} /></td>
-            <td>{item.submittedAt ? <Timestamp value={item.submittedAt} /> : 'Not provided'}</td>
+            <td>{item.submittedAt ?? 'Not provided'}</td>
             <td><button className="button button-secondary" disabled={query.isFetching}
               aria-expanded={selectedId === item.id} aria-controls={selectedId === item.id ? 'merchant-review-details' : undefined}
               onClick={event => { detailTrigger.current = event.currentTarget; setSelectedId(item.id) }}>Review {item.businessName}</button></td>
@@ -153,18 +136,19 @@ function MerchantDetails({ id, api, prefix, onClose }: {
   const submit = async (reason?: string) => {
     if (!confirm || !detail || !canChange(confirm) || query.isFetching || query.isError || command.current) return
     const policy = detail.actions.find(item => item.action === confirm)?.reason
-    if (merchantReasonProblem(reason ?? '', policy)) return
+    if (policy && ((policy.required && !reason?.trim()) || (reason?.length ?? 0) > policy.maxLength)) return
     const controller = new AbortController()
     command.current = controller
     setPending(true)
     setFeedback(null)
     try {
-      const outcome = await api.change!({ merchantId: id, action: confirm, reviewToken: detail.reviewToken!, ...(reason ? { reason } : {}) }, controller.signal)
-      if (!controller.signal.aborted) setFeedback({ error: false, text: `The server confirmed this merchant is now ${outcome.status}. The details below were refreshed from Accounts.` })
+      await api.change!({ merchantId: id, action: confirm, reviewToken: detail.reviewToken!, ...(reason ? { reason } : {}) }, controller.signal)
+      if (!controller.signal.aborted) setFeedback({ error: false, text: 'The server accepted the change. Check the refreshed merchant details below.' })
     } catch (error) {
       if (controller.signal.aborted) return
       const failure = merchantReviewFailure(error)
-      setFeedback({ error: true, text: isAmbiguousCommandFailure(failure.kind) ? new MerchantReviewError('unconfirmed').message : failure.message })
+      setFeedback({ error: true, text: failure.kind === 'unavailable'
+        ? 'The command outcome could not be confirmed. Refresh and review the current state before trying again. It was not retried.' : failure.message })
       if (failure.kind === 'auth-required') await auth.handleSessionExpiry()
     } finally {
       if (!controller.signal.aborted) {
@@ -190,7 +174,7 @@ function MerchantDetails({ id, api, prefix, onClose }: {
       <dl><dt>Merchant ID</dt><dd>{detail.id}</dd>
         {detail.registrationNumber && <><dt>Registration</dt><dd>{detail.registrationNumber}</dd></>}
         <dt>Status</dt><dd><Status status={detail.status} /></dd>
-        {detail.submittedAt && <><dt>Submitted</dt><dd><Timestamp value={detail.submittedAt} /></dd></>}
+        {detail.submittedAt && <><dt>Submitted</dt><dd>{detail.submittedAt}</dd></>}
       </dl>
       <div className="merchant-review-toolbar">{(['approve', 'suspend'] as const).map(action => <button key={action}
         className="button button-secondary" disabled={pending || query.isFetching || !canChange(action)}
@@ -201,8 +185,7 @@ function MerchantDetails({ id, api, prefix, onClose }: {
       <h3>Audit history</h3>
       {detail.audit === undefined ? <p>Audit history is unavailable from the review service.</p> : detail.audit.length === 0 ?
         <p>No audit records were returned.</p> : <ol className="merchant-review-audit">{detail.audit.map(item => <li key={item.id}>
-          <p><strong>{item.action}</strong>{item.previousStatus && item.newStatus && <> · {item.previousStatus} → {item.newStatus}</>}</p>
-          <p>Actor {item.actor} · <Timestamp value={item.occurredAt} />{item.outcome && <> · Outcome {item.outcome}</>}</p>
+          <p>{item.action} · {item.actor} · <time dateTime={item.occurredAt}>{item.occurredAt}</time></p>
           {item.reason && <p>Reason: {item.reason}</p>}
         </li>)}</ol>}
       {confirm && <MerchantReviewConfirmation merchant={detail} action={confirm} pending={pending}
