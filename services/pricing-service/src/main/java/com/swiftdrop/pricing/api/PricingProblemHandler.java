@@ -39,6 +39,24 @@ public class PricingProblemHandler {
 
     private static final String ERROR_BASE_URI = "https://swiftdrop.com/errors/";
 
+    @ExceptionHandler(com.swiftdrop.pricing.error.AdminConfigurationException.class)
+    ProblemDetail handleAdmin(com.swiftdrop.pricing.error.AdminConfigurationException e, HttpServletRequest request) {
+        return buildProblem(HttpStatus.valueOf(e.getStatus()), "Pricing Configuration Error", e.getMessage(), e.getErrorCode(), request.getRequestURI());
+    }
+
+    @ExceptionHandler({org.springframework.dao.OptimisticLockingFailureException.class,
+            org.springframework.dao.CannotAcquireLockException.class, jakarta.persistence.OptimisticLockException.class})
+    ProblemDetail handleConcurrentChange(Exception e, HttpServletRequest request) {
+        return buildProblem(HttpStatus.CONFLICT, "Concurrent Configuration Change", "Configuration changed; refresh before retrying.",
+                "CONFIGURATION_CONFLICT", request.getRequestURI());
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ProblemDetail handleIntegrity(Exception e, HttpServletRequest request) {
+        return buildProblem(HttpStatus.CONFLICT, "Configuration Conflict", "Configuration violates a persistence invariant.",
+                "CONFIGURATION_CONFLICT", request.getRequestURI());
+    }
+
     @ExceptionHandler(QuoteNotFoundException.class)
     ProblemDetail handleQuoteNotFound(QuoteNotFoundException e, HttpServletRequest request) {
         return buildProblem(HttpStatus.NOT_FOUND, "Quote Not Found", e.getMessage(),
@@ -102,7 +120,7 @@ public class PricingProblemHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ProblemDetail handleValidationErrors(MethodArgumentNotValidException e, HttpServletRequest request) {
         ProblemDetail problem = buildProblem(HttpStatus.BAD_REQUEST, "Validation Failed",
-                "Validation failed for quote request payload.", "VALIDATION_FAILED", request.getRequestURI());
+                "Validation failed for request payload.", "VALIDATION_FAILED", request.getRequestURI());
 
         List<Map<String, String>> invalidParams = new ArrayList<>();
         for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {

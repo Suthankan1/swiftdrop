@@ -98,6 +98,19 @@ public class RateRuleEntity {
         return id;
     }
 
+    /** Called only after the command service has locked and validated the DRAFT parent. */
+    public void replaceDraftRule(String pickup, String dropoff, SizeCategory size, BigDecimal minimum,
+                                 BigDecimal maximum, long base, long surcharge, BigDecimal threshold) {
+        this.pickupZoneCode = pickup;
+        this.dropoffZoneCode = dropoff;
+        this.sizeCategory = size;
+        this.minWeightKg = minimum;
+        this.maxWeightKg = maximum;
+        this.baseFeeMinorUnits = base;
+        this.perKgSurchargeMinorUnits = surcharge;
+        this.weightThresholdKg = threshold;
+    }
+
     public UUID getRateVersionId() {
         return rateVersionId;
     }

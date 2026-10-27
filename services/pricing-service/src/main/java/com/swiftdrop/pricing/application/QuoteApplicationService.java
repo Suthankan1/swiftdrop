@@ -33,6 +33,7 @@ public class QuoteApplicationService {
     private final QuoteRepository quoteRepository;
     private final QuoteOwnershipPolicy ownershipPolicy;
     private final Clock clock;
+    private final com.swiftdrop.pricing.persistence.PricingConfigurationLock configurationLock;
     private final Duration quoteValidityDuration;
 
     public QuoteApplicationService(
@@ -41,12 +42,14 @@ public class QuoteApplicationService {
             QuoteRepository quoteRepository,
             QuoteOwnershipPolicy ownershipPolicy,
             Clock clock,
-            @Value("${swiftdrop.pricing.quote-validity-seconds:900}") long validitySeconds) {
+            @Value("${swiftdrop.pricing.quote-validity-seconds:900}") long validitySeconds,
+            com.swiftdrop.pricing.persistence.PricingConfigurationLock configurationLock) {
         this.calculationService = calculationService;
         this.rateVersionRepository = rateVersionRepository;
         this.quoteRepository = quoteRepository;
         this.ownershipPolicy = ownershipPolicy;
         this.clock = clock;
+        this.configurationLock = configurationLock;
         this.quoteValidityDuration = Duration.ofSeconds(validitySeconds);
     }
 
@@ -57,6 +60,8 @@ public class QuoteApplicationService {
     public QuoteResponse createQuote(QuoteRequest request, CallerContext caller) {
         Objects.requireNonNull(request, "QuoteRequest cannot be null");
         Objects.requireNonNull(caller, "CallerContext cannot be null");
+
+        configurationLock.forQuote();
 
         // 1. Invoke deterministic calculation service
         CalculationCommand command = CalculationCommand.of(
@@ -75,6 +80,9 @@ public class QuoteApplicationService {
 
         // 3. Compute creation and UTC expiry timestamps
         Instant createdAt = Instant.now(clock);
+        if (!rateVersionEntity.toDomain().isEffectiveAt(createdAt)) {
+            throw new com.swiftdrop.pricing.error.RateVersionNotFoundException("No effective active rate version is available");
+        }
         Instant expiresAt = createdAt.plus(quoteValidityDuration);
 
         // 4. Generate opaque quote UUID
