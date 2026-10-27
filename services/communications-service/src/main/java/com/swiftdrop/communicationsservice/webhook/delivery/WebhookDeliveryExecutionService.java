@@ -500,10 +500,13 @@ public class WebhookDeliveryExecutionService {
 
         ObjectNode payloadNode = root.putObject("payload");
         payloadNode.put("parcelId", delivery.getParcelId().toString());
-        payloadNode.put("trackingNumber", "SWD-PARCEL-" + delivery.getParcelId().toString().substring(0, 8).toUpperCase());
+        payloadNode.put("trackingNumber", "SWD-20261027-" + delivery.getParcelId().toString().replace("-", "").substring(0, 8).toUpperCase());
         payloadNode.putNull("oldStatus");
         payloadNode.put("newStatus", "IN_TRANSIT");
+        payloadNode.putNull("reason");
         payloadNode.put("merchantId", delivery.getMerchantId().toString());
+        payloadNode.putNull("courierSub");
+        payloadNode.putNull("cityOrZone");
 
         return root.toString();
     }

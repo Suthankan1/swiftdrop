@@ -1,7 +1,8 @@
 # SwiftDrop Communications Service — Foundation & Durable Job Schema
 
 **Milestone:** November 10 Baseline (Architecture Baseline v1.3)
-**Issue:** [Refs #96 (N10-B16)](https://github.com/Suthankan1/swiftdrop/issues/96) — Create Communications app and independently owned durable job schema
+**Umbrella Issue:** [Refs #33 (LATER-12)](https://github.com/Suthankan1/swiftdrop/issues/33) — Own Webhook Delivery/Retry Engine Through Decomposed Communications Slices
+**Foundation Issue:** [Refs #96 (N10-B16)](https://github.com/Suthankan1/swiftdrop/issues/96) — Create Communications app and independently owned durable job schema
 **Primary Owner:** Thuvarahan (@thuvarahan-t) — Communications / Backend Lead
 **Functional Reviewers:**
 - `@Sinthuha-n` — Accounts / persistence & data ownership steward
@@ -409,6 +410,123 @@ mvn -f services/communications-service/pom.xml verify
   - Data ownership verification for `webhook_replays` in `CommunicationsDataOwnershipTest`.
   - Real PostgreSQL replay and audit constraint integration test in `CommunicationsPersistencePostgresIT.testWebhookDeliveryReplayAndAuditPersistence`.
   - Total test count increased from 254 to 280 passing tests.
+
+### IMPLEMENTED in Issue #33 (LATER-12): End-to-End Webhook Delivery & Retry Pipeline Ownership
+
+Issue #33 establishes unified end-to-end technical ownership over the SwiftDrop webhook delivery and retry engine, integrating all five decomposed Communications slices into a single coherent, secure, observable, and recoverable pipeline:
+
+#### 1. Decomposed Slice Dependency & Traceability Matrix
+
+| Slice Issue | Phase | Primary Owner | Scope & Responsibility | Status & Merged PR |
+|:---|:---|:---|:---|:---|
+| **#116 (N10-B17)** | Pre-Nov1 | `@thuvarahan-t` | Tenant-bound webhook subscription REST configuration (`IF-REST-11`, `IF-REST-12`), AES-256-GCM secret storage, destination validation, event filtering. | **Merged (#233)** |
+| **#131 (N10-B18)** | Pre-Nov1 | `@EricPraveen` | Dedicated Kafka consumer group (`communications.webhooks.v1`), at-least-once offset commit, monotonic state version check, SHA-256 payload digest, durable job materialization in `webhook_deliveries`. | **Merged (#241)** |
+| **#142 (N10-B20)** | Nov1-Nov10 | `@EricPraveen` | Outbound HMAC-SHA256 signature generation (`X-SwiftDrop-Signature`), network dispatch outside database transactions, attempt persistence in `webhook_attempts`, response outcome classification. | **Merged (#243)** |
+| **#151 (N10-B21)** | Nov1-Nov10 | `@EricPraveen` | Periodic `@Scheduled` polling of due jobs, atomic PostgreSQL row leasing (`claimDeliveryWithLease`), exponential backoff engine, jitter factor, 5-attempt retry budget ceiling, terminal `EXHAUSTED` status, crash recovery. | **Merged (#245)** |
+| **#155 (N10-B22)** | Nov1-Nov10 | `@Vibhushan-2003` | Send-time SSRF egress defense, DNS rebinding prevention, TLS socket pinning (`PinnedSSLSocketFactory`), HMAC key rotation (`POST .../rotate-secret`), authorized failed-job replay with audit lineage in `webhook_replays`. | **Merged (#249)** |
+| **#33 (LATER-12)** | Nov1-Nov10 | `@EricPraveen` | **Umbrella Engine Ownership**: End-to-end pipeline coordination, cross-slice lifecycle invariants, end-to-end automated integration suite (`WebhookDeliveryPipelineIntegrationTest`), delivery contracts, and operational recovery runbook. | **Active Ownership** |
+
+#### 2. End-to-End Execution Path & State Lifecycle
+
+```text
+[Kafka: parcel.lifecycle.v1]
+         |
+         v (1. Consume & Parse Envelope)
+[WebhookLifecycleKafkaConsumer]
+         |
+         v (2. Tenant/Filter/Version Check)
+[WebhookJobMaterializationService] ---> [consumed_events] (Atomic Tx)
+         |                              [webhook_deliveries (PENDING)]
+         v (3. Commit Kafka Offset strictly after DB Tx)
+[Kafka Acknowledgment]
+         |
+         v (4. Periodic Batch Poll @ 5s)
+[WebhookDeliveryScheduler]
+         |
+         v (5. Atomic Database Lease: PENDING -> PROCESSING)
+[WebhookDeliveryRepository.claimDeliveryWithLease]
+         |
+         +---> (Lease Lost: Concurrent Worker Collision) -> Skip safely
+         |
+         +---> (Lease Won: Exclusive Execution Right)
+                     |
+                     v (6. Egress Validation & Signing)
+               [WebhookDestinationValidator] (SSRF, HTTPS, DNS pinning)
+               [WebhookSigningSecretService] (AES-256-GCM decrypt)
+               [DefaultWebhookSigner]        (HMAC-SHA256 signature)
+                     |
+                     v (7. Outbound Network Dispatch strictly OUTSIDE DB Tx)
+               [DefaultWebhookHttpClient]    (PinnedSSLSocketFactory, timeouts, redirects NEVER)
+                     |
+                     v (8. Response & Exception Classification)
+               [WebhookResponseClassifier]
+                     |
+                     +---> 2xx: SUCCESS (Terminal)
+                     |          `-> status = SUCCESS, nextAttemptAt = null
+                     |
+                     +---> 3xx, 4xx (except 408/429), Security: Non-Retryable Failure
+                     |          `-> status = FAILED, nextAttemptAt = null
+                     |
+                     +---> 408, 429, 5xx, Transport Timeout: Retryable Transient Failure
+                                |
+                                +---> attemptCount < 5: Schedule Retry
+                                |          `-> status = PENDING, nextAttemptAt = now + backoff
+                                |
+                                `---> attemptCount >= 5: Retry Budget Exhausted
+                                           `-> status = EXHAUSTED (Terminal), nextAttemptAt = null
+                     |
+                     v (9. Atomic Attempt History & Status Commit)
+               [WebhookAttemptRepository]  -> Insert attempt (status, latency, errorSummary)
+               [WebhookDeliveryRepository] -> Update delivery (status, attemptCount, nextAttemptAt)
+                     |
+                     v (10. Operator Unblock / Replay)
+               [POST .../deliveries/{id}/replay]
+                     |
+                     +-> Pre-condition: status in ('FAILED', 'EXHAUSTED')
+                     +-> Record durable audit in [webhook_replays]
+                     `-> Reset delivery: status = PENDING, attemptCount = 0, nextAttemptAt = now
+```
+
+#### 3. Core Engine Invariants & Delivery Guarantees
+
+1. **At-Least-Once Delivery with Durable Idempotency:**
+   - Kafka partition offsets advance **only after** PostgreSQL transaction committing `consumed_events` and `webhook_deliveries` succeeds.
+   - Dual-layer uniqueness (`consumed_events (consumer_name, event_id)` and `webhook_deliveries (subscription_id, event_id)`) guarantees duplicate events from Kafka redelivery or broker failovers do not generate duplicate delivery jobs.
+   - External recipients may observe multiple deliveries due to network partition after receiver acknowledgement; receivers verify `eventId` and `X-SwiftDrop-Signature` for safe deduplication. Exactly-once delivery across distributed networks is impossible and not claimed.
+2. **Transaction Separation:**
+   - Outbound HTTP network requests are executed **strictly outside** database transactions, preventing slow merchant endpoints from starving HikariCP connection pools.
+   - Status updates and attempt recordings commit within an isolated `REQUIRES_NEW` transaction.
+3. **Atomic Multi-Worker Leasing:**
+   - Worker discovery uses PostgreSQL row locking via atomic JPQL `UPDATE ... WHERE status = 'PENDING' OR (status = 'PROCESSING' AND updatedAt <= leaseCutoff)`.
+   - Update count 1 grants exclusive dispatch rights; update count 0 causes concurrent workers to skip candidate deliveries without duplicate dispatches.
+4. **Crash Recovery & Stalled Reclamation:**
+   - Stalled worker deliveries left in `PROCESSING` status beyond `leaseTimeoutSeconds` (default 300s) are automatically reclaimed back to `PENDING` with `nextAttemptAt = now` by `recoverStalledDeliveries()`.
+5. **Deterministic Exponential Backoff & Retry Ceilings:**
+   - Delay sequence: $\text{delay} = \min(\text{maxBackoff}, \text{baseBackoff} \times 2^{\text{attempt} - 1})$ (5s, 10s, 20s, 40s, 80s; capped at 300s).
+   - Rate limit compliance: `Retry-After` headers (numeric seconds or RFC 1123 HTTP dates) strictly override exponential backoff up to `maxBackoffSeconds`.
+   - Optional jitter factor (default 0.2) diffuses thundering herds across bulk webhook redeliveries.
+   - Exhaustion threshold: strictly terminates at `maxAttempts` (default 5) with status `EXHAUSTED`.
+6. **Egress Security & Credential Protection:**
+   - Send-time SSRF validation blocks private RFC 1918, loopback, link-local, cloud metadata, multicast, and internal domains.
+   - `PinnedSSLSocketFactory` binds TCP connection to pre-validated IP while preserving TLS SNI and certificate verification.
+   - Signing secrets encrypted with AES-256-GCM at rest; never exposed via GET endpoints, attempts, or application logs.
+   - HTTP redirects strictly rejected (`Redirect.NEVER`) to prevent SSRF bypass and downgrade attacks.
+7. **Authorized Failed-Job Replay:**
+   - Only terminally failed (`FAILED` or `EXHAUSTED`) jobs can be replayed; non-terminal jobs reject replay with `409 Conflict`.
+   - Replay records durable audit in `webhook_replays` (`replay_id`, `delivery_id`, `actor_sub`, `actor_role`, `reason`, `previous_status`, `replayed_at`).
+   - Resets job to `PENDING`, `attemptCount = 0`, `nextAttemptAt = now` while preserving historical attempt records in `webhook_attempts`.
+
+#### 4. Automated End-to-End Test Evidence
+
+- `WebhookDeliveryPipelineIntegrationTest`:
+  - `testCompleteHappyPathPipeline`: Proves end-to-end event ingestion, job materialization, scheduler leasing, outbound HMAC dispatch, 200 OK classification, and terminal SUCCESS transition.
+  - `testMultiWorkerConcurrencyDefense`: Proves concurrent workers racing for the same candidate delivery safely skip execution without duplicate dispatches.
+  - `testRetryLifecycleWithExponentialBackoffAndExhaustion`: Proves transport timeout classification, backoff scheduling, Retry-After header overrides, exponential delays, and terminal EXHAUSTED transition at attempt 5.
+  - `testAuthorizedReplayAndRedelivery`: Proves cross-tenant replay denial, authorized replay audit recording in `webhook_replays`, reset to PENDING, and redelivery to SUCCESS.
+  - `testNonRetryableFailuresImmediatelyTransitionToFailed`: Proves SSRF security violations, 400 Bad Request, and 302 Redirect transition immediately to FAILED.
+  - `testCrashRecoveryForStalledProcessingJobs`: Proves worker crash recovery for jobs orphaned in PROCESSING status past lease timeout.
+  - `testSecurityInvariantsZeroSecretsInAttempts`: Proves zero secret tokens, passwords, or auth credentials leak into attempt error summaries.
+- Service-wide automated test suite: **287 passing tests** with zero failures across unit, MockMvc, gRPC, and PostgreSQL integration suites.
 
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
