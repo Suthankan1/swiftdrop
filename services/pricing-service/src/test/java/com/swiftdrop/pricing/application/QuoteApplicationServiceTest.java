@@ -208,4 +208,28 @@ class QuoteApplicationServiceTest {
         }
         org.mockito.Mockito.verifyNoInteractions(quoteRepository);
     }
+
+    @Test
+    void issuedAndStoredTimestampsUsePostgresMicrosecondPrecision() {
+        Clock preciseClock = Clock.fixed(FIXED_NOW.plusNanos(123456789), ZoneOffset.UTC);
+        QuoteApplicationService service = new QuoteApplicationService(calculationService, rateVersionRepository,
+                quoteRepository, ownershipPolicy, preciseClock, 900L,
+                org.mockito.Mockito.mock(com.swiftdrop.pricing.persistence.PricingConfigurationLock.class));
+        when(calculationService.calculatePrice(any())).thenReturn(new PricingCalculation(
+                "RATE-2026-V1", "LKR", "ZONE_1", "ZONE_2", new BigDecimal("2.50"),
+                new BigDecimal("1.80"), new BigDecimal("2.50"), SizeCategory.MEDIUM,
+                Money.ofMinorUnits(35000), Money.ofMinorUnits(7500), Money.ofMinorUnits(42500), UUID.randomUUID()));
+        when(rateVersionRepository.findByVersionCode("RATE-2026-V1")).thenReturn(Optional.of(
+                new RateVersionEntity(UUID.randomUUID(), "RATE-2026-V1", "LKR", RateVersionStatus.ACTIVE, FIXED_NOW, "Active")));
+        QuoteResponse issued = service.createQuote(new QuoteRequest("ZONE_1", "ZONE_2", new BigDecimal("2.50"),
+                30, 20, 15), CallerContext.anonymous());
+        ArgumentCaptor<QuoteEntity> saved = ArgumentCaptor.forClass(QuoteEntity.class);
+        verify(quoteRepository).saveAndFlush(saved.capture());
+        when(quoteRepository.findById(issued.quoteId())).thenReturn(Optional.of(saved.getValue()));
+
+        assertThat(issued.createdAt()).isEqualTo(FIXED_NOW.plusNanos(123456000));
+        assertThat(issued.expiresAt()).isEqualTo(issued.createdAt().plusSeconds(900));
+        assertThat(saved.getValue().toDomain().getCreatedAt()).isEqualTo(issued.createdAt());
+        assertThat(service.getQuote(issued.quoteId(), CallerContext.anonymous())).isEqualTo(issued);
+    }
 }
