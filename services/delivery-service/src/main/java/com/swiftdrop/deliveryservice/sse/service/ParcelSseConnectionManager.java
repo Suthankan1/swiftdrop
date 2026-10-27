@@ -55,10 +55,18 @@ public class ParcelSseConnectionManager {
 
     private final MeterRegistry meterRegistry;
 
+    @Autowired
     public ParcelSseConnectionManager(
             SseProperties properties,
             DeliveryAssignmentRepository assignmentRepository,
-            @Autowired(required = false) MeterRegistry meterRegistry) {
+            org.springframework.beans.factory.ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        this(properties, assignmentRepository, meterRegistryProvider != null ? meterRegistryProvider.getIfAvailable() : null);
+    }
+
+    public ParcelSseConnectionManager(
+            SseProperties properties,
+            DeliveryAssignmentRepository assignmentRepository,
+            MeterRegistry meterRegistry) {
         this.properties = Objects.requireNonNull(properties, "properties cannot be null");
         this.assignmentRepository = Objects.requireNonNull(assignmentRepository, "assignmentRepository cannot be null");
         this.meterRegistry = meterRegistry;
@@ -72,7 +80,7 @@ public class ParcelSseConnectionManager {
     }
 
     public ParcelSseConnectionManager(SseProperties properties, DeliveryAssignmentRepository assignmentRepository) {
-        this(properties, assignmentRepository, null);
+        this(properties, assignmentRepository, (MeterRegistry) null);
     }
 
     @PostConstruct
