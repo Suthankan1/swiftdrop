@@ -331,3 +331,41 @@ Execute focused test suite:
 ```bash
 mvn test -Dtest=DeliveryInternalServiceGrpcTest -f services/delivery-service/pom.xml
 ```
+
+---
+
+## 12. Kafka-to-SSE Fan-Out Across Replicas (Issue #161)
+
+**Owner:** Vibhushan (`@Vibhushan-2003`) — Senior Delivery / Backend Lead.
+
+Implements horizontal broadcast streaming of authoritative parcel lifecycle updates to connected, authenticated browser/mobile clients across multiple Delivery Service replicas.
+
+### Architecture & Consumer Group Strategy
+- **Broadcast Invariant:** If replicas shared a single Kafka consumer group, Kafka would partition events across them, causing clients on replica B to miss updates processed by replica A (partition starvation).
+- **Unique Replica Groups:** Each active Delivery replica registers an independent Kafka consumer group formatted as:
+  ```
+  tracking.<stable-replica-instance-id>
+  ```
+  This ensures every replica consumes 100% of topic partitions on `parcel.lifecycle.v1` and broadcasts events to its locally connected SSE clients.
+- **Stable Identity Resolution:** Replica identity is resolved deterministically from:
+  1. `swiftdrop.sse.kafka.consumer.replica-id`
+  2. `SWIFTDROP_SSE_REPLICA_ID` / `SSE_REPLICA_ID`
+  3. `POD_NAME` / `INSTANCE_ID` / `HOSTNAME`
+  4. Local hostname fallback
+- **No Dynamic Random UUIDs:** Reusing the stable replica name prevents accumulating dangling consumer groups and metadata leaks on the Kafka broker.
+- **Offset Lifecycle & Cleanup:** Configured with `auto.offset.reset = latest`. Broker automatically purges inactive groups after `offsets.retention.minutes` (7 days) during scale-downs. Replicas commit offsets on graceful shutdown.
+- **Deduplication & REST Reconciliation:** Per-session `lastDeliveredVersion` drops stale and duplicate events. Version gaps trigger client-side authoritative recovery via `GET /api/v1/parcels/{parcelId}` per `docs/contracts/SSE_REST_RECOVERY.md`.
+
+### Configuration Reference
+| Property | Environment Variable | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `swiftdrop.sse.kafka.consumer.enabled` | `SSE_KAFKA_CONSUMER_ENABLED` | `true` | Enables Kafka consumer for SSE broadcast |
+| `swiftdrop.sse.kafka.consumer.group-prefix` | `SSE_KAFKA_GROUP_PREFIX` | `tracking.` | Prefix for replica consumer groups |
+| `swiftdrop.sse.kafka.consumer.group-id` | `SSE_KAFKA_CONSUMER_GROUP_ID` | `""` (computed) | Optional explicit consumer group override |
+| `swiftdrop.sse.kafka.consumer.replica-id` | `SSE_REPLICA_ID` | `""` (discovered) | Stable replica instance identifier |
+| `swiftdrop.sse.kafka.consumer.auto-offset-reset` | `SSE_KAFKA_AUTO_OFFSET_RESET` | `latest` | Offset reset policy for real-time stream |
+
+### Automated Test Verification
+```bash
+mvn test -Dtest=SseReplicaIdentityResolverTest,TwoReplicaKafkaSseFanoutIT,KafkaToSseBridgeIT -f services/delivery-service/pom.xml
+```

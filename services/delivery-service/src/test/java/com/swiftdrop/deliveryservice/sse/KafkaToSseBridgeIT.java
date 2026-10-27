@@ -4,6 +4,7 @@ import com.swiftdrop.deliveryservice.assignment.DeliveryAssignmentRepository;
 import com.swiftdrop.deliveryservice.outbox.KafkaProducerConfiguration;
 import com.swiftdrop.deliveryservice.sse.config.SseKafkaConsumerConfiguration;
 import com.swiftdrop.deliveryservice.sse.config.SseProperties;
+import com.swiftdrop.deliveryservice.sse.config.SseReplicaIdentityResolver;
 import com.swiftdrop.deliveryservice.sse.consumer.ParcelLifecycleKafkaConsumer;
 import com.swiftdrop.deliveryservice.sse.service.ParcelSseConnectionManager;
 import com.swiftdrop.deliveryservice.sse.service.SseSubscriberSession;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(classes = {
         KafkaProducerConfiguration.class,
+        SseReplicaIdentityResolver.class,
         SseKafkaConsumerConfiguration.class,
         ParcelLifecycleKafkaConsumer.class,
         ParcelSseConnectionManager.class,

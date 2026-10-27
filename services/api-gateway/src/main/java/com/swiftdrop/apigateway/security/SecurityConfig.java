@@ -67,10 +67,13 @@ public class SecurityConfig {
 
                         // Public pricing quote calculation and reads
                         .pathMatchers(HttpMethod.POST, "/api/v1/quotes").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/quotes/**").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/quotes", "/api/v1/quotes/**").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/zones", "/api/v1/zones/**").permitAll()
 
-                        // Merchant onboarding registration (authenticated user)
+                        // Merchant onboarding registration and standing inspection (authenticated user)
                         .pathMatchers(HttpMethod.POST, "/api/v1/merchants").authenticated()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/merchants/me").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
+                        .pathMatchers(HttpMethod.GET, "/api/v1/merchants/*/status").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
 
                         // Admin operations (merchant approval, administrative commands)
                         .pathMatchers(HttpMethod.POST, "/api/v1/merchants/*/approve").hasRole("ADMIN")

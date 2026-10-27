@@ -74,6 +74,7 @@ public class GatewayBusinessEdgeSecurityTest {
                     .route("test-backend-routes", r -> r
                             .path("/api/v1/parcels/**",
                                   "/api/v1/quotes/**",
+                                  "/api/v1/zones/**",
                                   "/api/v1/tracking/**",
                                   "/api/v1/assignments/**",
                                   "/api/v1/merchant/**",
@@ -448,6 +449,57 @@ public class GatewayBusinessEdgeSecurityTest {
                 .expectStatus().isOk();
     }
 
+    @Test
+    @DisplayName("Merchant profile check (/merchants/me) and status check accept CUSTOMER, MERCHANT, and ADMIN roles")
+    void merchantSelfStanding_RoleEnforcement() throws Exception {
+        String customerToken = createJwt(List.of("CUSTOMER"), issuerUrl, "swiftdrop-api", false, trustedRsaKey);
+        String courierToken = createJwt(List.of("COURIER"), issuerUrl, "swiftdrop-api", false, trustedRsaKey);
+        String merchantToken = createJwt(List.of("MERCHANT"), issuerUrl, "swiftdrop-api", false, trustedRsaKey);
+        String adminToken = createJwt(List.of("ADMIN"), issuerUrl, "swiftdrop-api", false, trustedRsaKey);
+
+        // Disallowed role (COURIER) is rejected with 403 on /api/v1/merchants/me
+        webTestClient.get()
+                .uri("/api/v1/merchants/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + courierToken)
+                .exchange()
+                .expectStatus().isForbidden();
+
+        // CUSTOMER can inspect own merchant standing
+        webTestClient.get()
+                .uri("/api/v1/merchants/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // MERCHANT can inspect own merchant standing
+        webTestClient.get()
+                .uri("/api/v1/merchants/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + merchantToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // ADMIN can inspect own merchant standing
+        webTestClient.get()
+                .uri("/api/v1/merchants/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // CUSTOMER can check merchant status
+        webTestClient.get()
+                .uri("/api/v1/merchants/m-1/status")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // Protected merchant management endpoints (e.g. api-keys) still reject CUSTOMER with 403
+        webTestClient.get()
+                .uri("/api/v1/merchants/m-1/api-keys")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
     // =========================================================================
     // 3. Public Endpoints
     // =========================================================================
@@ -466,6 +518,12 @@ public class GatewayBusinessEdgeSecurityTest {
                 .uri("/api/v1/quotes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"weight\":1.0,\"originZone\":\"ZONE_1\",\"destZone\":\"ZONE_1\"}")
+                .exchange()
+                .expectStatus().isOk();
+
+        // Public zones catalog
+        webTestClient.get()
+                .uri("/api/v1/zones")
                 .exchange()
                 .expectStatus().isOk();
 

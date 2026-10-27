@@ -56,7 +56,7 @@ apiGateway:
       cpu: 300m
       memory: 384Mi
   config:
-    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -Xss512k"
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
 
 accounts:
   enabled: true
@@ -69,7 +69,7 @@ accounts:
       cpu: 300m
       memory: 384Mi
   config:
-    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -Xss512k"
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
 
 pricing:
   enabled: true
@@ -82,7 +82,7 @@ pricing:
       cpu: 300m
       memory: 384Mi
   config:
-    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -Xss512k"
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
 
 delivery:
   enabled: true
@@ -95,7 +95,7 @@ delivery:
       cpu: 300m
       memory: 384Mi
   config:
-    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -Xss512k"
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
 
 communications:
   enabled: true
@@ -108,7 +108,7 @@ communications:
       cpu: 300m
       memory: 384Mi
   config:
-    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -Xss512k"
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
 
 graphql:
   enabled: true
