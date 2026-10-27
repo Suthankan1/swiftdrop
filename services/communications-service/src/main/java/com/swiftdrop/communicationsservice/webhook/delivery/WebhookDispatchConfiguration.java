@@ -38,4 +38,10 @@ public class WebhookDispatchConfiguration {
             WebhookDispatchProperties properties) {
         return new DefaultWebhookHttpClient(webhookJdkHttpClient, destinationValidator, properties);
     }
+
+    @Bean
+    @ConditionalOnMissingBean(java.time.Clock.class)
+    public java.time.Clock webhookClock() {
+        return java.time.Clock.systemUTC();
+    }
 }

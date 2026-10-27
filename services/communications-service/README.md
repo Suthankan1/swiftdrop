@@ -346,9 +346,42 @@ mvn -f services/communications-service/pom.xml verify
   - 13 unit tests in `WebhookDeliveryExecutionServiceTest` (success, backoff retry, rate limiting, terminal failures, exhaustion, multi-attempt audit, crash recovery).
   - PostgreSQL schema and attempt persistence integration tests in `CommunicationsPersistencePostgresIT`.
 
+### IMPLEMENTED in Issue #151 (N10-B21):
+- [x] Durable Webhook Polling Scheduler (`WebhookDeliveryScheduler`):
+  - Scheduled background bean configured with `@Scheduled(fixedDelayString = "${swiftdrop.webhooks.scheduler.poll-interval-ms:5000}")` discovering due deliveries (`status == PENDING` and `next_attempt_at <= now`).
+  - Non-blocking batch processing: queries due jobs with pagination (`Pageable.ofSize(batchSize)`), ordered by `nextAttemptAt ASC` to ensure oldest eligible deliveries execute first.
+  - Safe error containment: individual job failures do not abort scheduler batch loop or stop future scheduled executions.
+- [x] Atomic Leasing & Multi-Worker Concurrency Defense:
+  - Atomic database lease method `claimDeliveryWithLease` (`WebhookDeliveryRepository`) using atomic JPQL `UPDATE WebhookDelivery d SET d.status = 'PROCESSING', d.updatedAt = :now WHERE d.deliveryId = :id AND (d.status = 'PENDING' OR (d.status = 'PROCESSING' AND d.updatedAt <= :leaseCutoff))`.
+  - Operates under PostgreSQL row locking: when two or more concurrent workers poll the same due delivery, exactly one worker updates the row (update count = 1), while other workers receive 0 and safely skip execution without duplicate HTTP requests.
+- [x] Exponential Backoff Engine with Jitter & Ceilings:
+  - Configurable backoff parameters via `WebhookDispatchProperties` (`initialBackoffSeconds = 5`, `backoffMultiplier = 2.0`, `maxBackoffSeconds = 300`).
+  - Standard delay sequence: attempt 1 = 5s, attempt 2 = 10s, attempt 3 = 20s, attempt 4 = 40s, attempt 5 = 80s, capped at 300s ceiling.
+  - Optional full jitter support (`jitterEnabled = false`, `jitterFactor = 0.2` for +/- 20%) calculating backoff in range $[(1 - f) \times d, \min(d_{\max}, (1 + f) \times d)]$.
+  - Rate-limit override: HTTP 429 `Retry-After` header values (integer seconds or RFC 1123 HTTP dates) strictly override exponential backoff calculations.
+- [x] Retry Exhaustion & Terminal State Protection:
+  - When `attemptCount >= maxAttempts` (default 5), transitions delivery status to terminal `EXHAUSTED`.
+  - Non-retryable outcomes (client errors 4xx except 408/429, redirects 3xx, SSRF/TLS security rejections, and disabled subscriptions) transition immediately to terminal `FAILED`.
+  - Terminal statuses (`SUCCESS`, `FAILED`, `EXHAUSTED`) are guarded against re-execution (`isTerminal()` check in `executeDelivery`).
+  - Partial index `idx_webhook_deliveries_pending` (`WHERE status IN ('PENDING', 'PROCESSING')`) automatically excludes terminal deliveries from scheduler query plans.
+- [x] Crash Recovery & Stalled Delivery Reclamation:
+  - Scheduled recovery job `@Scheduled(fixedDelayString = "${swiftdrop.webhooks.scheduler.recovery-interval-ms:60000}")` (`recoverStalledDeliveries`) reclaims deliveries orphaned in `PROCESSING` status beyond `leaseTimeoutSeconds` (default 300s).
+  - Resets stalled jobs back to `PENDING` with `next_attempt_at = now`, preserving at-least-once delivery semantics across worker crashes and network partitions.
+- [x] Process Restart Durability:
+  - All scheduling state (`next_attempt_at`, `status`, `attempt_count`, `updated_at`) is persisted in PostgreSQL; scheduled retries survive pod restarts, deployments, and scheduler reinitialization.
+- [x] Configuration & Testability:
+  - Dedicated configuration properties `WebhookSchedulerProperties` (`swiftdrop.webhooks.scheduler.*`): `enabled`, `pollIntervalMs`, `recoveryIntervalMs`, `leaseTimeoutSeconds`, `batchSize`.
+  - Conditional scheduler activation via `WebhookSchedulerConfiguration` (`@ConditionalOnProperty(name = "swiftdrop.webhooks.scheduler.enabled", matchIfMissing = true)`).
+  - Injectable `Clock` bean in `WebhookDispatchConfiguration` (`@ConditionalOnMissingBean(Clock.class)`) allowing deterministic time simulation in tests.
+- [x] Automated Test Coverage:
+  - 14 comprehensive unit tests in `WebhookDeliverySchedulerTest` covering due polling, two-worker lease race conditions, disabled scheduler, future job exclusion, error handling, stalled job recovery, deterministic backoff sequences, jitter bounds, disabled subscriptions, terminal state guards, retry budget exhaustion, and restart recovery.
+  - 2 unit tests in `WebhookSchedulerPropertiesTest`.
+  - Real PostgreSQL concurrency integration test in `CommunicationsPersistencePostgresIT.testConcurrentWorkerLeaseAndExhaustionLifecycle`.
+  - Total communications-service test count increased to 254 passing tests.
+
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
-- ❌ Recurring cron / polling scheduler bean for periodic webhook pending job dispatch (belongs to **Issue #151**; execution methods `processPendingDeliveries` and `recoverStuckProcessingJobs` are implemented and ready for bean wiring).
 - ❌ External SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).
 - ❌ Shared API Gateway or Keycloak configuration changes.
 - ❌ Cross-service SQL joins or direct database access to Accounts or Delivery databases.
+
