@@ -34,6 +34,13 @@ public interface ParcelLifecycleTransitionContract {
             REASON_PICKUP_FAILED_SENDER_ABSENT
     );
 
+    Map<ParcelStatus, Set<String>> STAGE_PERMITTED_FAILURE_REASONS = Map.of(
+            ParcelStatus.CREATED, Set.of(REASON_CANCELLED_BY_SENDER, REASON_PICKUP_FAILED_SENDER_ABSENT),
+            ParcelStatus.PICKED_UP, Set.of(REASON_PARCEL_DAMAGED, REASON_FORCE_MAJEURE),
+            ParcelStatus.IN_TRANSIT, Set.of(REASON_PARCEL_DAMAGED, REASON_FORCE_MAJEURE),
+            ParcelStatus.OUT_FOR_DELIVERY, Set.of(REASON_RECIPIENT_UNAVAILABLE, REASON_INCORRECT_ADDRESS, REASON_REFUSED_BY_RECIPIENT)
+    );
+
     Map<ParcelStatus, Set<ParcelStatus>> PERMITTED_TRANSITIONS = Map.of(
             ParcelStatus.CREATED, Set.of(ParcelStatus.PICKED_UP, ParcelStatus.FAILED),
             ParcelStatus.PICKED_UP, Set.of(ParcelStatus.IN_TRANSIT, ParcelStatus.FAILED),
@@ -42,6 +49,16 @@ public interface ParcelLifecycleTransitionContract {
             ParcelStatus.DELIVERED, Collections.emptySet(),
             ParcelStatus.FAILED, Collections.emptySet()
     );
+
+    /**
+     * Returns permitted failure reasons for a given lifecycle stage.
+     */
+    static Set<String> getPermittedFailureReasonsForStage(ParcelStatus stage) {
+        if (stage == null) {
+            return Collections.emptySet();
+        }
+        return STAGE_PERMITTED_FAILURE_REASONS.getOrDefault(stage, Collections.emptySet());
+    }
 
     /**
      * Checks if a transition from currentStatus to targetStatus is permitted.
@@ -83,6 +100,12 @@ public interface ParcelLifecycleTransitionContract {
             }
             if (!APPROVED_FAILURE_REASONS.contains(failureReason)) {
                 throw new InvalidTransitionParametersException("Unapproved failure reason: " + failureReason);
+            }
+            Set<String> permittedForStage = STAGE_PERMITTED_FAILURE_REASONS.get(currentStatus);
+            if (permittedForStage == null || !permittedForStage.contains(failureReason)) {
+                throw new InvalidTransitionParametersException(
+                        "Failure reason '" + failureReason + "' is not permitted when transitioning from stage " + currentStatus
+                );
             }
         }
         if (targetStatus == ParcelStatus.DELIVERED && proofId == null) {
