@@ -6,8 +6,10 @@ import com.swiftdrop.communicationsservice.client.AccountsServiceUnavailableExce
 import com.swiftdrop.communicationsservice.webhook.exception.CrossTenantAccessException;
 import com.swiftdrop.communicationsservice.webhook.exception.InvalidEventFilterException;
 import com.swiftdrop.communicationsservice.webhook.exception.InvalidWebhookDestinationException;
+import com.swiftdrop.communicationsservice.webhook.exception.InvalidWebhookReplayException;
 import com.swiftdrop.communicationsservice.webhook.exception.MerchantNotApprovedException;
 import com.swiftdrop.communicationsservice.webhook.exception.MerchantNotFoundException;
+import com.swiftdrop.communicationsservice.webhook.exception.WebhookDeliveryNotFoundException;
 import com.swiftdrop.communicationsservice.webhook.exception.WebhookSecretEncryptionException;
 import com.swiftdrop.communicationsservice.webhook.exception.WebhookSubscriptionNotFoundException;
 import org.slf4j.Logger;
@@ -66,6 +68,25 @@ public class WebhookProblemHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Merchant Not Found");
         problem.setType(URI.create(PROBLEM_BASE_TYPE + "MERCHANT_NOT_FOUND"));
+        problem.setProperty("timestamp", Instant.now().toString());
+        return problem;
+    }
+
+    @ExceptionHandler(WebhookDeliveryNotFoundException.class)
+    ProblemDetail handleDeliveryNotFound(WebhookDeliveryNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Delivery Not Found");
+        problem.setType(URI.create(PROBLEM_BASE_TYPE + "DELIVERY_NOT_FOUND"));
+        problem.setProperty("timestamp", Instant.now().toString());
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidWebhookReplayException.class)
+    ProblemDetail handleInvalidReplay(InvalidWebhookReplayException ex) {
+        log.warn("Invalid webhook replay rejected: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Conflict");
+        problem.setType(URI.create(PROBLEM_BASE_TYPE + "INVALID_REPLAY_STATE"));
         problem.setProperty("timestamp", Instant.now().toString());
         return problem;
     }

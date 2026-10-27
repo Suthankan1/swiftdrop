@@ -218,6 +218,120 @@ paths:
               schema:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
 
+  /api/v1/merchants/webhooks/{subscriptionId}/rotate-secret:
+    post:
+      summary: Rotate HMAC signing secret for a webhook subscription
+      description: |
+        Generates a new HMAC-SHA256 signing secret for the subscription.
+        The plaintext secret is displayed ONCE and never stored unencrypted.
+      operationId: rotateWebhookSecret
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Secret successfully rotated
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscriptionCreatedResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Subscription not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants/webhooks/{subscriptionId}/deliveries/{deliveryId}/replay:
+    post:
+      summary: Replay a terminally failed webhook delivery job
+      description: |
+        Authorizes and re-schedules an EXHAUSTED or FAILED webhook delivery job.
+        Requires an explicit operator reason and records a durable audit trail.
+        Original eventId, parcelId, stateVersion, and payload digest remain immutable.
+      operationId: replayWebhookDelivery
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplayWebhookDeliveryRequest'
+      responses:
+        '200':
+          description: Delivery replay scheduled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryItem'
+        '400':
+          description: Invalid request or missing reason
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Subscription or delivery not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Conflict - delivery is not in a replayable terminal state (FAILED or EXHAUSTED)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -376,3 +490,15 @@ components:
           type: string
           nullable: true
           example: null
+
+    ReplayWebhookDeliveryRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          example: "Merchant endpoint recovered from network outage, replaying terminal failed delivery"
+          description: Operator/caller explanation for auditing the replay.

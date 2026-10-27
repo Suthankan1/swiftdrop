@@ -45,6 +45,19 @@ public class WebhookDispatchProperties {
      */
     private double jitterFactor = 0.2;
 
+    /**
+     * Maximum response body bytes to read (protects against OOM from unbounded response streams).
+     * Defaults to 64 KB (65536 bytes).
+     */
+    private int maxResponseBytes = 65536;
+
+    /**
+     * Whether to enforce socket-level destination pinning to eliminate DNS rebinding (TOCTOU).
+     * When true, outbound sockets connect strictly to the pre-validated IP address while
+     * preserving TLS SNI and standard HTTPS certificate hostname verification.
+     */
+    private boolean socketPinningEnabled = true;
+
     public long getConnectTimeoutMs() {
         return connectTimeoutMs;
     }
@@ -99,5 +112,21 @@ public class WebhookDispatchProperties {
 
     public void setJitterFactor(double jitterFactor) {
         this.jitterFactor = jitterFactor;
+    }
+
+    public int getMaxResponseBytes() {
+        return maxResponseBytes;
+    }
+
+    public void setMaxResponseBytes(int maxResponseBytes) {
+        this.maxResponseBytes = maxResponseBytes;
+    }
+
+    public boolean isSocketPinningEnabled() {
+        return socketPinningEnabled;
+    }
+
+    public void setSocketPinningEnabled(boolean socketPinningEnabled) {
+        this.socketPinningEnabled = socketPinningEnabled;
     }
 }

@@ -10,6 +10,7 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -20,10 +21,12 @@ import java.util.regex.Pattern;
  * 1. Protocol must be HTTPS (TLS 1.2+).
  * 2. Embedded credentials (userinfo) are prohibited.
  * 3. Localhost, loopback (127.0.0.0/8, ::1, 0.0.0.0), and RFC 1918 private IPv4 are rejected.
- * 4. Link-local (169.254.0.0/16, fe80::/10) and cloud instance metadata (169.254.169.254) are rejected.
+ * 4. Link-local (169.254.0.0/16, fe80::/10) and cloud instance metadata (169.254.169.254, fd00:ec2::254) are rejected.
  * 5. IPv6 unique-local (fc00::/7) and IPv4-mapped IPv6 pointing to private/loopback are rejected.
  * 6. Internal non-routable suffixes (.local, .internal, .localhost) are rejected.
  * 7. Hostname is verified through an injected DNS resolver, failing closed on resolution error.
+ * 8. All resolved A/AAAA records are validated (mixed safe/unsafe answers fail closed).
+ * 9. Returns ValidatedWebhookDestination with pinned IP address to eliminate DNS rebinding TOCTOU vulnerabilities.
  */
 @Component
 public class WebhookDestinationValidator {
@@ -41,12 +44,25 @@ public class WebhookDestinationValidator {
     }
 
     /**
-     * Validates destination URL, throwing InvalidWebhookDestinationException on violation.
+     * Validates destination URL, returning normalized URL string.
+     * Backwards-compatible convenience method.
      *
      * @param urlString destination URL string
      * @return normalized URL string
      */
     public String validate(String urlString) {
+        return validateAndResolve(urlString).normalizedUrl();
+    }
+
+    /**
+     * Validates destination URL and resolves network addresses under SSRF rules.
+     * Pinning metadata is returned to ensure the outbound transport connects ONLY
+     * to a pre-validated IP address, eliminating DNS rebinding (TOCTOU).
+     *
+     * @param urlString destination URL string
+     * @return validated destination with pinned IP address
+     */
+    public ValidatedWebhookDestination validateAndResolve(String urlString) {
         if (urlString == null || urlString.isBlank()) {
             throw new InvalidWebhookDestinationException("Destination URL is required.");
         }
@@ -84,6 +100,11 @@ public class WebhookDestinationValidator {
             throw new InvalidWebhookDestinationException("Destination URL must contain a valid host.");
         }
 
+        int port = uri.getPort() != -1 ? uri.getPort() : 443;
+        if (port < 1 || port > 65535) {
+            throw new InvalidWebhookDestinationException("Destination URL contains an invalid port number.");
+        }
+
         String cleanHost = host.trim().toLowerCase(Locale.ROOT);
         if (cleanHost.startsWith("[") && cleanHost.endsWith("]")) {
             cleanHost = cleanHost.substring(1, cleanHost.length() - 1);
@@ -101,10 +122,18 @@ public class WebhookDestinationValidator {
         // IP literal safety check
         checkIpLiteralSafety(cleanHost);
 
-        // DNS resolution check
-        resolveAndCheckAddresses(cleanHost);
+        // DNS resolution check: resolve and validate ALL returned addresses
+        InetAddress[] addresses = resolveAndCheckAddresses(cleanHost);
 
-        return trimmed;
+        InetAddress pinnedAddress = addresses[0];
+        return new ValidatedWebhookDestination(
+                trimmed,
+                uri,
+                cleanHost,
+                port,
+                pinnedAddress,
+                List.of(addresses)
+        );
     }
 
     private void checkIpLiteralSafety(String host) {
@@ -136,6 +165,12 @@ public class WebhookDestinationValidator {
                 throw new InvalidWebhookDestinationException(
                         "Link-local and cloud instance metadata IP addresses are rejected for security (SSRF prevention).");
             }
+
+            // Shared address space (RFC 6598 carrier-grade NAT) & cloud metadata (e.g., 100.100.100.200)
+            if (o1 == 100 && (o2 >= 64 && o2 <= 127)) {
+                throw new InvalidWebhookDestinationException(
+                        "Carrier-grade shared address space is rejected for security (SSRF prevention).");
+            }
         }
 
         // IPv6 literal checks
@@ -155,7 +190,7 @@ public class WebhookDestinationValidator {
         }
     }
 
-    private void resolveAndCheckAddresses(String host) {
+    private InetAddress[] resolveAndCheckAddresses(String host) {
         InetAddress[] addresses;
         try {
             addresses = dnsLookupResolver.resolve(host);
@@ -175,51 +210,75 @@ public class WebhookDestinationValidator {
         }
 
         for (InetAddress addr : addresses) {
-            String ip = addr.getHostAddress();
-            if ("169.254.169.254".equals(ip)) {
+            checkResolvedAddress(addr);
+        }
+
+        return addresses;
+    }
+
+    private void checkResolvedAddress(InetAddress addr) {
+        String ip = addr.getHostAddress();
+
+        // Cloud metadata addresses (IPv4 & IPv6)
+        if ("169.254.169.254".equals(ip) || "169.254.170.2".equals(ip) || "100.100.100.200".equals(ip)) {
+            throw new InvalidWebhookDestinationException(
+                    "Destination resolves to cloud instance metadata address.");
+        }
+
+        if (addr.isLoopbackAddress()) {
+            throw new InvalidWebhookDestinationException(
+                    "Destination resolves to loopback network address.");
+        }
+        if (addr.isSiteLocalAddress()) {
+            throw new InvalidWebhookDestinationException(
+                    "Destination resolves to private RFC 1918 network address.");
+        }
+        if (addr.isLinkLocalAddress() || ip.startsWith("169.254.")) {
+            throw new InvalidWebhookDestinationException(
+                    "Destination resolves to link-local network address.");
+        }
+        if (addr.isAnyLocalAddress()) {
+            throw new InvalidWebhookDestinationException(
+                    "Destination resolves to wildcard/unspecified network address.");
+        }
+        if (addr.isMulticastAddress()) {
+            throw new InvalidWebhookDestinationException(
+                    "Destination resolves to multicast network address.");
+        }
+
+        // IPv6 unique-local (fc00::/7) or IPv4-mapped IPv6
+        if (addr instanceof Inet6Address) {
+            byte[] bytes = addr.getAddress();
+
+            // fc00::/7 (unique local, covers fc00::/8 and fd00::/8, e.g. AWS IMDSv2 fd00:ec2::254)
+            if ((bytes[0] & 0xfe) == 0xfc) {
                 throw new InvalidWebhookDestinationException(
-                        "Destination resolves to cloud instance metadata address.");
-            }
-            if (addr.isLoopbackAddress()) {
-                throw new InvalidWebhookDestinationException(
-                        "Destination resolves to loopback network address.");
-            }
-            if (addr.isSiteLocalAddress()) {
-                throw new InvalidWebhookDestinationException(
-                        "Destination resolves to private RFC 1918 network address.");
-            }
-            if (addr.isLinkLocalAddress() || ip.startsWith("169.254.")) {
-                throw new InvalidWebhookDestinationException(
-                        "Destination resolves to link-local network address.");
-            }
-            if (addr.isAnyLocalAddress()) {
-                throw new InvalidWebhookDestinationException(
-                        "Destination resolves to wildcard/unspecified network address.");
-            }
-            if (addr.isMulticastAddress()) {
-                throw new InvalidWebhookDestinationException(
-                        "Destination resolves to multicast network address.");
+                        "Destination resolves to IPv6 unique-local address.");
             }
 
-            // Check IPv6 unique-local (fc00::/7) or IPv4-mapped IPv6
-            if (addr instanceof Inet6Address) {
-                byte[] bytes = addr.getAddress();
-                if ((bytes[0] & 0xfe) == 0xfc) { // fc00::/7 (unique local)
+            // IPv4-mapped IPv6 (::ffff:x.x.x.x)
+            if (bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0
+                    && bytes[4] == 0 && bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0
+                    && bytes[8] == 0 && bytes[9] == 0 && (bytes[10] & 0xff) == 0xff && (bytes[11] & 0xff) == 0xff) {
+                try {
+                    byte[] ipv4Bytes = new byte[]{bytes[12], bytes[13], bytes[14], bytes[15]};
+                    InetAddress mappedIpv4 = InetAddress.getByAddress(ipv4Bytes);
+                    checkResolvedAddress(mappedIpv4);
+                } catch (UnknownHostException ex) {
                     throw new InvalidWebhookDestinationException(
-                        "Destination resolves to IPv6 unique-local address.");
+                            "Destination resolves to invalid IPv4-mapped IPv6 address.");
                 }
-                // IPv4-mapped IPv6 (::ffff:x.x.x.x)
-                if (bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0
-                        && bytes[4] == 0 && bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0
-                        && bytes[8] == 0 && bytes[9] == 0 && (bytes[10] & 0xff) == 0xff && (bytes[11] & 0xff) == 0xff) {
-                    int mappedO1 = bytes[12] & 0xff;
-                    int mappedO2 = bytes[13] & 0xff;
-                    if (mappedO1 == 127 || mappedO1 == 10 || (mappedO1 == 172 && mappedO2 >= 16 && mappedO2 <= 31)
-                            || (mappedO1 == 192 && mappedO2 == 168) || (mappedO1 == 169 && mappedO2 == 254)) {
-                        throw new InvalidWebhookDestinationException(
-                                "Destination resolves to IPv4-mapped IPv6 private or loopback address.");
-                    }
-                }
+            }
+        }
+
+        // IPv4 carrier-grade NAT check on resolved IPv4
+        if (addr instanceof Inet4Address) {
+            byte[] bytes = addr.getAddress();
+            int o1 = bytes[0] & 0xff;
+            int o2 = bytes[1] & 0xff;
+            if (o1 == 100 && (o2 >= 64 && o2 <= 127)) {
+                throw new InvalidWebhookDestinationException(
+                        "Destination resolves to carrier-grade shared address space.");
             }
         }
     }
