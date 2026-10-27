@@ -93,6 +93,12 @@ class ProofPersistencePostgresIT {
     @Autowired
     private StatusTransitionService statusTransitionService;
 
+    @Autowired
+    private ProofCleanupTaskCoordinator taskCoordinator;
+
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     private UUID parcelId;
     private final String courierSub = "assigned-courier-pg-it";
     private final String customerSub = "customer-pg-it";
@@ -167,7 +173,7 @@ class ProofPersistencePostgresIT {
         List<ProofCleanupTask> pending = cleanupRepository.findByStatus("PENDING");
         assertThat(pending).anyMatch(t -> t.getObjectReference().equals(orphanRef));
 
-        task.setStatus("COMPLETED");
+        task.markCompleted();
         cleanupRepository.saveAndFlush(task);
 
         List<ProofCleanupTask> pendingAfter = cleanupRepository.findByStatus("PENDING");
@@ -222,5 +228,134 @@ class ProofPersistencePostgresIT {
                 courierSub,
                 List.of("COURIER")
         )).hasMessageContaining("not found or does not belong to parcel");
+    }
+
+    @Test
+    @DisplayName("V5 schema migration: proof persists with default retentionStatus ACTIVE and nullable tombstone")
+    void proofRetentionTombstone_persistsAndTransitionsToPurgedSafely() {
+        String ref = "proofs/v1/" + UUID.randomUUID();
+        UploadProofRequest request = new UploadProofRequest("Test Recipient", ref, "Tombstone test note");
+        ProofResponse proofResponse = proofService.recordProofMetadata(parcelId, request, courierSub, List.of("COURIER"));
+
+        ProofOfDelivery saved = proofRepository.findById(proofResponse.proofId()).orElseThrow();
+        assertThat(saved.getRetentionStatus()).isEqualTo(com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.ACTIVE);
+        assertThat(saved.getPurgedAt()).isNull();
+        assertThat(saved.getObjectReference()).isEqualTo(ref);
+
+        // Transition to PURGED via tombstoning
+        Instant purgeTime = Instant.now();
+        saved.markPurged(purgeTime);
+        proofRepository.saveAndFlush(saved);
+
+        ProofOfDelivery purged = proofRepository.findById(proofResponse.proofId()).orElseThrow();
+        assertThat(purged.isPurged()).isTrue();
+        assertThat(purged.getRetentionStatus()).isEqualTo(com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.PURGED);
+        assertThat(purged.getPurgedAt()).isNotNull();
+        assertThat(purged.getObjectReference()).isNull();
+        assertThat(purged.getRecipientName()).isNull();
+        assertThat(purged.getDeliveryNote()).isNull();
+
+        // Verify parcel master record remains intact
+        Parcel parcel = parcelRepository.findById(parcelId).orElseThrow();
+        assertThat(parcel.getParcelId()).isEqualTo(parcelId);
+        assertThat(parcel.getTrackingNumber()).startsWith("SWD-PROOF-IT-");
+    }
+
+    @Test
+    @DisplayName("findCandidatesForRetention selects only ACTIVE unpurged proofs with object reference")
+    void findCandidatesForRetention_selectsActiveOnly() {
+        String ref = "proofs/v1/" + UUID.randomUUID();
+        UploadProofRequest request = new UploadProofRequest("Recipient Candidate", ref, "Candidate note");
+        ProofResponse proofResponse = proofService.recordProofMetadata(parcelId, request, courierSub, List.of("COURIER"));
+
+        Instant threshold = Instant.now().plusSeconds(60);
+        List<ProofOfDelivery> candidates = proofRepository.findCandidatesForRetention(
+                com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.ACTIVE,
+                threshold,
+                org.springframework.data.domain.PageRequest.of(0, 10)
+        );
+
+        assertThat(candidates).extracting(ProofOfDelivery::getProofId).contains(proofResponse.proofId());
+
+        // Now mark purged and re-query
+        ProofOfDelivery proof = proofRepository.findById(proofResponse.proofId()).orElseThrow();
+        proof.markPurged(Instant.now());
+        proofRepository.saveAndFlush(proof);
+
+        List<ProofOfDelivery> candidatesAfterPurge = proofRepository.findCandidatesForRetention(
+                com.swiftdrop.deliveryservice.proof.retention.RetentionStatus.ACTIVE,
+                threshold,
+                org.springframework.data.domain.PageRequest.of(0, 10)
+        );
+
+        assertThat(candidatesAfterPurge).extracting(ProofOfDelivery::getProofId).doesNotContain(proofResponse.proofId());
+    }
+
+    @Test
+    @DisplayName("Fresh DefaultProofHoldProvider defaults to non-authoritative and fails closed on real PostgreSQL entities")
+    void defaultProofHoldProvider_failsClosedOnRealPostgresEntities() {
+        var holdProvider = new com.swiftdrop.deliveryservice.proof.retention.DefaultProofHoldProvider();
+        assertThat(holdProvider.isAuthoritative()).isFalse();
+
+        // When not authoritative, isUnderHold returns Optional.empty()
+        var holdResult = holdProvider.isUnderHold(parcelId, UUID.randomUUID());
+        assertThat(holdResult).isEmpty();
+    }
+
+    @Test
+    @DisplayName("countByObjectReference accurately counts references in PostgreSQL to prevent deleting referenced objects")
+    void countByObjectReference_accuratelyCountsInPostgres() {
+        String sharedRef = "proofs/v1/" + UUID.randomUUID();
+        UploadProofRequest request = new UploadProofRequest("Shared Recipient", sharedRef, "Shared note");
+        proofService.recordProofMetadata(parcelId, request, courierSub, List.of("COURIER"));
+
+        assertThat(proofRepository.countByObjectReference(sharedRef)).isEqualTo(1L);
+        assertThat(proofRepository.countByObjectReference("non-existent-ref")).isEqualTo(0L);
+    }
+
+    @Test
+    @DisplayName("ProofCleanupTaskCoordinator persists tasks and fails closed without a deletion-capable adapter")
+    void proofCleanupTaskCoordinator_persistsAndFailsClosedWithoutDeletionAdapter() {
+        String orphanRef = "proofs/v1/" + UUID.randomUUID();
+        ProofCleanupTask created = taskCoordinator.recordDurableCleanup(orphanRef, "IT_TEST_REASON");
+
+        assertThat(created).isNotNull();
+        assertThat(created.getTaskId()).isNotNull();
+
+        // Verify task persisted in real PostgreSQL database
+        ProofCleanupTask inDb = cleanupRepository.findById(created.getTaskId()).orElseThrow();
+        assertThat(inDb.getObjectReference()).isEqualTo(orphanRef);
+        assertThat(inDb.getStatus()).isEqualTo("PENDING");
+
+        // No deletion-capable adapter is configured in this persistence test.
+        assertThat(taskCoordinator.processTask(created.getTaskId()))
+                .isEqualTo(ProofCleanupTaskCoordinator.ProcessingResult.SKIPPED);
+
+        ProofCleanupTask completedDb = cleanupRepository.findById(created.getTaskId()).orElseThrow();
+        assertThat(completedDb.getStatus()).isEqualTo("PENDING");
+
+        // A second task remains pending until an authoritative storage adapter is available.
+        ProofCleanupTask task2 = taskCoordinator.recordDurableCleanup("proofs/v1/" + UUID.randomUUID(), "RETRY_TEST");
+
+        ProofCleanupTask retryDb = cleanupRepository.findById(task2.getTaskId()).orElseThrow();
+        assertThat(retryDb.getRetryCount()).isZero();
+        assertThat(retryDb.getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("cleanupRepository.findByIdForUpdate acquires pessimistic row lock on cleanup task in PostgreSQL")
+    void cleanupRepository_findByIdForUpdate_acquiresLockInPostgres() {
+        String taskRef = "proofs/v1/" + UUID.randomUUID();
+        ProofCleanupTask task = new ProofCleanupTask(UUID.randomUUID(), taskRef, "LOCK_TEST");
+        cleanupRepository.saveAndFlush(task);
+
+        org.springframework.transaction.support.TransactionTemplate txTemplate =
+                new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        txTemplate.execute(status -> {
+            Optional<ProofCleanupTask> locked = cleanupRepository.findByIdForUpdate(task.getTaskId());
+            assertThat(locked).isPresent();
+            assertThat(locked.get().getObjectReference()).isEqualTo(taskRef);
+            return null;
+        });
     }
 }

@@ -15,4 +15,12 @@ public interface ProofObjectStorage {
     default void delete(ProofObjectReference reference) {
         // default no-op for storage implementations that do not support deletion
     }
+
+    /**
+     * Indicates whether this storage implementation supports guaranteed physical deletion.
+     * Default is false to prevent treating no-op deletion as successful retention cleanup.
+     */
+    default boolean supportsDeletion() {
+        return false;
+    }
 }

@@ -243,6 +243,28 @@ class S3ProofObjectStorageTest {
         assertSafeFailure(() -> storage.delete(reference), ProofStorageUnavailableException.class);
     }
 
+    @Test
+    void supportsDeletionReturnsTrueForS3Implementation() {
+        assertThat(storage.supportsDeletion()).isTrue();
+    }
+
+    @Test
+    void supportsDeletionReturnsFalseByDefaultOnInterface() {
+        com.swiftdrop.deliveryservice.proof.storage.ProofObjectStorage defaultStorage =
+                new com.swiftdrop.deliveryservice.proof.storage.ProofObjectStorage() {
+                    @Override
+                    public StoredProofObject store(ProofObjectUpload upload) {
+                        return null;
+                    }
+
+                    @Override
+                    public RetrievedProofObject retrieve(ProofObjectReference reference) {
+                        return null;
+                    }
+                };
+        assertThat(defaultStorage.supportsDeletion()).isFalse();
+    }
+
     private void assertSafeFailure(Runnable operation, Class<? extends RuntimeException> expectedType) {
         assertThatThrownBy(operation::run)
                 .isInstanceOf(expectedType)
