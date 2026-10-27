@@ -3,6 +3,7 @@ package com.swiftdrop.accountsservice.reconciliation;
 import com.swiftdrop.accountsservice.identity.TrustedIdentity;
 import com.swiftdrop.accountsservice.identity.keycloak.IdentityNotFoundException;
 import com.swiftdrop.accountsservice.identity.keycloak.KeycloakAdminException;
+import com.swiftdrop.accountsservice.identity.keycloak.KeycloakAdminUnavailableException;
 import com.swiftdrop.accountsservice.identity.keycloak.KeycloakIdentityAdapter;
 import com.swiftdrop.accountsservice.identity.keycloak.KeycloakRoleAllowlist;
 import com.swiftdrop.accountsservice.identity.keycloak.ReconciliationOutcome;
@@ -17,6 +18,8 @@ import com.swiftdrop.accountsservice.staff.StaffProfileResponse;
 import com.swiftdrop.accountsservice.staff.StaffProvisioningException;
 import com.swiftdrop.accountsservice.staff.StaffRole;
 import com.swiftdrop.accountsservice.staff.StaffStatus;
+import com.swiftdrop.accountsservice.profile.AccountProfile;
+import com.swiftdrop.accountsservice.profile.AccountProfileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,13 +53,23 @@ public class StaffRoleReconciliationService {
     private final StaffProfileRepository staffProfiles;
     private final KeycloakIdentityAdapter identityAdapter;
     private final ReconciliationAuditService auditService;
+    private final AccountProfileRepository accountProfiles;
 
     public StaffRoleReconciliationService(StaffProfileRepository staffProfiles,
                                           KeycloakIdentityAdapter identityAdapter,
                                           @Autowired(required = false) ReconciliationAuditService auditService) {
+        this(staffProfiles, identityAdapter, auditService, null);
+    }
+
+    @Autowired
+    public StaffRoleReconciliationService(StaffProfileRepository staffProfiles,
+                                          KeycloakIdentityAdapter identityAdapter,
+                                          @Autowired(required = false) ReconciliationAuditService auditService,
+                                          @Autowired(required = false) AccountProfileRepository accountProfiles) {
         this.staffProfiles = Objects.requireNonNull(staffProfiles, "StaffProfileRepository is required");
         this.identityAdapter = Objects.requireNonNull(identityAdapter, "KeycloakIdentityAdapter is required");
         this.auditService = auditService;
+        this.accountProfiles = accountProfiles;
     }
 
     /**
@@ -102,6 +115,14 @@ public class StaffRoleReconciliationService {
             recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", "NONE", "DENIED",
                     ReconciliationOutcome.DENIED, adminIdentity.subject(), "Staff ID is already assigned: " + command.staffId());
             throw new StaffProvisioningException("Staff ID is already assigned: " + command.staffId());
+        }
+
+        if (command.accountProfileId() != null && accountProfiles != null) {
+            AccountProfile account = accountProfiles.findById(command.accountProfileId())
+                    .orElseThrow(() -> new StaffProvisioningException("Account profile binding does not exist"));
+            if (!command.keycloakSub().equals(account.getKeycloakSub())) {
+                throw new StaffProvisioningException("Account profile is bound to a different identity");
+            }
         }
 
         // Persist business profile
@@ -164,26 +185,92 @@ public class StaffRoleReconciliationService {
     /**
      * Suspends a staff member and revokes their privileged operational role in Keycloak.
      */
+    @Transactional(noRollbackFor = KeycloakAdminException.class)
     public ReconciliationResult suspendStaff(TrustedIdentity adminIdentity, String targetSub, String reason) {
+        return changeStatus(adminIdentity, targetSub, StaffStatus.SUSPENDED, reason);
+    }
+
+    @Transactional(noRollbackFor = KeycloakAdminException.class)
+    public ReconciliationResult activateStaff(TrustedIdentity adminIdentity, String targetSub, String reason) {
+        return changeStatus(adminIdentity, targetSub, StaffStatus.ACTIVE, reason);
+    }
+
+    @Transactional(noRollbackFor = KeycloakAdminException.class)
+    public ReconciliationResult deactivateStaff(TrustedIdentity adminIdentity, String targetSub, String reason) {
+        return changeStatus(adminIdentity, targetSub, StaffStatus.INACTIVE, reason);
+    }
+
+    @Transactional(noRollbackFor = KeycloakAdminException.class)
+    public ReconciliationResult changeStatus(TrustedIdentity adminIdentity, String targetSub,
+                                             StaffStatus targetStatus, String reason) {
         validateAdminCaller(adminIdentity);
         if (targetSub == null || targetSub.isBlank()) {
             throw new IllegalArgumentException("Target subject is required");
         }
+        Objects.requireNonNull(targetStatus, "Target status is required");
 
         StaffProfile profile = staffProfiles.findByKeycloakSub(targetSub)
                 .orElseThrow(() -> new StaffProfileNotFoundException("Staff profile not found for subject: " + targetSub));
 
         StaffStatus statusBefore = profile.getStatus();
-        profile.setStatus(StaffStatus.SUSPENDED, Instant.now());
-        staffProfiles.save(profile);
-
         String targetRole = profile.getRole().name();
-        ReconciliationResult result = identityAdapter.reconcileRole(targetSub, targetRole, false);
+        if (statusBefore == targetStatus) {
+            ReconciliationResult result = identityAdapter.reconcileRole(targetSub, targetRole, targetStatus.isActive());
+            recordAudit(targetSub, targetRole, "STATUS_SYNC", statusBefore.name(), statusBefore.name(),
+                    ReconciliationOutcome.NO_OP, adminIdentity.subject(), "Idempotent status command");
+            return result;
+        }
+        if (!isAllowedTransition(statusBefore, targetStatus)) {
+            recordAudit(targetSub, targetRole, "STATUS_SYNC", statusBefore.name(), targetStatus.name(),
+                    ReconciliationOutcome.DENIED, adminIdentity.subject(), "Invalid staff lifecycle transition");
+            throw new IllegalStateException("Invalid staff lifecycle transition from " + statusBefore + " to " + targetStatus);
+        }
 
-        recordAudit(targetSub, targetRole, "REVOKE_ROLE", statusBefore.name(), StaffStatus.SUSPENDED.name(),
-                result.outcome(), adminIdentity.subject(), "Suspended: " + (reason != null ? reason : ""));
+        if (targetStatus.isActive()) {
+            if (!identityAdapter.identityExists(targetSub)) {
+                recordAudit(targetSub, targetRole, "STATUS_SYNC", statusBefore.name(), statusBefore.name(),
+                        ReconciliationOutcome.FAILED, adminIdentity.subject(), "Target Keycloak identity does not exist");
+                throw new IdentityNotFoundException(targetSub);
+            }
+            ReconciliationResult result = identityAdapter.reconcileRole(targetSub, targetRole, true);
+            if (result.outcome() != ReconciliationOutcome.SUCCESS && result.outcome() != ReconciliationOutcome.NO_OP) {
+                recordAudit(targetSub, targetRole, "STATUS_SYNC", statusBefore.name(), statusBefore.name(),
+                        result.outcome(), adminIdentity.subject(), result.message());
+                throw new KeycloakAdminUnavailableException("Staff activation reconciliation is incomplete");
+            }
+            profile.setStatus(StaffStatus.ACTIVE, Instant.now());
+            staffProfiles.save(profile);
+            recordAudit(targetSub, targetRole, "STATUS_SYNC", statusBefore.name(), StaffStatus.ACTIVE.name(),
+                    result.outcome(), adminIdentity.subject(), reason);
+            return result;
+        }
+
+        // Deny business access before remote revocation so stale JWTs cannot pass Accounts checks.
+        profile.setStatus(targetStatus, Instant.now());
+        staffProfiles.save(profile);
+        ReconciliationResult result;
+        try {
+            result = identityAdapter.reconcileRole(targetSub, targetRole, false);
+        } catch (KeycloakAdminException ex) {
+            recordAudit(targetSub, targetRole, "REVOKE_ROLE", statusBefore.name(), targetStatus.name(),
+                    ReconciliationOutcome.PENDING_RETRY, adminIdentity.subject(), ex.getMessage());
+            throw ex;
+        }
+
+        recordAudit(targetSub, targetRole, "REVOKE_ROLE", statusBefore.name(), targetStatus.name(),
+                result.outcome(), adminIdentity.subject(), reason);
+
+        if (result.outcome() != ReconciliationOutcome.SUCCESS && result.outcome() != ReconciliationOutcome.NO_OP) {
+            throw new KeycloakAdminUnavailableException("Staff access revocation reconciliation is incomplete");
+        }
 
         return result;
+    }
+
+    private boolean isAllowedTransition(StaffStatus from, StaffStatus to) {
+        return (from == StaffStatus.ACTIVE && (to == StaffStatus.SUSPENDED || to == StaffStatus.INACTIVE))
+                || (from == StaffStatus.SUSPENDED && (to == StaffStatus.ACTIVE || to == StaffStatus.INACTIVE))
+                || (from == StaffStatus.INACTIVE && to == StaffStatus.ACTIVE);
     }
 
     private void validateAdminCaller(TrustedIdentity adminIdentity) {

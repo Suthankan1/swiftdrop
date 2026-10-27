@@ -3,12 +3,18 @@ package com.swiftdrop.accountsservice.profile;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.UUID;
 
 public interface AccountProfileRepository extends Repository<AccountProfile, UUID> {
+
+    Page<AccountProfile> findAll(Pageable pageable);
+
+    Optional<AccountProfile> findById(UUID id);
     Optional<AccountProfile> findByKeycloakSub(String keycloakSub);
 
     // Only this named uniqueness boundary is ignored; all other DB failures propagate.

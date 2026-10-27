@@ -1,5 +1,10 @@
 package com.swiftdrop.accountsservice.reconciliation;
 
+import com.swiftdrop.accountsservice.admin.AdminPageResponse;
+import com.swiftdrop.accountsservice.admin.AdminReadController;
+import com.swiftdrop.accountsservice.admin.AdminReadProblemHandler;
+import com.swiftdrop.accountsservice.admin.AdminReadService;
+import com.swiftdrop.accountsservice.admin.AdminUserSummaryResponse;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
@@ -50,9 +55,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {AdminReconciliationController.class},
+@WebMvcTest(controllers = {AdminReconciliationController.class, AdminReadController.class},
         excludeAutoConfiguration = org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration.class)
-@Import({ProfileSecurityConfiguration.class, ReconciliationProblemHandler.class})
+@Import({ProfileSecurityConfiguration.class, ReconciliationProblemHandler.class, AdminReadProblemHandler.class})
 class AdminReconciliationHttpSecurityTest {
 
     private static MockWebServer authServer;
@@ -71,6 +76,9 @@ class AdminReconciliationHttpSecurityTest {
     ReconciliationRecoveryService recoveryService;
     @MockitoBean
     ReconciliationAuditService auditService;
+
+    @MockitoBean
+    AdminReadService adminReadService;
 
     private static final String subAdmin = "admin-sub-001";
     private static final String subCustomer = "cust-sub-002";
@@ -142,6 +150,39 @@ class AdminReconciliationHttpSecurityTest {
                 .andExpect(header().string("WWW-Authenticate", "Bearer"))
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.title").value("Unauthorized"));
+    }
+
+    @Test
+    @DisplayName("Anonymous request to admin user page is rejected with 401")
+    void anonymous_adminUserPage_rejected() throws Exception {
+        mvc.perform(get("/api/v1/admin/users"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    @DisplayName("CUSTOMER cannot read admin user page")
+    void customer_adminUserPage_rejected() throws Exception {
+        String token = createSignedJwt(subCustomer, List.of(KeycloakRoleAllowlist.CUSTOMER), trustedRsaKey);
+
+        mvc.perform(get("/api/v1/admin/users").header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    @DisplayName("ADMIN can read bounded admin user page")
+    void admin_adminUserPage_allowed() throws Exception {
+        String token = createSignedJwt(subAdmin, List.of(KeycloakRoleAllowlist.ADMIN), trustedRsaKey);
+        AdminUserSummaryResponse user = new AdminUserSummaryResponse(UUID.randomUUID(), "user-sub",
+                "user@swiftdrop.test", "User", Instant.now());
+        when(adminReadService.users(0, 20)).thenReturn(new AdminPageResponse<>(List.of(user), 0, 20,
+                1, 1, true, true));
+
+        mvc.perform(get("/api/v1/admin/users").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.content[0].email").value("user@swiftdrop.test"));
     }
 
     @Test
