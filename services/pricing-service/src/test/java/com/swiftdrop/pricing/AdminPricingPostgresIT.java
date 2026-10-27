@@ -158,6 +158,32 @@ class AdminPricingPostgresIT {
     }
 
     @Test
+    void concurrentDraftRuleUpdatesRejectLostUpdateAndAuditOnlyWinner() throws Exception {
+        VersionView draft = admin.createDraft(new DraftCreate("RATE-EDIT", "LKR", Instant.now(), null, ""));
+        RuleView original = admin.writeRule(draft.id(), null, rule(draft.revision(), SizeCategory.MEDIUM, 100));
+        CountDownLatch start = new CountDownLatch(1);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            java.util.function.LongFunction<Callable<Integer>> edit = fee -> () -> {
+                start.await();
+                try {
+                    admin.writeRule(draft.id(), original.id(), rule(original.revision(), SizeCategory.MEDIUM, fee));
+                    return 200;
+                } catch (AdminConfigurationException ex) { return ex.getStatus(); }
+            };
+            Future<Integer> first = executor.submit(edit.apply(200));
+            Future<Integer> second = executor.submit(edit.apply(300));
+            start.countDown();
+            assertThat(List.of(first.get(15, TimeUnit.SECONDS), second.get(15, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(200, 409);
+        }
+        RuleView persisted = admin.listRules(draft.id(), 0, 20).items().getFirst();
+        assertThat(persisted.baseFeeMinorUnits()).isIn(200L, 300L);
+        assertThat(persisted.revision()).isEqualTo(original.revision() + 1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pricing_admin_audit WHERE resource_id = ? AND operation = 'RATE_RULE_UPDATED'",
+                Integer.class, draft.id())).isEqualTo(1);
+    }
+
+    @Test
     void sharedQuoteLockBlocksConfigurationUntilQuoteTransactionEnds() throws Exception {
         ZoneView zone = admin.createZone(new ZoneCreate("ZONE_2", "Two", "", 24));
         CountDownLatch held = new CountDownLatch(1);

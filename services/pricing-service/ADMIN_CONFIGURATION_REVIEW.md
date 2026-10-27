@@ -267,3 +267,48 @@ browser fallback was stopped by Computer Use because it could not determine
 Chrome's URL confidently enough to enforce policy. The associated board and
 starting/final board values remain unverified; use the Project actually linked
 to #123 for the manual In Review update, keeping the issue open.
+
+## Follow-up verification — 2026-10-27
+
+PR [#236](https://github.com/Suthankan1/swiftdrop/pull/236) remains open and
+mergeable. [Suthankan1 approved the PR](https://github.com/Suthankan1/swiftdrop/pull/236#pullrequestreview-5662774521).
+Requested domain/security reviewers Harithkeshan, Sinthuha-n and Vibhushan-2003
+had not submitted reviews at this check; the Platform approval is not a claim
+of their independent acceptance.
+
+Contract Checks [run 40457171839](https://github.com/Suthankan1/swiftdrop/actions/runs/40457171839)
+passed. Dependency and secret scanning jobs passed. General CI
+[run 40457094938](https://github.com/Suthankan1/swiftdrop/actions/runs/40457094938)
+failed before creating any jobs (jobs API count: 0).
+
+Read-only local validation identified an undefined dependency in the unchanged
+`.github/workflows/ci.yml`: `publish-runtime-images.needs` includes
+`terraform-quality-gates` at line 425, but the defined job is `terraform-policy`
+at line 212. YAML syntax alone passes; the job dependency graph does not. This
+is a likely explanation for the workflow startup failure, not a quoted GitHub
+diagnostic. Platform should reconcile that job reference in its own change.
+No workflow, deployment or infrastructure file was modified by this feature.
+
+Docker's Linux engine remained stopped on recheck. A one-time authorization to
+start Docker solely for the existing Pricing Testcontainers tests was requested
+from the assignee; no engine start or container orchestration was performed
+while that authorization was pending.
+
+Added `concurrentDraftRuleUpdatesRejectLostUpdateAndAuditOnlyWinner` to the
+existing AdminPricingPostgresIT: concurrent edits using the same parent
+revision must yield one success, one conflict, one revision increment and one
+update audit entry. No production code, contract or migration changed in this
+follow-up.
+
+Actual follow-up commands:
+
+- Pricing wrapper `-B -ntp -DskipTests test-compile`: PASS (compilation only).
+- Pricing wrapper `-B -ntp -Dit.test=AdminPricingPostgresIT
+  failsafe:integration-test failsafe:verify`: BUILD SUCCESS; all **8 admin
+  integration tests skipped** because Docker remained unavailable.
+- `git diff --check`: PASS.
+
+The earlier 166 unit/security passes belong to implementation commit
+`a760b0492f9c0a52b04ededc8e8e6835f18fa1e2`. The new concurrent-edit assertion
+has compiled but has not executed against PostgreSQL. The full PostgreSQL suite
+now consists of 8 admin tests plus the 12 unchanged persistence tests.
