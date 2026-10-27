@@ -27,6 +27,7 @@ import com.swiftdrop.communicationsservice.webhook.validation.WebhookDestination
 import com.swiftdrop.communicationsservice.webhook.validation.WebhookEventFilterValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -69,6 +70,7 @@ public class WebhookSubscriptionService {
                 eventFilterValidator, secretService, accountsEligibilityClient, null);
     }
 
+    @Autowired
     public WebhookSubscriptionService(
             WebhookSubscriptionRepository subscriptionRepository,
             WebhookDeliveryRepository deliveryRepository,
