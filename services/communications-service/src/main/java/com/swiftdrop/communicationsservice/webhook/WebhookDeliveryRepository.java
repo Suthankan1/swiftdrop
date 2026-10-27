@@ -23,4 +23,10 @@ public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery
     List<WebhookDelivery> findBySubscriptionIdOrderByCreatedAtDesc(UUID subscriptionId, Pageable pageable);
 
     long countBySubscriptionId(UUID subscriptionId);
+
+    Optional<WebhookDelivery> findTopBySubscriptionIdAndParcelIdOrderByStateVersionDesc(UUID subscriptionId, UUID parcelId);
+
+    List<WebhookDelivery> findBySubscriptionIdAndParcelId(UUID subscriptionId, UUID parcelId);
+
+    List<WebhookDelivery> findByEventId(UUID eventId);
 }

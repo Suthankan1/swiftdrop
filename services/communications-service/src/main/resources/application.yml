@@ -35,6 +35,9 @@ swiftdrop:
   kafka:
     consumer:
       enabled: ${COMMUNICATIONS_KAFKA_CONSUMER_ENABLED:true}
+      webhooks:
+        enabled: ${COMMUNICATIONS_WEBHOOKS_CONSUMER_ENABLED:true}
+        group-id: ${KAFKA_WEBHOOKS_CONSUMER_GROUP_ID:communications.webhooks.v1}
     topics:
       parcel-lifecycle: ${KAFKA_TOPIC_PARCEL_LIFECYCLE:parcel.lifecycle.v1}
 management:
