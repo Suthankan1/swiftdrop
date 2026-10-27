@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
@@ -9,8 +9,8 @@ import type { SwiftDropRole } from '../../../auth/contracts'
 import { anonymousAuth } from '../../../test/authFixture'
 import { MerchantReviewPage } from './MerchantReviewPage'
 import {
-  merchantReviewHttpError,
-  type MerchantReviewApi, type MerchantReviewDetail, type MerchantReviewPageData,
+  merchantReviewHttpError, MerchantReviewError,
+  type MerchantReviewApi, type MerchantReviewDetail, type MerchantReviewOutcome, type MerchantReviewPageData,
 } from '../api/merchantReview'
 
 // Synthetic presentation fixtures live only in tests. No runtime fixture adapter.
@@ -32,7 +32,7 @@ function auth(roles: readonly SwiftDropRole[] = ['ADMIN'], subject = 'synthetic-
 function provider(detail = merchant) {
   return {
     list: vi.fn(async (page: number): Promise<MerchantReviewPageData> => ({ items: [detail], page, hasNext: false })),
-    detail: vi.fn(async () => detail), supportedActions: ['approve', 'suspend'], change: vi.fn(async () => {}),
+    detail: vi.fn(async () => detail), supportedActions: ['approve', 'suspend'], change: vi.fn(async (): Promise<MerchantReviewOutcome> => ({ status: 'APPROVED' })),
   } satisfies MerchantReviewApi
 }
 function setup(api?: MerchantReviewApi, initialAuth = auth(), route = false) {
@@ -127,7 +127,7 @@ describe('Merchant review reads and pagination', () => {
     expect(await screen.findByText('No merchant applications on this page.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
-    expect(api.list).toHaveBeenCalledWith(0, 20, expect.any(AbortSignal))
+    expect(api.list).toHaveBeenCalledWith(0, 20, expect.any(AbortSignal), 'PENDING')
   })
   it('requests server pages, clears selection and never shows a previous page as new data', async () => {
     const next = deferred<MerchantReviewPageData>()
@@ -143,7 +143,7 @@ describe('Merchant review reads and pagination', () => {
     expect(screen.getByRole('button', { name: 'Refresh list' })).toBeDisabled()
     await act(async () => next.resolve({ items: [], page: 1, hasNext: false }))
     await screen.findByText('Page 2')
-    expect(api.list).toHaveBeenLastCalledWith(1, 20, expect.any(AbortSignal))
+    expect(api.list).toHaveBeenLastCalledWith(1, 20, expect.any(AbortSignal), 'PENDING')
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Previous page' }))
     expect(await screen.findByRole('button', { name: /Review Synthetic business A/ })).toBeInTheDocument()
@@ -244,7 +244,7 @@ describe('Merchant review confirmation and commands (isolated port only)', () =>
     expect(api.change).not.toHaveBeenCalled()
   })
   it('waits for real command resolution, prevents duplicate submission and refreshes list/details', async () => {
-    const result = deferred<void>()
+    const result = deferred<MerchantReviewOutcome>()
     let current = merchant
     const api: MerchantReviewApi = { ...provider(), detail: vi.fn(async () => current), change: vi.fn(() => result.promise) }
     setup(api)
@@ -253,13 +253,13 @@ describe('Merchant review confirmation and commands (isolated port only)', () =>
     await user.dblClick(confirm)
     expect(api.change).toHaveBeenCalledTimes(1)
     expect(api.change).toHaveBeenCalledWith({ merchantId: merchant.id, action: 'approve', reviewToken: merchant.reviewToken }, expect.any(AbortSignal))
-    expect(screen.queryByText(/server accepted/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/server confirmed/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submitting…' })).toBeDisabled()
     await user.keyboard('{Escape}')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     current = { ...merchant, status: 'APPROVED', actions: [] }
-    await act(async () => result.resolve())
-    expect(await screen.findByText(/server accepted/)).toBeInTheDocument()
+    await act(async () => result.resolve({ status: 'APPROVED' }))
+    expect(await screen.findByText(/server confirmed/)).toBeInTheDocument()
     await waitFor(() => expect(api.detail).toHaveBeenCalledTimes(2))
     expect(api.list).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('button', { name: 'Approve merchant' })).toBeDisabled()
@@ -293,21 +293,21 @@ describe('Merchant review confirmation and commands (isolated port only)', () =>
     await user.click(confirm)
     await waitFor(() => expect(api.change).toHaveBeenCalledWith(expect.objectContaining({ action: 'suspend', reason: 'Reviewed synthetic evidence' }), expect.any(AbortSignal)))
   })
-  it.each([400, 401, 403, 404, 409, 422, 500])('sanitizes command HTTP %s, refreshes without replay and requires a new confirmation', async status => {
+  it.each([400, 401, 403, 404, 409, 412, 422, 429, 500, 503])('sanitizes command HTTP %s, refreshes without replay and requires a new confirmation', async status => {
     const api = provider()
     api.change.mockRejectedValueOnce(merchantReviewHttpError(status))
     const current = auth()
     setup(api, current)
     const { user, dialog } = await openConfirm()
     await user.click(within(dialog).getByRole('button', { name: 'Confirm approve' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(status === 500 ? 'outcome could not be confirmed' : merchantReviewHttpError(status).message)
+    expect(await screen.findByRole('alert')).toHaveTextContent(status >= 500 ? 'outcome could not be confirmed' : merchantReviewHttpError(status).message)
     await waitFor(() => expect(api.detail).toHaveBeenCalledTimes(2))
     expect(api.list).toHaveBeenCalledTimes(2)
     expect(api.change).toHaveBeenCalledTimes(1)
-    expect(screen.queryByText(/server accepted/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/server confirmed/)).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     if (status === 401) expect(current.handleSessionExpiry).toHaveBeenCalledOnce()
-    if (status === 409) {
+    if (status === 409 || status === 412) {
       await user.click(screen.getByRole('button', { name: 'Approve merchant' }))
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(api.change).toHaveBeenCalledTimes(1)
@@ -321,7 +321,7 @@ describe('Merchant review confirmation and commands (isolated port only)', () =>
     await user.click(within(dialog).getByRole('button', { name: 'Confirm approve' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('outcome could not be confirmed')
     expect(screen.queryByText(/SECRET/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/server accepted/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/server confirmed/)).not.toBeInTheDocument()
   })
   it('waits for a fresh conflict read and submits only the newly reviewed concurrency token', async () => {
     const refreshed = deferred<MerchantReviewDetail>()
@@ -395,8 +395,17 @@ describe('Merchant review session and stale response isolation', () => {
     await act(async () => waiting.resolve(merchant))
     expect(screen.queryByRole('heading', { name: merchant.businessName })).not.toBeInTheDocument()
   })
+  it('drops selected details and pending confirmation when the admin switches accounts', async () => {
+    const api = provider()
+    const view = setup(api)
+    await openConfirm()
+    view.rerenderAuth(auth(['ADMIN'], 'synthetic-admin-b'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Merchant details' })).not.toBeInTheDocument()
+    expect(api.change).not.toHaveBeenCalled()
+  })
   it('aborts an in-flight command and ignores late success after same-subject role revocation', async () => {
-    const waiting = deferred<void>()
+    const waiting = deferred<MerchantReviewOutcome>()
     let signal: AbortSignal | undefined
     const api: MerchantReviewApi = { ...provider(), change: vi.fn((_command, current) => { signal = current; return waiting.promise }) }
     const view = setup(api)
@@ -404,9 +413,127 @@ describe('Merchant review session and stale response isolation', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Confirm approve' }))
     view.rerenderAuth(auth(['CUSTOMER']))
     expect(signal?.aborted).toBe(true)
-    await act(async () => waiting.resolve())
-    expect(screen.queryByText(/server accepted/)).not.toBeInTheDocument()
+    await act(async () => waiting.resolve({ status: 'APPROVED' }))
+    expect(screen.queryByText(/server confirmed/)).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(view.cache.getQueryCache().getAll()).toHaveLength(0)
+  })
+})
+
+describe('Merchant review Accounts wiring, filters, audit and reasons', () => {
+  function gateway() {
+    return vi.fn(async (url: string) => {
+      const path = new URL(url).pathname
+      const body = path.endsWith('/audit') ? [] : path === '/api/v1/admin/merchants'
+        ? { content: [merchant], page: 0, size: 20, totalElements: 1, totalPages: 1, first: true, last: true }
+        : { ...merchant, actions: [{ action: 'approve', reason: null }] }
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+  }
+  it('uses the Gateway with the in-memory token, not the allowlisted profile fetch', async () => {
+    const fetchRequest = gateway()
+    vi.stubGlobal('fetch', fetchRequest)
+    const profileFetch = vi.fn(async () => { throw new Error('Unsupported profile request') })
+    setup(undefined, { ...auth(), profileFetch }, true)
+    await openDetail()
+    expect(profileFetch).not.toHaveBeenCalled()
+    const urls = fetchRequest.mock.calls.map(call => String(call[0]))
+    expect(urls[0]).toMatch(/\/api\/v1\/admin\/merchants\?page=0&size=20&status=PENDING$/)
+    expect(urls).toEqual(expect.arrayContaining([expect.stringMatching(/\/admin\/merchants\/synthetic-merchant-a$/),
+      expect.stringMatching(/\/admin\/merchants\/synthetic-merchant-a\/audit$/)]))
+    expect(await screen.findByText('No audit records were returned.')).toBeInTheDocument()
+  })
+  it.each<{ roles: SwiftDropRole[] }>([{ roles: ['CUSTOMER'] }, { roles: ['MERCHANT'] }, { roles: ['COURIER'] }, { roles: ['DISPATCHER'] }])('never requests merchant data for $roles', async ({ roles }) => {
+    const fetchRequest = gateway()
+    vi.stubGlobal('fetch', fetchRequest)
+    setup(undefined, auth(roles), true)
+    await screen.findByRole('alert')
+    expect(fetchRequest).not.toHaveBeenCalled()
+  })
+  it('never requests merchant data for an anonymous visitor', () => {
+    const fetchRequest = gateway()
+    vi.stubGlobal('fetch', fetchRequest)
+    setup(undefined, anonymousAuth, true)
+    expect(fetchRequest).not.toHaveBeenCalled()
+  })
+  it('defaults to merchants awaiting review and requests a new first page for another status', async () => {
+    const api = provider()
+    setup(api)
+    const user = await openDetail()
+    expect(screen.getByRole('table')).toHaveAccessibleName(/Awaiting review · Page 1/)
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Show' }), 'APPROVED')
+    expect(screen.queryByRole('heading', { name: 'Merchant details' })).not.toBeInTheDocument()
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(0, 20, expect.any(AbortSignal), 'APPROVED'))
+    expect(await screen.findByRole('table')).toHaveAccessibleName(/Approved · Page 1/)
+  })
+  it('refreshes the list from the server on demand', async () => {
+    const api = provider()
+    setup(api)
+    await screen.findByRole('table')
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh list' }))
+    await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2))
+  })
+  it('renders server audit transitions, actor, outcome and reason only', async () => {
+    setup(provider({ ...merchant, status: 'APPROVED', audit: [{ id: 'audit-1', actor: 'synthetic-admin-sub', action: 'APPROVE',
+      previousStatus: 'PENDING', newStatus: 'APPROVED', occurredAt: '2026-10-27T11:00:00Z', outcome: 'SUCCESS', reason: 'ADMIN_APPROVED' }] }))
+    await openDetail()
+    const entry = within(screen.getByRole('list')).getByRole('listitem')
+    expect(entry).toHaveTextContent('APPROVE · PENDING → APPROVED')
+    expect(entry).toHaveTextContent('Actor synthetic-admin-sub')
+    expect(entry).toHaveTextContent('Outcome SUCCESS')
+    expect(entry).toHaveTextContent('Reason: ADMIN_APPROVED')
+    expect(entry.querySelector('time')).toHaveAttribute('dateTime', '2026-10-27T11:00:00Z')
+  })
+  it('offers no commands for a suspended merchant without advertised actions', async () => {
+    setup(provider({ ...merchant, status: 'SUSPENDED', actions: [] }))
+    await openDetail()
+    expect(screen.getByRole('button', { name: 'Approve merchant' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Suspend merchant' })).toBeDisabled()
+  })
+  it('validates the suspension reason visibly, supports Cancel and submits only a valid reason', async () => {
+    const suspendable: MerchantReviewDetail = { ...merchant, status: 'APPROVED', actions: [{ action: 'suspend', reason: { required: true, maxLength: 500 } }] }
+    const api = provider(suspendable)
+    api.change.mockResolvedValue({ status: 'SUSPENDED' })
+    setup(api)
+    const { user, dialog } = await openConfirm('Suspend merchant')
+    const reason = within(dialog).getByRole('textbox', { name: 'Reason (required)' })
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm suspend' })
+    await user.type(reason, '   ')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Enter a reason for this action.')
+    expect(reason).toHaveAttribute('aria-invalid', 'true')
+    expect(confirm).toBeDisabled()
+    fireEvent.change(reason, { target: { value: 'Bad\u0001reason' } })
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('unsupported control characters')
+    expect(confirm).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(api.change).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Suspend merchant' }))
+    const fresh = screen.getByRole('dialog')
+    await user.type(within(fresh).getByRole('textbox', { name: 'Reason (required)' }), 'Synthetic chargeback review')
+    expect(within(fresh).getByText(/27\/500 characters/)).toBeInTheDocument()
+    await user.click(within(fresh).getByRole('button', { name: 'Confirm suspend' }))
+    expect(await screen.findByText('The server confirmed this merchant is now SUSPENDED. The details below were refreshed from Accounts.')).toBeInTheDocument()
+    expect(api.change).toHaveBeenCalledOnce()
+    expect(api.change).toHaveBeenCalledWith(expect.objectContaining({ action: 'suspend', reason: 'Synthetic chargeback review' }), expect.any(AbortSignal))
+  })
+  it('reports an unconfirmed 2xx command as ambiguous, refreshes and does not replay it', async () => {
+    const api = provider()
+    api.change.mockRejectedValueOnce(new MerchantReviewError('unconfirmed'))
+    setup(api)
+    const { user, dialog } = await openConfirm()
+    await user.click(within(dialog).getByRole('button', { name: 'Confirm approve' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('outcome could not be confirmed')
+    await waitFor(() => expect(api.detail).toHaveBeenCalledTimes(2))
+    expect(api.change).toHaveBeenCalledOnce()
+  })
+  it('tells the admin to wait after rate limiting without claiming an unknown outcome', async () => {
+    const api = provider()
+    api.change.mockRejectedValueOnce(merchantReviewHttpError(429))
+    setup(api)
+    const { user, dialog } = await openConfirm()
+    await user.click(within(dialog).getByRole('button', { name: 'Confirm approve' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many merchant review requests')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('could not be confirmed')
   })
 })
