@@ -85,6 +85,7 @@ describe('CourierParcelDetails component', () => {
       merchantId: null,
       currentStatus: 'OUT_FOR_DELIVERY',
       version: 1,
+      activeCourierSub: 'courier-test-sub',
       createdAt: '2026-10-26T08:00:00Z',
     }
 
@@ -200,8 +201,7 @@ describe('CourierParcelDetails component', () => {
     expect(handleClose).toHaveBeenCalledOnce()
   })
 
-  it('toggles delivery exception reporting form', async () => {
-    const user = userEvent.setup()
+  it('integrates stage-filtered exception reporting in the parcel workflow', async () => {
     const api = createMockApi()
 
     render(
@@ -216,11 +216,10 @@ describe('CourierParcelDetails component', () => {
 
     expect(await screen.findByRole('heading', { name: 'SWD-20261026-9999' })).toBeInTheDocument()
 
-    const toggleBtn = screen.getByRole('button', { name: /unable to deliver\? report exception/i })
-    await user.click(toggleBtn)
-
     expect(
       await screen.findByRole('heading', { name: /record failed delivery reason/i }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /recipient unavailable/i })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /parcel package physically damaged/i })).not.toBeInTheDocument()
   })
 })

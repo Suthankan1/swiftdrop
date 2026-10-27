@@ -8,7 +8,8 @@ import type {
   ParcelDetailResponse,
   ProofDetailResponse,
 } from '../api/proofContracts'
-import { FailedDeliveryReason } from './FailedDeliveryReason'
+import { createCourierStatusApi } from '../api/status'
+import { CourierStageActions } from './CourierStageActions'
 import { ProofCaptureForm } from './ProofCaptureForm'
 
 export type ProofLookupStatus =
@@ -23,12 +24,16 @@ export interface CourierParcelDetailsProps {
   parcelId: string
   onClose: () => void
   apiOverride?: ReturnType<typeof createCourierProofApi>
+  statusApiOverride?: ReturnType<typeof createCourierStatusApi>
+  onAssignmentLost?: (message: string) => void
 }
 
 export function CourierParcelDetails({
   parcelId,
   onClose,
   apiOverride,
+  statusApiOverride,
+  onAssignmentLost,
 }: CourierParcelDetailsProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -41,6 +46,14 @@ export function CourierParcelDetails({
       }),
     [apiOverride, auth.getAccessToken],
   )
+  const statusApi = useMemo(
+    () =>
+      statusApiOverride ||
+      createCourierStatusApi({
+        getAccessToken: auth.getAccessToken,
+      }),
+    [statusApiOverride, auth.getAccessToken],
+  )
 
   const [parcel, setParcel] = useState<ParcelDetailResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -49,7 +62,6 @@ export function CourierParcelDetails({
   const [existingProof, setExistingProof] = useState<ProofDetailResponse | null>(null)
   const [proofLookupStatus, setProofLookupStatus] = useState<ProofLookupStatus>('idle')
   const [proofLookupError, setProofLookupError] = useState<string | null>(null)
-  const [showExceptionSection, setShowExceptionSection] = useState(false)
 
   // Subject and parcel isolation: wipe private details immediately if session or parcelId changes
   const [prevSubject, setPrevSubject] = useState(subject)
@@ -62,7 +74,6 @@ export function CourierParcelDetails({
     setProofLookupStatus('checking')
     setProofLookupError(null)
     setError(null)
-    setShowExceptionSection(false)
   }
 
   // Load authorized parcel details and verify proof record
@@ -78,8 +89,8 @@ export function CourierParcelDetails({
         const parcelData = await api.getParcel(parcelId, controller.signal)
         if (!active) return
 
-        // Object-level client verification: ensure parcel is assigned to current courier if indicated
-        if (parcelData.activeCourierSub && parcelData.activeCourierSub !== subject) {
+        // Object-level defense in depth: fail closed unless the active assignment matches exactly.
+        if (parcelData.activeCourierSub !== subject) {
           setError('Access denied: You are not the active courier assigned to this parcel.')
           setParcel(null)
           setProofLookupStatus('forbidden')
@@ -92,6 +103,12 @@ export function CourierParcelDetails({
         try {
           const proofData = await api.getProofMetadata(parcelId, controller.signal)
           if (!active) return
+          if (proofData.parcelId !== parcelId) {
+            setExistingProof(null)
+            setProofLookupStatus('error')
+            setProofLookupError('Proof verification returned a record for a different parcel.')
+            return
+          }
           setExistingProof(proofData)
           setProofLookupStatus('verified-exists')
         } catch (proofErr) {
@@ -151,6 +168,12 @@ export function CourierParcelDetails({
     setProofLookupError(null)
     try {
       const proofData = await api.getProofMetadata(parcelId)
+      if (proofData.parcelId !== parcelId) {
+        setExistingProof(null)
+        setProofLookupStatus('error')
+        setProofLookupError('Proof verification returned a record for a different parcel.')
+        return
+      }
       setExistingProof(proofData)
       setProofLookupStatus('verified-exists')
     } catch (err) {
@@ -274,6 +297,29 @@ export function CourierParcelDetails({
           </article>
 
           {/* Proof Capture & Exception Workspace */}
+          <CourierStageActions
+            key={`${subject}-${parcel.parcelId}`}
+            parcel={parcel}
+            subject={subject}
+            proof={existingProof}
+            proofLookupStatus={proofLookupStatus}
+            proofApi={api}
+            statusApi={statusApi}
+            onParcelRefresh={setParcel}
+            onProofRefresh={(proof, status) => {
+              setExistingProof(proof)
+              setProofLookupStatus(status)
+              setProofLookupError(null)
+            }}
+            onAssignmentLost={(message) => {
+              setParcel(null)
+              setExistingProof(null)
+              setProofLookupStatus('forbidden')
+              setError(message)
+              onAssignmentLost?.(message)
+            }}
+          />
+
           <section className="parcel-proof-workspace" aria-label="Proof of delivery and handover">
             {proofLookupStatus === 'error' && (
               <div className="feedback-banner is-error card" role="alert">
@@ -318,32 +364,22 @@ export function CourierParcelDetails({
                 void api
                   .getProofMetadata(parcel.parcelId)
                   .then((detail) => {
+                    if (detail.parcelId !== parcel.parcelId) {
+                      setExistingProof(null)
+                      setProofLookupStatus('error')
+                      setProofLookupError('Proof verification returned a record for a different parcel.')
+                      return
+                    }
                     setExistingProof(detail)
                     setProofLookupStatus('verified-exists')
                   })
                   .catch(() => {
-                    setProofLookupStatus('verified-exists')
+                    setExistingProof(null)
+                    setProofLookupStatus('error')
+                    setProofLookupError('Proof was uploaded, but server reconciliation failed. Verify proof before completing delivery.')
                   })
               }}
             />
-
-            <div className="exception-toggle-wrap">
-              <button
-                type="button"
-                className="button button-secondary button-small"
-                onClick={() => setShowExceptionSection(!showExceptionSection)}
-                aria-expanded={showExceptionSection}
-              >
-                {showExceptionSection ? 'Hide Exception Form' : 'Unable to Deliver? Report Exception'}
-              </button>
-            </div>
-
-            {showExceptionSection && (
-              <FailedDeliveryReason
-                parcelId={parcel.parcelId}
-                trackingNumber={parcel.trackingNumber}
-              />
-            )}
           </section>
         </>
       )}

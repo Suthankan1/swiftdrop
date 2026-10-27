@@ -1036,6 +1036,15 @@ main:focus { outline: none; }
 .spec-value { font-size: 14px; font-weight: 500; }
 .parcel-route-card { display: flex; flex-direction: column; gap: 14px; }
 .card-subheading { font-size: 16px; margin: 0; font-weight: 600; }
+.courier-stage-actions { display: flex; flex-direction: column; gap: 18px; border-top: 4px solid var(--color-teal); }
+.stage-command-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+.stage-command-panel .input-textarea { width: 100%; }
+.stage-failure-panel { display: flex; flex-direction: column; gap: 14px; }
+.stage-failure-panel .failure-reason-card { margin-top: 0; }
+.terminal-confirmation-panel { padding: 16px; border: 1px solid #e3a9a9; border-radius: 8px; background: #fff7f7; }
+.terminal-confirmation-panel p { margin-top: 0; }
+.feedback-banner.is-notice { background: #eef3f5; color: #294d57; border: 1px solid #cbdce1; }
+.field-error { color: #8a1f1f; font-size: 13px; margin: 0; }
 .parcel-proof-workspace { display: flex; flex-direction: column; gap: 20px; }
 
 @media (max-width: 480px) {
@@ -1047,6 +1056,7 @@ main:focus { outline: none; }
   .pagination-info { text-align: center; }
   .courier-summary-grid { grid-template-columns: 1fr; }
   .parcel-specs-grid { grid-template-columns: 1fr 1fr; }
+  .stage-command-panel .button, .terminal-confirmation-panel .button { width: 100%; justify-content: center; }
 }
 .merchant-review-page { max-width: 1120px; }
 .merchant-review-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-block: 1rem; }

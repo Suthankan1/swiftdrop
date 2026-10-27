@@ -46,7 +46,7 @@ describe('FailedDeliveryReason component', () => {
     await user.click(submitBtn)
 
     expect(onSubmitReady).toHaveBeenCalledWith('REFUSED_BY_RECIPIENT', 'Recipient declined delivery citing wrong item order.')
-    expect(screen.getByRole('status')).toHaveTextContent(/failure reason recorded locally: REFUSED_BY_RECIPIENT/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/failure reason prepared locally: REFUSED_BY_RECIPIENT/i)
     expect(screen.getByRole('status')).toHaveTextContent(/not committed to backend/i)
   })
 
