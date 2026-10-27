@@ -379,6 +379,37 @@ mvn -f services/communications-service/pom.xml verify
   - Real PostgreSQL concurrency integration test in `CommunicationsPersistencePostgresIT.testConcurrentWorkerLeaseAndExhaustionLifecycle`.
   - Total communications-service test count increased to 254 passing tests.
 
+### IMPLEMENTED in Issue #155 (N10-B22):
+- [x] Webhook Egress SSRF Hardening & DNS Pinning:
+  - Exact send-time destination validation enforcing HTTPS-only, no embedded credentials, valid hostname, and valid port.
+  - Comprehensive rejection of local/loopback (127.0.0.0/8, 0.0.0.0, ::1), RFC 1918 private IPv4, link-local (169.254.0.0/16, fe80::/10), multicast, any-local, and internal suffixes (.local, .internal, .localhost).
+  - Cloud metadata rejection: AWS IMDSv4 (169.254.169.254), AWS IMDSv2 IPv6 (fd00:ec2::254), AWS task metadata (169.254.170.2), and Alibaba metadata (100.100.100.200).
+  - IPv4-mapped IPv6 bypass defense: unpacks mapped IPv4 addresses and executes full security checks.
+  - DNS Rebinding / TOCTOU defense: `resolveAndCheckAddresses` checks all resolved A/AAAA records (mixed safe/unsafe answers fail closed).
+  - Outbound socket pinning: `PinnedSSLSocketFactory` connects outbound TCP socket strictly to the pre-validated `pinnedAddress` while maintaining TLS SNI and standard HTTPS certificate hostname verification.
+  - Redirect protection: redirects strictly disabled (`followRedirects = NEVER` / `setInstanceFollowRedirects(false)`).
+  - Memory & timeout bounds: bounded connect/request timeouts, bounded 64KB response body read (`maxResponseBytes`), and zero logging of secrets, raw PII, or auth headers.
+- [x] HMAC Secret Rotation:
+  - Added REST endpoint `POST /api/v1/merchants/webhooks/{subscriptionId}/rotate-secret` with `Cache-Control: no-store`.
+  - Generates new secret, encrypts with AES-256-GCM, and returns plaintext secret once.
+  - Preserves event identity, payload digest, and queued deliveries.
+- [x] Authorized Failed-Job Replay:
+  - Added REST endpoint `POST /api/v1/merchants/webhooks/{subscriptionId}/deliveries/{deliveryId}/replay` accepting `ReplayWebhookDeliveryRequest(reason)`.
+  - Requires verified JWT with merchant ownership or operator/admin (`ADMIN`, `DISPATCHER`) authority.
+  - Strict terminal state guard: only `FAILED` or `EXHAUSTED` jobs can be replayed; non-terminal jobs (`SUCCESS`, `PENDING`, `PROCESSING`) rejected with 409 Conflict.
+  - Flyway migration `V2__create_webhook_replays_table.sql` creating durable audit table `webhook_replays` recording `replay_id`, `delivery_id`, `subscription_id`, `merchant_id`, `actor_sub`, `actor_role`, `reason`, `previous_status`, `replayed_at`.
+  - Resets job status to `PENDING` with `next_attempt_at = now`, resets `attempt_count = 0` while preserving complete historical attempt lineage in `webhook_attempts`.
+- [x] Automated Test Coverage:
+  - 14 additional unit tests in `WebhookDestinationValidatorTest` (DNS rebinding, mixed safe/unsafe answers, IPv4-mapped IPv6 bypass, cloud metadata IPv4/IPv6, CGNAT, ValidatedWebhookDestination).
+  - 2 additional unit tests in `DefaultWebhookHttpClientTest` (PinnedSSLSocketFactory SNI/HTTPS endpoint identification, socket pinning dispatch).
+  - 4 additional unit tests in `WebhookSubscriptionControllerTest` (rotate-secret endpoint, replay endpoint, blank reason rejection, non-terminal 409 conflict).
+  - 4 additional unit tests in `WebhookSubscriptionServiceTest` (replay EXHAUSTED delivery, replay FAILED delivery, SUCCESS status 409 rejection, cross-tenant 403 rejection, admin operator authorization).
+  - V2 Flyway migration verification in `CommunicationsFlywayMigrationTest.verifyV2FlywayMigrationScript`.
+  - Entity lifecycle test for `WebhookReplayAudit` in `CommunicationsEntityTest`.
+  - Data ownership verification for `webhook_replays` in `CommunicationsDataOwnershipTest`.
+  - Real PostgreSQL replay and audit constraint integration test in `CommunicationsPersistencePostgresIT.testWebhookDeliveryReplayAndAuditPersistence`.
+  - Total test count increased from 254 to 280 passing tests.
+
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
 - ❌ External SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).

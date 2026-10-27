@@ -80,16 +80,19 @@ class CommunicationsPersistencePostgresIT {
     private WebhookAttemptRepository webhookAttemptRepository;
 
     @Autowired
+    private com.swiftdrop.communicationsservice.webhook.WebhookReplayAuditRepository webhookReplayAuditRepository;
+
+    @Autowired
     private DurableJobPersistenceService durableJobPersistenceService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
 
     @Test
-    @DisplayName("A. Flyway applies V1 migration cleanly on real PostgreSQL communications_db")
+    @DisplayName("A. Flyway applies V1 and V2 migrations cleanly on real PostgreSQL communications_db")
     void testFlywayMigrationCleanApplication() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("communications_db");
 
         List<String> tables = jdbc.queryForList("""
@@ -103,6 +106,7 @@ class CommunicationsPersistencePostgresIT {
                 "webhook_subscriptions",
                 "webhook_deliveries",
                 "webhook_attempts",
+                "webhook_replays",
                 "flyway_schema_history"
         );
     }
@@ -586,5 +590,77 @@ class CommunicationsPersistencePostgresIT {
         List<WebhookDelivery> dueAfterExhaustion = webhookDeliveryRepository.findDueDeliveries(
                 WebhookDeliveryStatus.PENDING, now.plusSeconds(600), org.springframework.data.domain.PageRequest.of(0, 10));
         assertThat(dueAfterExhaustion).extracting(WebhookDelivery::getDeliveryId).doesNotContain(delivery.getDeliveryId());
+    }
+
+    @Test
+    @DisplayName("N. Replaying exhausted delivery transitions state to PENDING and persists durable replay audit")
+    void testWebhookDeliveryReplayAndAuditPersistence() {
+        UUID merchantId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookSubscription sub = new WebhookSubscription(
+                null, merchantId, "https://api.partner.com/wh", "parcel.status.changed.v1", "enc:v1:token");
+        sub = webhookSubscriptionRepository.saveAndFlush(sub);
+
+        WebhookDelivery delivery = new WebhookDelivery(
+                null, sub.getSubscriptionId(), eventId, parcelId, merchantId, 1, "digest-replay-test");
+        delivery.setStatus(WebhookDeliveryStatus.EXHAUSTED);
+        delivery.setAttemptCount(5);
+        delivery.setNextAttemptAt(null);
+        delivery = webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Replay: reset to PENDING and record audit
+        Instant now = Instant.now();
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit audit =
+                new com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit(
+                        null,
+                        delivery.getDeliveryId(),
+                        sub.getSubscriptionId(),
+                        merchantId,
+                        "operator-sub-456",
+                        "ADMIN",
+                        "Manual operator unblock after endpoint recovery",
+                        "EXHAUSTED",
+                        now
+                );
+        audit = webhookReplayAuditRepository.saveAndFlush(audit);
+
+        assertThat(audit.getReplayId()).isNotNull();
+        assertThat(audit.getPreviousStatus()).isEqualTo("EXHAUSTED");
+        assertThat(audit.getActorRole()).isEqualTo("ADMIN");
+
+        // Verify audit can be queried by deliveryId
+        List<com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit> audits =
+                webhookReplayAuditRepository.findByDeliveryIdOrderByReplayedAtDesc(delivery.getDeliveryId());
+        assertThat(audits).hasSize(1);
+        assertThat(audits.get(0).getReason()).contains("Manual operator unblock");
+
+        // Replay updates the delivery
+        delivery.setStatus(WebhookDeliveryStatus.PENDING);
+        delivery.setAttemptCount(0);
+        delivery.setNextAttemptAt(now);
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // Verify replayed job is immediately discoverable by findDueDeliveries
+        List<WebhookDelivery> dueReplayed = webhookDeliveryRepository.findDueDeliveries(
+                WebhookDeliveryStatus.PENDING, now.plusSeconds(10), org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(dueReplayed).extracting(WebhookDelivery::getDeliveryId).contains(delivery.getDeliveryId());
+
+        // Verify database constraint: non-failed status violates CHECK constraint
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit invalidAudit =
+                new com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit(
+                        null,
+                        delivery.getDeliveryId(),
+                        sub.getSubscriptionId(),
+                        merchantId,
+                        "operator-sub-456",
+                        "ADMIN",
+                        "Invalid replay test",
+                        "SUCCESS",
+                        now
+                );
+        assertThatThrownBy(() -> webhookReplayAuditRepository.saveAndFlush(invalidAudit))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }
