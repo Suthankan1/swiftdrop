@@ -11,6 +11,12 @@ policy. This records the assignee's confirmation; it does not fabricate a
 separate GitHub owner review. Integration base inspected: `609b05b` on `test`.
 The Pricing OpenAPI now includes the additive admin contract at version 1.1.0.
 
+**Latest technical verification (2026-10-27): PASS — 187 tests, zero failures,
+errors or skips.** This supersedes the earlier Docker-blocked results below:
+167 unit/security tests and 20 real PostgreSQL integration tests passed after
+the assignee started Docker. Independent owner/security acceptance and the
+Platform-owned CI dependency repair remain outstanding.
+
 ## Initial evidence and decisions (at the inspected base)
 
 1. `contracts/rest/openapi-pricing.yaml` defines only quote creation/retrieval and
@@ -312,3 +318,45 @@ The earlier 166 unit/security passes belong to implementation commit
 `a760b0492f9c0a52b04ededc8e8e6835f18fa1e2`. The new concurrent-edit assertion
 has compiled but has not executed against PostgreSQL. The full PostgreSQL suite
 now consists of 8 admin tests plus the 12 unchanged persistence tests.
+
+## Docker-backed verification completed — 2026-10-27
+
+The assignee reported Docker started. Docker Engine 29.7.2 was reachable using
+the authorized test process. Only disposable Testcontainers resources were
+started; no Platform Compose stack or deployment was executed.
+
+The first run passed 166 unit/security tests but could not retrieve the
+PostgreSQL image: Testcontainers aborted the image pull after 30 seconds without
+progress. A direct Docker Hub pull also stalled. [Docker's verified public image
+catalog](https://gallery.ecr.aws/docker/) lists the PostgreSQL mirror under `public.ecr.aws/docker/library/postgres`.
+Pulled `16-alpine` there and cached it locally as `postgres:16-alpine`, without
+changing repository configuration or the test image declarations. Image ID:
+`sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab`.
+The running database reported PostgreSQL **16.15**.
+
+With the image available, all four Flyway migrations applied successfully and
+19 of 20 integration tests passed. The historical quote test exposed a real
+precision mismatch: issuance returned nanosecond timestamps, while PostgreSQL
+TIMESTAMPTZ stored microseconds. QuoteApplicationService now truncates issuance
+time to microseconds before computing expiry, persistence and response mapping.
+A focused unit regression covers a nanosecond clock. The integration test keeps
+its exact full-snapshot equality assertions; they were not weakened.
+
+Final command: Pricing wrapper **`-B -ntp clean verify`**.
+
+| Suite | Passed | Failures | Errors | Skipped |
+|---|---:|---:|---:|---:|
+| Unit/security, including the new timestamp regression | 167 | 0 | 0 | 0 |
+| AdminPricingPostgresIT | 8 | 0 | 0 | 0 |
+| PricingPersistencePostgresIT | 12 | 0 | 0 | 0 |
+| **Total** | **187** | **0** | **0** | **0** |
+
+BUILD SUCCESS, completed at **11:50:28 Asia/Colombo on 2026-10-27**.
+Both PostgreSQL suites applied V1–V4 successfully. Evidence includes concurrent
+draft edits, competing publication, shared/exclusive locks, database overlap and
+published-rule guards, audit rollback and old quote validation after supersession
+and archive. Existing migrations were not changed.
+
+Historical blocked/failed attempts above remain as provenance. The earlier
+Docker/PostgreSQL execution blocker is resolved; GitHub CI's undefined job
+dependency and manual linked-Project update remain separate Platform/UI blockers.
