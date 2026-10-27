@@ -15,6 +15,7 @@ import { MerchantWebhooksPage } from '../../features/merchant/pages/MerchantWebh
 import { MerchantEnrollmentPage } from '../../features/merchant/pages/MerchantEnrollmentPage'
 import { MerchantCredentialsPage } from '../../features/merchant/pages/MerchantCredentialsPage'
 import { LandingPage } from '../../features/public/LandingPage'
+import { PublicTrackingPage } from '../../features/public/PublicTrackingPage'
 import { NotFoundPage } from '../../features/public/NotFoundPage'
 import { LoginPage, CallbackPage, LogoutPage, ProtectedRoute } from '../../auth/AuthPages'
 
@@ -23,6 +24,8 @@ export function AppRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<LandingPage />} />
+        <Route path="tracking" element={<PublicTrackingPage />} />
+        <Route path="tracking/:trackingNumber" element={<PublicTrackingPage />} />
         <Route element={<ProtectedRoute role="CUSTOMER" />}>
           <Route path="customer" element={<CustomerPage />} />
           <Route path="customer/quote" element={<CustomerQuotePage />} />

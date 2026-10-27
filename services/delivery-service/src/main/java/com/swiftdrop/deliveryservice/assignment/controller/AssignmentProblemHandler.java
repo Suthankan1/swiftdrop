@@ -5,6 +5,7 @@ import com.swiftdrop.deliveryservice.assignment.exception.AssignmentConflictExce
 import com.swiftdrop.deliveryservice.assignment.exception.IneligibleCourierException;
 import com.swiftdrop.deliveryservice.assignment.exception.InvalidParcelStateException;
 import com.swiftdrop.deliveryservice.core.ParcelNotFoundException;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -12,10 +13,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.net.URI;
 import java.time.Instant;
@@ -45,6 +49,20 @@ public class AssignmentProblemHandler {
     @ExceptionHandler(AssignmentConflictException.class)
     ProblemDetail handleConflict(AssignmentConflictException e, HttpServletRequest request) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        problem.setTitle("Assignment Conflict");
+        problem.setType(URI.create("https://swiftdrop.com/errors/ASSIGNMENT_CONFLICT"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("timestamp", Instant.now().toString());
+        problem.setProperty("code", "ASSIGNMENT_CONFLICT");
+        return problem;
+    }
+
+    @ExceptionHandler({JpaOptimisticLockingFailureException.class, OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
+    ProblemDetail handleOptimisticLockFailure(Exception e, HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                "Concurrent assignment conflict detected: parcel aggregate version changed. Please retry with latest version."
+        );
         problem.setTitle("Assignment Conflict");
         problem.setType(URI.create("https://swiftdrop.com/errors/ASSIGNMENT_CONFLICT"));
         problem.setInstance(URI.create(request.getRequestURI()));
@@ -128,6 +146,17 @@ public class AssignmentProblemHandler {
         problem.setInstance(URI.create(request.getRequestURI()));
         problem.setProperty("timestamp", Instant.now().toString());
         problem.setProperty("code", "MALFORMED_REQUEST_BODY");
+        return problem;
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException e, HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Invalid identifier format.");
+        problem.setTitle("Bad Request");
+        problem.setType(URI.create("https://swiftdrop.com/errors/INVALID_IDENTIFIER"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("timestamp", Instant.now().toString());
+        problem.setProperty("code", "INVALID_IDENTIFIER");
         return problem;
     }
 }
