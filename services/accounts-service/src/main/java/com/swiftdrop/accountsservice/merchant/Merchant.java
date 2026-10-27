@@ -54,7 +54,7 @@ public class Merchant {
     public Merchant(UUID id, UUID accountProfileId, String keycloakSub,
                     String businessName, String registrationNumber,
                     MerchantStatus status, Instant createdAt, Instant updatedAt) {
-        this(id, accountProfileId, keycloakSub, businessName, registrationNumber, status, createdAt, updatedAt, 0L);
+        this(id, accountProfileId, keycloakSub, businessName, registrationNumber, status, createdAt, updatedAt, null);
     }
 
     public Merchant(UUID id, UUID accountProfileId, String keycloakSub,
@@ -69,7 +69,7 @@ public class Merchant {
         this.status = Objects.requireNonNull(status, "Status is required");
         this.createdAt = Objects.requireNonNull(createdAt, "Created at is required");
         this.updatedAt = Objects.requireNonNull(updatedAt, "Updated at is required");
-        this.version = version != null ? version : 0L;
+        this.version = version;
     }
 
     public UUID getId() { return id; }
@@ -80,7 +80,7 @@ public class Merchant {
     public MerchantStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
-    public Long getVersion() { return version; }
+    public Long getVersion() { return version != null ? version : 0L; }
 
     public void setStatus(MerchantStatus status, Instant updatedAt) {
         this.status = Objects.requireNonNull(status, "Status is required");

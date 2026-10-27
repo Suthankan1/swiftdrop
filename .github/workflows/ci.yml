@@ -404,6 +404,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install policy test dependencies
+        run: pip install pyyaml pytest
+
       - name: Validate Compose shell scripts syntax
         run: |
           for script in platform/compose/*.sh; do
@@ -445,8 +448,8 @@ jobs:
       - name: Extract commit SHA identifiers
         id: vars
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "sha_full=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "sha_full=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push all 8 runtime images to private GHCR
         env:
