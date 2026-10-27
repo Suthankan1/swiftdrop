@@ -29,6 +29,7 @@ public class StripUntrustedHeadersGatewayFilter implements GlobalFilter, Ordered
             // User and role identity claims
             "x-user-id",
             "x-roles",
+            "x-user-roles",
             "x-tenant-id",
             "x-keycloak-sub",
             "x-user-email",
@@ -39,6 +40,10 @@ public class StripUntrustedHeadersGatewayFilter implements GlobalFilter, Ordered
             "x-forwarded-user",
             "x-forwarded-roles",
             "x-forwarded-groups",
+            "x-forwarded-email",
+            "x-forwarded-sub",
+            "x-forwarded-preferred-username",
+            "x-gateway-auth",
 
             // Internal gRPC service authentication & actor delegation context (Issue #100 / PR #188)
             "x-swiftdrop-service-token",
