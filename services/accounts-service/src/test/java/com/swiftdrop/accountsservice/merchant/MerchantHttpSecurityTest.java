@@ -59,6 +59,8 @@ class MerchantHttpSecurityTest {
     @MockitoBean MerchantTenantAuthorizationProvider tenantAuthorizationProvider;
     @MockitoBean MerchantApprovalProvider approvalProvider;
     @MockitoBean MerchantEnrollmentService enrollmentService;
+    @MockitoBean com.swiftdrop.accountsservice.reconciliation.MerchantRoleReconciliationService merchantReconciliationService;
+    @MockitoBean MerchantRepository merchantRepository;
 
     private static final UUID merchantAId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID merchantBId = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -389,5 +391,88 @@ class MerchantHttpSecurityTest {
                 .andExpect(jsonPath("status").value(409))
                 .andExpect(jsonPath("title").value("Conflict"))
                 .andExpect(jsonPath("detail").value("Authenticated user already owns a merchant tenant"));
+    }
+
+    @Test
+    @DisplayName("17. Unauthenticated request to POST /api/v1/merchants/{id}/approve returns 401 Unauthorized")
+    void unauthenticatedApprove_returns401() throws Exception {
+        mvc.perform(post("/api/v1/merchants/{merchantId}/approve", merchantAId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("status").value(401))
+                .andExpect(jsonPath("title").value("Unauthorized"));
+    }
+
+    @Test
+    @DisplayName("18. Non-ADMIN roles (CUSTOMER, MERCHANT, COURIER) rejected with 403 on POST approve")
+    void nonAdminRolesRejectedOnApprove_returns403() throws Exception {
+        for (String role : List.of("CUSTOMER", "MERCHANT", "COURIER")) {
+            String token = createToken("user-" + role, List.of(role));
+            mvc.perform(post("/api/v1/merchants/{merchantId}/approve", merchantAId)
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("status").value(403))
+                    .andExpect(jsonPath("title").value("Forbidden"));
+        }
+    }
+
+    @Test
+    @DisplayName("19. ADMIN role authorized on POST /api/v1/merchants/{id}/approve returns 200 OK")
+    void adminAuthorizedOnApprove_returns200() throws Exception {
+        String adminToken = createToken("admin-sub-1", List.of("ADMIN"));
+        var merchant = new Merchant(
+                merchantAId, UUID.randomUUID(), subMerchantA,
+                "Store Direct LK", "PV-123456", MerchantStatus.APPROVED,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(merchantAId)).thenReturn(Optional.of(merchant));
+
+        mvc.perform(post("/api/v1/merchants/{merchantId}/approve", merchantAId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\": 0}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("id").value(merchantAId.toString()))
+                .andExpect(jsonPath("status").value("APPROVED"));
+    }
+
+    @Test
+    @DisplayName("20. Non-ADMIN roles (CUSTOMER, MERCHANT, COURIER) rejected with 403 on POST suspend")
+    void nonAdminRolesRejectedOnSuspend_returns403() throws Exception {
+        for (String role : List.of("CUSTOMER", "MERCHANT", "COURIER")) {
+            String token = createToken("user-" + role, List.of(role));
+            mvc.perform(post("/api/v1/merchants/{merchantId}/suspend", merchantAId)
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"reason\": \"Compliance violation\"}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("status").value(403))
+                    .andExpect(jsonPath("title").value("Forbidden"));
+        }
+    }
+
+    @Test
+    @DisplayName("21. ADMIN role authorized on POST /api/v1/merchants/{id}/suspend returns 200 OK")
+    void adminAuthorizedOnSuspend_returns200() throws Exception {
+        String adminToken = createToken("admin-sub-1", List.of("ADMIN"));
+        var merchant = new Merchant(
+                merchantAId, UUID.randomUUID(), subMerchantA,
+                "Store Direct LK", "PV-123456", MerchantStatus.SUSPENDED,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(merchantAId)).thenReturn(Optional.of(merchant));
+
+        mvc.perform(post("/api/v1/merchants/{merchantId}/suspend", merchantAId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\": \"Repeated compliance breach\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("id").value(merchantAId.toString()))
+                .andExpect(jsonPath("status").value("SUSPENDED"));
     }
 }

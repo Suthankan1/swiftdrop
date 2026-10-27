@@ -1,6 +1,7 @@
 package com.swiftdrop.accountsservice.merchant;
 
 import com.swiftdrop.accountsservice.identity.CurrentIdentityProvider;
+import com.swiftdrop.accountsservice.identity.TrustedIdentity;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.CacheControl;
@@ -26,22 +27,35 @@ public class MerchantController {
     private final MerchantTenantAuthorizationProvider tenantAuthorizationProvider;
     private final MerchantApprovalProvider approvalProvider;
     private final MerchantEnrollmentService enrollmentService;
+    private final com.swiftdrop.accountsservice.reconciliation.MerchantRoleReconciliationService merchantReconciliationService;
+    private final MerchantRepository merchantRepository;
 
     public MerchantController(CurrentIdentityProvider identityProvider,
                               MerchantTenantAuthorizationProvider tenantAuthorizationProvider,
                               MerchantApprovalProvider approvalProvider) {
-        this(identityProvider, tenantAuthorizationProvider, approvalProvider, null);
+        this(identityProvider, tenantAuthorizationProvider, approvalProvider, null, null, null);
+    }
+
+    public MerchantController(CurrentIdentityProvider identityProvider,
+                              MerchantTenantAuthorizationProvider tenantAuthorizationProvider,
+                              MerchantApprovalProvider approvalProvider,
+                              MerchantEnrollmentService enrollmentService) {
+        this(identityProvider, tenantAuthorizationProvider, approvalProvider, enrollmentService, null, null);
     }
 
     @Autowired
     public MerchantController(CurrentIdentityProvider identityProvider,
                               MerchantTenantAuthorizationProvider tenantAuthorizationProvider,
                               MerchantApprovalProvider approvalProvider,
-                              MerchantEnrollmentService enrollmentService) {
+                              MerchantEnrollmentService enrollmentService,
+                              @Autowired(required = false) com.swiftdrop.accountsservice.reconciliation.MerchantRoleReconciliationService merchantReconciliationService,
+                              @Autowired(required = false) MerchantRepository merchantRepository) {
         this.identityProvider = Objects.requireNonNull(identityProvider, "CurrentIdentityProvider is required");
         this.tenantAuthorizationProvider = Objects.requireNonNull(tenantAuthorizationProvider, "MerchantTenantAuthorizationProvider is required");
         this.approvalProvider = Objects.requireNonNull(approvalProvider, "MerchantApprovalProvider is required");
         this.enrollmentService = enrollmentService;
+        this.merchantReconciliationService = merchantReconciliationService;
+        this.merchantRepository = merchantRepository;
     }
 
     /**
@@ -97,6 +111,62 @@ public class MerchantController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new MerchantStatusResponse(merchantId, status, status.isApproved()));
+    }
+
+    /**
+     * Approves a pending merchant enrollment. Requires authenticated ADMIN role.
+     * Conforms to OpenAPI /api/v1/merchants/{id}/approve contract.
+     */
+    @PostMapping("/api/v1/merchants/{id}/approve")
+    public ResponseEntity<MerchantProfileResponse> approveMerchant(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AdminMerchantDecisionRequest request) {
+        var identity = identityProvider.currentIdentity();
+        validateAdminCaller(identity);
+        if (merchantReconciliationService == null || merchantRepository == null) {
+            throw new IllegalStateException("Merchant reconciliation service is not configured");
+        }
+        Long expectedVersion = request != null ? request.resolveExpectedVersion() : null;
+        String reviewToken = request != null ? request.reviewToken() : null;
+        merchantReconciliationService.approveMerchant(identity, id, expectedVersion, reviewToken);
+        var updated = merchantRepository.findById(id)
+                .orElseThrow(() -> new MerchantNotFoundException("Merchant not found: " + id));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(MerchantProfileResponse.fromEntity(updated));
+    }
+
+    /**
+     * Suspends an approved merchant tenant. Requires authenticated ADMIN role and mandatory non-empty reason.
+     */
+    @PostMapping("/api/v1/merchants/{id}/suspend")
+    public ResponseEntity<MerchantProfileResponse> suspendMerchant(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AdminMerchantDecisionRequest request) {
+        var identity = identityProvider.currentIdentity();
+        validateAdminCaller(identity);
+        if (merchantReconciliationService == null || merchantRepository == null) {
+            throw new IllegalStateException("Merchant reconciliation service is not configured");
+        }
+        if (request == null || request.reason() == null || request.reason().trim().isEmpty()) {
+            throw new MerchantDecisionValidationException("Suspension requires a non-empty reason.");
+        }
+        Long expectedVersion = request.resolveExpectedVersion();
+        merchantReconciliationService.suspendMerchant(identity, id, request.reason(), expectedVersion, request.reviewToken());
+        var updated = merchantRepository.findById(id)
+                .orElseThrow(() -> new MerchantNotFoundException("Merchant not found: " + id));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(MerchantProfileResponse.fromEntity(updated));
+    }
+
+    private void validateAdminCaller(TrustedIdentity identity) {
+        if (identity == null || identity.subject() == null || identity.subject().isBlank()) {
+            throw new com.swiftdrop.accountsservice.staff.StaffAccessDeniedException("Authenticated identity is required");
+        }
+        if (!identity.roles().contains("ADMIN")) {
+            throw new com.swiftdrop.accountsservice.staff.StaffAccessDeniedException("Operation requires authenticated ADMIN role. Caller roles: " + identity.roles());
+        }
     }
 
     public record MerchantStatusResponse(UUID merchantId, MerchantStatus status, boolean approved) {}
