@@ -4,7 +4,12 @@
 
 Planned aggregate query families:
 
-- `customerDashboard`: current user parcels, latest delivery status, totals; scope to authenticated `sub`.
+- `customerDashboard`: current user parcels, latest delivery status, totals; scope strictly to authenticated Keycloak `sub`. Requires role `CUSTOMER` (`ROLE_CUSTOMER`).
+  - **`userId` (`ID!`):** Verified Keycloak subject UUID of the authenticated customer caller. Never inferred from query arguments, variables, or caller-controlled headers.
+  - **`activeDeliveriesCount` (`Int!`):** Authoritative count of non-terminal owned parcels (`CREATED`, `PICKED_UP`, `IN_TRANSIT`, `OUT_FOR_DELIVERY`) resolved from `DeliveryInternalService.ListCustomerParcels` (`active_count`). Validated non-negative signed 32-bit GraphQL `Int`.
+  - **`completedDeliveriesCount` (`Int!`):** Authoritative count of terminal owned parcels (`DELIVERED`, `FAILED`) resolved from `DeliveryInternalService.ListCustomerParcels` (`completed_count`). Validated non-negative signed 32-bit GraphQL `Int`.
+  - **`recentParcels` (`[CustomerParcelSummary!]!`):** Bounded preview list (page 0, bounded default size 20, ceiling 50) of recent customer parcels (`parcelId`, `trackingNumber`, `currentStatus`, `amountMinorUnits`, `currency`, `recipientCity`, `createdAt`, `updatedAt` in ISO-8601 UTC). Zero recipient phone numbers, email addresses, or internal database keys exposed. Validated UUIDs, canonical lifecycle statuses, Int32 monetary amounts, and monotonic timestamps.
+  - **Security & Error Model:** Strictly requires `ROLE_CUSTOMER` from verified JWT `actor` in GraphQL context. Missing, unauthenticated, or wrong-role callers fail closed (`UNAUTHENTICATED` / `FORBIDDEN`). Delivery provider independently authorizes delegated customer identity and rejects cross-customer queries. Failures in provider propagate via `SafeGraphqlExceptionResolver` without fabricating placeholder zero records.
 - `merchantDashboard`: approved merchant tenant orders and state counts; reject pending/unapproved tenants.
 - `courierDashboard`: assigned deliveries for current authenticated courier and daily counts; do not accept arbitrary courier ID.
 - `dispatcherDashboard`: unassigned parcel preview, available couriers and active workload; dispatcher permission required.

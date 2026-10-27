@@ -40,7 +40,7 @@ Mutation/Subscription type. Exposed fields:
 
 | Query | Local role gate | Provider / resolver dependency |
 |---|---|---|
-| customerDashboard | CUSTOMER | Customer pair; Delivery subject-scoped dashboard reads |
+| customerDashboard | CUSTOMER | Gajanthan, #132; Delivery subject-scoped dashboard reads (ListCustomerParcels) |
 | merchantDashboard | MERCHANT | Merchant pair; Accounts approval/tenant binding and Delivery reads |
 | courierDashboard | COURIER | Courier pair; Accounts eligibility and Delivery assigned-only reads |
 | dispatcherDashboard | DISPATCHER or ADMIN | Dispatcher pair; Accounts/Delivery queue and workload |

@@ -77,7 +77,7 @@ class GraphqlEndpointSecurityTest {
         }
     }
     @Test void authorizedMissingResolverFailsUnavailableWithoutFakeData() throws Exception {
-        var result = query(valid("CUSTOMER"), "{customerDashboard{userId}}");
+        var result = query(valid("DISPATCHER"), "{deliveryStats{totalCount}}");
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         assertThat(result.getResponse().getContentAsString()).contains("UNAVAILABLE", "\"data\":null").doesNotContain("test-only", "localhost");
     }
