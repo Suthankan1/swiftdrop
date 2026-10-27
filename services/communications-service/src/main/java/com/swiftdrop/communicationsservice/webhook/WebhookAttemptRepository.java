@@ -11,5 +11,7 @@ public interface WebhookAttemptRepository extends JpaRepository<WebhookAttempt, 
 
     List<WebhookAttempt> findByDeliveryIdOrderByAttemptedAtDesc(UUID deliveryId);
 
+    java.util.Optional<WebhookAttempt> findTopByDeliveryIdOrderByAttemptedAtDesc(UUID deliveryId);
+
     long countByDeliveryId(UUID deliveryId);
 }

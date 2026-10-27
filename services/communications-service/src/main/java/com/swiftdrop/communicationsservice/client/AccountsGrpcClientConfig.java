@@ -60,4 +60,11 @@ public class AccountsGrpcClientConfig {
             ManagedChannel accountsGrpcManagedChannel) {
         return new GrpcAccountsRecipientContactClient(accountsGrpcManagedChannel, deadlineMs);
     }
+
+    @Bean
+    @ConditionalOnMissingBean(AccountsMerchantEligibilityClient.class)
+    public AccountsMerchantEligibilityClient accountsMerchantEligibilityClient(
+            ManagedChannel accountsGrpcManagedChannel) {
+        return new GrpcAccountsMerchantEligibilityClient(accountsGrpcManagedChannel, deadlineMs);
+    }
 }

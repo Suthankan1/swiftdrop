@@ -338,4 +338,67 @@ class CommunicationsPersistencePostgresIT {
         );
         assertThat(count).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("H. Webhook subscription tenant-scoped queries, soft deactivation, and FK restriction")
+    void testWebhookSubscriptionTenantIsolationAndRestriction() {
+        UUID merchantA = UUID.randomUUID();
+        UUID merchantB = UUID.randomUUID();
+
+        // Subscription for merchant A
+        WebhookSubscription subA = new WebhookSubscription(
+                UUID.randomUUID(),
+                merchantA,
+                "https://merchant-a.example.com/callbacks",
+                "parcel.status.changed.v1",
+                "enc:v1:secretA"
+        );
+        webhookSubscriptionRepository.saveAndFlush(subA);
+
+        // Subscription for merchant B
+        WebhookSubscription subB = new WebhookSubscription(
+                UUID.randomUUID(),
+                merchantB,
+                "https://merchant-b.example.com/callbacks",
+                "parcel.status.changed.v1",
+                "enc:v1:secretB"
+        );
+        webhookSubscriptionRepository.saveAndFlush(subB);
+
+        // 1. Tenant-scoped query finds own subscription
+        assertThat(webhookSubscriptionRepository.findBySubscriptionIdAndMerchantId(subA.getSubscriptionId(), merchantA)).isPresent();
+        assertThat(webhookSubscriptionRepository.findBySubscriptionIdAndMerchantId(subA.getSubscriptionId(), merchantB)).isEmpty();
+
+        // 2. Tenant-scoped list returns only merchant A's subscriptions
+        List<WebhookSubscription> listA = webhookSubscriptionRepository.findByMerchantIdOrderByCreatedAtDesc(merchantA);
+        assertThat(listA).hasSize(1);
+        assertThat(listA.getFirst().getSubscriptionId()).isEqualTo(subA.getSubscriptionId());
+
+        // 3. Attach delivery to subA
+        UUID deliveryId = UUID.randomUUID();
+        WebhookDelivery delivery = new WebhookDelivery(
+                deliveryId,
+                subA.getSubscriptionId(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                merchantA,
+                1,
+                "digest"
+        );
+        webhookDeliveryRepository.saveAndFlush(delivery);
+
+        // 4. Hard DELETE on subA fails due to ON DELETE RESTRICT foreign key
+        assertThatThrownBy(() -> {
+            webhookSubscriptionRepository.delete(subA);
+            webhookSubscriptionRepository.flush();
+        }).isInstanceOf(DataIntegrityViolationException.class);
+
+        // 5. Soft deactivation succeeds and preserves child delivery
+        subA.setActive(false);
+        webhookSubscriptionRepository.saveAndFlush(subA);
+
+        WebhookSubscription readback = webhookSubscriptionRepository.findById(subA.getSubscriptionId()).orElseThrow();
+        assertThat(readback.getActive()).isFalse();
+        assertThat(webhookDeliveryRepository.findById(deliveryId)).isPresent();
+    }
 }

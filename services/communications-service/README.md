@@ -253,6 +253,32 @@ mvn -f services/communications-service/pom.xml verify
   - Unit tests for database exception mapping regression (`DurableJobPersistenceServiceTest`).
   - Real Kafka and PostgreSQL integration tests (`CommunicationsKafkaConsumerIT`) with `@EmbeddedKafka` and `@Testcontainers(disabledWithoutDocker = true)`.
 
+### IMPLEMENTED in Issue #116 (N10-B17):
+- [x] Authoritative REST API controller `WebhookSubscriptionController` implementing `IF-REST-11` and `IF-REST-12` matching `contracts/rest/openapi-communications.yaml` (v1.0.0):
+  - `POST /api/v1/merchants/webhooks` — Registers HTTPS webhook destination, generates signing secret, returns 201 Created with `Cache-Control: no-store`.
+  - `GET /api/v1/merchants/webhooks` — Lists caller's webhook endpoints, omitting signing secret material.
+  - `GET /api/v1/merchants/webhooks/{subscriptionId}` — Retrieves subscription configuration with strict tenant ownership check.
+  - `DELETE /api/v1/merchants/webhooks/{subscriptionId}` — Soft-deactivates subscription (`active = false`), preserving audit history and delivery foreign keys.
+  - `GET /api/v1/merchants/webhooks/{subscriptionId}/deliveries` — Inspects delivery logs and execution attempts, omitting third-party bodies.
+- [x] Type-safe gRPC client adapter `AccountsMerchantEligibilityClient` (`GrpcAccountsMerchantEligibilityClient`) verifying merchant lifecycle status against Accounts Service (`IF-GRPC-01`, `CheckAccountEligibility`). Enforces `APPROVED` state and fails closed for `PENDING`, `SUSPENDED`, or `REJECTED` accounts.
+- [x] Server-side HTTPS and SSRF defense (`WebhookDestinationValidator`) enforcing `DEC-COM-01`:
+  - Enforces TLS 1.2+ HTTPS transport.
+  - Rejects credentials in URLs, localhost, `.local`/`.internal`/`.localhost` suffixes.
+  - Rejects RFC 1918 private IPv4, loopback, link-local, cloud instance metadata (`169.254.169.254`), IPv6 loopback/link-local/unique-local, and IPv4-mapped IPv6 addresses.
+  - Performs DNS resolution verification with fail-closed error handling.
+- [x] Domain event filter validator (`WebhookEventFilterValidator`): restricts subscriptions strictly to approved event `parcel.status.changed.v1`.
+- [x] Cryptographic HMAC signing secret management (`WebhookSigningSecretService`):
+  - 256-bit cryptographically secure entropy (`swd_whsec_...`).
+  - Authenticated encryption at rest using AES-256-GCM (`enc:v1:<iv>:<ciphertext>`), never storing plaintext in database or logs.
+  - One-time presentation in creation response; never exposed via GET, list, or error responses.
+- [x] Spring Security Resource Server customization (`CommunicationsSecurityConfig`):
+  - Strict default-deny policy.
+  - Requires `ROLE_MERCHANT` for all merchant webhook management routes.
+- [x] RFC 7807 ProblemDetail exception handler (`WebhookProblemHandler`) with structured, non-leaking error responses.
+- [x] Documented formal contract extension proposal for subscription mutation (`PATCH`) and secret rotation (`POST .../rotate-secret`) in `docs/reviews/MERCHANT_WEBHOOK_UPDATE_ROTATION_PROPOSAL.md`.
+- [x] 118 automated tests passing across unit, MockMvc, Spring Security, gRPC, and PostgreSQL integration suites with 100% pass rate.
+- [x] Verified full compatibility with merged Merchant UI (`#21`, `src/features/merchant/api/webhooks.test.ts`).
+
 ### Webhook Worker Handoff Boundary:
 - Merchant webhook processing is completely decoupled from customer notification processing.
 - When the webhook consumer is implemented, it consumes the same topic `parcel.lifecycle.v1` using its own independent consumer group (e.g. `communications.webhooks.v1`).
@@ -261,7 +287,8 @@ mvn -f services/communications-service/pom.xml verify
 
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
+- ❌ Webhook outbound HTTP worker, HMAC dispatch execution, and attempt recording (belongs to **Issue #142**).
+- ❌ Durable webhook retry scheduler and exhaustion handling (belongs to **Issue #151**).
 - ❌ External SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).
-- ❌ Merchant webhook HTTPS dispatcher and signature verification worker (belongs to **Issue #21** / webhook worker).
-- ❌ Public REST API controllers for webhook subscription management.
+- ❌ Shared API Gateway or Keycloak configuration changes.
 - ❌ Cross-service SQL joins or direct database access to Accounts or Delivery databases.
