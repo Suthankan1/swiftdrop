@@ -79,7 +79,8 @@ public class QuoteApplicationService {
                 .orElseThrow(() -> new IllegalStateException("Active rate version not found in database: " + calculation.getRateVersion()));
 
         // 3. Compute creation and UTC expiry timestamps
-        Instant createdAt = Instant.now(clock);
+        // PostgreSQL TIMESTAMPTZ stores microseconds. Return the same precision we persist.
+        Instant createdAt = Instant.now(clock).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         if (!rateVersionEntity.toDomain().isEffectiveAt(createdAt)) {
             throw new com.swiftdrop.pricing.error.RateVersionNotFoundException("No effective active rate version is available");
         }
