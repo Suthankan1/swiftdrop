@@ -1,11 +1,8 @@
 name: SwiftDrop Contract Checks
 
 on:
-  pull_request:
-    branches: [test, main]
-  push:
-    branches: [test]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: contracts-${{ github.workflow }}-${{ github.ref }}
