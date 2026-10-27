@@ -217,6 +217,28 @@ public class GatewayBusinessRoutesIntegrationTest {
     }
 
     @Test
+    @DisplayName("Routes GET /api/v1/merchants/me with CUSTOMER role to Accounts & Partners")
+    void routesGetCurrentMerchantToAccountsService() throws Exception {
+        String token = createToken("merchant-user", List.of("CUSTOMER"));
+        accountsServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"merchantId\":\"m-100\",\"status\":\"PENDING\"}"));
+
+        webTestClient.get()
+                .uri("/api/v1/merchants/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.merchantId").isEqualTo("m-100");
+
+        RecordedRequest req = accountsServer.takeRequest(3, TimeUnit.SECONDS);
+        assertThat(req).isNotNull();
+        assertThat(req.getMethod()).isEqualTo("GET");
+        assertThat(req.getPath()).isEqualTo("/api/v1/merchants/me");
+    }
+
+    @Test
     @DisplayName("Routes POST /api/v1/merchants/{id}/approve to Accounts & Partners for admin approval")
     void routesMerchantApprovalToAccountsService() throws Exception {
         String token = createToken("admin-user", List.of("ADMIN"));

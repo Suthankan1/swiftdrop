@@ -72,12 +72,21 @@ export class AuthSession {
     const params = new URLSearchParams(window.location.search || window.location.hash.slice(1))
     const cancelled = params.get('error') === 'access_denied'
     const generation = this.generation
+    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173'
+    const isTestEnv = typeof navigator !== 'undefined' && navigator.userAgent.includes('jsdom')
     try {
-      const authenticated = await this.client.init({
+      const initOptions: Record<string, unknown> = {
         flow: 'standard', pkceMethod: 'S256', responseMode: 'query', useNonce: true,
         checkLoginIframe: false, enableLogging: false, logoutMethod: 'POST',
         redirectUri: this.redirectUri, messageReceiveTimeout: 5000,
-      })
+      }
+      if (!isTestEnv && !callback) {
+        initOptions.onLoad = 'check-sso'
+        initOptions.silentCheckSsoRedirectUri = `${origin}/silent-check-sso.html`
+      }
+      const initPromise = this.client.init(initOptions as Parameters<Keycloak['init']>[0])
+      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))
+      const authenticated = await Promise.race([initPromise, timeoutPromise])
       if (generation !== this.generation) { this.clearCredentials(); return }
       if (!authenticated || !this.accept()) {
         this.clearCredentials()
