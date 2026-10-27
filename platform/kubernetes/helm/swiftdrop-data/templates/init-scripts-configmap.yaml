@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: business-postgres-init-scripts
+  namespace: {{ .Values.namespaces.data }}
+  labels:
+    {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "business-postgres") | nindent 4 }}
+data:
+  01-init-business-databases.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "==> Initializing SwiftDrop Business Databases & Isolated Roles..."
+
+    PRICING_PASS="${PRICING_DB_PASSWORD:-pricing_dev_password}"
+    DELIVERY_PASS="${DELIVERY_DB_PASSWORD:-delivery_dev_password}"
+    COMMUNICATIONS_PASS="${COMMUNICATIONS_DB_PASSWORD:-communications_dev_password}"
+
+    # 1. Create dedicated application roles (unprivileged: NOSUPERUSER, NOCREATEDB)
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        DO \$\$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pricing_app') THEN
+                CREATE ROLE pricing_app WITH LOGIN PASSWORD '$PRICING_PASS' NOSUPERUSER NOCREATEDB NOREPLICATION;
+                RAISE NOTICE 'Role pricing_app created.';
+            ELSE
+                RAISE NOTICE 'Role pricing_app already exists.';
+            END IF;
+
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'delivery_app') THEN
+                CREATE ROLE delivery_app WITH LOGIN PASSWORD '$DELIVERY_PASS' NOSUPERUSER NOCREATEDB NOREPLICATION;
+                RAISE NOTICE 'Role delivery_app created.';
+            ELSE
+                RAISE NOTICE 'Role delivery_app already exists.';
+            END IF;
+
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'communications_app') THEN
+                CREATE ROLE communications_app WITH LOGIN PASSWORD '$COMMUNICATIONS_PASS' NOSUPERUSER NOCREATEDB NOREPLICATION;
+                RAISE NOTICE 'Role communications_app created.';
+            ELSE
+                RAISE NOTICE 'Role communications_app already exists.';
+            END IF;
+        END
+        \$\$;
+
+        -- 2. Create independent logical databases owned by respective service roles
+        SELECT 'CREATE DATABASE pricing_db OWNER pricing_app'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'pricing_db')\gexec
+
+        SELECT 'CREATE DATABASE delivery_db OWNER delivery_app'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'delivery_db')\gexec
+
+        SELECT 'CREATE DATABASE communications_db OWNER communications_app'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'communications_db')\gexec
+
+        -- 3. Revoke public connect permissions to enforce cross-service boundary isolation
+        REVOKE ALL ON DATABASE pricing_db FROM PUBLIC;
+        GRANT CONNECT ON DATABASE pricing_db TO pricing_app;
+
+        REVOKE ALL ON DATABASE delivery_db FROM PUBLIC;
+        GRANT CONNECT ON DATABASE delivery_db TO delivery_app;
+
+        REVOKE ALL ON DATABASE communications_db FROM PUBLIC;
+        GRANT CONNECT ON DATABASE communications_db TO communications_app;
+    EOSQL
+
+    # 4. Enforce schema-level isolation within each database
+    for pair in "pricing_db:pricing_app" "delivery_db:delivery_app" "communications_db:communications_app"; do
+        db="${pair%%:*}"
+        role="${pair##*:}"
+        echo "==> Configuring schema permissions for ${role} on ${db}..."
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$db" <<-EOSQL
+            REVOKE ALL ON SCHEMA public FROM PUBLIC;
+            GRANT USAGE, CREATE ON SCHEMA public TO $role;
+    EOSQL
+    done
+
+    echo "==> SwiftDrop Business Databases & Isolated Roles successfully configured."
+

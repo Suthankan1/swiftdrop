@@ -1,0 +1,137 @@
+# ==============================================================================
+# SwiftDrop Platform — PodDisruptionBudgets (Issue #154)
+# Realistic disruption budgets for local single-node and multi-replica topologies.
+# For single-replica workloads, maxUnavailable: 1 allows voluntary maintenance/drain.
+# For multi-replica workloads (e.g. Delivery), minAvailable: 1 guarantees continuous availability.
+# ==============================================================================
+
+{{- if .Values.frontend.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "frontend") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "frontend") | nindent 6 }}
+{{- end }}
+
+{{- if .Values.apiGateway.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "api-gateway") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "api-gateway") | nindent 6 }}
+{{- end }}
+
+{{- if .Values.accounts.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: accounts-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "accounts-service") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "accounts-service") | nindent 6 }}
+{{- end }}
+
+{{- if .Values.pricing.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pricing-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "pricing-service") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "pricing-service") | nindent 6 }}
+{{- end }}
+
+{{- if .Values.delivery.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: delivery-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "delivery-service") | nindent 4 }}
+spec:
+  {{- if gt (int .Values.delivery.replicaCount) 1 }}
+  minAvailable: 1
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "delivery-service") | nindent 6 }}
+{{- end }}
+
+{{- if .Values.communications.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: communications-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "communications-service") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "communications-service") | nindent 6 }}
+{{- end }}
+
+{{- if .Values.graphql.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: graphql-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "graphql-query-service") | nindent 6 }}
+{{- end }}
+
+{{- if .Values.keycloak.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: keycloak-budget
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "keycloak") | nindent 6 }}
+{{- end }}

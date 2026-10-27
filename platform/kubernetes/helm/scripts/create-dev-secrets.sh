@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SwiftDrop Platform — Local Development Secret Provisioner (Issue #149)
+# SwiftDrop Platform — Local Development Secret Provisioner (Issue #149 / #154)
 # Provisions external Kubernetes Secret objects for local cluster testing.
 # Follows platform/compose/.env.example contracts without committing secrets to git.
 # ==============================================================================
@@ -23,8 +23,36 @@ create_or_update_secret() {
   echo "✓ Secret '${name}' created in '${ns}'."
 }
 
+# --- swiftdrop-data secrets ---
+echo "--- 1. PROVISIONING SWIFTDROP-DATA SECRETS ---"
+create_or_update_secret swiftdrop-data accounts-db-credentials \
+  --from-literal=POSTGRES_USER="${ACCOUNTS_DB_USERNAME:-accounts_app}" \
+  --from-literal=POSTGRES_PASSWORD="${ACCOUNTS_DB_PASSWORD:-accounts_dev_password}" \
+  --from-literal=POSTGRES_DB="accounts_db"
+
+create_or_update_secret swiftdrop-data business-db-credentials \
+  --from-literal=POSTGRES_USER="${POSTGRES_USER:-postgres}" \
+  --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres_dev_password}" \
+  --from-literal=POSTGRES_DB="${POSTGRES_DB:-postgres}" \
+  --from-literal=PRICING_DB_PASSWORD="${PRICING_DB_PASSWORD:-pricing_dev_password}" \
+  --from-literal=DELIVERY_DB_PASSWORD="${DELIVERY_DB_PASSWORD:-delivery_dev_password}" \
+  --from-literal=COMMUNICATIONS_DB_PASSWORD="${COMMUNICATIONS_DB_PASSWORD:-communications_dev_password}"
+
+create_or_update_secret swiftdrop-data keycloak-db-credentials \
+  --from-literal=POSTGRES_USER="${KEYCLOAK_DB_USERNAME:-keycloak}" \
+  --from-literal=POSTGRES_PASSWORD="${KEYCLOAK_DB_PASSWORD:-keycloak_dev_password}" \
+  --from-literal=POSTGRES_DB="keycloak_db"
+
+# --- swiftdrop-messaging secrets ---
+echo ""
+echo "--- 2. PROVISIONING SWIFTDROP-MESSAGING SECRETS ---"
+create_or_update_secret swiftdrop-messaging swiftdrop-minio-secret \
+  --from-literal=accesskey="${MINIO_ROOT_USER:-swiftdrop_storage_admin}" \
+  --from-literal=secretkey="${MINIO_ROOT_PASSWORD:-minio_dev_password}"
+
 # --- swiftdrop-apps secrets ---
-echo "--- 1. PROVISIONING SWIFTDROP-APPS SECRETS ---"
+echo ""
+echo "--- 3. PROVISIONING SWIFTDROP-APPS SECRETS ---"
 create_or_update_secret swiftdrop-apps accounts-db-secret \
   --from-literal=username="${ACCOUNTS_DB_USERNAME:-accounts_app}" \
   --from-literal=password="${ACCOUNTS_DB_PASSWORD:-accounts_dev_password}"
@@ -47,7 +75,7 @@ create_or_update_secret swiftdrop-apps swiftdrop-minio-secret \
 
 # --- swiftdrop-identity secrets ---
 echo ""
-echo "--- 2. PROVISIONING SWIFTDROP-IDENTITY SECRETS ---"
+echo "--- 4. PROVISIONING SWIFTDROP-IDENTITY SECRETS ---"
 create_or_update_secret swiftdrop-identity keycloak-admin-secret \
   --from-literal=admin-username="${KEYCLOAK_ADMIN_USER:-admin}" \
   --from-literal=admin-password="${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}"

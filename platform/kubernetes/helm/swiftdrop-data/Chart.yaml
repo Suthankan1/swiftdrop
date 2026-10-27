@@ -1,0 +1,15 @@
+apiVersion: v2
+name: swiftdrop-data
+description: SwiftDrop Platform — Persistent Service-Owned PostgreSQL StatefulSets
+type: application
+version: 1.0.0
+appVersion: "16-alpine"
+keywords:
+  - swiftdrop
+  - postgresql
+  - persistence
+  - statefulset
+maintainers:
+  - name: Suthankan1
+    url: https://github.com/Suthankan1
+

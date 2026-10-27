@@ -1,0 +1,45 @@
+# ==============================================================================
+# SwiftDrop Platform — Messaging Layer Local Development Values (Issue #154)
+# Target: k3d-swiftdrop-local (Single-node K3s v1.31.2, Apple Silicon ARM64)
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+  storageClass: local-path
+
+namespaces:
+  messaging: swiftdrop-messaging
+
+kafka:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+minio:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+mailpit:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
