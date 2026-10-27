@@ -66,4 +66,32 @@ class CommunicationsFlywayMigrationTest {
         assertThat(sql).doesNotContain("REFERENCES account_profiles");
         assertThat(sql).doesNotContain("REFERENCES staff_profiles");
     }
+
+    @Test
+    @DisplayName("Verify V2 Flyway migration script contains webhook_replays audit table and zero cross-service references")
+    void verifyV2FlywayMigrationScript() throws Exception {
+        ClassPathResource resource = new ClassPathResource("db/migration/V2__create_webhook_replays_table.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            sql = reader.lines().collect(Collectors.joining("\n"));
+        }
+
+        assertThat(sql).contains("CREATE TABLE webhook_replays");
+        assertThat(sql).contains("replay_id UUID PRIMARY KEY");
+        assertThat(sql).contains("REFERENCES webhook_deliveries(delivery_id)");
+        assertThat(sql).contains("REFERENCES webhook_subscriptions(subscription_id)");
+        assertThat(sql).contains("CONSTRAINT chk_webhook_replays_actor_sub");
+        assertThat(sql).contains("CONSTRAINT chk_webhook_replays_reason");
+        assertThat(sql).contains("CONSTRAINT chk_webhook_replays_prev_status CHECK (previous_status IN ('FAILED', 'EXHAUSTED'))");
+        assertThat(sql).contains("idx_webhook_replays_delivery_id");
+
+        // Strict cross-service boundary verification
+        assertThat(sql).doesNotContain("accounts_db");
+        assertThat(sql).doesNotContain("delivery_db");
+        assertThat(sql).doesNotContain("pricing_db");
+        assertThat(sql).doesNotContain("REFERENCES merchants");
+        assertThat(sql).doesNotContain("REFERENCES parcels");
+    }
 }

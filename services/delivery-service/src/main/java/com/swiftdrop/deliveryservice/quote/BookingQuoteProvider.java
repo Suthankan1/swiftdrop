@@ -8,5 +8,9 @@ import java.util.UUID;
  * This operation must be retry-safe; no remote reservation or consumption is assumed.
  */
 public interface BookingQuoteProvider {
- QuoteValidation validate(UUID quoteId, String authenticatedSubject);
+    QuoteValidation validate(UUID quoteId, String authenticatedSubject);
+
+    default QuoteValidation validateMerchantQuote(UUID quoteId, UUID merchantId, String authenticatedSubject) {
+        return validate(quoteId, authenticatedSubject);
+    }
 }

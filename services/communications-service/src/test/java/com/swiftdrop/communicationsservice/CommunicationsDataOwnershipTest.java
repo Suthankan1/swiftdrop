@@ -26,7 +26,8 @@ class CommunicationsDataOwnershipTest {
             NotificationJob.class,
             WebhookSubscription.class,
             WebhookDelivery.class,
-            WebhookAttempt.class
+            WebhookAttempt.class,
+            com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit.class
     );
 
     private static final Set<String> ALLOWED_TABLES = Set.of(
@@ -34,7 +35,8 @@ class CommunicationsDataOwnershipTest {
             "notifications",
             "webhook_subscriptions",
             "webhook_deliveries",
-            "webhook_attempts"
+            "webhook_attempts",
+            "webhook_replays"
     );
 
     @Test

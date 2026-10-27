@@ -118,4 +118,21 @@ class DirectServiceSecurityTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
     }
+
+    @Test
+    @DisplayName("Direct service access with valid CUSTOMER token and spoofed ADMIN headers strictly enforces JWT and fails with 403")
+    void testDirectAccessWithValidTokenAndSpoofedAdminHeaders_EnforcesJwtClaimsAndFails403() throws Exception {
+        String customerToken = jwtHelper.createSignedUserToken("customer-uuid-99", List.of("CUSTOMER"));
+
+        mvc.perform(get("/api/v1/direct/internal/config")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+                        .header("X-Roles", "ADMIN")
+                        .header("X-User-Roles", "ADMIN")
+                        .header("X-User-Id", "admin-user")
+                        .header("X-User-Sub", "admin-sub")
+                        .header("X-Tenant-Id", "tenant-admin")
+                        .header("X-Gateway-Auth", "true"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
 }

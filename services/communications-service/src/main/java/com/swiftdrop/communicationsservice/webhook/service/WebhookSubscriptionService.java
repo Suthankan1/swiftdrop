@@ -6,6 +6,9 @@ import com.swiftdrop.communicationsservice.webhook.WebhookAttempt;
 import com.swiftdrop.communicationsservice.webhook.WebhookAttemptRepository;
 import com.swiftdrop.communicationsservice.webhook.WebhookDelivery;
 import com.swiftdrop.communicationsservice.webhook.WebhookDeliveryRepository;
+import com.swiftdrop.communicationsservice.webhook.WebhookDeliveryStatus;
+import com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit;
+import com.swiftdrop.communicationsservice.webhook.WebhookReplayAuditRepository;
 import com.swiftdrop.communicationsservice.webhook.WebhookSubscription;
 import com.swiftdrop.communicationsservice.webhook.WebhookSubscriptionRepository;
 import com.swiftdrop.communicationsservice.webhook.dto.CreateWebhookSubscriptionRequest;
@@ -16,18 +19,22 @@ import com.swiftdrop.communicationsservice.webhook.dto.WebhookSubscriptionCreate
 import com.swiftdrop.communicationsservice.webhook.dto.WebhookSubscriptionListResponse;
 import com.swiftdrop.communicationsservice.webhook.dto.WebhookSubscriptionResponse;
 import com.swiftdrop.communicationsservice.webhook.exception.CrossTenantAccessException;
+import com.swiftdrop.communicationsservice.webhook.exception.InvalidWebhookReplayException;
+import com.swiftdrop.communicationsservice.webhook.exception.WebhookDeliveryNotFoundException;
 import com.swiftdrop.communicationsservice.webhook.exception.WebhookSubscriptionNotFoundException;
 import com.swiftdrop.communicationsservice.webhook.security.WebhookSigningSecretService;
 import com.swiftdrop.communicationsservice.webhook.validation.WebhookDestinationValidator;
 import com.swiftdrop.communicationsservice.webhook.validation.WebhookEventFilterValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -49,6 +56,7 @@ public class WebhookSubscriptionService {
     private final WebhookEventFilterValidator eventFilterValidator;
     private final WebhookSigningSecretService secretService;
     private final AccountsMerchantEligibilityClient accountsEligibilityClient;
+    private final WebhookReplayAuditRepository replayAuditRepository;
 
     public WebhookSubscriptionService(
             WebhookSubscriptionRepository subscriptionRepository,
@@ -58,6 +66,20 @@ public class WebhookSubscriptionService {
             WebhookEventFilterValidator eventFilterValidator,
             WebhookSigningSecretService secretService,
             AccountsMerchantEligibilityClient accountsEligibilityClient) {
+        this(subscriptionRepository, deliveryRepository, attemptRepository, destinationValidator,
+                eventFilterValidator, secretService, accountsEligibilityClient, null);
+    }
+
+    @Autowired
+    public WebhookSubscriptionService(
+            WebhookSubscriptionRepository subscriptionRepository,
+            WebhookDeliveryRepository deliveryRepository,
+            WebhookAttemptRepository attemptRepository,
+            WebhookDestinationValidator destinationValidator,
+            WebhookEventFilterValidator eventFilterValidator,
+            WebhookSigningSecretService secretService,
+            AccountsMerchantEligibilityClient accountsEligibilityClient,
+            WebhookReplayAuditRepository replayAuditRepository) {
         this.subscriptionRepository = Objects.requireNonNull(subscriptionRepository, "subscriptionRepository is required");
         this.deliveryRepository = Objects.requireNonNull(deliveryRepository, "deliveryRepository is required");
         this.attemptRepository = Objects.requireNonNull(attemptRepository, "attemptRepository is required");
@@ -65,6 +87,7 @@ public class WebhookSubscriptionService {
         this.eventFilterValidator = Objects.requireNonNull(eventFilterValidator, "eventFilterValidator is required");
         this.secretService = Objects.requireNonNull(secretService, "secretService is required");
         this.accountsEligibilityClient = Objects.requireNonNull(accountsEligibilityClient, "accountsEligibilityClient is required");
+        this.replayAuditRepository = replayAuditRepository;
     }
 
     /**
@@ -93,9 +116,8 @@ public class WebhookSubscriptionService {
         );
 
         WebhookSubscription saved = subscriptionRepository.save(subscription);
-
         log.info("Registered webhook subscription [subscriptionId={}, merchantId={}, url={}]",
-                saved.getSubscriptionId(), saved.getMerchantId(), saved.getHttpsUrl());
+                saved.getSubscriptionId(), tenant.merchantId(), validatedUrl);
 
         return new WebhookSubscriptionCreatedResponse(
                 saved.getSubscriptionId(),
@@ -268,6 +290,106 @@ public class WebhookSubscriptionService {
                 updated.getActive(),
                 updated.getCreatedAt()
         );
+    }
+
+    /**
+     * Authorizes and schedules a replay of a terminally failed or exhausted webhook delivery job.
+     * Enforces:
+     * 1. Caller authentication and authorization: merchant owner or platform operator (ADMIN / DISPATCHER).
+     * 2. Delivery must belong to the specified subscription.
+     * 3. Delivery must be in a replayable terminal state (FAILED or EXHAUSTED).
+     *    Non-terminal jobs (PENDING, PROCESSING, SUCCESS) are rejected with 409 Conflict.
+     * 4. Explicit operator reason is required and recorded in durable webhook_replays audit table.
+     * 5. Immutable event identity: original eventId, parcelId, stateVersion, and payload digest are preserved.
+     * 6. Preserves existing attempt history in webhook_attempts (lineage preserved).
+     * 7. Resets delivery status to PENDING with nextAttemptAt = now() for immediate pickup.
+     */
+    @Transactional
+    public WebhookDeliveryItem replayDelivery(
+            String callerSub,
+            Collection<String> callerRoles,
+            UUID subscriptionId,
+            UUID deliveryId,
+            String reason) {
+
+        if (reason == null || reason.trim().length() < 3 || reason.trim().length() > 500) {
+            throw new IllegalArgumentException("Replay reason must be between 3 and 500 characters.");
+        }
+
+        WebhookSubscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new WebhookSubscriptionNotFoundException("Webhook subscription not found."));
+
+        // Authorization check: ADMIN or DISPATCHER can operate on any subscription.
+        // Otherwise caller must be an approved merchant tenant who owns the subscription.
+        boolean isOperator = callerRoles != null && (callerRoles.contains("ADMIN")
+                || callerRoles.contains("ROLE_ADMIN")
+                || callerRoles.contains("DISPATCHER")
+                || callerRoles.contains("ROLE_DISPATCHER"));
+
+        String actorRole = "MERCHANT";
+        if (isOperator) {
+            if (callerRoles.contains("ADMIN") || callerRoles.contains("ROLE_ADMIN")) {
+                actorRole = "ADMIN";
+            } else {
+                actorRole = "DISPATCHER";
+            }
+        } else {
+            ApprovedMerchantTenant tenant = accountsEligibilityClient.resolveApprovedMerchant(callerSub);
+            if (!subscription.getMerchantId().equals(tenant.merchantId())) {
+                log.warn("Cross-tenant replay attempt [callerMerchantId={}, subscriptionOwner={}, subscriptionId={}, deliveryId={}]",
+                        tenant.merchantId(), subscription.getMerchantId(), subscriptionId, deliveryId);
+                throw new CrossTenantAccessException("Caller does not own this subscription.");
+            }
+        }
+
+        WebhookDelivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new WebhookDeliveryNotFoundException("Webhook delivery record not found."));
+
+        if (!delivery.getSubscriptionId().equals(subscriptionId)) {
+            log.warn("Replay delivery subscription mismatch [deliverySubId={}, pathSubId={}, deliveryId={}]",
+                    delivery.getSubscriptionId(), subscriptionId, deliveryId);
+            throw new WebhookDeliveryNotFoundException("Webhook delivery does not belong to the specified subscription.");
+        }
+
+        // Terminal state check: only FAILED or EXHAUSTED can be replayed
+        WebhookDeliveryStatus currentStatus = delivery.getStatus();
+        if (currentStatus != WebhookDeliveryStatus.FAILED && currentStatus != WebhookDeliveryStatus.EXHAUSTED) {
+            log.warn("Illegal replay attempted for delivery in non-terminal state [deliveryId={}, status={}]",
+                    deliveryId, currentStatus);
+            throw new InvalidWebhookReplayException(
+                    "Webhook delivery " + deliveryId + " cannot be replayed from status " + currentStatus +
+                    ". Only FAILED or EXHAUSTED deliveries can be replayed.");
+        }
+
+        Instant now = Instant.now();
+
+        // Durable audit record
+        if (replayAuditRepository != null) {
+            WebhookReplayAudit audit = new WebhookReplayAudit(
+                    UUID.randomUUID(),
+                    delivery.getDeliveryId(),
+                    subscription.getSubscriptionId(),
+                    subscription.getMerchantId(),
+                    callerSub,
+                    actorRole,
+                    reason.trim(),
+                    currentStatus.name(),
+                    now
+            );
+            replayAuditRepository.save(audit);
+        }
+
+        // Schedule replay: reset status to PENDING, attempt count reset to 0, nextAttemptAt to now
+        delivery.setStatus(WebhookDeliveryStatus.PENDING);
+        delivery.setAttemptCount(0);
+        delivery.setNextAttemptAt(now);
+        delivery.setUpdatedAt(now);
+        WebhookDelivery savedDelivery = deliveryRepository.save(delivery);
+
+        log.info("Authorized webhook delivery replay scheduled [deliveryId={}, subscriptionId={}, actorSub={}, actorRole={}, reason={}]",
+                deliveryId, subscriptionId, callerSub, actorRole, reason.trim());
+
+        return toDeliveryItem(savedDelivery);
     }
 
     private WebhookSubscriptionResponse toResponse(WebhookSubscription sub) {

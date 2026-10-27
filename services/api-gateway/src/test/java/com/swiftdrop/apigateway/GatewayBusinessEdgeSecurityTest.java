@@ -677,6 +677,10 @@ public class GatewayBusinessEdgeSecurityTest {
                 .header("X-uSeR-Id", "mixed-case-spoof")
                 .header("X-Roles", "ADMIN")
                 .header("x-roles", "COURIER")
+                .header("X-User-Roles", "ADMIN")
+                .header("X-Gateway-Auth", "true")
+                .header("X-Forwarded-Email", "admin@swiftdrop.test")
+                .header("X-Forwarded-Sub", "admin-sub")
                 .header("X-Tenant-Id", "spoofed-tenant-999")
                 .header("x-keycloak-sub", "spoofed-sub-abc")
                 .header("x-user-email", "forged@attacker.com")
@@ -696,6 +700,10 @@ public class GatewayBusinessEdgeSecurityTest {
         assertThat(recorded.getHeader("X-uSeR-Id")).isNull();
         assertThat(recorded.getHeader("X-Roles")).isNull();
         assertThat(recorded.getHeader("x-roles")).isNull();
+        assertThat(recorded.getHeader("X-User-Roles")).isNull();
+        assertThat(recorded.getHeader("X-Gateway-Auth")).isNull();
+        assertThat(recorded.getHeader("X-Forwarded-Email")).isNull();
+        assertThat(recorded.getHeader("X-Forwarded-Sub")).isNull();
         assertThat(recorded.getHeader("X-Tenant-Id")).isNull();
         assertThat(recorded.getHeader("x-keycloak-sub")).isNull();
         assertThat(recorded.getHeader("x-user-email")).isNull();

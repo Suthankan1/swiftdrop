@@ -141,4 +141,35 @@ class CommunicationsEntityTest {
         assertThat(attempt.getResponseTimeMs()).isEqualTo(145);
         assertThat(attempt.getErrorSummary()).isNull();
     }
+
+    @Test
+    @DisplayName("Verify WebhookReplayAudit entity fields and getters/setters")
+    void testWebhookReplayAudit() {
+        UUID replayId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID subId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit audit =
+                new com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit(
+                        replayId, deliveryId, subId, merchantId, "actor-123", "ADMIN", "Manual replay", "EXHAUSTED", now);
+
+        assertThat(audit.getReplayId()).isEqualTo(replayId);
+        assertThat(audit.getDeliveryId()).isEqualTo(deliveryId);
+        assertThat(audit.getSubscriptionId()).isEqualTo(subId);
+        assertThat(audit.getMerchantId()).isEqualTo(merchantId);
+        assertThat(audit.getActorSub()).isEqualTo("actor-123");
+        assertThat(audit.getActorRole()).isEqualTo("ADMIN");
+        assertThat(audit.getReason()).isEqualTo("Manual replay");
+        assertThat(audit.getPreviousStatus()).isEqualTo("EXHAUSTED");
+        assertThat(audit.getReplayedAt()).isEqualTo(now);
+
+        com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit empty =
+                new com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit();
+        empty.setReplayId(replayId);
+        empty.setActorRole("MERCHANT");
+        assertThat(empty.getReplayId()).isEqualTo(replayId);
+        assertThat(empty.getActorRole()).isEqualTo("MERCHANT");
+    }
 }

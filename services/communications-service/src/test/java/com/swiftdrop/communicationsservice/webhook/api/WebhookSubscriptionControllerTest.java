@@ -253,4 +253,98 @@ class WebhookSubscriptionControllerTest {
                 .andExpect(jsonPath("$.title").value("Service Unavailable"))
                 .andExpect(jsonPath("$.status").value(503));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/merchants/webhooks/{subscriptionId}/rotate-secret returns 200 with new secret and no-store")
+    void rotateSecret_Success() throws Exception {
+        UUID subId = UUID.randomUUID();
+        UUID merchantId = UUID.randomUUID();
+        String newSecret = "swd_whsec_newly_rotated_secret_123456789";
+
+        WebhookSubscriptionCreatedResponse response = new WebhookSubscriptionCreatedResponse(
+                subId,
+                merchantId,
+                "https://api.example.com/webhooks",
+                List.of("parcel.status.changed.v1"),
+                newSecret,
+                true,
+                Instant.now()
+        );
+
+        when(subscriptionService.rotateSecret(callerSub, subId)).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/merchants/webhooks/{subscriptionId}/rotate-secret", subId)
+                        .principal(merchantAuth))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
+                .andExpect(jsonPath("$.subscriptionId").value(subId.toString()))
+                .andExpect(jsonPath("$.hmacSigningSecret").value(newSecret));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/merchants/webhooks/{subscriptionId}/deliveries/{deliveryId}/replay schedules replay")
+    void replayDelivery_Success() throws Exception {
+        UUID subId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+
+        WebhookDeliveryItem item = new WebhookDeliveryItem(
+                deliveryId,
+                eventId,
+                parcelId,
+                "PENDING",
+                0,
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+
+        when(subscriptionService.replayDelivery(eq(callerSub), any(), eq(subId), eq(deliveryId), eq("Merchant endpoint restored")))
+                .thenReturn(item);
+
+        mockMvc.perform(post("/api/v1/merchants/webhooks/{subscriptionId}/deliveries/{deliveryId}/replay", subId, deliveryId)
+                        .principal(merchantAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Merchant endpoint restored\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveryId").value(deliveryId.toString()))
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.attemptCount").value(0));
+    }
+
+    @Test
+    @DisplayName("POST replay with blank reason returns 400 Bad Request")
+    void replayDelivery_BlankReason_Returns400() throws Exception {
+        UUID subId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/merchants/webhooks/{subscriptionId}/deliveries/{deliveryId}/replay", subId, deliveryId)
+                        .principal(merchantAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Bad Request"));
+    }
+
+    @Test
+    @DisplayName("POST replay for delivery in non-terminal state returns 409 Conflict")
+    void replayDelivery_NonTerminalState_Returns409() throws Exception {
+        UUID subId = UUID.randomUUID();
+        UUID deliveryId = UUID.randomUUID();
+
+        when(subscriptionService.replayDelivery(eq(callerSub), any(), eq(subId), eq(deliveryId), eq("Retry after glitch")))
+                .thenThrow(new com.swiftdrop.communicationsservice.webhook.exception.InvalidWebhookReplayException(
+                        "Webhook delivery " + deliveryId + " cannot be replayed from status SUCCESS."));
+
+        mockMvc.perform(post("/api/v1/merchants/webhooks/{subscriptionId}/deliveries/{deliveryId}/replay", subId, deliveryId)
+                        .principal(merchantAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Retry after glitch\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value(containsString("cannot be replayed from status SUCCESS")));
+    }
 }
