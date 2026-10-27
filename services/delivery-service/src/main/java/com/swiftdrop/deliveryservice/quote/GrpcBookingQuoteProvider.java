@@ -23,12 +23,18 @@ import java.util.concurrent.TimeUnit;
 public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
 
     private static final Logger log = LoggerFactory.getLogger(GrpcBookingQuoteProvider.class);
-    private static final long DEFAULT_DEADLINE_MS = 2000L;
+    private static final long DEFAULT_DEADLINE_MS = 5000L;
 
     private final PricingInternalServiceGrpc.PricingInternalServiceBlockingStub pricingStub;
+    private final long deadlineMs;
+
+    public GrpcBookingQuoteProvider(PricingInternalServiceGrpc.PricingInternalServiceBlockingStub pricingStub, long deadlineMs) {
+        this.pricingStub = Objects.requireNonNull(pricingStub, "pricingStub must not be null");
+        this.deadlineMs = deadlineMs > 0 ? deadlineMs : DEFAULT_DEADLINE_MS;
+    }
 
     public GrpcBookingQuoteProvider(PricingInternalServiceGrpc.PricingInternalServiceBlockingStub pricingStub) {
-        this.pricingStub = Objects.requireNonNull(pricingStub, "pricingStub must not be null");
+        this(pricingStub, DEFAULT_DEADLINE_MS);
     }
 
     @Override
@@ -41,7 +47,7 @@ public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
 
         try {
             ValidateQuoteResponse response = pricingStub
-                    .withDeadlineAfter(DEFAULT_DEADLINE_MS, TimeUnit.MILLISECONDS)
+                    .withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS)
                     .validateQuote(request);
 
             Instant expiresAt = null;

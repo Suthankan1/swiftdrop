@@ -17,8 +17,8 @@
     "contentSecurityPolicyReportOnly": "",
     "xContentTypeOptions": "nosniff",
     "xRobotsTag": "none",
-    "xFrameOptions": "SAMEORIGIN",
-    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xFrameOptions": "",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self' http://localhost:5173 http://localhost:3000 https://swiftdrop.local:18443 https://app.swiftdrop.local:18443; object-src 'none';",
     "xXSSProtection": "1; mode=block",
     "strictTransportSecurity": "max-age=31536000"
   },
@@ -119,8 +119,13 @@
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
         "https://swiftdrop.local:18443/auth/callback",
+        "https://swiftdrop.local:18443/silent-check-sso.html",
         "https://app.swiftdrop.local:18443/auth/callback",
-        "http://localhost:5173/auth/callback"
+        "https://app.swiftdrop.local:18443/silent-check-sso.html",
+        "http://localhost:5173/auth/callback",
+        "http://localhost:5173/silent-check-sso.html",
+        "http://localhost:3000/auth/callback",
+        "http://localhost:3000/silent-check-sso.html"
       ],
       "webOrigins": [
         "https://swiftdrop.local:18443",
@@ -199,6 +204,72 @@
             "userinfo.token.claim": "true"
           }
         }
+      ]
+    },
+    {
+      "clientId": "delivery-service",
+      "name": "Delivery Operations Service",
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "delivery-service-secret-internal",
+      "redirectUris": [],
+      "webOrigins": [],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "realm_client": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "name": "api-audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "false",
+            "included.custom.audience": "swiftdrop-api",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "internal-audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "false",
+            "included.custom.audience": "swiftdrop-internal",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "service_account",
+        "acr",
+        "roles",
+        "profile",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "organization",
+        "offline_access",
+        "microprofile-jwt"
       ]
     }
   ],

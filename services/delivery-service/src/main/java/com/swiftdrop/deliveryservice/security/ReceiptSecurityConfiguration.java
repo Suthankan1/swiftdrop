@@ -55,6 +55,7 @@ public class ReceiptSecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/assignments").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/assignments", "/api/v1/assignments/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels", "/api/v1/parcels/*", "/api/v1/parcels/*/history").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/parcels").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt

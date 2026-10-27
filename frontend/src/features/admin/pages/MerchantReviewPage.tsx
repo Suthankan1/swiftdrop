@@ -1,9 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import {
-  merchantReviewApi, merchantReviewFailure, MerchantReviewError,
+  merchantReviewApi, merchantReviewFailure, MerchantReviewError, createMerchantReviewApi,
   type MerchantReviewApi, type MerchantReviewAction, type MerchantReviewDetail,
 } from '../api/merchantReview'
 import { MerchantReviewConfirmation } from '../components/MerchantReviewConfirmation'
@@ -12,16 +12,23 @@ function Status({ status }: { status: string }) {
   return <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>
 }
 
-export function MerchantReviewPage({ api = merchantReviewApi }: { api?: MerchantReviewApi }) {
+export function MerchantReviewPage({ api }: { api?: MerchantReviewApi } = {}) {
   const auth = useAuth()
   const allowed = auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN')
+  const defaultApi = useMemo(() => {
+    if (!allowed) return undefined
+    return createMerchantReviewApi({ getAccessToken: auth.getAccessToken, fetch: auth.profileFetch })
+  }, [allowed, auth.getAccessToken, auth.profileFetch])
+
+  const effectiveApi = api !== undefined ? api : (merchantReviewApi ?? defaultApi)
+
   return <div className="page-container merchant-review-page">
     <Link to="/admin">Back to administration</Link>
     <header className="staff-heading"><p className="eyebrow">Admin space</p>
       <h1 className="page-heading">Merchant review</h1>
       <p className="muted">Review business enrollment and the actions available for each merchant.</p>
     </header>
-    {allowed ? api ? <MerchantReviewWorkspace key={auth.snapshot.subject} api={api} /> :
+    {allowed ? effectiveApi ? <MerchantReviewWorkspace key={auth.snapshot.subject} api={effectiveApi} /> :
       <section className="card" aria-labelledby="review-unavailable-title">
         <h2 id="review-unavailable-title">Merchant review unavailable</h2>
         <p role="status">Merchant review is awaiting the Accounts review service. Applications and audit history cannot be loaded yet.</p>

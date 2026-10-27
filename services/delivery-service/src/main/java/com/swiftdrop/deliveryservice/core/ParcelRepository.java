@@ -29,6 +29,8 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
 
     boolean existsByTrackingNumber(String trackingNumber);
 
+    boolean existsByQuoteId(UUID quoteId);
+
     @org.springframework.data.jpa.repository.Query("""
         SELECT p FROM Parcel p
         WHERE p.status = com.swiftdrop.deliveryservice.core.ParcelStatus.CREATED

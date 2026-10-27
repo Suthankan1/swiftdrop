@@ -80,6 +80,8 @@ spec:
               value: "1"
             - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
               value: "0"
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xmx256m -Xms128m"
             - name: CLUSTER_ID
               value: {{ .Values.kafka.clusterId | quote }}
           volumeMounts:

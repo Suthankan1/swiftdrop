@@ -87,15 +87,33 @@ describe('Merchant review route and production boundary', () => {
     setup(undefined, auth(['CUSTOMER', 'ADMIN']), true)
     expect(screen.getByRole('heading', { name: 'Merchant review' })).toBeInTheDocument()
   })
-  it('shows the real provider gap without HTTP calls, fake data, or enabled commands', () => {
-    const fetchRequest = vi.fn()
+  it('connects to Accounts review service with authenticated Gateway requests when rendered in production routes', async () => {
+    const fetchRequest = vi.fn(async () => new Response(JSON.stringify({ content: [], page: 0, last: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchRequest)
     setup(undefined, auth(), true)
+    await screen.findByRole('heading', { name: 'Merchant applications' })
+    expect(fetchRequest).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/admin/merchants?page=0&size=20'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer synthetic-memory-token',
+        }),
+      }),
+    )
+  })
+  it('renders unavailable fallback when review API is explicitly unavailable', () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AuthContext value={auth()}>
+          <MemoryRouter>
+            <MerchantReviewPage api={null as any} />
+          </MemoryRouter>
+        </AuthContext>
+      </QueryClientProvider>,
+    )
     expect(screen.getByRole('heading', { name: 'Merchant review unavailable' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Approve merchant' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Suspend merchant' })).toBeDisabled()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    expect(fetchRequest).not.toHaveBeenCalled()
   })
 })
 
