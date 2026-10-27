@@ -1,5 +1,26 @@
 # SwiftDrop — Pricing & Zones Service
 
+## Admin configuration — Issue #123
+
+Versioned REST management lives under `/api/v1/admin/pricing`: zone list/read/
+create/metadata update/disable; rate-version list/draft creation; draft rule
+list/add/update; activation and superseded-card archive. The service requires
+a verified Keycloak ADMIN subject independently of Gateway policy. See
+[the OpenAPI contract](../../contracts/rest/openapi-pricing.yaml) and
+[policy, migration, recovery and review record](ADMIN_CONFIGURATION_REVIEW.md).
+
+Commands require expected revisions; activation also compares the expected
+active card ID. V4 adds Pricing-owned revisions, a configuration lock, audit
+persistence and database guards. Published rules are immutable. Unexpired
+issued quotes retain their original snapshot after supersession; new quotes
+must use a currently effective active card. No historical records are deleted.
+
+Run the existing shared proto-contracts and security-adapter Maven installs
+first, then `./mvnw clean test` and `./mvnw clean verify` here. PostgreSQL
+Testcontainers tests require a running Docker Linux engine; skipped tests must
+be rerun before independent acceptance. No platform runtime is started by these
+instructions. Gateway routing of the new admin prefix remains a Platform handoff.
+
 ## 1. Purpose & Ownership
 
 The **Pricing & Zones Service** is an independent Spring Boot 4.1.1 business service in the SwiftDrop parcel delivery platform. It is the sole authoritative owner of:

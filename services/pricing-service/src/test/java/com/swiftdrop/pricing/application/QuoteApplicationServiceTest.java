@@ -62,7 +62,8 @@ class QuoteApplicationServiceTest {
                 quoteRepository,
                 ownershipPolicy,
                 clock,
-                900L
+                900L,
+                org.mockito.Mockito.mock(com.swiftdrop.pricing.persistence.PricingConfigurationLock.class)
         );
     }
 
@@ -186,5 +187,25 @@ class QuoteApplicationServiceTest {
         assertThat(retrieved.weightSurchargeMinorUnits()).isEqualTo(15000L);
         assertThat(retrieved.totalAmountMinorUnits()).isEqualTo(50000L);
         assertThat(retrieved.currency()).isEqualTo("LKR");
+    }
+
+    @Test
+    void futureOrExpiredActiveCardCannotIssueNewQuotes() {
+        QuoteRequest request = new QuoteRequest("ZONE_1", "ZONE_2", new BigDecimal("2.50"), 30, 20, 15);
+        when(calculationService.calculatePrice(any())).thenReturn(new PricingCalculation(
+                "RATE-2026-V1", "LKR", "ZONE_1", "ZONE_2", new BigDecimal("2.50"),
+                new BigDecimal("1.80"), new BigDecimal("2.50"), SizeCategory.MEDIUM,
+                Money.ofMinorUnits(35000), Money.ofMinorUnits(7500), Money.ofMinorUnits(42500), UUID.randomUUID()));
+        RateVersionEntity future = new RateVersionEntity(UUID.randomUUID(), "RATE-2026-V1", "LKR",
+                RateVersionStatus.ACTIVE, FIXED_NOW.plusSeconds(1), "Future");
+        RateVersionEntity ended = new RateVersionEntity(UUID.randomUUID(), "RATE-2026-V1", "LKR",
+                RateVersionStatus.ACTIVE, FIXED_NOW.minusSeconds(60), "Ended");
+        ended.setEffectiveTo(FIXED_NOW);
+        for (RateVersionEntity card : java.util.List.of(future, ended)) {
+            when(rateVersionRepository.findByVersionCode("RATE-2026-V1")).thenReturn(Optional.of(card));
+            assertThatThrownBy(() -> quoteService.createQuote(request, CallerContext.anonymous()))
+                    .isInstanceOf(com.swiftdrop.pricing.error.RateVersionNotFoundException.class);
+        }
+        org.mockito.Mockito.verifyNoInteractions(quoteRepository);
     }
 }

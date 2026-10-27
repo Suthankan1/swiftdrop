@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SwiftDrop Pricing & Zones REST API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     External REST contract for the Pricing & Zones bounded context.
     Pricing owns zone definitions, calculation algorithms, rate versions, and quote expiry.
@@ -107,7 +107,594 @@ paths:
               schema:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
 
+  /api/v1/admin/pricing/zones:
+    get:
+      summary: List active and inactive zones
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminListPricingZones
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminZonePage'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+    post:
+      summary: Create an active delivery zone
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminCreatePricingZone
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminZone'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Created pricing resource reference
+              schema:
+                type: string
+                format: uri-reference
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminZoneCreate'
+  /api/v1/admin/pricing/zones/{id}:
+    get:
+      summary: Read a zone
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminGetPricingZone
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminZone'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Update zone metadata without changing code or activation
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminUpdatePricingZone
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminZone'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminZoneUpdate'
+  /api/v1/admin/pricing/zones/{id}/disable:
+    post:
+      summary: Disable a zone and preserve history
+      description: Reject if ACTIVE rules or any unexpired quote references the zone. Preserve historical rows. No delete or reactivation command.
+      operationId: adminDisablePricingZone
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminZone'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminExpectedRevision'
+  /api/v1/admin/pricing/rate-versions:
+    get:
+      summary: List draft and historical rate versions
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminListPricingVersions
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRateVersionPage'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+    post:
+      summary: Create a domestic LKR draft
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminCreatePricingDraft
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRateVersion'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Created pricing resource reference
+              schema:
+                type: string
+                format: uri-reference
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDraftCreate'
+  /api/v1/admin/pricing/rate-versions/{id}/rules:
+    get:
+      summary: Read rules for a version
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminListPricingRules
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRateRulePage'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+    post:
+      summary: Add a rule to a draft
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminCreatePricingRule
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRateRule'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Created pricing resource reference
+              schema:
+                type: string
+                format: uri-reference
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminRateRuleWrite'
+  /api/v1/admin/pricing/rate-versions/{id}/rules/{ruleId}:
+    put:
+      summary: Replace a draft rule under its original parent
+      description: Pricing-owned ADMIN-only configuration. JWT signature, issuer, audience, expiry and subject are verified by the service. Unknown body fields and fractional integers are rejected.
+      operationId: adminUpdatePricingRule
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRateRule'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminRateRuleWrite'
+  /api/v1/admin/pricing/rate-versions/{id}/activate:
+    post:
+      summary: Publish a currently effective complete draft
+      description: DRAFT -> ACTIVE atomically supersedes the reviewed expectedActiveVersionId. Explicit null asserts there is no active card. Check expectedRevision and current UTC effective interval [from,to). Require complete nonoverlapping inclusive 0.01kg coverage for all active ordered zone pairs and all four categories through each category maximum. No scheduled publication. Previously issued quotes retain their original amount/currency/version and remain eligible until original expiry, subject to existing actor/tenant checks. Published rules remain immutable.
+      operationId: adminActivatePricingVersion
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRateVersion'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminActivate'
+  /api/v1/admin/pricing/rate-versions/{id}/archive:
+    post:
+      summary: Archive a superseded card without deleting history
+      description: Only SUPERSEDED -> ARCHIVED is allowed. ACTIVE and DRAFT cannot be archived. Existing quote eligibility is unchanged.
+      operationId: adminArchivePricingVersion
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRateVersion'
+          headers:
+            X-Request-ID:
+              description: Server-generated request UUID also recorded with successful admin audit entries
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/AdminError400'
+        '401':
+          $ref: '#/components/responses/AdminError401'
+        '403':
+          $ref: '#/components/responses/AdminError403'
+        '404':
+          $ref: '#/components/responses/AdminError404'
+        '409':
+          $ref: '#/components/responses/AdminError409'
+        '422':
+          $ref: '#/components/responses/AdminError422'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminExpectedRevision'
+
 components:
+  responses:
+    AdminError400:
+      description: Invalid JSON, identifiers, fields, pagination or numeric representation
+      content:
+        application/problem+json:
+          schema:
+            $ref: problem-detail.yaml#/components/schemas/ProblemDetail
+    AdminError401:
+      description: Missing, expired or untrusted Keycloak bearer token
+      content:
+        application/problem+json:
+          schema:
+            $ref: problem-detail.yaml#/components/schemas/ProblemDetail
+    AdminError403:
+      description: Verified ADMIN role and valid actor subject required; DISPATCHER is
+        not delegated
+      content:
+        application/problem+json:
+          schema:
+            $ref: problem-detail.yaml#/components/schemas/ProblemDetail
+    AdminError404:
+      description: Pricing resource not found, including rule outside requested parent
+      content:
+        application/problem+json:
+          schema:
+            $ref: problem-detail.yaml#/components/schemas/ProblemDetail
+    AdminError409:
+      description: Duplicate code/band, stale revision, published mutation, invalid transition
+        or concurrent configuration conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: problem-detail.yaml#/components/schemas/ProblemDetail
+    AdminError422:
+      description: Invalid effective interval, unavailable referenced zone, referenced-zone
+        disable, overlapping bands, incomplete coverage or monetary overflow
+      content:
+        application/problem+json:
+          schema:
+            $ref: problem-detail.yaml#/components/schemas/ProblemDetail
   securitySchemes:
     BearerAuth:
       type: http
@@ -274,3 +861,409 @@ components:
         standardTransitHours:
           type: integer
           example: 24
+
+    AdminZoneCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - zoneCode
+      - name
+      - description
+      - standardTransitHours
+      properties:
+        zoneCode:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: ^[A-Z][A-Z0-9_]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: .*\S.*
+        description:
+          type: string
+          maxLength: 512
+        standardTransitHours:
+          type: integer
+          minimum: 1
+    AdminZoneUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - description
+      - standardTransitHours
+      - expectedRevision
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: .*\S.*
+        description:
+          type: string
+          maxLength: 512
+        standardTransitHours:
+          type: integer
+          minimum: 1
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 0
+    AdminExpectedRevision:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedRevision
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 0
+    AdminZone:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - zoneCode
+      - name
+      - description
+      - standardTransitHours
+      - active
+      - revision
+      - createdAt
+      - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        zoneCode:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: ^[A-Z][A-Z0-9_]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: .*\S.*
+        description:
+          type: string
+          maxLength: 512
+        standardTransitHours:
+          type: integer
+          minimum: 1
+        active:
+          type: boolean
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AdminDraftCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - versionCode
+      - currency
+      - effectiveFrom
+      properties:
+        versionCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: .*\S.*
+        currency:
+          type: string
+          enum:
+          - LKR
+        effectiveFrom:
+          type: string
+          format: date-time
+        effectiveTo:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 512
+          nullable: true
+    AdminRateVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - versionCode
+      - currency
+      - status
+      - effectiveFrom
+      - effectiveTo
+      - description
+      - revision
+      - createdAt
+      - activatedAt
+      - archivedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionCode:
+          type: string
+        currency:
+          type: string
+          enum:
+          - LKR
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - SUPERSEDED
+          - ARCHIVED
+        effectiveFrom:
+          type: string
+          format: date-time
+        effectiveTo:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 512
+          nullable: true
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+    AdminRateRuleWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedRevision
+      - pickupZoneCode
+      - dropoffZoneCode
+      - sizeCategory
+      - minWeightKg
+      - maxWeightKg
+      - baseFeeMinorUnits
+      - perKgSurchargeMinorUnits
+      - weightThresholdKg
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        pickupZoneCode:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: ^[A-Z][A-Z0-9_]*$
+        dropoffZoneCode:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: ^[A-Z][A-Z0-9_]*$
+        sizeCategory:
+          type: string
+          enum:
+          - SMALL
+          - MEDIUM
+          - LARGE
+          - OVERSIZED
+        minWeightKg:
+          type: number
+          minimum: 0.01
+          maximum: 30
+          multipleOf: 0.01
+        maxWeightKg:
+          type: number
+          minimum: 0.01
+          maximum: 30
+          multipleOf: 0.01
+        baseFeeMinorUnits:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 9223372036854775807
+        perKgSurchargeMinorUnits:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 9223372036854775807
+        weightThresholdKg:
+          type: number
+          minimum: 0
+          maximum: 30
+          multipleOf: 0.01
+    AdminRateRule:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - rateVersionId
+      - pickupZoneCode
+      - dropoffZoneCode
+      - sizeCategory
+      - minWeightKg
+      - maxWeightKg
+      - baseFeeMinorUnits
+      - perKgSurchargeMinorUnits
+      - weightThresholdKg
+      - revision
+      properties:
+        id:
+          type: string
+          format: uuid
+        rateVersionId:
+          type: string
+          format: uuid
+        pickupZoneCode:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: ^[A-Z][A-Z0-9_]*$
+        dropoffZoneCode:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: ^[A-Z][A-Z0-9_]*$
+        sizeCategory:
+          type: string
+          enum:
+          - SMALL
+          - MEDIUM
+          - LARGE
+          - OVERSIZED
+        minWeightKg:
+          type: number
+          minimum: 0.01
+          maximum: 30
+          multipleOf: 0.01
+        maxWeightKg:
+          type: number
+          minimum: 0.01
+          maximum: 30
+          multipleOf: 0.01
+        baseFeeMinorUnits:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 9223372036854775807
+        perKgSurchargeMinorUnits:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 9223372036854775807
+        weightThresholdKg:
+          type: number
+          minimum: 0
+          maximum: 30
+          multipleOf: 0.01
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+    AdminActivate:
+      type: object
+      additionalProperties: false
+      required:
+      - expectedRevision
+      - expectedActiveVersionId
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        expectedActiveVersionId:
+          type: string
+          format: uuid
+          nullable: true
+    AdminZonePage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - size
+      - totalElements
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminZone'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+    AdminRateVersionPage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - size
+      - totalElements
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminRateVersion'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+    AdminRateRulePage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - size
+      - totalElements
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminRateRule'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 50
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0

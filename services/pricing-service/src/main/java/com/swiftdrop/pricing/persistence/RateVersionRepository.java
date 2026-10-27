@@ -11,6 +11,8 @@ import java.util.UUID;
 @Repository
 public interface RateVersionRepository extends JpaRepository<RateVersionEntity, UUID> {
 
+    boolean existsByVersionCode(String versionCode);
+
     Optional<RateVersionEntity> findByVersionCode(String versionCode);
 
     Optional<RateVersionEntity> findFirstByCurrencyAndStatus(String currency, RateVersionStatus status);

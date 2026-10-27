@@ -7,6 +7,10 @@ grpc:
     enabled: ${PRICING_GRPC_ENABLED:true}
 
 spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      accept-float-as-int: false
   application:
     name: pricing-service
   datasource:

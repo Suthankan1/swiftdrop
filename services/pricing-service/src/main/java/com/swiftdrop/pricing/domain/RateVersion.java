@@ -98,7 +98,7 @@ public final class RateVersion {
         if (timestamp.isBefore(effectiveFrom)) {
             return false;
         }
-        return effectiveTo == null || !timestamp.isAfter(effectiveTo);
+        return effectiveTo == null || timestamp.isBefore(effectiveTo);
     }
 
     /**

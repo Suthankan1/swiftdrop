@@ -15,6 +15,12 @@ import java.util.UUID;
 @Table(name = "pricing_zones")
 public class ZoneEntity {
 
+    @jakarta.persistence.Version
+    @Column(name = "revision", nullable = false)
+    private long revision;
+
+    public long getRevision() { return revision; }
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
