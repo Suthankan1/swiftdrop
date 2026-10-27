@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 SwiftDrop Executable REST & OpenAPI Contract Regressions (Issue #140 / N10-QA-01)
 ================================================================================
@@ -12,7 +13,7 @@ import re
 import unittest
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 import jsonschema

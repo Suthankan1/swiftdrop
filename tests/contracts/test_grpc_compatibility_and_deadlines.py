@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 SwiftDrop gRPC / Protobuf Compatibility & Status Mapping Regressions (Issue #140 / N10-QA-01)
 =============================================================================================
@@ -10,7 +11,7 @@ import copy
 import re
 import unittest
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from tests.contracts.validate_contracts import (
     CONTRACTS_DIR,
