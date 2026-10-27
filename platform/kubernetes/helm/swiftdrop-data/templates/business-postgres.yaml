@@ -1,0 +1,130 @@
+{{- if .Values.businessPostgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: business-postgres
+  namespace: {{ .Values.namespaces.data }}
+  labels:
+    {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "business-postgres") | nindent 4 }}
+spec:
+  type: {{ .Values.businessPostgres.service.type }}
+  selector:
+    {{- include "swiftdrop-data.selectorLabels" (dict "context" . "component" "business-postgres") | nindent 4 }}
+  ports:
+    - name: postgres
+      port: {{ .Values.businessPostgres.service.port }}
+      targetPort: 5432
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: business-postgres
+  namespace: {{ .Values.namespaces.data }}
+  labels:
+    {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "business-postgres") | nindent 4 }}
+spec:
+  serviceName: business-postgres
+  replicas: {{ .Values.businessPostgres.replicaCount }}
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-data.selectorLabels" (dict "context" . "component" "business-postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "business-postgres") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgres
+          image: "{{ .Values.businessPostgres.image.repository }}:{{ .Values.businessPostgres.image.tag }}"
+          imagePullPolicy: {{ .Values.businessPostgres.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.businessPostgres.secretName }}
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.businessPostgres.secretName }}
+                  key: POSTGRES_PASSWORD
+            - name: PRICING_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.businessPostgres.secretName }}
+                  key: PRICING_DB_PASSWORD
+            - name: DELIVERY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.businessPostgres.secretName }}
+                  key: DELIVERY_DB_PASSWORD
+            - name: COMMUNICATIONS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.businessPostgres.secretName }}
+                  key: COMMUNICATIONS_DB_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "${POSTGRES_USER}"
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "${POSTGRES_USER}"
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "${POSTGRES_USER}"
+            periodSeconds: 15
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.businessPostgres.resources | nindent 12 }}
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: business-postgres-init-scripts
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "business-postgres") | nindent 10 }}
+      spec:
+        accessModes:
+          - {{ .Values.businessPostgres.storage.accessMode }}
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.businessPostgres.storage.size }}
+{{- end }}
+

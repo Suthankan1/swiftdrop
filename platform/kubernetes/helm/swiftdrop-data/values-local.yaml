@@ -1,0 +1,45 @@
+# ==============================================================================
+# SwiftDrop Platform — Data Layer Local Development Values (Issue #154)
+# Target: k3d-swiftdrop-local (Single-node K3s v1.31.2, Apple Silicon ARM64)
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+  storageClass: local-path
+
+namespaces:
+  data: swiftdrop-data
+
+accountsPostgres:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+businessPostgres:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+keycloakPostgres:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+

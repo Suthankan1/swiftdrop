@@ -1,0 +1,108 @@
+{{- if .Values.accountsPostgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts-postgres
+  namespace: {{ .Values.namespaces.data }}
+  labels:
+    {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "accounts-postgres") | nindent 4 }}
+spec:
+  type: {{ .Values.accountsPostgres.service.type }}
+  selector:
+    {{- include "swiftdrop-data.selectorLabels" (dict "context" . "component" "accounts-postgres") | nindent 4 }}
+  ports:
+    - name: postgres
+      port: {{ .Values.accountsPostgres.service.port }}
+      targetPort: 5432
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: accounts-postgres
+  namespace: {{ .Values.namespaces.data }}
+  labels:
+    {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "accounts-postgres") | nindent 4 }}
+spec:
+  serviceName: accounts-postgres
+  replicas: {{ .Values.accountsPostgres.replicaCount }}
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-data.selectorLabels" (dict "context" . "component" "accounts-postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "accounts-postgres") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgres
+          image: "{{ .Values.accountsPostgres.image.repository }}:{{ .Values.accountsPostgres.image.tag }}"
+          imagePullPolicy: {{ .Values.accountsPostgres.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              value: accounts_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.accountsPostgres.secretName }}
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.accountsPostgres.secretName }}
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
+            periodSeconds: 15
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.accountsPostgres.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "swiftdrop-data.componentLabels" (dict "context" . "component" "accounts-postgres") | nindent 10 }}
+      spec:
+        accessModes:
+          - {{ .Values.accountsPostgres.storage.accessMode }}
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.accountsPostgres.storage.size }}
+{{- end }}
+
