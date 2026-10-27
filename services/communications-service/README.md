@@ -279,11 +279,35 @@ mvn -f services/communications-service/pom.xml verify
 - [x] 118 automated tests passing across unit, MockMvc, Spring Security, gRPC, and PostgreSQL integration suites with 100% pass rate.
 - [x] Verified full compatibility with merged Merchant UI (`#21`, `src/features/merchant/api/webhooks.test.ts`).
 
+### IMPLEMENTED in Issue #131 (N10-B18):
+- [x] Dedicated Kafka consumer `WebhookLifecycleKafkaConsumer` listening to topic `parcel.lifecycle.v1` under independent consumer group `communications.webhooks.v1`.
+- [x] Independent consumer infrastructure: dedicated `webhookConsumerFactory` and `webhookKafkaListenerContainerFactory` configured with `read_committed` isolation, manual offset commit (`AckMode.MANUAL_IMMEDIATE`), and bounded error handling (`DefaultErrorHandler`).
+- [x] Strict manual offset acknowledgement: Kafka partition offsets are committed **strictly after** the PostgreSQL inbox receipt and durable webhook delivery jobs have committed.
+- [x] Webhook delivery job materialization service `WebhookJobMaterializationService`:
+  - Envelope parsing & validation via `ParcelLifecycleEventParser` enforcing `contracts/events/parcel.status.changed.v1.schema.json`.
+  - Direct retail parcel bypass: parcels with `merchantId == null` record inbox receipt in `consumed_events` and advance offset with zero webhook jobs.
+  - Merchant tenant subscription selection: queries `webhookSubscriptionRepository.findByMerchantIdAndActiveTrue(merchantId)`.
+  - Event filter validation: checks `allowedEventTypes` via `WebhookEventFilterValidator` against `parcel.status.changed.v1`.
+  - Stale-version & reordering guard: checks `findTopBySubscriptionIdAndParcelIdOrderByStateVersionDesc`. Events with `state_version <= current_version` are recognized as stale and skipped from job creation while committing inbox receipt to prevent redelivery loops.
+  - Cryptographic payload integrity: computes deterministic SHA-256 digest (`signed_payload_digest`) stored with delivery job.
+  - Materializes durable delivery jobs in `webhook_deliveries` with initial state `PENDING`, `attempt_count = 0`, `next_attempt_at = now`.
+- [x] Dual-layer durable idempotency:
+  - Table 1 `consumed_events`: PK `(consumer_name, event_id)` with `consumer_name = 'communications.webhooks.v1'`.
+  - Table 4 `webhook_deliveries`: `uq_webhook_deliveries_subscription_event UNIQUE (subscription_id, event_id)`.
+  - Atomic persistence via `DurableJobPersistenceService.persistInboxAndWebhookDeliveries`.
+  - Graceful concurrent duplicate detection via `DuplicateEventException`.
+- [x] Zero customer PII stored in `consumed_events` or `webhook_deliveries`.
+- [x] Automated test coverage:
+  - 11 unit tests in `WebhookJobMaterializationServiceTest` covering single/multiple subscriptions, retail parcels, disabled subscriptions, stale versions, duplicate events, concurrent collisions, and zero PII.
+  - 5 unit tests in `WebhookLifecycleKafkaConsumerTest` verifying commit ordering, parser failure backoff, and exception handling.
+  - 7 integration tests in `WebhookKafkaConsumerIT` with `@EmbeddedKafka` and `@Testcontainers(disabledWithoutDocker = true)`.
+
 ### Webhook Worker Handoff Boundary:
 - Merchant webhook processing is completely decoupled from customer notification processing.
-- When the webhook consumer is implemented, it consumes the same topic `parcel.lifecycle.v1` using its own independent consumer group (e.g. `communications.webhooks.v1`).
-- The composite PK `(consumer_name, event_id)` in `consumed_events` ensures that notification and webhook consumer groups maintain independent inbox receipts for the same domain event without key collisions.
-- Notification consumer offset acknowledgements never represent webhook delivery.
+- The webhook consumer group `communications.webhooks.v1` consumes `parcel.lifecycle.v1` independently of `communications.notifications.v1`.
+- The composite PK `(consumer_name, event_id)` in `consumed_events` ensures both consumer groups maintain independent inbox receipts for the same domain event without key collisions.
+- Materialized jobs are left in `status = PENDING`, `attempt_count = 0`, `next_attempt_at = now` for discovery by the downstream delivery engine (`idx_webhook_deliveries_pending`).
+- Outbound HTTP dispatch, HMAC signing headers, and backoff retries are owned by downstream Issue #33 / #142 / #151.
 
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
 - ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
