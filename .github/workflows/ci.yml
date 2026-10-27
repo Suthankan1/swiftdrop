@@ -353,12 +353,20 @@ jobs:
       - name: Verify unittest discovery parity
         run: python3 -m unittest discover -s tests/kubernetes -p "test_*.py" -v
 
+      - name: Run hosting feasibility and endpoint security test suite
+        run: python3 -m pytest tests/hosting-feasibility -v --junitxml=hosting-feasibility-results.xml
+
+      - name: Verify hosting feasibility unittest discovery parity
+        run: python3 -m unittest discover -s tests/hosting-feasibility -p "test_*.py" -v
+
       - name: Upload Kubernetes policy test results
         if: always()
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: kubernetes-policy-results
-          path: kubernetes-policy-results.xml
+          path: |
+            kubernetes-policy-results.xml
+            hosting-feasibility-results.xml
           retention-days: 7
 
   container-images-validation:
