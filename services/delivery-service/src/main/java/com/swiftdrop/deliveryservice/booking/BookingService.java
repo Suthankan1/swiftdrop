@@ -167,7 +167,7 @@ public class BookingService {
         String principal = "merchant:" + merchantId;
         repository.lock(principal, key);
 
-        var replay = repository.replay(principal, key);
+        var replay = repository.replayMerchant(merchantId, key);
         if (replay.isPresent()) {
             if (!replay.get().digest().equals(digest)) {
                 throw failure(409, "IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different request.");
