@@ -9,6 +9,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -85,6 +87,7 @@ public class Parcel {
     @Column(name = "delivery_notes", length = 2000)
     private String deliveryNotes;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "quote_snapshot", columnDefinition = "jsonb")
     private String quoteSnapshot;
 
