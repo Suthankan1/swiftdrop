@@ -32,6 +32,7 @@ public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
     private final int port;
     private final boolean enabled;
 
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private Server server;
     private volatile boolean running = false;
 
@@ -41,13 +42,25 @@ public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
             ActorDelegationValidator actorDelegationValidator,
             GrpcSecurityPolicy grpcSecurityPolicy,
             @Value("${grpc.server.port:9082}") int port,
-            @Value("${grpc.server.enabled:true}") boolean enabled) {
+            @Value("${grpc.server.enabled:true}") boolean enabled,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.deliveryInternalService = deliveryInternalService;
         this.serviceTokenValidator = serviceTokenValidator;
         this.actorDelegationValidator = actorDelegationValidator;
         this.grpcSecurityPolicy = grpcSecurityPolicy;
         this.port = port;
         this.enabled = enabled;
+        this.meterRegistry = meterRegistry;
+    }
+
+    public DeliveryGrpcServerLifecycle(
+            DeliveryInternalServiceImpl deliveryInternalService,
+            ServiceTokenValidator serviceTokenValidator,
+            ActorDelegationValidator actorDelegationValidator,
+            GrpcSecurityPolicy grpcSecurityPolicy,
+            int port,
+            boolean enabled) {
+        this(deliveryInternalService, serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy, port, enabled, null);
     }
 
     @Override
@@ -59,7 +72,7 @@ public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
 
         try {
             SwiftDropGrpcServerSecurityInterceptor securityInterceptor =
-                    new SwiftDropGrpcServerSecurityInterceptor(serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy);
+                    new SwiftDropGrpcServerSecurityInterceptor(serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy, meterRegistry);
 
             server = ServerBuilder.forPort(port)
                     .intercept(securityInterceptor)

@@ -76,4 +76,9 @@ public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery
     List<WebhookDelivery> findByEventId(UUID eventId);
 
     List<WebhookDelivery> findByStatusAndUpdatedAtLessThanEqual(WebhookDeliveryStatus status, Instant cutoff);
+
+    long countByStatus(WebhookDeliveryStatus status);
+
+    @Query("SELECT MIN(d.createdAt) FROM WebhookDelivery d WHERE d.status = :status")
+    Optional<Instant> findOldestCreatedAtByStatus(@Param("status") WebhookDeliveryStatus status);
 }

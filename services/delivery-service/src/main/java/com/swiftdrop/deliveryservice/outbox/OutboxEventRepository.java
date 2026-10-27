@@ -22,6 +22,9 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
 
     long countByStatus(OutboxStatus status);
 
+    @Query("SELECT MIN(e.createdAt) FROM OutboxEvent e WHERE e.status = :status")
+    Optional<Instant> findOldestCreatedAtByStatus(@Param("status") OutboxStatus status);
+
     /**
      * Atomically locks and returns candidate events for relaying.
      * Uses PostgreSQL native FOR UPDATE SKIP LOCKED to prevent concurrency contention

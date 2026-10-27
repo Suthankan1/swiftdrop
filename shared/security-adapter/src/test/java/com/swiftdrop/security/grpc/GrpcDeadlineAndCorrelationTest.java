@@ -239,6 +239,65 @@ class GrpcDeadlineAndCorrelationTest {
         assertThat(results).hasSize(threadCount);
     }
 
+    @Test
+    @DisplayName("CorrelationContext bridge: HTTP/ThreadLocal correlation ID propagates automatically to gRPC metadata")
+    void testCorrelationContextBridgeToGrpcClient() {
+        String token = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.DELIVERY_SERVICE.getServiceName());
+        String expectedCorrelationId = "http-req-" + UUID.randomUUID();
+
+        com.swiftdrop.security.correlation.CorrelationContext.set(expectedCorrelationId);
+        try {
+            var clientInterceptor = new SwiftDropGrpcClientInterceptor(() -> token);
+
+            AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                    AccountsInternalServiceGrpc.newBlockingStub(channel)
+                            .withInterceptors(clientInterceptor);
+
+            MerchantKeyDigestResponse response = stub.validateMerchantKeyDigest(
+                    MerchantKeyDigestRequest.newBuilder().setKeyPrefix("swd_live_abc1").build()
+            );
+
+            assertThat(response).isNotNull();
+            assertThat(capturedServerCorrelationId.get()).isEqualTo(expectedCorrelationId);
+        } finally {
+            com.swiftdrop.security.correlation.CorrelationContext.clear();
+        }
+    }
+
+    @Test
+    @DisplayName("gRPC client operational metrics recorded with bounded labels")
+    void testGrpcMetricsRecordedWithBoundedLabels() {
+        String token = jwtHelper.createSignedServiceToken(SwiftDropServiceIdentity.DELIVERY_SERVICE.getServiceName());
+        io.micrometer.core.instrument.simple.SimpleMeterRegistry clientRegistry = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+
+        var clientInterceptor = new SwiftDropGrpcClientInterceptor(() -> token, 2000, clientRegistry, "delivery-operations");
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel)
+                        .withInterceptors(clientInterceptor);
+
+        MerchantKeyDigestResponse response = stub.validateMerchantKeyDigest(
+                MerchantKeyDigestRequest.newBuilder().setKeyPrefix("swd_live_abc1").build()
+        );
+
+        assertThat(response).isNotNull();
+
+        // Verify client metrics
+        assertThat(clientRegistry.find("swiftdrop.grpc.client.requests").counter()).isNotNull();
+        assertThat(clientRegistry.find("swiftdrop.grpc.client.requests").counter().count()).isEqualTo(1.0);
+        assertThat(clientRegistry.find("swiftdrop.grpc.client.duration").timer()).isNotNull();
+        assertThat(clientRegistry.find("swiftdrop.grpc.client.duration").timer().count()).isEqualTo(1L);
+
+        // Assert strictly bounded tags (no actorSub, no tenantId, no correlationId)
+        var meter = clientRegistry.find("swiftdrop.grpc.client.requests").counter();
+        assertThat(meter.getId().getTag("service")).isEqualTo("delivery-operations");
+        assertThat(meter.getId().getTag("status")).isEqualTo("OK");
+        assertThat(meter.getId().getTag("method")).contains("ValidateMerchantKeyDigest");
+        assertThat(meter.getId().getTag("correlationId")).isNull();
+        assertThat(meter.getId().getTag("actorSub")).isNull();
+        assertThat(meter.getId().getTag("tenantId")).isNull();
+    }
+
     private static class TimingMockAccountsService extends AccountsInternalServiceGrpc.AccountsInternalServiceImplBase {
         private final AtomicReference<String> correlationCapture;
 

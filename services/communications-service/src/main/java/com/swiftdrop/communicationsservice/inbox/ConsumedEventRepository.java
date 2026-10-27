@@ -12,4 +12,6 @@ public interface ConsumedEventRepository extends JpaRepository<ConsumedEvent, Co
     boolean existsByIdConsumerNameAndIdEventId(String consumerName, UUID eventId);
 
     Optional<ConsumedEvent> findByIdConsumerNameAndIdEventId(String consumerName, UUID eventId);
+
+    long countByIdConsumerName(String consumerName);
 }

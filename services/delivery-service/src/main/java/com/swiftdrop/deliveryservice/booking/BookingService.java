@@ -5,6 +5,7 @@ import com.swiftdrop.deliveryservice.query.dto.ParcelDetailResponse;
 import com.swiftdrop.deliveryservice.quote.BookingAuthorization;
 import com.swiftdrop.deliveryservice.quote.BookingQuoteProvider;
 import com.swiftdrop.deliveryservice.quote.QuoteValidation;
+import com.swiftdrop.security.correlation.CorrelationContext;
 import jakarta.validation.Validator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -127,7 +128,7 @@ public class BookingService {
                         "aggregateType", "PARCEL",
                         "aggregateVersion", 1,
                         "occurredAt", now,
-                        "correlationId", key.toString(),
+                        "correlationId", CorrelationContext.get().orElse(key.toString()),
                         "producer", "delivery-operations",
                         "payload", payload
                 );
@@ -247,7 +248,7 @@ public class BookingService {
                         "aggregateType", "PARCEL",
                         "aggregateVersion", 1,
                         "occurredAt", now.toString(),
-                        "correlationId", key.toString(),
+                        "correlationId", CorrelationContext.get().orElse(key.toString()),
                         "producer", "delivery-operations",
                         "payload", payload
                 );

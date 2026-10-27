@@ -149,13 +149,14 @@ public class StatusTransitionService {
                 courierSub = actorSub;
             }
 
+            String correlationId = com.swiftdrop.security.correlation.CorrelationContext.get().orElse(null);
             com.swiftdrop.deliveryservice.outbox.OutboxEvent outboxEvent = outboxEventFactory.createParcelStatusChangedEvent(
                     updatedParcel,
                     previousStatus,
                     request.newStatus(),
                     request.reason(),
                     courierSub,
-                    null,
+                    correlationId,
                     occurredAt,
                     resultingVersion
             );
