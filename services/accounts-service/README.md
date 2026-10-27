@@ -474,3 +474,55 @@ Enforced via `SwiftDropGrpcServerSecurityInterceptor` and `AccountsInternalServi
   cd services/accounts-service
   ./mvnw test
   ```
+
+## Issue #122 — ADMIN business reads and staff lifecycle handoff
+
+The following Accounts-owned reads require an independently validated JWT with
+the `ADMIN` realm role. Responses use `Cache-Control: no-store`, are bounded to
+`size=1..50` (default `20`), and are ordered deterministically by
+`createdAt ASC, id ASC`:
+
+- `GET /api/v1/admin/users?page=0&size=20` returns only the safe account
+  summary (`profileId`, `keycloakSub`, `email`, `fullName`, `createdAt`). It is
+  not a Keycloak directory query and never returns credentials or tokens.
+- `GET /api/v1/admin/staff?page=0&size=20&staffRole=COURIER&businessStatus=ACTIVE&assignedZone=ZONE-A`
+  returns Accounts-owned staff business summaries. Filters are optional and
+  database-side; results are never loaded into memory for pagination.
+- `GET /api/v1/admin/staff/{profileId}` uses the immutable staff profile UUID,
+  not `staffId` or the Keycloak subject, and returns one safe business summary.
+
+The existing `POST /api/v1/admin/reconciliation/staff/provision` endpoint is
+the only provisioning entrypoint. It verifies the target subject through the
+Platform-owned `KeycloakIdentityAdapter`, allows only `COURIER`, `DISPATCHER`,
+or `ADMIN`, is idempotent for an identical existing binding, and records
+conflicts in the existing reconciliation audit. No `STAFF` role is introduced.
+
+The lifecycle policy is:
+
+| Current | Allowed target | Result |
+|---|---|---|
+| `ACTIVE` | `SUSPENDED`, `INACTIVE` | Deny business access first, then revoke the operational Keycloak role |
+| `SUSPENDED` | `ACTIVE`, `INACTIVE` | Reconcile the role first; only then persist `ACTIVE` |
+| `INACTIVE` | `ACTIVE` | Reconcile the role first; only then persist `ACTIVE` |
+| Any | Same status | Idempotent reconciliation/no-op |
+
+The existing `POST /api/v1/admin/reconciliation/staff/{sub}/suspend` remains
+the reviewed suspension route. `.../{sub}/activate` and
+`.../{sub}/deactivate` are implemented for Issue #122 as proposed extensions
+and remain pending contract-owner confirmation before being treated as frozen
+public API. They reuse `StaffRoleReconciliationService`, the existing adapter,
+and `identity_reconciliation_audit`; no second identity client or audit store
+is created.
+
+If Keycloak is unavailable, denial statuses are committed locally and the
+request returns `503`; the audit outcome is `PENDING_RETRY`. Activation never
+persists `ACTIVE` until role reconciliation succeeds. The existing retry route
+re-reads current Accounts state, so a later suspension cannot be undone by a
+stale activation retry. V6 adds an optimistic-lock version and admin listing
+indexes; V1–V5 are unchanged.
+
+Admin UI consumers must handle `401`, `403`, `404`, `409`, and `503` using the
+service ProblemDetail contract. A `503` is not a completed lifecycle command;
+the safe retry is `POST /api/v1/admin/reconciliation/retry/{auditId}` after
+Keycloak recovery. Independent acceptance evidence from `@abhi190503` and
+`@pushmitha20` is still required for Issue #122.

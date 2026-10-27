@@ -79,6 +79,20 @@ public class AdminReconciliationController {
                 .body(result);
     }
 
+    /** Proposed Issue #122 command pending contract-owner confirmation. */
+    @PostMapping("/staff/{sub}/activate")
+    public ResponseEntity<ReconciliationResult> activateStaff(@PathVariable("sub") String sub) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(staffReconciliationService.activateStaff(identityProvider.currentIdentity(), sub, "ADMIN_INITIATED"));
+    }
+
+    /** Proposed Issue #122 command pending contract-owner confirmation. */
+    @PostMapping("/staff/{sub}/deactivate")
+    public ResponseEntity<ReconciliationResult> deactivateStaff(@PathVariable("sub") String sub) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(staffReconciliationService.deactivateStaff(identityProvider.currentIdentity(), sub, "ADMIN_INITIATED"));
+    }
+
     /**
      * Synchronizes a merchant's Keycloak role based on their Accounts profile and active trigger policy.
      */

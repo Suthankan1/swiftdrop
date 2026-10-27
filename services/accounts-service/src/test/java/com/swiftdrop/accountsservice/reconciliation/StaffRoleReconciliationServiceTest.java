@@ -193,4 +193,58 @@ class StaffRoleReconciliationServiceTest {
         verify(staffProfiles).save(profile);
         verify(identityAdapter).reconcileRole(courierSub, "COURIER", false);
     }
+
+    @Test
+    @DisplayName("activateStaff reconciles Keycloak before enabling business access")
+    void activateStaff_reconcilesBeforePersistingActive() {
+        StaffProfile profile = new StaffProfile(
+                UUID.randomUUID(), null, courierSub, "STF-2026-0042", StaffRole.COURIER,
+                "FIELD_LOGISTICS", "ZONE-1", StaffStatus.SUSPENDED, Instant.now(), Instant.now()
+        );
+        when(staffProfiles.findByKeycloakSub(courierSub)).thenReturn(Optional.of(profile));
+        when(identityAdapter.identityExists(courierSub)).thenReturn(true);
+        when(identityAdapter.reconcileRole(courierSub, "COURIER", true))
+                .thenReturn(ReconciliationResult.success(courierSub, "COURIER", "Role granted"));
+
+        ReconciliationResult result = service.activateStaff(adminIdentity, courierSub, "REACTIVATE");
+
+        assertThat(result.outcome()).isEqualTo(ReconciliationOutcome.SUCCESS);
+        assertThat(profile.getStatus()).isEqualTo(StaffStatus.ACTIVE);
+        verify(identityAdapter).reconcileRole(courierSub, "COURIER", true);
+        verify(staffProfiles).save(profile);
+    }
+
+    @Test
+    @DisplayName("activation does not enable business access when Keycloak reconciliation is pending")
+    void activateStaff_failsClosedWhenReconciliationPending() {
+        StaffProfile profile = new StaffProfile(
+                UUID.randomUUID(), null, courierSub, "STF-2026-0042", StaffRole.COURIER,
+                "FIELD_LOGISTICS", "ZONE-1", StaffStatus.SUSPENDED, Instant.now(), Instant.now()
+        );
+        when(staffProfiles.findByKeycloakSub(courierSub)).thenReturn(Optional.of(profile));
+        when(identityAdapter.identityExists(courierSub)).thenReturn(true);
+        when(identityAdapter.reconcileRole(courierSub, "COURIER", true))
+                .thenReturn(ReconciliationResult.pendingRetry(courierSub, "COURIER", "Keycloak unavailable"));
+
+        assertThatThrownBy(() -> service.activateStaff(adminIdentity, courierSub, "REACTIVATE"))
+                .isInstanceOf(com.swiftdrop.accountsservice.identity.keycloak.KeycloakAdminUnavailableException.class);
+        assertThat(profile.getStatus()).isEqualTo(StaffStatus.SUSPENDED);
+        verify(staffProfiles, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("invalid lifecycle transition is denied and audited")
+    void lifecycleTransition_rejectsInactiveToSuspended() {
+        StaffProfile profile = new StaffProfile(
+                UUID.randomUUID(), null, courierSub, "STF-2026-0042", StaffRole.COURIER,
+                "FIELD_LOGISTICS", "ZONE-1", StaffStatus.INACTIVE, Instant.now(), Instant.now()
+        );
+        when(staffProfiles.findByKeycloakSub(courierSub)).thenReturn(Optional.of(profile));
+
+        assertThatThrownBy(() -> service.suspendStaff(adminIdentity, courierSub, "SUSPEND"))
+                .isInstanceOf(IllegalStateException.class);
+        verify(identityAdapter, never()).reconcileRole(any(), any(), anyBoolean());
+        verify(auditService).recordAudit(eq(courierSub), eq("COURIER"), eq("STATUS_SYNC"),
+                eq("INACTIVE"), eq("SUSPENDED"), eq(ReconciliationOutcome.DENIED), eq(adminSub), any(), any());
+    }
 }
