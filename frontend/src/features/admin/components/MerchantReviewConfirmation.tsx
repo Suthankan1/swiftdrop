@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { MerchantReviewAction, MerchantReviewDetail } from '../api/merchantReview'
+import { merchantReasonProblem, type MerchantReviewAction, type MerchantReviewDetail } from '../api/merchantReview'
 
 export function MerchantReviewConfirmation({ merchant, action, pending, onCancel, onConfirm }: {
   merchant: MerchantReviewDetail
@@ -13,6 +13,7 @@ export function MerchantReviewConfirmation({ merchant, action, pending, onCancel
   const overlay = useRef<HTMLDivElement>(null)
   const [reason, setReason] = useState('')
   const policy = merchant.actions.find(item => item.action === action)?.reason
+  const problem = merchantReasonProblem(reason, policy)
   const label = action === 'approve' ? 'Approve' : 'Suspend'
   useEffect(() => {
     const previous = document.activeElement
@@ -46,16 +47,19 @@ export function MerchantReviewConfirmation({ merchant, action, pending, onCancel
       <p id="merchant-confirm-description">{label} <strong>{merchant.businessName}</strong> (merchant {merchant.id})?
         {merchant.registrationNumber && <> Registration: {merchant.registrationNumber}.</>}</p>
       <p>Current status: {merchant.status}. Confirm only after reviewing this merchant.</p>
-      <form onSubmit={event => { event.preventDefault(); if (!pending) onConfirm(policy ? reason.trim() || undefined : undefined) }}>
+      <form onSubmit={event => { event.preventDefault(); if (!pending && !problem) onConfirm(policy ? reason.trim() || undefined : undefined) }}>
         {policy && <div className="form-group">
           <label htmlFor="merchant-review-reason">Reason {policy.required ? '(required)' : '(optional)'}</label>
           <textarea id="merchant-review-reason" value={reason} required={policy.required} maxLength={policy.maxLength}
+            aria-invalid={Boolean(problem && reason)} aria-describedby="merchant-review-reason-hint"
             disabled={pending} onChange={event => setReason(event.target.value)} />
+          <p id="merchant-review-reason-hint">{problem && reason ? <span role="alert">{problem}</span> : null}
+            {' '}{reason.trim().length}/{policy.maxLength} characters. Recorded in the merchant audit history.</p>
         </div>}
         <div className="modal-actions">
           <button className="button button-secondary" type="button" disabled={pending} onClick={onCancel}>Cancel</button>
           <button className="button button-primary" type="submit"
-            disabled={pending || Boolean(policy?.required && !reason.trim())}>
+            disabled={pending || Boolean(problem)}>
             {pending ? 'Submitting…' : `Confirm ${action}`}
           </button>
         </div>
