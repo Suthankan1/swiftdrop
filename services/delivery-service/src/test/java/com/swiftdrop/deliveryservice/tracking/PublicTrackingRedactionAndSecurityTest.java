@@ -7,6 +7,7 @@ import com.swiftdrop.deliveryservice.core.ParcelStatus;
 import com.swiftdrop.deliveryservice.status.StatusHistory;
 import com.swiftdrop.deliveryservice.status.StatusHistoryRepository;
 import com.swiftdrop.deliveryservice.tracking.dto.PublicTrackingResponse;
+import com.swiftdrop.deliveryservice.tracking.dto.PublicTrackingSseEvent;
 import com.swiftdrop.deliveryservice.tracking.dto.TrackingTimelineItem;
 import com.swiftdrop.deliveryservice.tracking.service.DefaultPublicTrackingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -211,4 +212,60 @@ class PublicTrackingRedactionAndSecurityTest {
         assertThat(item.status()).isEqualTo(ParcelStatus.CREATED);
         assertThat(item.cityOrZone()).contains("Order Confirmed");
     }
+
+    @Test
+    @DisplayName("Redaction: PublicTrackingSseEvent wire payload strictly excludes parcelId, PII, and credentials")
+    void publicTrackingSseEvent_StrictlyRedactsInternalIdsAndPii() throws Exception {
+        String trackingNumber = "SWD-20261023-A1B2C3";
+        UUID eventId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-10-23T14:30:00Z");
+
+        PublicTrackingSseEvent sseEvent = new PublicTrackingSseEvent(
+                eventId,
+                trackingNumber,
+                3L,
+                "PICKED_UP",
+                "IN_TRANSIT",
+                "Colombo Sorting Hub",
+                now
+        );
+
+        String json = jsonMapper.writeValueAsString(sseEvent);
+
+        // Strictly forbidden sensitive markers and internal fields
+        assertThat(json).doesNotContain(SENSITIVE_PARCEL_ID.toString());
+        assertThat(json).doesNotContain("parcelId");
+        assertThat(json).doesNotContain(SENSITIVE_SENDER_SUB);
+        assertThat(json).doesNotContain("senderSub");
+        assertThat(json).doesNotContain(SENSITIVE_MERCHANT_ID.toString());
+        assertThat(json).doesNotContain("merchantId");
+        assertThat(json).doesNotContain(SENSITIVE_QUOTE_ID.toString());
+        assertThat(json).doesNotContain("quoteId");
+        assertThat(json).doesNotContain(SENSITIVE_PROOF_ID.toString());
+        assertThat(json).doesNotContain("proofId");
+        assertThat(json).doesNotContain(SENSITIVE_COURIER_SUB);
+        assertThat(json).doesNotContain("courierSub");
+        assertThat(json).doesNotContain(SENSITIVE_COURIER_NOTE);
+        assertThat(json).doesNotContain("notes");
+        assertThat(json).doesNotContain(SENSITIVE_FAILURE_REASON);
+        assertThat(json).doesNotContain("reason");
+        assertThat(json).doesNotContain("actorSub");
+        assertThat(json).doesNotContain("proofUrl");
+        assertThat(json).doesNotContain("receiptUrl");
+        assertThat(json).doesNotContain("pickupAddress");
+        assertThat(json).doesNotContain("dropoffAddress");
+        assertThat(json).doesNotContain("recipientName");
+        assertThat(json).doesNotContain("recipientPhone");
+        assertThat(json).doesNotContain("deliveryNotes");
+
+        // Approved allowlisted public fields
+        assertThat(json).contains("\"eventId\":\"" + eventId + "\"");
+        assertThat(json).contains("\"trackingNumber\":\"" + trackingNumber + "\"");
+        assertThat(json).contains("\"aggregateVersion\":3");
+        assertThat(json).contains("\"oldStatus\":\"PICKED_UP\"");
+        assertThat(json).contains("\"newStatus\":\"IN_TRANSIT\"");
+        assertThat(json).contains("\"cityOrZone\":\"Colombo Sorting Hub\"");
+        assertThat(json).contains("\"occurredAt\":\"2026-10-23T14:30:00Z\"");
+    }
 }
+

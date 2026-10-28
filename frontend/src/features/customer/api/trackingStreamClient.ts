@@ -1,6 +1,8 @@
 import {
   isParcelLifecycleSseEvent,
+  isPublicTrackingSseEvent,
   type ParcelLifecycleSseEvent,
+  type PublicTrackingSseEvent,
 } from './trackingStreamContracts'
 
 export class StreamHttpError extends Error {
@@ -103,6 +105,130 @@ export async function connectParcelTrackingStream({
         const parsed = JSON.parse(rawData)
         if (isParcelLifecycleSseEvent(parsed)) {
           if (!currentEventName || currentEventName === 'parcel.status.changed') {
+            onEvent(parsed)
+          }
+        }
+      } catch {
+        // Drop malformed payloads safely without crashing stream processor
+      }
+    }
+    currentEventName = null
+    currentDataLines = []
+  }
+
+  try {
+    while (!signal.aborted) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split(/\r\n|\r|\n/)
+      buffer = lines.pop() ?? ''
+
+      for (const line of lines) {
+        if (line === '') {
+          // Empty line indicates event boundary in SSE protocol
+          dispatchEvent()
+        } else if (line.startsWith(':')) {
+          // SSE comment / heartbeat line (e.g. :keepalive)
+          onHeartbeat?.()
+        } else if (line.startsWith('event:')) {
+          currentEventName = line.slice(6).trim()
+        } else if (line.startsWith('data:')) {
+          currentDataLines.push(line.slice(5).trim())
+        }
+      }
+    }
+    if (currentDataLines.length > 0) {
+      dispatchEvent()
+    }
+  } finally {
+    try {
+      await reader.cancel()
+    } catch {
+      // Reader cancellation error ignored on cleanup
+    }
+  }
+}
+
+export interface ConnectPublicTrackingStreamOptions {
+  trackingNumber: string
+  gatewayUrl?: string
+  fetch?: typeof globalThis.fetch
+  signal: AbortSignal
+  onEvent: (event: PublicTrackingSseEvent) => void
+  onHeartbeat?: () => void
+  onConnected?: () => void
+}
+
+/**
+ * Establishes an anonymous, public Server-Sent Events (SSE) tracking stream for a parcel.
+ * Uses tracking reference in the URL path. Strictly does NOT send Authorization headers.
+ * Conforms to docs/contracts/SSE_REST_RECOVERY.md and PublicTrackingController.java:
+ * GET /api/v1/tracking/{trackingNumber}/events (Accept: text/event-stream)
+ */
+export async function connectPublicTrackingStream({
+  trackingNumber,
+  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  fetch: fetchRequest = globalThis.fetch,
+  signal,
+  onEvent,
+  onHeartbeat,
+  onConnected,
+}: ConnectPublicTrackingStreamOptions): Promise<void> {
+  const normalizedGateway = gatewayUrl.replace(/\/$/, '')
+  const url = `${normalizedGateway}/api/v1/tracking/${encodeURIComponent(trackingNumber)}/events`
+
+  let response: Response
+  try {
+    response = await fetchRequest(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      },
+      credentials: 'omit',
+      cache: 'no-store',
+      signal,
+    })
+  } catch (err) {
+    if (signal.aborted) return
+    throw err
+  }
+
+  if (response.status === 400) {
+    throw new StreamHttpError(400, 'Invalid tracking reference format.')
+  }
+  if (response.status === 404) {
+    throw new StreamHttpError(404, 'Tracking reference not found.')
+  }
+  if (response.status === 429) {
+    throw new StreamHttpError(429, 'Too many tracking stream connections. Please wait a moment.')
+  }
+  if (!response.ok) {
+    throw new StreamHttpError(response.status, `Stream endpoint returned status ${response.status}.`)
+  }
+
+  if (!response.body) {
+    throw new Error('ReadableStream body is not available on SSE response.')
+  }
+
+  onConnected?.()
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let buffer = ''
+
+  let currentEventName: string | null = null
+  let currentDataLines: string[] = []
+
+  const dispatchEvent = () => {
+    if (currentDataLines.length > 0) {
+      const rawData = currentDataLines.join('\n')
+      try {
+        const parsed = JSON.parse(rawData)
+        if (isPublicTrackingSseEvent(parsed)) {
+          if (!currentEventName || currentEventName === 'tracking.status.changed') {
             onEvent(parsed)
           }
         }

@@ -28,6 +28,7 @@ public class SseSubscriberSession {
     private final UUID parcelId;
     private final String userSub;
     private final boolean courier;
+    private final boolean isPublic;
     private final SseEmitter emitter;
     private final Instant connectedAt;
     private final Instant tokenExpiresAt;
@@ -42,6 +43,7 @@ public class SseSubscriberSession {
             UUID parcelId,
             String userSub,
             boolean courier,
+            boolean isPublic,
             SseEmitter emitter,
             Instant tokenExpiresAt,
             Consumer<SseSubscriberSession> cleanupCallback) {
@@ -49,12 +51,23 @@ public class SseSubscriberSession {
         this.parcelId = Objects.requireNonNull(parcelId, "parcelId cannot be null");
         this.userSub = Objects.requireNonNull(userSub, "userSub cannot be null");
         this.courier = courier;
+        this.isPublic = isPublic;
         this.emitter = Objects.requireNonNull(emitter, "emitter cannot be null");
         this.connectedAt = Instant.now();
         this.tokenExpiresAt = Objects.requireNonNull(tokenExpiresAt, "tokenExpiresAt cannot be null");
         this.lastDeliveredVersion = new AtomicLong(0);
         this.closed = new AtomicBoolean(false);
         this.cleanupCallback = Objects.requireNonNull(cleanupCallback, "cleanupCallback cannot be null");
+    }
+
+    public SseSubscriberSession(
+            UUID parcelId,
+            String userSub,
+            boolean courier,
+            SseEmitter emitter,
+            Instant tokenExpiresAt,
+            Consumer<SseSubscriberSession> cleanupCallback) {
+        this(parcelId, userSub, courier, false, emitter, tokenExpiresAt, cleanupCallback);
     }
 
     public UUID getSessionId() {
@@ -71,6 +84,10 @@ public class SseSubscriberSession {
 
     public boolean isCourier() {
         return courier;
+    }
+
+    public boolean isPublic() {
+        return isPublic;
     }
 
     public SseEmitter getEmitter() {
@@ -148,6 +165,56 @@ public class SseSubscriberSession {
             return true;
         } catch (IOException | IllegalStateException ex) {
             log.debug("Failed to deliver SSE event to session {} (client likely disconnected): {}", sessionId, ex.getMessage());
+            close();
+            return false;
+        }
+    }
+
+    /**
+     * Sends a strictly redacted public status transition event to this subscriber.
+     * Enforces monotonically increasing aggregate version checks, drops stale/duplicate events,
+     * and bounds session lifetime.
+     *
+     * @param event public redacted domain event
+     * @return true if successfully delivered, false if dropped or delivery failed
+     */
+    public boolean sendPublicEvent(com.swiftdrop.deliveryservice.tracking.dto.PublicTrackingSseEvent event) {
+        if (closed.get()) {
+            return false;
+        }
+
+        // 1. Verify stream lifetime / timeout boundary
+        if (Instant.now().isAfter(tokenExpiresAt)) {
+            log.info("Public SSE session {} reached connection timeout for tracking {}. Terminating stream.",
+                    sessionId, event.trackingNumber());
+            close();
+            return false;
+        }
+
+        // 2. Enforce version sequencing: drop duplicate or out-of-order earlier versions
+        long currentVersion = lastDeliveredVersion.get();
+        if (event.aggregateVersion() <= currentVersion) {
+            log.debug("Dropping stale/duplicate public event [version={}, lastDelivered={}] for session {}",
+                    event.aggregateVersion(), currentVersion, sessionId);
+            return false;
+        }
+
+        // 3. Detect version gap (missed events): log warning for client REST recovery
+        if (currentVersion > 0 && event.aggregateVersion() > currentVersion + 1) {
+            log.warn("Detected aggregate version gap for public session {} on tracking {} [lastDelivered={}, received={}]. Emitting event; client must reconcile via canonical REST GET /api/v1/tracking/{}.",
+                    sessionId, event.trackingNumber(), currentVersion, event.aggregateVersion(), event.trackingNumber());
+        }
+
+        // 4. Emit SSE formatted message with strict redaction
+        try {
+            lastDeliveredVersion.set(event.aggregateVersion());
+            emitter.send(SseEmitter.event()
+                    .id(event.eventId().toString())
+                    .name("parcel.status.changed")
+                    .data(event, MediaType.APPLICATION_JSON));
+            return true;
+        } catch (IOException | IllegalStateException ex) {
+            log.debug("Failed to deliver public SSE event to session {} (client likely disconnected): {}", sessionId, ex.getMessage());
             close();
             return false;
         }

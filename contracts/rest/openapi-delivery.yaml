@@ -142,8 +142,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PublicTrackingResponse'
+        '400':
+          description: Invalid tracking reference format
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
         '404':
           description: Tracking number not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/tracking/{trackingNumber}/events:
+    get:
+      summary: Public redacted parcel tracking Server-Sent Events (SSE) stream
+      description: |
+        Unauthenticated Server-Sent Events (SSE) stream for real-time parcel tracking updates.
+        Accessible anonymously to senders and recipients via approved tracking number format.
+        Emits 'parcel.status.changed' events with strictly redacted public fields:
+        trackingNumber, aggregateVersion, status transitions, coarse city/zone checkpoints, and timestamps.
+        Strictly excludes internal parcel IDs, customer names, phone numbers, street addresses,
+        courier identities, proof URLs, and financial/receipt details.
+        Streams are bounded by idle/session timeouts and emit keepalive comments (:keepalive) every 15 seconds.
+      operationId: streamPublicTrackingEvents
+      security: []
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^SWD-[0-9]{8}-[A-Z0-9]{4,8}$"
+            example: "SWD-20261023-A1B2C3"
+      responses:
+        '200':
+          description: Real-time public tracking event stream
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/PublicTrackingSseEvent'
+        '400':
+          description: Invalid tracking reference format
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Tracking number not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '429':
+          description: Concurrent SSE connection or rate limit exceeded
           content:
             application/problem+json:
               schema:
@@ -1027,3 +1080,39 @@ components:
         cityOrZone:
           type: string
           example: "Western Province Sorting Hub"
+
+    PublicTrackingSseEvent:
+      type: object
+      required:
+        - eventId
+        - trackingNumber
+        - aggregateVersion
+        - newStatus
+        - occurredAt
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        trackingNumber:
+          type: string
+          example: "SWD-20261023-A1B2C3"
+        aggregateVersion:
+          type: integer
+          minimum: 1
+          example: 2
+        oldStatus:
+          type: string
+          nullable: true
+          example: "CREATED"
+        newStatus:
+          type: string
+          example: "PICKED_UP"
+        cityOrZone:
+          type: string
+          nullable: true
+          example: "Western Province Sorting Hub"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-10-23T10:30:00Z"
