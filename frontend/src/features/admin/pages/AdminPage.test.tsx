@@ -176,6 +176,8 @@ describe('Admin role landing', () => {
     expect(main.getByRole('link', { name: 'Browse account users' })).toHaveAttribute('href', '/admin/users')
     expect(main.getByRole('link', { name: 'Manage staff profiles' })).toHaveAttribute('href', '/admin/staff')
     expect(main.getByRole('link', { name: 'Manage zones and pricing' })).toHaveAttribute('href', '/admin/pricing')
+    expect(main.getByRole('link', { name: 'View operational reports' })).toHaveAttribute('href', '/admin/reports')
+    expect(main.queryByText(/operational reporting is a future feature/i)).not.toBeInTheDocument()
     expect(main.queryByRole('combobox')).not.toBeInTheDocument()
     expect(main.queryByRole('textbox')).not.toBeInTheDocument()
     expect(main.getAllByRole('button')).toHaveLength(1)
