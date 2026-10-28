@@ -106,7 +106,7 @@
       "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
       "targets": [
         {
-          "expr": "swiftdrop_grpc_client_duration_seconds",
+          "expr": "sum by (service, method) (rate(swiftdrop_grpc_client_duration_seconds_sum[5m])) / sum by (service, method) (rate(swiftdrop_grpc_client_duration_seconds_count[5m]))",
           "legendFormat": "{{service}} - {{method}}",
           "refId": "A"
         }
