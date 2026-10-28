@@ -67,7 +67,7 @@ confirmation focus, duplicate submission, provisioning, direct role denials,
 manipulated inputs, role loss, expiry and late results across identity changes.
 Mocks do not demonstrate real backend authorization or end-to-end integration.
 
-## Remaining acceptance and CI evidence
+## Initial acceptance and CI evidence (before publication)
 
 No feature push, PR or GitHub Actions run has occurred. The task and repository
 policy require authorization before pushing. Intended draft PR targets `test`,
@@ -106,3 +106,87 @@ Frontend steward verifies responsive layout. Do not add activate/deactivate
 without explicit contract-owner approval.
 
 Refs #137.
+
+## CI remediation follow-up — PR #266
+
+The owner authorized publication and CI repair. PR #266 targets `test`; the
+published implementation head was `d7a45b8f81dea2d1af256e2f2fff9604a89403e4`.
+[CI run 40621532505](https://github.com/Suthankan1/swiftdrop/actions/runs/40621532505)
+passed Frontend Quality & Build, all Java/shared-library tests, contracts,
+identity, dependency/secret scanning and policy checks. Six image scans failed
+on inherited runtime dependencies; the required gate correctly remained closed.
+
+| Image scan | Reported dependency findings |
+| --- | --- |
+| Accounts, Pricing | Guava 33.2.1-android, CVE-2026-102554 |
+| Delivery, Communications | Guava 33.2.1-android plus Snappy 1.1.10.7, CVE-2026-108106/CVE-2026-93451 |
+| GraphQL | direct Guava plus GraphQL Java's shaded Guava 32.1.2-jre, CVE-2026-102554 |
+| Keycloak | vendor-bundled Guava 33.6.0-jre, CVE-2026-102554 |
+
+The repair explicitly manages Guava **33.7.2-jre** in the POMs of Accounts,
+Pricing, Delivery, Communications, GraphQL, shared/proto-contracts and
+shared/security-adapter. Delivery/Communications also manage Snappy **1.1.10.9**.
+These match the dependency fixes already present in PR #265, without importing
+that PR's unrelated observability code or optional Micrometer dependency.
+Service-level management matters: a consuming service can otherwise select the
+older gRPC/protobuf transitive version despite a patched shared-library build.
+
+Sources: [Guava maintainer advisory](https://github.com/google/guava/security/advisories/GHSA-xxph-c9ww-hj94),
+[Snappy 1.1.10.9 release](https://github.com/xerial/snappy-java/releases/tag/v1.1.10.9).
+No scan, severity, exit code, branch rule, CVE exclusion or workflow was changed.
+Public APIs, schemas, identity policy and business code are unchanged.
+
+### Remaining vendor blockers
+
+Maven dependency management cannot replace relocated classes inside GraphQL
+Java's own JAR. Inspection of the actual cached `graphql-java-25.0.jar` found
+`META-INF/maven/com.google.guava/guava/pom.properties` at 32.1.2-jre and
+`graphql/com/google/common/collect/MapMakerInternalMap` classes. Adding a patched
+ordinary Guava JAR does not remediate those classes. The current
+[GraphQL Java build](https://github.com/graphql-java/graphql-java/blob/v26.1/build.gradle)
+still relocates/shades Guava; a version upgrade alone has not been verified as a
+fix. No shaded class or metadata was stripped to hide the finding.
+
+The [latest official Keycloak release](https://github.com/keycloak/keycloak/releases/latest)
+was still **26.8.1** when checked on 2026-10-28. Its flagged Guava is inside the
+vendor image. This repair does not substitute an unverified image, mutate the
+vendor distribution, change identity configuration or invent a patched release.
+
+@Suthankan1 (Platform/security) must select a verified patched upstream artifact
+or approve and own a separately scoped reproducible vendor rebuild, with source/
+dependency provenance, Keycloak login/reconciliation regressions, GraphQL API/
+authorization regressions and image-scan evidence. The two vendor scans and
+required gate must remain failing until that remediation is verified; no blanket
+exception is requested or applied.
+
+### Follow-up validation
+
+Local Java **21.0.10**, existing Maven **3.10.0** distribution. The Docker Linux
+daemon is not running, so local container scans and PostgreSQL Testcontainers
+verification cannot be claimed. Existing unit suites and repackaged executable
+JARs are checked; the pushed revision's CI supplies image/integration evidence.
+
+PASS existing Maven `-B -ntp clean install` for the two shared modules and
+`-B -ntp clean package` for the five affected services:
+
+| Module | Tests | Failures / errors / skips |
+| --- | ---: | --- |
+| shared/proto-contracts | 28 | 0 / 0 / 0 |
+| shared/security-adapter | 40 | 0 / 0 / 0 |
+| accounts-service | 311 | 0 / 0 / 0 |
+| communications-service | 287 | 0 / 0 / 0 |
+| delivery-service | 459 | 0 / 0 / 0 |
+| pricing-service | 167 | 0 / 0 / 0 |
+| graphql-query-service | 189 | 0 / 0 / 0 |
+| **Total** | **1481** | **0 / 0 / 0** |
+
+All five service JARs were repackaged successfully. ZIP inspection confirms
+`BOOT-INF/lib/guava-33.7.2-jre.jar` as the only ordinary Guava JAR in each,
+and Snappy 1.1.10.9 in both Kafka-consuming services. The packaged GraphQL JAR
+still contains the separate shaded Guava 32.1.2-jre metadata/classes described
+above. This is an explicitly unresolved vendor finding, not a successful scan.
+
+PASS contract compatibility validator (all four protocols) and `git diff --check`.
+No frontend source changed in this follow-up; the original CI frontend job passed
+all **734 tests in 51 files**, lint, typecheck and production build. Maven package
+runs do not execute Failsafe `*IT` suites, and no local Docker/Trivy pass is claimed.
