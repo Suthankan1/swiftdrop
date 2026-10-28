@@ -10,7 +10,8 @@ import org.springframework.http.HttpMethod;
 
 /**
  * Service-specific security customization for Communications Service.
- * Implements strict default-deny and requires ROLE_MERCHANT for all webhook subscription endpoints.
+ * Implements strict default-deny, requires ROLE_MERCHANT for all webhook endpoints,
+ * and requires ROLE_ADMIN or ROLE_DISPATCHER for internal operator endpoints (Issue #117).
  */
 @Configuration(proxyBeanMethods = false)
 @Import(SwiftDropSecurityConfiguration.class)
@@ -21,6 +22,7 @@ public class CommunicationsSecurityConfig {
         return auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/v1/merchants/webhooks").hasRole(SwiftDropRoles.ROLE_MERCHANT)
                 .requestMatchers(HttpMethod.GET, "/api/v1/merchants/webhooks", "/api/v1/merchants/webhooks/**").hasRole(SwiftDropRoles.ROLE_MERCHANT)
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/merchants/webhooks/*").hasRole(SwiftDropRoles.ROLE_MERCHANT);
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/merchants/webhooks/*").hasRole(SwiftDropRoles.ROLE_MERCHANT)
+                .requestMatchers("/api/v1/internal/**").hasAnyRole(SwiftDropRoles.ROLE_ADMIN, SwiftDropRoles.ROLE_DISPATCHER);
     }
 }

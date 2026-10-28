@@ -94,4 +94,51 @@ class CommunicationsFlywayMigrationTest {
         assertThat(sql).doesNotContain("REFERENCES merchants");
         assertThat(sql).doesNotContain("REFERENCES parcels");
     }
+
+    @Test
+    @DisplayName("Verify V4 Flyway migration script contains notification attempts, replays, quarantine, and zero cross-service references")
+    void verifyV4FlywayMigrationScript() throws Exception {
+        ClassPathResource resource = new ClassPathResource("db/migration/V4__create_notification_attempts_and_replay_schema.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            sql = reader.lines().collect(Collectors.joining("\n"));
+        }
+
+        // Section 1: notifications extensions
+        assertThat(sql).contains("ALTER TABLE notifications");
+        assertThat(sql).contains("ADD COLUMN claim_token");
+        assertThat(sql).contains("ADD COLUMN lease_expires_at");
+        assertThat(sql).contains("idx_notifications_claim");
+
+        // Section 2: notification_attempts
+        assertThat(sql).contains("CREATE TABLE notification_attempts");
+        assertThat(sql).contains("attempt_id UUID PRIMARY KEY");
+        assertThat(sql).contains("REFERENCES notifications(notification_id)");
+        assertThat(sql).contains("chk_notification_attempts_outcome");
+        assertThat(sql).contains("idx_notification_attempts_notification_id");
+
+        // Section 3: notification_replays
+        assertThat(sql).contains("CREATE TABLE notification_replays");
+        assertThat(sql).contains("replay_id UUID PRIMARY KEY");
+        assertThat(sql).contains("REFERENCES notifications(notification_id)");
+        assertThat(sql).contains("chk_notification_replays_prev_status");
+        assertThat(sql).contains("chk_notification_replays_decision");
+        assertThat(sql).contains("idx_notification_replays_notification_id");
+
+        // Section 4: poison_event_quarantine
+        assertThat(sql).contains("CREATE TABLE poison_event_quarantine");
+        assertThat(sql).contains("quarantine_id UUID PRIMARY KEY");
+        assertThat(sql).contains("uq_poison_event UNIQUE");
+        assertThat(sql).contains("idx_poison_quarantine_event_id");
+
+        // Strict cross-service boundary verification
+        assertThat(sql).doesNotContain("accounts_db");
+        assertThat(sql).doesNotContain("delivery_db");
+        assertThat(sql).doesNotContain("pricing_db");
+        assertThat(sql).doesNotContain("REFERENCES merchants");
+        assertThat(sql).doesNotContain("REFERENCES parcels");
+        assertThat(sql).doesNotContain("REFERENCES account_profiles");
+    }
 }

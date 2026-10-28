@@ -3,6 +3,9 @@ package com.swiftdrop.communicationsservice.consumer;
 import com.swiftdrop.communicationsservice.client.DeliveryServiceUnavailableException;
 import com.swiftdrop.communicationsservice.consumer.event.ParcelStatusChangedEvent;
 import com.swiftdrop.communicationsservice.consumer.event.ParcelStatusChangedPayload;
+import com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine;
+import com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantineService;
+import com.swiftdrop.communicationsservice.metrics.CommunicationsMetrics;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +32,12 @@ class ParcelLifecycleKafkaConsumerTest {
 
     @Mock
     private Acknowledgment acknowledgment;
+
+    @Mock
+    private PoisonEventQuarantineService quarantineService;
+
+    @Mock
+    private CommunicationsMetrics communicationsMetrics;
 
     private ParcelLifecycleKafkaConsumer consumer;
 
@@ -130,5 +139,73 @@ class ParcelLifecycleKafkaConsumerTest {
 
         verify(eventParser).parseAndValidate(record.key(), record.value());
         verify(schedulingService).processLifecycleEvent(sampleEvent);
+    }
+
+    @Test
+    @DisplayName("Parser error with quarantineService enabled persists quarantine and acknowledges offset")
+    void testOnMessage_ParserFails_WithQuarantineService_QuarantinesAndAcknowledgesOffset() {
+        ParcelLifecycleKafkaConsumer consumerWithQuarantine = new ParcelLifecycleKafkaConsumer(
+                eventParser, schedulingService, quarantineService
+        );
+        consumerWithQuarantine.setCommunicationsMetrics(communicationsMetrics);
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>(
+                "parcel.lifecycle.v1", 2, 500L, parcelId.toString(), "invalid-json"
+        );
+
+        EventValidationException validationException = new EventValidationException("Malformed JSON envelope");
+        when(eventParser.parseAndValidate(record.key(), record.value()))
+                .thenThrow(validationException);
+
+        when(quarantineService.quarantine(
+                eq("communications.notifications.v1"),
+                eq("parcel.lifecycle.v1"),
+                eq(2),
+                eq(500L),
+                eq(parcelId.toString()),
+                eq("invalid-json"),
+                eq(validationException)
+        )).thenReturn(new PoisonEventQuarantine());
+
+        consumerWithQuarantine.onMessage(record, acknowledgment);
+
+        verify(quarantineService).quarantine(
+                eq("communications.notifications.v1"),
+                eq("parcel.lifecycle.v1"),
+                eq(2),
+                eq(500L),
+                eq(parcelId.toString()),
+                eq("invalid-json"),
+                eq(validationException)
+        );
+        verify(acknowledgment).acknowledge();
+        verify(communicationsMetrics).recordKafkaConsumerProcessed("communications.notifications.v1", "quarantined");
+    }
+
+    @Test
+    @DisplayName("Parser error when quarantine persistence fails avoids offset ack and rethrows")
+    void testOnMessage_ParserFails_WhenQuarantineThrows_DoesNotAcknowledgeAndFailsClosed() {
+        ParcelLifecycleKafkaConsumer consumerWithQuarantine = new ParcelLifecycleKafkaConsumer(
+                eventParser, schedulingService, quarantineService
+        );
+        consumerWithQuarantine.setCommunicationsMetrics(communicationsMetrics);
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>(
+                "parcel.lifecycle.v1", 2, 500L, parcelId.toString(), "invalid-json"
+        );
+
+        EventValidationException validationException = new EventValidationException("Malformed JSON envelope");
+        when(eventParser.parseAndValidate(record.key(), record.value()))
+                .thenThrow(validationException);
+
+        when(quarantineService.quarantine(any(), any(), anyInt(), anyLong(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Database down"));
+
+        assertThatThrownBy(() -> consumerWithQuarantine.onMessage(record, acknowledgment))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Database down");
+
+        verify(acknowledgment, never()).acknowledge();
+        verify(communicationsMetrics).recordPoisonQuarantineFailed();
     }
 }

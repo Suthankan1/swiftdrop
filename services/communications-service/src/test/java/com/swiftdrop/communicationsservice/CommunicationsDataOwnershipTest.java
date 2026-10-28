@@ -1,9 +1,13 @@
 package com.swiftdrop.communicationsservice;
 
+import com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine;
 import com.swiftdrop.communicationsservice.inbox.ConsumedEvent;
+import com.swiftdrop.communicationsservice.notification.NotificationAttempt;
 import com.swiftdrop.communicationsservice.notification.NotificationJob;
+import com.swiftdrop.communicationsservice.notification.NotificationReplayAudit;
 import com.swiftdrop.communicationsservice.webhook.WebhookAttempt;
 import com.swiftdrop.communicationsservice.webhook.WebhookDelivery;
+import com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit;
 import com.swiftdrop.communicationsservice.webhook.WebhookSubscription;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
@@ -24,15 +28,21 @@ class CommunicationsDataOwnershipTest {
     private static final List<Class<?>> OWNED_ENTITIES = List.of(
             ConsumedEvent.class,
             NotificationJob.class,
+            NotificationAttempt.class,
+            NotificationReplayAudit.class,
+            PoisonEventQuarantine.class,
             WebhookSubscription.class,
             WebhookDelivery.class,
             WebhookAttempt.class,
-            com.swiftdrop.communicationsservice.webhook.WebhookReplayAudit.class
+            WebhookReplayAudit.class
     );
 
     private static final Set<String> ALLOWED_TABLES = Set.of(
             "consumed_events",
             "notifications",
+            "notification_attempts",
+            "notification_replays",
+            "poison_event_quarantine",
             "webhook_subscriptions",
             "webhook_deliveries",
             "webhook_attempts",

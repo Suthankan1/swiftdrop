@@ -1,8 +1,9 @@
 package com.swiftdrop.communicationsservice.notification;
 
+import com.swiftdrop.communicationsservice.notification.delivery.NotificationAttemptResult;
+
 /**
- * Minimal bounded adapter boundary for outbound notification delivery (Issue #32).
- * Actual delivery workers, external email/SMS transport, and retry schedules belong to Issue #117.
+ * Adapter boundary for outbound notification delivery (Issue #32 / Issue #117).
  */
 public interface NotificationDispatchAdapter {
 
@@ -12,9 +13,19 @@ public interface NotificationDispatchAdapter {
     NotificationChannel getChannel();
 
     /**
-     * Dispatches or queues a persisted notification job.
+     * Dispatches a notification job and returns a structured attempt outcome.
      *
-     * @param job the durable notification job (status PENDING)
+     * @param job the durable notification job
+     * @return structured attempt outcome
      */
-    void dispatch(NotificationJob job);
+    NotificationAttemptResult dispatchAttempt(NotificationJob job);
+
+    /**
+     * Legacy dispatch method for backward compatibility.
+     *
+     * @param job the durable notification job
+     */
+    default void dispatch(NotificationJob job) {
+        dispatchAttempt(job);
+    }
 }

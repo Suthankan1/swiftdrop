@@ -3,10 +3,16 @@ package com.swiftdrop.communicationsservice;
 import com.swiftdrop.communicationsservice.inbox.ConsumedEvent;
 import com.swiftdrop.communicationsservice.inbox.ConsumedEventId;
 import com.swiftdrop.communicationsservice.inbox.ConsumedEventRepository;
+import com.swiftdrop.communicationsservice.notification.NotificationAttempt;
+import com.swiftdrop.communicationsservice.notification.NotificationAttemptRepository;
 import com.swiftdrop.communicationsservice.notification.NotificationChannel;
 import com.swiftdrop.communicationsservice.notification.NotificationJob;
 import com.swiftdrop.communicationsservice.notification.NotificationJobRepository;
+import com.swiftdrop.communicationsservice.notification.NotificationReplayAudit;
+import com.swiftdrop.communicationsservice.notification.NotificationReplayAuditRepository;
 import com.swiftdrop.communicationsservice.notification.NotificationStatus;
+import com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine;
+import com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantineRepository;
 import com.swiftdrop.communicationsservice.transaction.DurableJobPersistenceService;
 import com.swiftdrop.communicationsservice.transaction.DuplicateEventException;
 import com.swiftdrop.communicationsservice.webhook.WebhookAttempt;
@@ -34,6 +40,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -71,6 +78,15 @@ class CommunicationsPersistencePostgresIT {
     private NotificationJobRepository notificationJobRepository;
 
     @Autowired
+    private NotificationAttemptRepository notificationAttemptRepository;
+
+    @Autowired
+    private NotificationReplayAuditRepository notificationReplayAuditRepository;
+
+    @Autowired
+    private PoisonEventQuarantineRepository poisonEventQuarantineRepository;
+
+    @Autowired
     private WebhookSubscriptionRepository webhookSubscriptionRepository;
 
     @Autowired
@@ -89,10 +105,10 @@ class CommunicationsPersistencePostgresIT {
     private PlatformTransactionManager transactionManager;
 
     @Test
-    @DisplayName("A. Flyway applies V1, V2, and V3 migrations cleanly on real PostgreSQL communications_db")
+    @DisplayName("A. Flyway applies V1, V2, V3, and V4 migrations cleanly on real PostgreSQL communications_db")
     void testFlywayMigrationCleanApplication() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("communications_db");
 
         List<String> tables = jdbc.queryForList("""
@@ -107,6 +123,9 @@ class CommunicationsPersistencePostgresIT {
                 "webhook_deliveries",
                 "webhook_attempts",
                 "webhook_replays",
+                "notification_attempts",
+                "notification_replays",
+                "poison_event_quarantine",
                 "flyway_schema_history"
         );
 
@@ -687,5 +706,319 @@ class CommunicationsPersistencePostgresIT {
                 );
         assertThatThrownBy(() -> webhookReplayAuditRepository.saveAndFlush(invalidAudit))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("K. Notification worker concurrent lease exclusion: two racing workers on same job, exactly one wins")
+    void testNotificationWorkerLeaseExclusion() {
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+        NotificationJob job = new NotificationJob(
+                UUID.randomUUID(),
+                eventId,
+                "user-lease-race-1",
+                parcelId,
+                NotificationChannel.EMAIL,
+                "sub:user-lease-race-1",
+                "PARCEL_DELIVERED"
+        );
+        job.setStatus(NotificationStatus.PENDING);
+        job.setAttempts(0);
+        job.setCreatedAt(Instant.now());
+        job.setNextAttemptAt(Instant.now().minusSeconds(10));
+        job = notificationJobRepository.saveAndFlush(job);
+
+        Instant now = Instant.now();
+        Instant leaseExpiresAt = now.plusSeconds(300);
+
+        String worker1Token = UUID.randomUUID().toString();
+        String worker2Token = UUID.randomUUID().toString();
+
+        // Worker 1 claims
+        int claimed1 = notificationJobRepository.claimJobWithLease(
+                job.getNotificationId(),
+                NotificationStatus.PENDING,
+                NotificationStatus.PROCESSING,
+                worker1Token,
+                now,
+                leaseExpiresAt
+        );
+
+        // Worker 2 attempts to claim same job concurrently
+        int claimed2 = notificationJobRepository.claimJobWithLease(
+                job.getNotificationId(),
+                NotificationStatus.PENDING,
+                NotificationStatus.PROCESSING,
+                worker2Token,
+                now,
+                leaseExpiresAt
+        );
+
+        assertThat(claimed1).isEqualTo(1);
+        assertThat(claimed2).isEqualTo(0);
+
+        NotificationJob claimedJob = notificationJobRepository.findById(job.getNotificationId()).orElseThrow();
+        assertThat(claimedJob.getStatus()).isEqualTo(NotificationStatus.PROCESSING);
+        assertThat(claimedJob.getClaimToken()).isEqualTo(worker1Token);
+        assertThat(claimedJob.getLeaseExpiresAt()).isNotNull();
+
+        // Worker 1 records attempt in notification_attempts
+        NotificationAttempt attempt = new NotificationAttempt(
+                UUID.randomUUID(),
+                job.getNotificationId(),
+                1,
+                NotificationChannel.EMAIL,
+                "SUCCESS",
+                null,
+                "DELIVERED",
+                85,
+                now,
+                now
+        );
+        notificationAttemptRepository.saveAndFlush(attempt);
+
+        List<NotificationAttempt> attempts = notificationAttemptRepository.findByNotificationIdOrderByAttemptNumberAsc(job.getNotificationId());
+        assertThat(attempts).hasSize(1);
+        assertThat(attempts.get(0).getOutcome()).isEqualTo("SUCCESS");
+        assertThat(attempts.get(0).getSafeErrorCode()).isEqualTo("DELIVERED");
+    }
+
+    @Test
+    @DisplayName("L. Stuck processing notification recovery past lease expiration")
+    void testStuckProcessingNotificationRecovery() {
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+        NotificationJob job = new NotificationJob(
+                UUID.randomUUID(),
+                eventId,
+                "user-stuck-1",
+                parcelId,
+                NotificationChannel.EMAIL,
+                "sub:user-stuck-1",
+                "PARCEL_DELIVERED"
+        );
+        job.setStatus(NotificationStatus.PROCESSING);
+        job.setAttempts(1);
+        job.setClaimToken("dead-worker-token");
+        job.setClaimedAt(Instant.now().minusSeconds(600));
+        job.setLeaseExpiresAt(Instant.now().minusSeconds(300)); // expired 5 mins ago
+        job.setCreatedAt(Instant.now().minusSeconds(600));
+        job.setNextAttemptAt(Instant.now().minusSeconds(600));
+        job = notificationJobRepository.saveAndFlush(job);
+
+        // Query stuck jobs
+        Instant now = Instant.now();
+        List<NotificationJob> stuck = notificationJobRepository.findStuckProcessingJobs(
+                NotificationStatus.PROCESSING,
+                now
+        );
+
+        assertThat(stuck).extracting(NotificationJob::getNotificationId).contains(job.getNotificationId());
+
+        // Recover to PENDING
+        job.setStatus(NotificationStatus.PENDING);
+        job.setClaimToken(null);
+        job.setLeaseExpiresAt(null);
+        notificationJobRepository.saveAndFlush(job);
+
+        // Verify discoverable by findDueNotifications
+        List<NotificationJob> due = notificationJobRepository.findDueNotifications(
+                NotificationStatus.PENDING,
+                now,
+                org.springframework.data.domain.PageRequest.of(0, 10)
+        );
+        assertThat(due).extracting(NotificationJob::getNotificationId).contains(job.getNotificationId());
+    }
+
+    @Test
+    @DisplayName("M. Poison event quarantine persistence, uniqueness constraint, and reprocessing")
+    void testPoisonEventQuarantinePersistenceAndReprocessing() {
+        UUID quarantineId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        PoisonEventQuarantine record = new PoisonEventQuarantine(
+                quarantineId,
+                "communications.notifications.v1",
+                "parcel.lifecycle.v1",
+                1,
+                888L,
+                eventId,
+                "PARCEL_STATUS_CHANGED",
+                "1.0",
+                "MALFORMED_SCHEMA",
+                "Missing required fields",
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "corr-quarantine-1",
+                "QUARANTINED",
+                now
+        );
+
+        poisonEventQuarantineRepository.saveAndFlush(record);
+
+        // Verify retrieval by compound coordinates
+        Optional<PoisonEventQuarantine> retrieved = poisonEventQuarantineRepository
+                .findByConsumerGroupAndSourceTopicAndSourcePartitionAndSourceOffset(
+                        "communications.notifications.v1", "parcel.lifecycle.v1", 1, 888L
+                );
+        assertThat(retrieved).isPresent();
+        assertThat(retrieved.get().getPayloadDigest()).isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+
+        // Verify duplicate (consumer_group, source_topic, source_partition, source_offset) violates unique constraint
+        PoisonEventQuarantine duplicate = new PoisonEventQuarantine(
+                UUID.randomUUID(),
+                "communications.notifications.v1",
+                "parcel.lifecycle.v1",
+                1,
+                888L,
+                eventId,
+                "PARCEL_STATUS_CHANGED",
+                "1.0",
+                "MALFORMED_SCHEMA",
+                "Duplicate offset test",
+                "digest2",
+                "corr-2",
+                "QUARANTINED",
+                now
+        );
+        assertThatThrownBy(() -> poisonEventQuarantineRepository.saveAndFlush(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // Update status to REPLAYED
+        record.setStatus("REPLAYED");
+        record.setReplayedAt(Instant.now());
+        record.setReplayedByActorSub("admin-123");
+        record.setReplayReason("Defect fixed");
+        poisonEventQuarantineRepository.saveAndFlush(record);
+
+        PoisonEventQuarantine updated = poisonEventQuarantineRepository.findById(quarantineId).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo("REPLAYED");
+        assertThat(updated.getReplayedByActorSub()).isEqualTo("admin-123");
+    }
+
+    @Test
+    @DisplayName("N. Notification replay audit and previous status CHECK constraint")
+    void testNotificationReplayAudit() {
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+        NotificationJob job = new NotificationJob(
+                UUID.randomUUID(),
+                eventId,
+                "user-replay-test",
+                parcelId,
+                NotificationChannel.EMAIL,
+                "sub:user-replay-test",
+                "PARCEL_DELIVERED"
+        );
+        job.setStatus(NotificationStatus.EXHAUSTED);
+        job.setAttempts(5);
+        job = notificationJobRepository.saveAndFlush(job);
+
+        Instant now = Instant.now();
+        NotificationReplayAudit validAudit = new NotificationReplayAudit(
+                UUID.randomUUID(),
+                job.getNotificationId(),
+                eventId,
+                "admin-sub-789",
+                "ADMIN",
+                "Customer requested retry",
+                "EXHAUSTED",
+                "ACCEPTED",
+                now
+        );
+        notificationReplayAuditRepository.saveAndFlush(validAudit);
+
+        List<NotificationReplayAudit> audits = notificationReplayAuditRepository
+                .findByNotificationIdOrderByReplayedAtDesc(job.getNotificationId());
+        assertThat(audits).hasSize(1);
+        assertThat(audits.get(0).getDecision()).isEqualTo("ACCEPTED");
+        assertThat(audits.get(0).getPreviousStatus()).isEqualTo("EXHAUSTED");
+
+        // Verify CHECK constraint: invalid previous_status (e.g. SENT) fails
+        NotificationReplayAudit invalidAudit = new NotificationReplayAudit(
+                UUID.randomUUID(),
+                job.getNotificationId(),
+                eventId,
+                "admin-sub-789",
+                "ADMIN",
+                "Invalid replay attempt",
+                "SENT",
+                "ACCEPTED",
+                now
+        );
+        assertThatThrownBy(() -> notificationReplayAuditRepository.saveAndFlush(invalidAudit))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("O. Retention cleanup purges terminal records older than cutoff while preserving pending records")
+    void testRetentionCleanup() {
+        Instant now = Instant.now();
+        Instant fortyDaysAgo = now.minus(java.time.Duration.ofDays(40));
+        Instant thirtyDaysAgo = now.minus(java.time.Duration.ofDays(30));
+
+        // Create aged SENT job
+        NotificationJob agedSentJob = new NotificationJob(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "user-aged-sent",
+                UUID.randomUUID(),
+                NotificationChannel.EMAIL,
+                "sub:user-aged-sent",
+                "PARCEL_DELIVERED"
+        );
+        agedSentJob.setStatus(NotificationStatus.SENT);
+        agedSentJob.setAttempts(1);
+        agedSentJob.setCreatedAt(fortyDaysAgo);
+        agedSentJob.setUpdatedAt(fortyDaysAgo);
+        agedSentJob = notificationJobRepository.saveAndFlush(agedSentJob);
+
+        // Create aged PENDING job (must NOT be deleted)
+        NotificationJob agedPendingJob = new NotificationJob(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "user-aged-pending",
+                UUID.randomUUID(),
+                NotificationChannel.EMAIL,
+                "sub:user-aged-pending",
+                "PARCEL_DELIVERED"
+        );
+        agedPendingJob.setStatus(NotificationStatus.PENDING);
+        agedPendingJob.setAttempts(0);
+        agedPendingJob.setCreatedAt(fortyDaysAgo);
+        agedPendingJob.setUpdatedAt(fortyDaysAgo);
+        agedPendingJob = notificationJobRepository.saveAndFlush(agedPendingJob);
+
+        // Create aged processed consumed event
+        ConsumedEvent agedEvent = new ConsumedEvent(
+                new ConsumedEventId("communications.notifications.v1", agedSentJob.getEventId()),
+                "PARCEL_DELIVERED",
+                1,
+                agedSentJob.getParcelId(),
+                null,
+                fortyDaysAgo
+        );
+        agedEvent.setProcessedAt(fortyDaysAgo);
+        consumedEventRepository.saveAndFlush(agedEvent);
+
+        // Run deletion queries
+        int deletedJobs = notificationJobRepository.deleteTerminalNotificationsOlderThan(
+                List.of(NotificationStatus.SENT, NotificationStatus.FAILED, NotificationStatus.EXHAUSTED),
+                thirtyDaysAgo
+        );
+        int deletedEvents = consumedEventRepository.deleteProcessedEventsOlderThan(thirtyDaysAgo);
+
+        assertThat(deletedJobs).isGreaterThanOrEqualTo(1);
+        assertThat(deletedEvents).isGreaterThanOrEqualTo(1);
+
+        // Aged SENT job was deleted
+        assertThat(notificationJobRepository.findById(agedSentJob.getNotificationId())).isEmpty();
+
+        // Aged PENDING job was preserved
+        assertThat(notificationJobRepository.findById(agedPendingJob.getNotificationId())).isPresent();
+
+        // Aged consumed event was deleted
+        assertThat(consumedEventRepository.existsByIdConsumerNameAndIdEventId(
+                "communications.notifications.v1", agedSentJob.getEventId())).isFalse();
     }
 }

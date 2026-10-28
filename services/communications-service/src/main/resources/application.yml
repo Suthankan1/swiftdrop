@@ -20,6 +20,15 @@ spring:
   flyway:
     enabled: true
     clean-disabled: true
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: ${NOTIFICATION_SMTP_CONNECTION_TIMEOUT_MS:3000}
+          timeout: ${NOTIFICATION_SMTP_READ_TIMEOUT_MS:5000}
+          writetimeout: 5000
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -40,6 +49,25 @@ swiftdrop:
         group-id: ${KAFKA_WEBHOOKS_CONSUMER_GROUP_ID:communications.webhooks.v1}
     topics:
       parcel-lifecycle: ${KAFKA_TOPIC_PARCEL_LIFECYCLE:parcel.lifecycle.v1}
+  notifications:
+    dispatch:
+      max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:5}
+      base-backoff-seconds: ${NOTIFICATION_BASE_BACKOFF_SECONDS:5}
+      max-backoff-seconds: ${NOTIFICATION_MAX_BACKOFF_SECONDS:300}
+      jitter-enabled: ${NOTIFICATION_JITTER_ENABLED:false}
+      jitter-factor: ${NOTIFICATION_JITTER_FACTOR:0.2}
+      transport-timeout-ms: ${NOTIFICATION_TRANSPORT_TIMEOUT_MS:5000}
+    scheduler:
+      enabled: ${NOTIFICATION_SCHEDULER_ENABLED:true}
+      poll-interval-ms: ${NOTIFICATION_POLL_INTERVAL_MS:5000}
+      recovery-interval-ms: ${NOTIFICATION_RECOVERY_INTERVAL_MS:60000}
+      lease-timeout-seconds: ${NOTIFICATION_LEASE_TIMEOUT_SECONDS:300}
+      batch-size: ${NOTIFICATION_BATCH_SIZE:50}
+      retention-days: ${NOTIFICATION_RETENTION_DAYS:30}
+    smtp:
+      host: ${SPRING_MAIL_HOST:localhost}
+      port: ${SPRING_MAIL_PORT:1025}
+      from: ${NOTIFICATION_EMAIL_FROM:notifications@swiftdrop.com}
   webhooks:
     encryption-key: ${WEBHOOK_ENCRYPTION_KEY:}
     dispatch:

@@ -528,9 +528,29 @@ Issue #33 establishes unified end-to-end technical ownership over the SwiftDrop 
   - `testSecurityInvariantsZeroSecretsInAttempts`: Proves zero secret tokens, passwords, or auth credentials leak into attempt error summaries.
 - Service-wide automated test suite: **287 passing tests** with zero failures across unit, MockMvc, gRPC, and PostgreSQL integration suites.
 
+### Issue #117 (N10-B19) Implementation: Bounded Notification Retry, Poison Handling, and Inspected Replay
+
+Implemented in `feat/n10-b19-notification-retry-poison-replay` (PR targeting `test`):
+- **First Real Email Transport (`EmailNotificationTransport`):** Connects to the platform SMTP test sink (`mailpit:1025`) using `JavaMailSender`. Zero customer PII or plaintext emails exposed in application logs or stored in `communications_db`. Contacts are resolved dynamically via Accounts gRPC (`resolveContact`).
+- **PostgreSQL-Backed Notification Worker Engine (`NotificationDeliveryScheduler`, `NotificationExecutionService`):**
+  - Multi-worker concurrency lease acquisition (`claimJobWithLease` on `notifications` table) using row locking and lease expiration timestamps.
+  - Bounded exponential backoff with full jitter calculation and integer overflow protection.
+  - Automated stalled job recovery (`recoverStalledNotifications`) returning abandoned `PROCESSING` jobs past lease expiration back to `PENDING`.
+  - Durable attempt history recording in `notification_attempts` capturing sanitized error codes, categories, and dispatch latency.
+- **Poison-Event Quarantine (`PoisonEventQuarantineService`):**
+  - Isolates malformed or schema-violating Kafka messages in `poison_event_quarantine` with cryptographic SHA-256 payload digests and safe classifications.
+  - Offsets are acknowledged strictly AFTER durable quarantine persistence, preventing consumer partition blocking.
+  - Idempotent quarantine across broker redeliveries.
+- **Audited Operator Replay (`NotificationReplayService`, `NotificationOperatorController`):**
+  - Restricted to `ROLE_ADMIN` and `ROLE_DISPATCHER` with non-blank replay reason.
+  - Dual re-validation of recipient eligibility with Accounts and event authorization with Delivery Operations prior to resetting jobs back to `PENDING`.
+  - Immutable audit history recorded in `notification_replays`.
+- **Bounded Data Retention (`NotificationRetentionService`):**
+  - Purges terminal notification jobs (`SENT`, `FAILED`, `EXHAUSTED`) and processed inbox events (`consumed_events`) past the configured cutoff (default 30 days).
+  - Strictly preserves active `PENDING` and `PROCESSING` jobs to protect in-flight deliveries and deduplication horizons.
+
 ### EXPLICITLY NOT IMPLEMENTED (Belongs to Future Issues):
-- ❌ Full notification retry scheduler, exponential backoff execution loop, and dead-letter topic (DLT) quarantine (belongs to **Issue #117**).
-- ❌ External SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).
+- ❌ External production third-party SMTP / SMS gateway delivery engines (e.g. Mailgun, Twilio, AWS SES).
 - ❌ Shared API Gateway or Keycloak configuration changes.
 - ❌ Cross-service SQL joins or direct database access to Accounts or Delivery databases.
 

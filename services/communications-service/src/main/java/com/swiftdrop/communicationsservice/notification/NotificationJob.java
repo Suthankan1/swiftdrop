@@ -50,6 +50,18 @@ public class NotificationJob {
     @Column(name = "correlation_id", length = 64)
     private String correlationId;
 
+    @Column(name = "claim_token", length = 64)
+    private String claimToken;
+
+    @Column(name = "claimed_at")
+    private Instant claimedAt;
+
+    @Column(name = "lease_expires_at")
+    private Instant leaseExpiresAt;
+
+    @Column(name = "last_failure_category", length = 50)
+    private String lastFailureCategory;
+
     public NotificationJob() {
     }
 
@@ -190,5 +202,37 @@ public class NotificationJob {
 
     public void setCorrelationId(String correlationId) {
         this.correlationId = correlationId;
+    }
+
+    public String getClaimToken() {
+        return claimToken;
+    }
+
+    public void setClaimToken(String claimToken) {
+        this.claimToken = claimToken;
+    }
+
+    public Instant getClaimedAt() {
+        return claimedAt;
+    }
+
+    public void setClaimedAt(Instant claimedAt) {
+        this.claimedAt = claimedAt;
+    }
+
+    public Instant getLeaseExpiresAt() {
+        return leaseExpiresAt;
+    }
+
+    public void setLeaseExpiresAt(Instant leaseExpiresAt) {
+        this.leaseExpiresAt = leaseExpiresAt;
+    }
+
+    public String getLastFailureCategory() {
+        return lastFailureCategory;
+    }
+
+    public void setLastFailureCategory(String lastFailureCategory) {
+        this.lastFailureCategory = lastFailureCategory;
     }
 }
