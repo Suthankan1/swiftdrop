@@ -25,6 +25,8 @@
     <aws.sdk.version>2.57.3</aws.sdk.version>
     <pdfbox.version>3.0.5</pdfbox.version>
     <grpc.version>1.68.1</grpc.version>
+    <guava.version>33.7.2-jre</guava.version>
+    <snappy.version>1.1.10.9</snappy.version>
     <jackson-3.version>3.1.7</jackson-3.version>
     <tomcat.version>11.0.25</tomcat.version>
   </properties>
@@ -36,6 +38,18 @@
         <version>${grpc.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <!-- Override vulnerable transitive Guava (CVE-2026-102554). -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
+      <!-- Kafka's Snappy runtime fixes CVE-2026-108106 and CVE-2026-93451. -->
+      <dependency>
+        <groupId>org.xerial.snappy</groupId>
+        <artifactId>snappy-java</artifactId>
+        <version>${snappy.version}</version>
       </dependency>
       <dependency>
         <groupId>tools.jackson.core</groupId>

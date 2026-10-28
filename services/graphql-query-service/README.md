@@ -62,6 +62,8 @@ remain failures; see `tests/contracts/test_graphql_compatibility.py`.
 
 The service aligns gRPC runtime libraries on **1.83.1**. The earlier shaded
 transport 1.68.1 is vulnerable to CVE-2025-55163; no scanner suppression is used.
+Guava is managed explicitly at **33.7.2-jre** to fix CVE-2026-102554 in transitive
+runtime dependencies, including the dependency of `grpc-netty-shaded`.
 Shared generated contracts and security adapter source remain unchanged.
 
 ## Execution limits
