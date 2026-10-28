@@ -1,0 +1,231 @@
+# ==============================================================================
+# SwiftDrop Platform — Monitoring Helm Values (Issue #160)
+# Strictly $0 Local Deployment (Prometheus, Grafana, Alertmanager, Loki)
+# Canonical Reference: docs/architecture/BASELINE.md, ADR-0011
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+
+namespaces:
+  monitoring: swiftdrop-monitoring
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+# ------------------------------------------------------------------------------
+# 1. Prometheus Time-Series Collection & Engine
+# ------------------------------------------------------------------------------
+prometheus:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: prom/prometheus
+    tag: v3.13.3
+    digest: sha256:6976aa8a60fec930796ce5772b8d12da7a318a5daa8d40d69c5c7819a05eeed7
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 9090
+  scrapeInterval: 15s
+  evaluationInterval: 15s
+  retention: 24h
+  retentionSize: 1500MB
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 2Gi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ------------------------------------------------------------------------------
+# 2. Blackbox Exporter (Health & Readiness Probes)
+# ------------------------------------------------------------------------------
+blackboxExporter:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: prom/blackbox-exporter
+    tag: v0.25.0
+    digest: sha256:b04a9fef4fa086a02fc7fcd8dcdbc4b7b35cc30cdee860fdc6a19dd8b208d63e
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 9115
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ------------------------------------------------------------------------------
+# 3. Alertmanager (Grouping, Inhibition & Routing)
+# ------------------------------------------------------------------------------
+alertmanager:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: prom/alertmanager
+    tag: v0.27.0
+    digest: sha256:e13b6ed5cb929eeaee733479dce55e10eb3bc2e9c4586c705a4e8da41e5eacf5
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 9093
+  retention: 24h
+  resources:
+    requests:
+      cpu: 20m
+      memory: 48Mi
+    limits:
+      cpu: 100m
+      memory: 96Mi
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 500Mi
+  config:
+    mailHost: mailpit.swiftdrop-messaging.svc.cluster.local
+    mailPort: 1025
+    mailFrom: alerts@swiftdrop.local
+    mailTo: operator@swiftdrop.local
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ------------------------------------------------------------------------------
+# 4. Grafana Protected Dashboards
+# ------------------------------------------------------------------------------
+grafana:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: grafana/grafana
+    tag: 11.2.2
+    digest: sha256:d5133220d770aba5cb655147b619fa8770b90f41d8489a821d33b1cd34d16f89
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  secretRefs:
+    adminSecretName: grafana-admin-secret
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 250m
+      memory: 192Mi
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 1Gi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ------------------------------------------------------------------------------
+# 5. Lightweight Private Log Aggregation (Loki + Promtail)
+# ------------------------------------------------------------------------------
+logging:
+  enabled: true
+  loki:
+    image:
+      repository: grafana/loki
+      tag: 3.1.1
+      digest: sha256:e689cc634841c937de4d7ea6157f17e29cf257d6a320f1c293ab18d46cfea986
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 3100
+    retention: 24h
+    resources:
+      requests:
+        cpu: 30m
+        memory: 64Mi
+      limits:
+        cpu: 150m
+        memory: 128Mi
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 1Gi
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      fsGroup: 10001
+      readOnlyRootFilesystem: false
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+  promtail:
+    image:
+      repository: grafana/promtail
+      tag: 3.1.1
+      digest: sha256:48fba41d9f08c6a56a85b078529dc8550a1809d3e7a9674982e9e9bfbdc854c1
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      readOnlyRootFilesystem: false
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+

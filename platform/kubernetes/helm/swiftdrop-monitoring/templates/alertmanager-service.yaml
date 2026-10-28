@@ -1,0 +1,24 @@
+# ==============================================================================
+# SwiftDrop Platform — Alertmanager ClusterIP Service (Issue #160)
+# Private internal service; zero public ingress.
+# ==============================================================================
+
+{{- if .Values.alertmanager.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: swiftdrop-alertmanager
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "alertmanager") | nindent 4 }}
+spec:
+  type: {{ .Values.alertmanager.service.type }}
+  selector:
+    {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "alertmanager") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.alertmanager.service.port }}
+      targetPort: 9093
+      protocol: TCP
+{{- end }}
+

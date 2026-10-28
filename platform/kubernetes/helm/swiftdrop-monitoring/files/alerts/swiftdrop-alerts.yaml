@@ -1,0 +1,238 @@
+# ==============================================================================
+# SwiftDrop Platform — Actionable Operational Alert Rules (Refs #160, #166, #158)
+# Canonical Reference: docs/observability/ISSUE_158_APPLICATION_OBSERVABILITY.md
+# Owners: @abhi190503 (Query semantics), @thuvarahan-t (Metrics), @Suthankan1 (Deployment)
+# ==============================================================================
+
+groups:
+  - name: swiftdrop-service-health
+    interval: 15s
+    rules:
+      - alert: ServiceReadinessFailed
+        expr: probe_success{job="swiftdrop-readiness"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: "{{ $labels.instance }}"
+          component: core-service
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-readiness-contract"
+        annotations:
+          summary: "SwiftDrop service readiness probe failed for {{ $labels.instance }}"
+          description: "Service {{ $labels.instance }} has been reporting unready (probe_success == 0) for > 30 seconds."
+          affected_component: "{{ $labels.instance }}"
+          operational_impact: "Traffic routing shifted; dependent calls may fail or return 503 Service Unavailable."
+          suggested_investigation: "Check pod logs and health endpoint (/actuator/health/readiness) for database/broker connectivity issues."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-service-readiness-failure"
+          expected_recovery: "probe_success returns 1 after underlying dependencies recover."
+
+      - alert: MonitoringTargetScrapeMissing
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+          component: monitoring-scraper
+          owner: Suthankan1
+          approval_ref: "issue-160-platform-monitoring-contract"
+        annotations:
+          summary: "Prometheus cannot scrape target {{ $labels.instance }} in job {{ $labels.job }}"
+          description: "Target {{ $labels.instance }} has been unreachable (up == 0) for > 1 minute."
+          affected_component: "{{ $labels.job }}/{{ $labels.instance }}"
+          operational_impact: "Telemetry blindness for this instance; degradation or failures will not be visible."
+          suggested_investigation: "Verify network policies, pod status, and whether management port is reachable from monitoring namespace."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-missing-scrape-target"
+          expected_recovery: "Target scrape status returns to up == 1."
+
+  - name: swiftdrop-outbox-delivery
+    interval: 15s
+    rules:
+      - alert: OutboxRelayOldestAgeExceeded
+        expr: swiftdrop_outbox_oldest_age_seconds > 60
+        for: 2m
+        labels:
+          severity: critical
+          service: delivery-service
+          component: transactional-outbox
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-outbox-age-contract"
+        annotations:
+          summary: "Oldest pending outbox event age is {{ $value }}s (> 60s)"
+          description: "Delivery transactional outbox relay has stopped processing events; oldest uncompleted event exceeds 60s."
+          affected_component: "delivery-service/KafkaOutboxRelay"
+          operational_impact: "Domain events (parcel.status.changed.v1) are not reaching Kafka; downstream notifications stalled."
+          suggested_investigation: "Inspect delivery-service Kafka producer logs, broker reachability, and scheduling thread state."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-outbox-oldest-age"
+          expected_recovery: "swiftdrop_outbox_oldest_age_seconds drops below 60s as outbox relay commits backlog."
+
+      - alert: OutboxRelayBacklogAccumulation
+        expr: swiftdrop_outbox_pending > 100
+        for: 3m
+        labels:
+          severity: warning
+          service: delivery-service
+          component: transactional-outbox
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-outbox-backlog-contract"
+        annotations:
+          summary: "Outbox pending backlog is {{ $value }} events (> 100)"
+          description: "Delivery transactional outbox pending count has exceeded 100 events for > 3 minutes."
+          affected_component: "delivery-service/KafkaOutboxRelay"
+          operational_impact: "Increased latency for downstream event dispatch and webhook delivery."
+          suggested_investigation: "Check database connection pool, Kafka broker publish latency, and relay batch throughput."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-outbox-backlog"
+          expected_recovery: "swiftdrop_outbox_pending drops below 100 events."
+
+      - alert: OutboxDeadLetterEventsAccumulated
+        expr: swiftdrop_outbox_dead_letter > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: delivery-service
+          component: transactional-outbox
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-dead-letter-contract"
+        annotations:
+          summary: "Outbox dead-letter queue contains {{ $value }} events"
+          description: "One or more events reached DEAD_LETTER state after exhausting relay retry attempts."
+          affected_component: "delivery-service/KafkaOutboxRelay"
+          operational_impact: "Data loss or permanent delivery stall for affected parcel status transitions."
+          suggested_investigation: "Query outbox table for status='DEAD_LETTER', examine failure reasons and event payloads."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-outbox-dead-letter"
+          expected_recovery: "Dead-letter events are resolved or manually re-queued and gauge returns to 0."
+
+  - name: swiftdrop-communications-webhooks
+    interval: 15s
+    rules:
+      - alert: WebhookTerminalExhaustionSpike
+        expr: rate(swiftdrop_webhook_exhausted_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: communications-service
+          component: webhook-engine
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-webhook-exhaustion-contract"
+        annotations:
+          summary: "Webhook terminal exhaustion rate is {{ $value }} per second (> 5/s over 5m)"
+          description: "Communications service is terminating webhook deliveries after exhausting retry attempts."
+          affected_component: "communications-service/WebhookDeliveryExecutionService"
+          operational_impact: "Merchants are missing critical real-time parcel transition events."
+          suggested_investigation: "Inspect terminal failure visibility endpoint, merchant target endpoints, and DNS/network reachability."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-webhook-exhaustion"
+          expected_recovery: "Exhaustion rate returns to 0 as merchant endpoints recover or bad subscriptions are corrected."
+
+      - alert: NotificationPendingBacklogAgeExceeded
+        expr: swiftdrop_notification_pending_age_seconds > 120
+        for: 3m
+        labels:
+          severity: critical
+          service: communications-service
+          component: notification-engine
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-notification-backlog-contract"
+        annotations:
+          summary: "Oldest pending notification age is {{ $value }}s (> 120s)"
+          description: "Notification processing is delayed; pending notifications have aged beyond 2 minutes."
+          affected_component: "communications-service/NotificationSchedulingService"
+          operational_impact: "Customer and merchant delivery update emails or alerts are severely delayed."
+          suggested_investigation: "Inspect Mailpit/SMTP connectivity, worker thread pool, and notifications database queue."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-notification-backlog"
+          expected_recovery: "Pending notification age returns to normal operating bounds (< 120s)."
+
+      - alert: KafkaConsumerFailureSpike
+        expr: rate(swiftdrop_kafka_consumer_processed_total{status="invalid"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: communications-service
+          component: kafka-consumer
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-kafka-consumer-contract"
+        annotations:
+          summary: "Kafka consumer has rejected invalid records in the last 5 minutes"
+          description: "Kafka listener received payloads failing contract schema validation or correlation checks."
+          affected_component: "communications-service/ParcelLifecycleKafkaConsumer"
+          operational_impact: "Malformed events quarantined or skipped; potential integration mismatch."
+          suggested_investigation: "Inspect communications-service logs for schema validation or deserialization errors."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-kafka-consumer-failure"
+          expected_recovery: "rate(swiftdrop_kafka_consumer_processed_total{status='invalid'}[5m]) returns to 0."
+
+  - name: swiftdrop-grpc-operations
+    interval: 15s
+    rules:
+      - alert: GrpcServerDeadlineExceededSpike
+        expr: rate(swiftdrop_grpc_server_errors_total{status="DEADLINE_EXCEEDED"}[5m]) > 2
+        for: 2m
+        labels:
+          severity: warning
+          service: "{{ $labels.service }}"
+          component: grpc-server
+          owner: abhi190503
+          approval_ref: "issue-166-p14a-grpc-deadline-contract"
+        annotations:
+          summary: "gRPC server deadline exceeded rate is {{ $value }} calls/s on {{ $labels.service }}"
+          description: "Inbound gRPC method {{ $labels.method }} on {{ $labels.service }} is timing out."
+          affected_component: "{{ $labels.service }}/{{ $labels.method }}"
+          operational_impact: "Internal microservice request chain degradation; caller timeouts cascade."
+          suggested_investigation: "Check database query latency, downstream service response times, and thread-pool utilization."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-grpc-deadline-exceeded"
+          expected_recovery: "Deadline error rate drops below 2 calls/s."
+
+  - name: swiftdrop-platform-release
+    interval: 15s
+    rules:
+      - alert: ApplicationPodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total{namespace=~"swiftdrop-.*"}[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          service: "{{ $labels.container }}"
+          component: container-runtime
+          owner: Suthankan1
+          approval_ref: "issue-160-platform-stability-contract"
+        annotations:
+          summary: "Container {{ $labels.container }} in pod {{ $labels.pod }} is restarting frequently"
+          description: "Pod is experiencing recurring crashes or liveness probe failures."
+          affected_component: "{{ $labels.namespace }}/{{ $labels.pod }}"
+          operational_impact: "Service unavailability, request drops, and degradation of release candidate."
+          suggested_investigation: "Inspect kubectl logs -p on failing container and describe pod for OOMKilled or liveness failures."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-pod-crash-looping"
+          expected_recovery: "Container restarts stabilize and rate returns to 0."
+
+      - alert: MonitoringDiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/prometheus"} / node_filesystem_size_bytes{mountpoint="/prometheus"}) < 0.15
+        for: 2m
+        labels:
+          severity: warning
+          service: prometheus
+          component: monitoring-storage
+          owner: Suthankan1
+          approval_ref: "issue-160-platform-storage-contract"
+        annotations:
+          summary: "Prometheus PVC storage has < 15% available space remaining"
+          description: "Local persistent storage for monitoring is nearing full capacity."
+          affected_component: "swiftdrop-monitoring/prometheus-storage"
+          operational_impact: "Risk of Prometheus crash, read-only TSDB lockdown, or disk starvation on host."
+          suggested_investigation: "Verify TSDB compaction and retention size limits (--storage.tsdb.retention.size)."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-monitoring-disk-exhaustion"
+          expected_recovery: "Available storage exceeds 15% after retention cleanup."
+
+      - alert: ReleaseCandidateReadinessRegression
+        expr: min(probe_success{job="swiftdrop-readiness"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: release-gate
+          component: release-management
+          owner: Harithkeshan
+          approval_ref: "issue-167-release-gate-contract"
+        annotations:
+          summary: "Release Candidate health regression: at least one core service is unready"
+          description: "One or more essential microservices failed readiness verification for > 1 minute."
+          affected_component: "swiftdrop-platform/release-gate"
+          operational_impact: "Release acceptance blocked; automated rollback criteria triggered for staging promotion."
+          suggested_investigation: "Identify unready service from probe_success breakdown; check migration or startup failures."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-release-readiness-regression"
+          expected_recovery: "All core service readiness probes report probe_success == 1 simultaneously."
+

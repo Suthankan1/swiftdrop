@@ -1,0 +1,126 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Release Acceptance Gate (All Services Ready)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "min(probe_success{job=\"swiftdrop-readiness\"})",
+          "legendFormat": "Gate State",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "GATE BLOCKED - FAIL" }, "1": { "color": "green", "text": "GATE PASSED - READY" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "title": "Active Critical Release Alerts",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"critical\"}) or vector(0)",
+          "legendFormat": "Critical Alerts",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "title": "Active Warning Release Alerts",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"warning\"}) or vector(0)",
+          "legendFormat": "Warning Alerts",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 4,
+      "title": "Candidate Service Readiness State",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "probe_success{job=\"swiftdrop-readiness\"}",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter" },
+          "unit": "short",
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 5,
+      "title": "Candidate Pod Restart Spikes (rate/5m)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "rate(kube_pod_container_status_restarts_total{namespace=~\"swiftdrop-.*\"}[5m])",
+          "legendFormat": "{{namespace}}/{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ops" } }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["swiftdrop", "release", "promotion"],
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
+  "timezone": "browser",
+  "title": "SwiftDrop - Candidate Release Monitoring Gate",
+  "uid": "swiftdrop-release-monitoring",
+  "version": 1
+}
+
