@@ -4,8 +4,14 @@ import { useAuth } from '../../../auth/context'
 import { AccountsError, createAccountsApi } from '../api/accounts'
 import { CustomerProfile, type ProfileState } from '../components/CustomerProfile'
 import { CustomerNav } from '../components/CustomerNav'
+import { CustomerDashboardCards } from '../components/CustomerDashboardCards'
+import type { createCustomerDashboardApi } from '../api/customerDashboard'
 
-export function CustomerPage() {
+export interface CustomerPageProps {
+  dashboardApiOverride?: ReturnType<typeof createCustomerDashboardApi>
+}
+
+export function CustomerPage({ dashboardApiOverride }: CustomerPageProps = {}) {
   const auth = useAuth()
   const inRouter = useInRouterContext()
   const subject = auth.snapshot.subject
@@ -31,7 +37,10 @@ export function CustomerPage() {
     <header className="page-heading"><p className="eyebrow">Customer space</p><h1>A little space for<br />everything you send.</h1>
       <p className="muted">Your SwiftDrop account starts here, with your personal details kept private.</p></header>
     <CustomerNav />
-    <div className="profile-grid"><CustomerProfile state={state} />
+    {state.status === 'ready' && (
+      <CustomerDashboardCards key={auth.snapshot.subject} apiOverride={dashboardApiOverride} />
+    )}
+    <div className="profile-grid" style={{ marginTop: '24px' }}><CustomerProfile state={state} />
       <aside className="card customer-note" aria-labelledby="customer-note-heading"><h2 id="customer-note-heading">Built around you.</h2>
         <p>Calculate dynamic rates, book delivery dispatches, monitor active milestones, and download official receipts.</p>
         {inRouter ? (
