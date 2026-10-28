@@ -46,10 +46,10 @@ public class BookingRepository {
         return jdbc.query("""
                 SELECT request_digest, stored_result::text
                 FROM idempotency_records
-                WHERE principal_or_tenant = ? AND idempotency_key = ?
+                WHERE (principal_or_tenant = ? OR principal_or_tenant = ?) AND idempotency_key = ?
                 """,
                 (rs, n) -> new Replay(rs.getString(1), null, rs.getString(2)),
-                merchantId.toString(), key.toString()
+                "merchant:" + merchantId, merchantId.toString(), key.toString()
         ).stream().findFirst();
     }
 

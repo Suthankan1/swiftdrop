@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
 
     private static final Logger log = LoggerFactory.getLogger(GrpcBookingQuoteProvider.class);
-    private static final long DEFAULT_DEADLINE_MS = 5000L;
+    private static final long DEFAULT_DEADLINE_MS = 2000L;
 
     private final PricingInternalServiceGrpc.PricingInternalServiceBlockingStub pricingStub;
     private final long deadlineMs;
