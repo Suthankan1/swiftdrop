@@ -262,7 +262,7 @@ const mockPendingMerchantReview: MerchantReviewDetail = {
 function createSyntheticAuth(
   roles: readonly SwiftDropRole[],
   subject: string,
-  profileData: any,
+  profileData: Record<string, unknown>,
 ): AuthContextValue {
   return {
     ...anonymousAuth,
@@ -1012,7 +1012,8 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         if (String(input).includes('/graphql')) {
           // Inspect if caller header matches tenant beta
-          if (init?.headers && (init.headers as any)['Authorization']?.includes('tenant-beta')) {
+          const headers = new Headers(init?.headers)
+          if (headers.get('Authorization')?.includes('tenant-beta')) {
             return new Response(
               JSON.stringify({ data: { merchantDashboard: mockMerchantBDashboard } }),
               { status: 200, headers: { 'Content-Type': 'application/json' } },
