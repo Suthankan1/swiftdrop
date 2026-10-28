@@ -1,5 +1,44 @@
 # Admin workspace
 
+## Zones and pricing — Issue #138
+
+Owner @pushmitha20; domain reviewer @Harithkeshan; Gateway reviewer @Suthankan1.
+`/admin/pricing` uses the shared ADMIN route guard, in-memory token getter and
+subject/session-scoped React Query cache. It provides real pages of 20 zones,
+rate cards and rules; zone create/metadata edit/disable; new unpublished drafts;
+draft rule add/edit; immediate activation and superseded-card archival.
+
+The adapter consumes Pricing OpenAPI 1.1.0 and #123's controller/DTOs. Writes
+include the reviewed parent/zone revision; activation also includes the reviewed
+ACTIVE card ID. No rule deletion, published editing, scheduling or currency
+conversion is offered. Every write requires confirmation. Currency is LKR,
+weight is kg, bands are inclusive and money stays exact integer minor units,
+including the full positive signed-int64 range.
+
+Conflicts retain entered fields and require comparison with refreshed canonical
+values, deliberate revision selection and a new confirmation. Interrupted writes
+pause further writes until successful reads and explicit administrator review.
+Writes never replay, including after 401. Expiry delegates to shared auth; 403
+removes privileged content. Reads use abort signals and 15-second HTTP deadlines.
+Only allowlisted error codes receive specific safe text; provider details are
+never rendered. Frontend gates are UX; Gateway and Pricing enforce ADMIN.
+
+The provider has no active-card filter or version-detail GET. Active/publication
+review scans **at most ten pages of 50 cards** and fails closed beyond 500 cards.
+Ordinary list/rule reads remain paged. Larger histories need a separately reviewed
+bounded active/detail provider; no endpoint or contract is invented here.
+
+Gateway now routes the specific `/api/v1/admin/pricing/**` prefix to Pricing
+before the generic Accounts admin route, retaining its existing ADMIN policy.
+Platform review is required. No deployment, identity, schema or Pricing business
+rules change. Historical issued quotes, accepted bookings and receipts are never
+recalculated by this interface.
+
+Verification commands, exact counts, changed files, remaining real-provider
+acceptance and a focused next task are recorded in
+[Issue #138 handoff](../../../../docs/ai/ISSUE_138_HANDOFF.md). Isolated UI tests
+are not proof of persistence or historical booking/receipt preservation.
+
 ## Merchant review — Issue #136
 
 Owner: @pushmitha20. Frontend/provider reviewer: @thuvarahan-t. Base: `test`.

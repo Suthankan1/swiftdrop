@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-export function StaffConfirmation({ title, children, pending, onCancel, onConfirm }: {
-  title: string; children: ReactNode; pending: boolean; onCancel: () => void; onConfirm: () => void
+export function StaffConfirmation({ title, children, pending, onCancel, onConfirm, providerNote, confirmDisabled = false }: {
+  title: string; children: ReactNode; pending: boolean; onCancel: () => void; onConfirm: () => void; providerNote?: string; confirmDisabled?: boolean
 }) {
   const titleId = useId(), descriptionId = useId()
   const panel = useRef<HTMLDivElement>(null), overlay = useRef<HTMLDivElement>(null)
@@ -32,10 +32,10 @@ export function StaffConfirmation({ title, children, pending, onCancel, onConfir
       }}>
       <h2 id={titleId}>{title}</h2>
       <div id={descriptionId}>{children}</div>
-      <p>Accounts will verify the request. Identity changes may require recovery before they are complete.</p>
+      <p>{providerNote ?? 'Accounts will verify the request. Identity changes may require recovery before they are complete.'}</p>
       <div className="modal-actions">
         <button type="button" className="button button-secondary" disabled={pending} onClick={onCancel}>Cancel</button>
-        <button type="button" className="button button-primary" disabled={pending} onClick={onConfirm}>{pending ? 'Submitting…' : 'Confirm action'}</button>
+        <button type="button" className="button button-primary" disabled={pending || confirmDisabled} onClick={onConfirm}>{pending ? 'Submitting…' : 'Confirm action'}</button>
       </div>
       {pending && <p role="status">Waiting for the server. This command will not be replayed automatically.</p>}
     </div>
