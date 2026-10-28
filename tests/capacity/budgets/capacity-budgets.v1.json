@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "budget_set_id": "N10-QA-08-capacity-budgets",
+  "revision": "v1-draft-2026-10-28",
+  "issue": "https://github.com/Suthankan1/swiftdrop/issues/165",
+  "notes": [
+    "Only values traceable to an approved/frozen source carry status APPROVED.",
+    "Every release threshold the issue requires owner+reviewer agreement for is PENDING_APPROVAL with value null.",
+    "illustrative_value fields are NON-AUTHORITATIVE planning aids; the evaluator never compares against them.",
+    "Approval must pin approved_budget_digest; editing any budget after approval invalidates acceptance mode."
+  ],
+  "approval": {
+    "status": "PENDING_APPROVAL",
+    "owner": "pushmitha20",
+    "reviewers": ["Harithkeshan", "Gajanthan23", "Vibhushan-2003"],
+    "approved_by": [],
+    "approved_at": null,
+    "approved_budget_digest": null,
+    "record_url": null
+  },
+  "budgets": {
+    "dashboard.customer.latency_p95_ms": {
+      "kind": "numeric", "comparator": "max", "unit": "ms", "metric": "workloads.dashboard_customer.latency.p95_ms",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 800,
+      "source": "Issue #165 AC1 requires owner/reviewer agreement; no approved document defines it."
+    },
+    "dashboard.merchant.latency_p95_ms": {
+      "kind": "numeric", "comparator": "max", "unit": "ms", "metric": "workloads.dashboard_merchant.latency.p95_ms",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 1000,
+      "source": "Issue #165 AC1 requires owner/reviewer agreement; no approved document defines it."
+    },
+    "dashboard.dispatcher.latency_p95_ms": {
+      "kind": "numeric", "comparator": "max", "unit": "ms", "metric": "workloads.dashboard_dispatcher.latency.p95_ms",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 1200,
+      "source": "Issue #165 AC1 requires owner/reviewer agreement; no approved document defines it."
+    },
+    "tracking.public.latency_p95_ms": {
+      "kind": "numeric", "comparator": "max", "unit": "ms", "metric": "workloads.tracking_public.latency.p95_ms",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 500,
+      "source": "Issue #165 AC1 requires owner/reviewer agreement; no approved document defines it."
+    },
+    "requests.error_rate_max": {
+      "kind": "numeric", "comparator": "max", "unit": "ratio", "metric": "aggregate.max_error_rate",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 0.01,
+      "source": "Issue #165 AC1 (error-rate budget) requires agreement."
+    },
+    "requests.max_duration_ms": {
+      "kind": "numeric", "comparator": "max", "unit": "ms", "metric": "aggregate.max_latency_ms",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 5000,
+      "source": "Issue #165 AC1 (request budget). Gateway runtime default GATEWAY_RESPONSE_TIMEOUT=5s is configuration, not an approved release budget."
+    },
+    "dashboard.concurrent_clients_min": {
+      "kind": "numeric", "comparator": "min", "unit": "clients", "metric": "run.dashboard_concurrency",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 10,
+      "source": "Issue #165 AC1 (concurrency budget) requires agreement."
+    },
+    "sse.reconnect_recovery_p95_ms": {
+      "kind": "numeric", "comparator": "max", "unit": "ms", "metric": "workloads.sse_authorized.recovery.p95_ms",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 5000,
+      "source": "Issue #165 AC1 (reconnect budget) requires agreement."
+    },
+    "backlog.outbox_pending_growth_per_min_max": {
+      "kind": "numeric", "comparator": "max", "unit": "events/min", "metric": "backlog.outbox_pending.slope_per_min",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 0,
+      "source": "Issue #165 AC3 (backlog trends) - no approved numeric bound."
+    },
+    "grpc.calls_per_customer_dashboard_max": {
+      "kind": "numeric", "comparator": "max", "unit": "calls", "metric": "grpc.calls_per_query.customerDashboard",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 1,
+      "source": "No approved per-query call budget. Illustrative value equals current resolver design (1 Delivery call)."
+    },
+    "grpc.calls_per_merchant_dashboard_max": {
+      "kind": "numeric", "comparator": "max", "unit": "calls", "metric": "grpc.calls_per_query.merchantDashboard",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 2,
+      "source": "No approved per-query call budget. Illustrative value equals current resolver design (Accounts + Delivery)."
+    },
+    "grpc.calls_per_dispatcher_dashboard_max": {
+      "kind": "numeric", "comparator": "max", "unit": "calls", "metric": "grpc.calls_per_query.dispatcherDashboard",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 5,
+      "source": "No approved per-query call budget. Illustrative value equals current resolver design (3 Accounts + 2 Delivery)."
+    },
+    "run.max_duration_s": {
+      "kind": "numeric", "comparator": "max", "unit": "s", "metric": "run.duration_s",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 600,
+      "source": "Issue #165 requires a bounded run; bound not yet agreed."
+    },
+    "sse.concurrent_connections_min": {
+      "kind": "numeric", "comparator": "min", "unit": "connections", "metric": "workloads.sse_authorized.peak_concurrent",
+      "status": "APPROVED", "value": 20,
+      "source": "Issue #165 AC1: at least 20 simultaneous authorized SSE connections."
+    },
+    "dataset.parcels_min": {
+      "kind": "numeric", "comparator": "min", "unit": "parcels", "metric": "dataset.parcel_count",
+      "status": "APPROVED", "value": 100,
+      "source": "Issue #165 AC2: at least 100 parcels."
+    },
+    "dataset.tenants_min": {
+      "kind": "numeric", "comparator": "min", "unit": "tenants", "metric": "dataset.merchant_tenant_count",
+      "status": "APPROVED", "value": 2,
+      "source": "Issue #165 AC2: multiple tenants."
+    },
+    "graphql.max_depth": {
+      "kind": "numeric", "comparator": "max", "unit": "levels", "metric": "graphql.configured_max_depth",
+      "status": "APPROVED", "value": 5,
+      "source": "SERVICE_INTERFACE_MATRIX IF-GQL-01 (FROZEN): depth cap max 5."
+    },
+    "graphql.max_complexity": {
+      "kind": "numeric", "comparator": "max", "unit": "points", "metric": "graphql.configured_max_complexity",
+      "status": "APPROVED", "value": 100,
+      "source": "SERVICE_INTERFACE_MATRIX IF-GQL-01 (FROZEN): complexity limit max 100."
+    },
+    "graphql.max_page_size": {
+      "kind": "numeric", "comparator": "max", "unit": "items", "metric": "graphql.max_accepted_page_size",
+      "status": "APPROVED", "value": 50,
+      "source": "docs/contracts/GRAPHQL.md: pageSize ceiling 50."
+    },
+    "grpc.deadline_ms": {
+      "kind": "numeric", "comparator": "max", "unit": "ms", "metric": "grpc.client_deadline_ms",
+      "status": "APPROVED", "value": 2000,
+      "source": "SERVICE_INTERFACE_MATRIX IF-GRPC-01/02/04/07 (FROZEN): bounded deadline 2000ms."
+    },
+    "sse.max_frame_gap_s": {
+      "kind": "numeric", "comparator": "max", "unit": "s", "metric": "workloads.sse_authorized.max_frame_gap_s",
+      "status": "PENDING_APPROVAL", "value": null, "illustrative_value": 30,
+      "source": "IF-SSE-01 (FROZEN) approves a 15s heartbeat interval only; the tolerated gap (illustrative 2 x 15s) is not approved."
+    }
+  },
+  "invariants": {
+    "isolation.cross_tenant_records": {
+      "metric": "security.isolation_violations", "expected": 0, "severity": "CRITICAL",
+      "source": "Issue #165 AC2: no cross-tenant records under concurrent access; AGENTS.md tenant ownership."
+    },
+    "isolation.sse_cross_stream_events": {
+      "metric": "security.sse_leak_violations", "expected": 0, "severity": "CRITICAL",
+      "source": "IF-SSE-01 authorized stream; issue #165 prompt section 7."
+    },
+    "redaction.public_tracking_pii": {
+      "metric": "security.pii_violations", "expected": 0, "severity": "CRITICAL",
+      "source": "SERVICE_INTERFACE_MATRIX IF-REST-04 (FROZEN): strictly redacts PII."
+    },
+    "auth.negative_probes_unexpected_success": {
+      "metric": "security.negative_probe_failures", "expected": 0, "severity": "CRITICAL",
+      "source": "AGENTS.md: core services enforce JWT/roles/tenant independently."
+    },
+    "sse.reconciliation_mismatches": {
+      "metric": "workloads.sse_authorized.reconciliation_mismatches", "expected": 0, "severity": "HIGH",
+      "source": "RUNTIME_DECISION_REGISTER DEC-SSE-03 (APPROVED): authoritative REST recovery after reconnect."
+    },
+    "sse.out_of_order_events": {
+      "metric": "workloads.sse_authorized.out_of_order_events", "expected": 0, "severity": "HIGH",
+      "source": "Kafka/SSE aggregateVersion monotonicity per parcel (BASELINE: version checks)."
+    },
+    "graphql.n_plus_one_detected": {
+      "metric": "grpc.n_plus_one_detected", "expected": 0, "severity": "HIGH",
+      "source": "IF-GQL-01 (FROZEN): batched gRPC calls; calls per query must not scale with page/dataset size."
+    }
+  }
+}
