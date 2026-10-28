@@ -453,6 +453,7 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         .setParcelId(parcel.getParcelId().toString())
                         .setTrackingNumber(parcel.getTrackingNumber())
                         .setStatus(parcel.getStatus().name())
+                        .setVersion(parcel.getVersion() != null ? parcel.getVersion() : 1L)
                         .setCurrency(parcel.getCurrency() != null ? parcel.getCurrency() : "LKR")
                         .setAmountMinorUnits(parcel.getAmountMinorUnits() != null ? parcel.getAmountMinorUnits() : 0L)
                         .setWeightKg(parcel.getWeightKg() != null ? parcel.getWeightKg().doubleValue() : 0.0);
