@@ -23,7 +23,7 @@ public class PricingGrpcClientConfig {
     @Value("${PRICING_GRPC_PORT:${swiftdrop.pricing.grpc.port:9083}}")
     private int pricingPort;
 
-    @Value("${PRICING_GRPC_DEADLINE_MS:${swiftdrop.pricing.grpc.deadline-ms:5000}}")
+    @Value("${PRICING_GRPC_DEADLINE_MS:${swiftdrop.pricing.grpc.deadline-ms:2000}}")
     private long deadlineMs;
 
     @Bean

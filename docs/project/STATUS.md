@@ -1,5 +1,48 @@
 # Current project status — update only with evidence
 
+## Issue #169 Release-Candidate Feature Acceptance & Blocker Triage (N10-P12A) — 2026-10-28
+
+Owner Eric Praveen (@EricPraveen — Senior Release Engineer & QA Lead); branch `chore/n10-p12a-release-candidate-acceptance-triage`, base `test`.
+Linked Issues: Milestone Nov 10 (#169), Recovery Drills (#167, #168), Business Authorization (#162), Merchant & Operator QA (#163), Customer/Courier E2E (#157), Capacity Budgets (#165), Reporting & Accessibility (#147, #156).
+
+Coordinates evidence-based release candidate acceptance across implemented workflows and services:
+- **Comprehensive Acceptance Matrix:** 80 criteria evaluated across Merchant Orders, Webhooks, Operator Management, Protocol Compatibility, Recovery, Frontend, CI/CD, and Strict $0 Hosting. 68 PASS (85%), 7 BLOCKED (8.8%), 3 NOT RUN (3.8%), 2 NEEDS REVIEW (2.5%), 0 FAIL.
+- **Triage & Blocker Disposition:** 4 P1 release blockers catalogued with reproducible validations, owners, and retest criteria:
+  1. Mode B disaster recovery verification blocked awaiting operator-restored PostgreSQL staging cluster (`@Suthankan1`).
+  2. Capacity budgets numeric SLA thresholds unapproved in `capacity-budgets.v1.json` (`@pushmitha20` / reviewers).
+  3. Mandatory independent release approvals pending from designated reviewers (`@Harithkeshan`, `@Vibhushan-2003`).
+  4. Local host missing `helm` binary preventing automated validation of Kubernetes manifests.
+- **In-Scope Defect Remediation & Verification:**
+  - Resolved merchant lost-response idempotency bug in `BookingRepository.java`: `replayMerchant` now matches both `merchant:<uuid>` and `<uuid>`, returning cached canonical `ParcelDetailResponse` instead of throwing `QUOTE_ALREADY_CONSUMED`.
+  - Re-enabled regression test in `BookingEntryPointRecoveryPostgresIT.java` and added in-process test in `BookingCorrelationTest.java`.
+  - Aligned `IF-GRPC-04` quote verification default deadline from 5,000 ms to the approved 2,000 ms contract in `PricingGrpcClientConfig.java` and `GrpcBookingQuoteProvider.java`.
+- **Release Decision:** **NOT READY** — Staging promotion gated until Mode B disaster recovery drill is executed on `k3d-swiftdrop-local` and reviewer SLA sign-offs are completed.
+
+Actual local verification (Java 21.0.10, Node 26.8.1, Python 3.14.7):
+- PASS `services/delivery-service`: **484 tests passed** (including merchant idempotency replay and 2,000 ms quote deadline).
+- PASS `services/accounts-service`: **311 tests passed**.
+- PASS `services/pricing-service`: **167 tests passed**.
+- PASS `services/graphql-query-service`: **251 tests passed**.
+- PASS `services/communications-service`: **364 tests passed**.
+- PASS `services/api-gateway`: **87 tests passed**.
+- PASS `shared/proto-contracts` & `shared/security-adapter`: **79 tests passed**.
+- Total Java Service Tests: **1,743 tests passed, 0 failures**.
+- PASS `pnpm --dir frontend test --run`: **1,235 tests passed across 68 files**.
+- PASS `pnpm --dir frontend typecheck`: `tsc -b` 0 errors; `vite build` 245 modules transformed.
+- PASS `python3 tests/contracts/validate_contracts.py --mode all --check-compatibility --base-ref origin/test`: 4/4 contract gates passed.
+- PASS `python3 tests/security-e2e/test_business_authorization.py`: **52/52 multi-actor scenarios passed**.
+- PASS `python3 tests/e2e/run_merchant_webhook_operator_acceptance.py`: **46/46 acceptance criteria passed**.
+- PASS `python3 tests/e2e/run_customer_courier_e2e.py`: **13/13 E2E journey assertions passed**.
+- PASS `python3 -m unittest discover -s tests/terraform-policy -p "test_*.py"`: **85/85 tests passed**.
+- PASS `python3 -m unittest discover -s tests/ci -p "test_*.py"`: **46 tests passed (2 skipped)**.
+- PASS `python3 tests/recovery/run_recovery_consistency_verification.py --mode offline`: **17/17 invariants passed, 17/17 corruptions detected**.
+- BLOCKED `python3 tests/recovery/run_recovery_consistency_verification.py --mode operator-checkpoint`: Fails closed with exit code 2 awaiting live staging databases.
+- BLOCKED `tests/kubernetes`: 8 test classes failed with `FileNotFoundError: 'helm'` on local host.
+
+See [Release Candidate Acceptance & Blocker Triage Report](../reviews/N10_P12A_RELEASE_CANDIDATE_ACCEPTANCE_TRIAGE.md).
+
+
+
 ## Issue #168 Post-Rollback Application Consistency Verification (N10-P09A) — 2026-10-28
 
 Owner Sinthuha Nadesan (@Sinthuha-n — Platform QA / Consistency Engineer); branch `tests/n10-p09a-recovery-consistency`, base `test`.

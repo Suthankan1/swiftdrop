@@ -83,7 +83,6 @@ class BookingEntryPointRecoveryPostgresIT {
     }
 
     @Test
-    @Disabled("BLOCKED: merchant idempotency is persisted as merchant:<uuid> but replay queries <uuid>; owner fix required")
     @DisplayName("Issue 164 E4/E5: merchant lost-response retry returns the original canonical booking")
     void merchantLostResponseRetryReturnsCanonicalBooking() {
         UUID quoteId = UUID.randomUUID();
