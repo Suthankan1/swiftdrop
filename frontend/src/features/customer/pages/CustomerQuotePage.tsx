@@ -114,6 +114,40 @@ export function CustomerQuotePage() {
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [bookingFieldErrors, setBookingFieldErrors] = useState<Record<string, string>>({})
 
+  const quoteFieldIds: Record<string, string> = useMemo(() => ({
+    pickupZone: pickupZoneId,
+    dropoffZone: dropoffZoneId,
+    weight: weightId,
+    length: lengthId,
+    width: widthId,
+    height: heightId,
+  }), [pickupZoneId, dropoffZoneId, weightId, lengthId, widthId, heightId])
+  const bookingFieldIds: Record<string, string> = useMemo(() => ({
+    pickupAddress: pickupAddressId,
+    dropoffAddress: dropoffAddressId,
+    recipientName: recipientNameId,
+    recipientPhone: recipientPhoneId,
+    deliveryNotes: deliveryNotesId,
+  }), [pickupAddressId, dropoffAddressId, recipientNameId, recipientPhoneId, deliveryNotesId])
+
+  useEffect(() => {
+    const firstInvalid = ['pickupZone', 'dropoffZone', 'weight', 'length', 'width', 'height']
+      .find((field) => formValidationErrors[field])
+    const fieldId = firstInvalid ? quoteFieldIds[firstInvalid] : undefined
+    if (fieldId) {
+      document.getElementById(fieldId)?.focus()
+    }
+  }, [formValidationErrors, quoteFieldIds])
+
+  useEffect(() => {
+    const firstInvalid = ['pickupAddress', 'dropoffAddress', 'recipientName', 'recipientPhone', 'deliveryNotes']
+      .find((field) => bookingFieldErrors[field])
+    const fieldId = firstInvalid ? bookingFieldIds[firstInvalid] : undefined
+    if (fieldId) {
+      document.getElementById(fieldId)?.focus()
+    }
+  }, [bookingFieldErrors, bookingFieldIds])
+
   // Live countdown timer for quote expiry
   useEffect(() => {
     if (!quote?.expiresAt) return
@@ -248,6 +282,31 @@ export function CustomerQuotePage() {
     return Object.keys(errors).length === 0
   }
 
+  function clearQuoteFieldError(field: string) {
+    setFormValidationErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }
+
+  function clearBookingFieldError(field: string) {
+    setBookingFieldErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }
+
+  function fieldDescribedBy(field: string, hintId?: string) {
+    const errorId = `${quoteFieldIds[field] || bookingFieldIds[field]}-error`
+    return [hintId, formValidationErrors[field] || bookingFieldErrors[field] ? errorId : undefined]
+      .filter(Boolean)
+      .join(' ') || undefined
+  }
+
   // Handle Confirm Booking
   async function handleConfirmBooking(e: React.FormEvent) {
     e.preventDefault()
@@ -352,8 +411,13 @@ export function CustomerQuotePage() {
                   id={pickupZoneId}
                   className="form-control"
                   value={pickupZone}
-                  onChange={(e) => setPickupZone(e.target.value)}
+                  onChange={(e) => {
+                    setPickupZone(e.target.value)
+                    clearQuoteFieldError('pickupZone')
+                  }}
                   disabled={isCalculating || isBooking}
+                  aria-invalid={Boolean(formValidationErrors.pickupZone)}
+                  aria-describedby={fieldDescribedBy('pickupZone')}
                 >
                   {availableZones.map((z) => (
                     <option key={z.zoneCode} value={z.zoneCode}>
@@ -362,7 +426,9 @@ export function CustomerQuotePage() {
                   ))}
                 </select>
                 {formValidationErrors.pickupZone && (
-                  <p className="form-error">{formValidationErrors.pickupZone}</p>
+                  <p id={`${pickupZoneId}-error`} className="form-error" role="alert">
+                    {formValidationErrors.pickupZone}
+                  </p>
                 )}
               </div>
 
@@ -372,8 +438,13 @@ export function CustomerQuotePage() {
                   id={dropoffZoneId}
                   className="form-control"
                   value={dropoffZone}
-                  onChange={(e) => setDropoffZone(e.target.value)}
+                  onChange={(e) => {
+                    setDropoffZone(e.target.value)
+                    clearQuoteFieldError('dropoffZone')
+                  }}
                   disabled={isCalculating || isBooking}
+                  aria-invalid={Boolean(formValidationErrors.dropoffZone)}
+                  aria-describedby={fieldDescribedBy('dropoffZone')}
                 >
                   {availableZones.map((z) => (
                     <option key={z.zoneCode} value={z.zoneCode}>
@@ -382,7 +453,9 @@ export function CustomerQuotePage() {
                   ))}
                 </select>
                 {formValidationErrors.dropoffZone && (
-                  <p className="form-error">{formValidationErrors.dropoffZone}</p>
+                  <p id={`${dropoffZoneId}-error`} className="form-error" role="alert">
+                    {formValidationErrors.dropoffZone}
+                  </p>
                 )}
               </div>
             </div>
@@ -398,15 +471,21 @@ export function CustomerQuotePage() {
                 className="form-control"
                 placeholder="e.g. 2.50"
                 value={weightKg}
-                onChange={(e) => setWeightKg(e.target.value)}
+                onChange={(e) => {
+                  setWeightKg(e.target.value)
+                  clearQuoteFieldError('weight')
+                }}
                 disabled={isCalculating || isBooking}
-                aria-describedby="weight-hint"
+                aria-invalid={Boolean(formValidationErrors.weight)}
+                aria-describedby={fieldDescribedBy('weight', 'weight-hint')}
               />
               <span id="weight-hint" className="form-hint">
                 Standard courier parcel limit: 0.01 kg to 30.00 kg.
               </span>
               {formValidationErrors.weight && (
-                <p className="form-error">{formValidationErrors.weight}</p>
+              <p id={`${weightId}-error`} className="form-error" role="alert">
+                {formValidationErrors.weight}
+              </p>
               )}
             </div>
 
@@ -421,11 +500,18 @@ export function CustomerQuotePage() {
                   className="form-control"
                   placeholder="30"
                   value={lengthCm}
-                  onChange={(e) => setLengthCm(e.target.value)}
+                  onChange={(e) => {
+                    setLengthCm(e.target.value)
+                    clearQuoteFieldError('length')
+                  }}
                   disabled={isCalculating || isBooking}
+                  aria-invalid={Boolean(formValidationErrors.length)}
+                  aria-describedby={fieldDescribedBy('length')}
                 />
                 {formValidationErrors.length && (
-                  <p className="form-error">{formValidationErrors.length}</p>
+                  <p id={`${lengthId}-error`} className="form-error" role="alert">
+                    {formValidationErrors.length}
+                  </p>
                 )}
               </div>
 
@@ -439,11 +525,18 @@ export function CustomerQuotePage() {
                   className="form-control"
                   placeholder="20"
                   value={widthCm}
-                  onChange={(e) => setWidthCm(e.target.value)}
+                  onChange={(e) => {
+                    setWidthCm(e.target.value)
+                    clearQuoteFieldError('width')
+                  }}
                   disabled={isCalculating || isBooking}
+                  aria-invalid={Boolean(formValidationErrors.width)}
+                  aria-describedby={fieldDescribedBy('width')}
                 />
                 {formValidationErrors.width && (
-                  <p className="form-error">{formValidationErrors.width}</p>
+                  <p id={`${widthId}-error`} className="form-error" role="alert">
+                    {formValidationErrors.width}
+                  </p>
                 )}
               </div>
 
@@ -457,11 +550,18 @@ export function CustomerQuotePage() {
                   className="form-control"
                   placeholder="15"
                   value={heightCm}
-                  onChange={(e) => setHeightCm(e.target.value)}
+                  onChange={(e) => {
+                    setHeightCm(e.target.value)
+                    clearQuoteFieldError('height')
+                  }}
                   disabled={isCalculating || isBooking}
+                  aria-invalid={Boolean(formValidationErrors.height)}
+                  aria-describedby={fieldDescribedBy('height')}
                 />
                 {formValidationErrors.height && (
-                  <p className="form-error">{formValidationErrors.height}</p>
+                  <p id={`${heightId}-error`} className="form-error" role="alert">
+                    {formValidationErrors.height}
+                  </p>
                 )}
               </div>
             </div>
@@ -645,12 +745,19 @@ export function CustomerQuotePage() {
                         className="form-control"
                         placeholder="e.g. 123 Galle Road, Colombo 03"
                         value={pickupAddress}
-                        onChange={(e) => setPickupAddress(e.target.value)}
+                        onChange={(e) => {
+                          setPickupAddress(e.target.value)
+                          clearBookingFieldError('pickupAddress')
+                        }}
                         disabled={isBooking}
                         required
+                        aria-invalid={Boolean(bookingFieldErrors.pickupAddress)}
+                        aria-describedby={fieldDescribedBy('pickupAddress')}
                       />
                       {bookingFieldErrors.pickupAddress && (
-                        <p className="form-error">{bookingFieldErrors.pickupAddress}</p>
+                        <p id={`${pickupAddressId}-error`} className="form-error" role="alert">
+                          {bookingFieldErrors.pickupAddress}
+                        </p>
                       )}
                     </div>
 
@@ -662,12 +769,19 @@ export function CustomerQuotePage() {
                         className="form-control"
                         placeholder="e.g. 45 Kandy Road, Gampaha"
                         value={dropoffAddress}
-                        onChange={(e) => setDropoffAddress(e.target.value)}
+                        onChange={(e) => {
+                          setDropoffAddress(e.target.value)
+                          clearBookingFieldError('dropoffAddress')
+                        }}
                         disabled={isBooking}
                         required
+                        aria-invalid={Boolean(bookingFieldErrors.dropoffAddress)}
+                        aria-describedby={fieldDescribedBy('dropoffAddress')}
                       />
                       {bookingFieldErrors.dropoffAddress && (
-                        <p className="form-error">{bookingFieldErrors.dropoffAddress}</p>
+                        <p id={`${dropoffAddressId}-error`} className="form-error" role="alert">
+                          {bookingFieldErrors.dropoffAddress}
+                        </p>
                       )}
                     </div>
 
@@ -680,12 +794,19 @@ export function CustomerQuotePage() {
                           className="form-control"
                           placeholder="e.g. Nimal Perera"
                           value={recipientName}
-                          onChange={(e) => setRecipientName(e.target.value)}
+                          onChange={(e) => {
+                            setRecipientName(e.target.value)
+                            clearBookingFieldError('recipientName')
+                          }}
                           disabled={isBooking}
                           required
+                          aria-invalid={Boolean(bookingFieldErrors.recipientName)}
+                          aria-describedby={fieldDescribedBy('recipientName')}
                         />
                         {bookingFieldErrors.recipientName && (
-                          <p className="form-error">{bookingFieldErrors.recipientName}</p>
+                          <p id={`${recipientNameId}-error`} className="form-error" role="alert">
+                            {bookingFieldErrors.recipientName}
+                          </p>
                         )}
                       </div>
 
@@ -697,12 +818,19 @@ export function CustomerQuotePage() {
                           className="form-control"
                           placeholder="e.g. +94771234567"
                           value={recipientPhone}
-                          onChange={(e) => setRecipientPhone(e.target.value)}
+                          onChange={(e) => {
+                            setRecipientPhone(e.target.value)
+                            clearBookingFieldError('recipientPhone')
+                          }}
                           disabled={isBooking}
                           required
+                          aria-invalid={Boolean(bookingFieldErrors.recipientPhone)}
+                          aria-describedby={fieldDescribedBy('recipientPhone')}
                         />
                         {bookingFieldErrors.recipientPhone && (
-                          <p className="form-error">{bookingFieldErrors.recipientPhone}</p>
+                          <p id={`${recipientPhoneId}-error`} className="form-error" role="alert">
+                            {bookingFieldErrors.recipientPhone}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -717,11 +845,18 @@ export function CustomerQuotePage() {
                         className="form-control"
                         placeholder="e.g. Gate code, security desk, or alternative contact instructions"
                         value={deliveryNotes}
-                        onChange={(e) => setDeliveryNotes(e.target.value)}
+                        onChange={(e) => {
+                          setDeliveryNotes(e.target.value)
+                          clearBookingFieldError('deliveryNotes')
+                        }}
                         disabled={isBooking}
+                        aria-invalid={Boolean(bookingFieldErrors.deliveryNotes)}
+                        aria-describedby={fieldDescribedBy('deliveryNotes')}
                       />
                       {bookingFieldErrors.deliveryNotes && (
-                        <p className="form-error">{bookingFieldErrors.deliveryNotes}</p>
+                        <p id={`${deliveryNotesId}-error`} className="form-error" role="alert">
+                          {bookingFieldErrors.deliveryNotes}
+                        </p>
                       )}
                     </div>
 

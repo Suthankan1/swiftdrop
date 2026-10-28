@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { MerchantRegistrationRequest } from '../api/enrollmentContracts'
 
 interface MerchantEnrollmentFormProps {
@@ -15,28 +15,48 @@ export function MerchantEnrollmentForm({
   const [businessName, setBusinessName] = useState('')
   const [registrationNumber, setRegistrationNumber] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const businessNameRef = useRef<HTMLInputElement>(null)
+  const registrationNumberRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (fieldErrors.businessName) {
+      businessNameRef.current?.focus()
+    } else if (fieldErrors.registrationNumber) {
+      registrationNumberRef.current?.focus()
+    }
+  }, [fieldErrors])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setValidationError(null)
+    setFieldErrors({})
 
     const trimmedBusinessName = businessName.trim()
     const trimmedRegNumber = registrationNumber.trim()
 
     if (!trimmedBusinessName || trimmedBusinessName.length < 3) {
-      setValidationError('Business legal name must have at least 3 characters.')
+      const message = 'Business legal name must have at least 3 characters.'
+      setValidationError(message)
+      setFieldErrors({ businessName: message })
       return
     }
     if (trimmedBusinessName.length > 255) {
-      setValidationError('Business legal name cannot exceed 255 characters.')
+      const message = 'Business legal name cannot exceed 255 characters.'
+      setValidationError(message)
+      setFieldErrors({ businessName: message })
       return
     }
     if (!trimmedRegNumber || trimmedRegNumber.length < 3) {
-      setValidationError('Business registration number must have at least 3 characters.')
+      const message = 'Business registration number must have at least 3 characters.'
+      setValidationError(message)
+      setFieldErrors({ registrationNumber: message })
       return
     }
     if (trimmedRegNumber.length > 100) {
-      setValidationError('Business registration number cannot exceed 100 characters.')
+      const message = 'Business registration number cannot exceed 100 characters.'
+      setValidationError(message)
+      setFieldErrors({ registrationNumber: message })
       return
     }
 
@@ -62,7 +82,7 @@ export function MerchantEnrollmentForm({
 
       {validationError && (
         <div className="form-alert form-alert-error" role="alert">
-          {validationError}
+          <span id="enrollment-validation-summary">{validationError}</span>
         </div>
       )}
 
@@ -72,23 +92,40 @@ export function MerchantEnrollmentForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="enrollment-form">
+      <form onSubmit={handleSubmit} className="enrollment-form" noValidate>
         <div className="form-field">
           <label htmlFor="business-name" className="form-label">
             Business Legal Name <span className="required-indicator">*</span>
           </label>
           <input
             id="business-name"
+            ref={businessNameRef}
             type="text"
             className="form-input"
             placeholder="e.g. Lanka Retail Holdings Ltd"
             value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
+            onChange={(e) => {
+              setBusinessName(e.target.value)
+              setFieldErrors((current) => {
+                if (!current.businessName) return current
+                const next = { ...current }
+                delete next.businessName
+                return next
+              })
+              setValidationError(null)
+            }}
             disabled={isSubmitting}
             maxLength={255}
             required
+            aria-invalid={Boolean(fieldErrors.businessName)}
+            aria-describedby={`business-name-hint${fieldErrors.businessName ? ' business-name-error' : ''}`}
           />
-          <span className="field-hint">The registered name of your company or commercial trading entity.</span>
+          <span id="business-name-hint" className="field-hint">The registered name of your company or commercial trading entity.</span>
+          {fieldErrors.businessName && (
+            <span id="business-name-error" className="form-error" aria-live="polite">
+              {fieldErrors.businessName}
+            </span>
+          )}
         </div>
 
         <div className="form-field">
@@ -97,16 +134,33 @@ export function MerchantEnrollmentForm({
           </label>
           <input
             id="registration-number"
+            ref={registrationNumberRef}
             type="text"
             className="form-input"
             placeholder="e.g. PV-109923 or BRN-847291"
             value={registrationNumber}
-            onChange={(e) => setRegistrationNumber(e.target.value)}
+            onChange={(e) => {
+              setRegistrationNumber(e.target.value)
+              setFieldErrors((current) => {
+                if (!current.registrationNumber) return current
+                const next = { ...current }
+                delete next.registrationNumber
+                return next
+              })
+              setValidationError(null)
+            }}
             disabled={isSubmitting}
             maxLength={100}
             required
+            aria-invalid={Boolean(fieldErrors.registrationNumber)}
+            aria-describedby={`registration-number-hint${fieldErrors.registrationNumber ? ' registration-number-error' : ''}`}
           />
-          <span className="field-hint">Your official state or commercial register identifier.</span>
+          <span id="registration-number-hint" className="field-hint">Your official state or commercial register identifier.</span>
+          {fieldErrors.registrationNumber && (
+            <span id="registration-number-error" className="form-error" aria-live="polite">
+              {fieldErrors.registrationNumber}
+            </span>
+          )}
         </div>
 
         <div className="enrollment-notice-box">
