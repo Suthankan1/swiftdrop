@@ -8,6 +8,9 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
@@ -32,22 +35,48 @@ public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
     private final int port;
     private final boolean enabled;
 
+    private final MeterRegistry meterRegistry;
     private Server server;
     private volatile boolean running = false;
 
+    @Autowired
     public DeliveryGrpcServerLifecycle(
             DeliveryInternalServiceImpl deliveryInternalService,
             ServiceTokenValidator serviceTokenValidator,
             ActorDelegationValidator actorDelegationValidator,
             GrpcSecurityPolicy grpcSecurityPolicy,
             @Value("${grpc.server.port:9082}") int port,
-            @Value("${grpc.server.enabled:true}") boolean enabled) {
+            @Value("${grpc.server.enabled:true}") boolean enabled,
+            ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        this(deliveryInternalService, serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy, port, enabled,
+                meterRegistryProvider != null ? meterRegistryProvider.getIfAvailable() : null);
+    }
+
+    public DeliveryGrpcServerLifecycle(
+            DeliveryInternalServiceImpl deliveryInternalService,
+            ServiceTokenValidator serviceTokenValidator,
+            ActorDelegationValidator actorDelegationValidator,
+            GrpcSecurityPolicy grpcSecurityPolicy,
+            int port,
+            boolean enabled,
+            MeterRegistry meterRegistry) {
         this.deliveryInternalService = deliveryInternalService;
         this.serviceTokenValidator = serviceTokenValidator;
         this.actorDelegationValidator = actorDelegationValidator;
         this.grpcSecurityPolicy = grpcSecurityPolicy;
         this.port = port;
         this.enabled = enabled;
+        this.meterRegistry = meterRegistry;
+    }
+
+    public DeliveryGrpcServerLifecycle(
+            DeliveryInternalServiceImpl deliveryInternalService,
+            ServiceTokenValidator serviceTokenValidator,
+            ActorDelegationValidator actorDelegationValidator,
+            GrpcSecurityPolicy grpcSecurityPolicy,
+            int port,
+            boolean enabled) {
+        this(deliveryInternalService, serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy, port, enabled, (MeterRegistry) null);
     }
 
     @Override
@@ -59,7 +88,7 @@ public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
 
         try {
             SwiftDropGrpcServerSecurityInterceptor securityInterceptor =
-                    new SwiftDropGrpcServerSecurityInterceptor(serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy);
+                    new SwiftDropGrpcServerSecurityInterceptor(serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy, meterRegistry);
 
             server = ServerBuilder.forPort(port)
                     .intercept(securityInterceptor)

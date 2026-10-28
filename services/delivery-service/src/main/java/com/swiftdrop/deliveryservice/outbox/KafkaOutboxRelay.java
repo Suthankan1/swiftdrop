@@ -12,11 +12,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.swiftdrop.security.correlation.CorrelationContext;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Bounded Kafka Outbox Relay.
@@ -39,16 +43,26 @@ public class KafkaOutboxRelay {
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxRelayProperties properties;
     private final KafkaTemplate<String, String> kafkaTemplate;
+    private final OutboxMetrics outboxMetrics;
     private final String workerId;
+
+    public KafkaOutboxRelay(
+            OutboxEventRepository outboxEventRepository,
+            OutboxRelayProperties properties,
+            KafkaTemplate<String, String> kafkaTemplate) {
+        this(outboxEventRepository, properties, kafkaTemplate, null);
+    }
 
     @Autowired
     public KafkaOutboxRelay(
             OutboxEventRepository outboxEventRepository,
             OutboxRelayProperties properties,
-            @Autowired(required = false) KafkaTemplate<String, String> kafkaTemplate) {
+            @Autowired(required = false) KafkaTemplate<String, String> kafkaTemplate,
+            @Autowired(required = false) OutboxMetrics outboxMetrics) {
         this.outboxEventRepository = outboxEventRepository;
         this.properties = properties;
         this.kafkaTemplate = kafkaTemplate;
+        this.outboxMetrics = outboxMetrics;
         this.workerId = "relay-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
@@ -120,6 +134,8 @@ public class KafkaOutboxRelay {
         return outboxEventRepository.saveAll(candidates);
     }
 
+    private static final Pattern CORRELATION_PATTERN = Pattern.compile("\"correlationId\"\\s*:\\s*\"([^\"]+)\"");
+
     /**
      * Step 2: Publish to Kafka with broker acknowledgement.
      */
@@ -128,30 +144,52 @@ public class KafkaOutboxRelay {
                 ? event.getTopic()
                 : properties.getTopic();
 
-        try {
-            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
-                    topic,
-                    event.getPartitionKey(),
-                    event.getPayload()
-            );
+        String correlationId = extractCorrelationId(event);
 
-            // Bounded wait for broker acknowledgement
-            SendResult<String, String> sendResult = future.get(5, TimeUnit.SECONDS);
-            Instant ackTime = Instant.now();
+        return CorrelationContext.executeWith(correlationId, () -> {
+            try {
+                CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
+                        topic,
+                        event.getPartitionKey(),
+                        event.getPayload()
+                );
 
-            markPublished(event.getEventId(), ackTime);
-            log.debug("Event {} published to partition {} offset {}",
-                    event.getEventId(),
-                    sendResult.getRecordMetadata().partition(),
-                    sendResult.getRecordMetadata().offset());
-            return true;
+                // Bounded wait for broker acknowledgement
+                SendResult<String, String> sendResult = future.get(5, TimeUnit.SECONDS);
+                Instant ackTime = Instant.now();
 
-        } catch (Exception e) {
-            String errorMsg = sanitizeError(e.getMessage());
-            log.warn("Failed to publish outbox event {}: {}", event.getEventId(), errorMsg);
-            markFailed(event.getEventId(), errorMsg);
-            return false;
+                markPublished(event.getEventId(), ackTime);
+                if (outboxMetrics != null) {
+                    outboxMetrics.recordPublish(true);
+                }
+                log.debug("Event {} published to partition {} offset {}",
+                        event.getEventId(),
+                        sendResult.getRecordMetadata().partition(),
+                        sendResult.getRecordMetadata().offset());
+                return true;
+
+            } catch (Exception e) {
+                String errorMsg = sanitizeError(e.getMessage());
+                log.warn("Failed to publish outbox event {}: {}", event.getEventId(), errorMsg);
+                markFailed(event.getEventId(), errorMsg);
+                if (outboxMetrics != null) {
+                    outboxMetrics.recordPublish(false);
+                }
+                return false;
+            }
+        });
+    }
+
+    private String extractCorrelationId(OutboxEvent event) {
+        if (event != null && event.getPayload() != null) {
+            Matcher matcher = CORRELATION_PATTERN.matcher(event.getPayload());
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
         }
+        return event != null && event.getEventId() != null
+                ? event.getEventId().toString()
+                : UUID.randomUUID().toString();
     }
 
     /**

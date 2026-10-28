@@ -8,6 +8,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -50,9 +53,34 @@ public class ParcelSseConnectionManager {
             new CustomizableThreadFactory("sse-manager-")
     );
 
-    public ParcelSseConnectionManager(SseProperties properties, DeliveryAssignmentRepository assignmentRepository) {
+    private final MeterRegistry meterRegistry;
+
+    @Autowired
+    public ParcelSseConnectionManager(
+            SseProperties properties,
+            DeliveryAssignmentRepository assignmentRepository,
+            org.springframework.beans.factory.ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        this(properties, assignmentRepository, meterRegistryProvider != null ? meterRegistryProvider.getIfAvailable() : null);
+    }
+
+    public ParcelSseConnectionManager(
+            SseProperties properties,
+            DeliveryAssignmentRepository assignmentRepository,
+            MeterRegistry meterRegistry) {
         this.properties = Objects.requireNonNull(properties, "properties cannot be null");
         this.assignmentRepository = Objects.requireNonNull(assignmentRepository, "assignmentRepository cannot be null");
+        this.meterRegistry = meterRegistry;
+        if (meterRegistry != null) {
+            Gauge.builder("swiftdrop.sse.connections.active", activeSessions, ConcurrentHashMap::size)
+                    .description("Current active SSE connections")
+                    .register(meterRegistry);
+            meterRegistry.counter("swiftdrop.sse.connections.accepted.total");
+            meterRegistry.counter("swiftdrop.sse.connections.closed.total");
+        }
+    }
+
+    public ParcelSseConnectionManager(SseProperties properties, DeliveryAssignmentRepository assignmentRepository) {
+        this(properties, assignmentRepository, (MeterRegistry) null);
     }
 
     @PostConstruct
@@ -91,6 +119,7 @@ public class ParcelSseConnectionManager {
         int currentGlobal = globalConnectionCount.incrementAndGet();
         if (currentGlobal > properties.getMaxConnections()) {
             globalConnectionCount.decrementAndGet();
+            recordRejected("limit_global");
             log.warn("Rejected SSE connection: global limit {} reached", properties.getMaxConnections());
             throw new SseConnectionLimitExceededException(
                     "GLOBAL",
@@ -105,6 +134,7 @@ public class ParcelSseConnectionManager {
         if (currentUserCount > properties.getMaxConnectionsPerUser()) {
             userCount.decrementAndGet();
             globalConnectionCount.decrementAndGet();
+            recordRejected("limit_user");
             log.warn("Rejected SSE connection for user {}: user limit {} reached", userSub, properties.getMaxConnectionsPerUser());
             throw new SseConnectionLimitExceededException(
                     "USER",
@@ -120,6 +150,7 @@ public class ParcelSseConnectionManager {
             if (subscribers.size() >= properties.getMaxConnectionsPerParcel()) {
                 userCount.decrementAndGet();
                 globalConnectionCount.decrementAndGet();
+                recordRejected("limit_parcel");
                 log.warn("Rejected SSE connection for parcel {}: parcel limit {} reached", parcelId, properties.getMaxConnectionsPerParcel());
                 throw new SseConnectionLimitExceededException(
                         "PARCEL",
@@ -169,6 +200,7 @@ public class ParcelSseConnectionManager {
 
         // 8. Send initial keepalive comment to confirm connection to client
         session.sendHeartbeat();
+        recordAccepted();
 
         log.info("Registered SSE session {} for parcel {} (user: {}, isCourier: {}, activeParcelSubscribers: {}, totalGlobal: {})",
                 session.getSessionId(), parcelId, userSub, isCourier, subscribers.size(), globalConnectionCount.get());
@@ -203,7 +235,26 @@ public class ParcelSseConnectionManager {
             });
 
             int remainingGlobal = globalConnectionCount.decrementAndGet();
+            recordClosed();
             log.info("Unregistered SSE session {} for parcel {} (remainingGlobal: {})", sessionId, parcelId, Math.max(0, remainingGlobal));
+        }
+    }
+
+    private void recordAccepted() {
+        if (meterRegistry != null) {
+            meterRegistry.counter("swiftdrop.sse.connections.accepted.total").increment();
+        }
+    }
+
+    private void recordRejected(String reason) {
+        if (meterRegistry != null) {
+            meterRegistry.counter("swiftdrop.sse.connections.rejected.total", "reason", reason).increment();
+        }
+    }
+
+    private void recordClosed() {
+        if (meterRegistry != null) {
+            meterRegistry.counter("swiftdrop.sse.connections.closed.total").increment();
         }
     }
 

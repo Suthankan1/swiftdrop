@@ -40,9 +40,11 @@ public class PricingGrpcClientConfig {
 
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean(name = "pricingGrpcManagedChannel")
-    public ManagedChannel pricingGrpcManagedChannel(ServiceTokenProvider serviceTokenProvider) {
+    public ManagedChannel pricingGrpcManagedChannel(
+            ServiceTokenProvider serviceTokenProvider,
+            org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meterRegistryProvider) {
         SwiftDropGrpcClientInterceptor interceptor =
-                new SwiftDropGrpcClientInterceptor(serviceTokenProvider, deadlineMs);
+                new SwiftDropGrpcClientInterceptor(serviceTokenProvider, deadlineMs, meterRegistryProvider.getIfAvailable());
 
         return ManagedChannelBuilder.forAddress(pricingHost, pricingPort)
                 .usePlaintext()

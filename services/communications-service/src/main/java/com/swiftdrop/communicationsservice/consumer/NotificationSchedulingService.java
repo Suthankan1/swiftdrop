@@ -38,6 +38,13 @@ public class NotificationSchedulingService {
     private final AccountsRecipientContactClient accountsContactClient;
     private final String consumerGroup;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.swiftdrop.communicationsservice.metrics.CommunicationsMetrics communicationsMetrics;
+
+    public void setCommunicationsMetrics(com.swiftdrop.communicationsservice.metrics.CommunicationsMetrics communicationsMetrics) {
+        this.communicationsMetrics = communicationsMetrics;
+    }
+
     public NotificationSchedulingService(
             DurableJobPersistenceService durableJobPersistenceService,
             DeliveryRecipientAuthorizationClient deliveryAuthorizationClient,
@@ -125,6 +132,7 @@ public class NotificationSchedulingService {
                 Instant.now()
         );
         consumedEvent.setScheduledAt(Instant.now());
+        consumedEvent.setCorrelationId(event.correlationId());
 
         // Use privacy-preserving opaque destination reference (no raw email in communications_db)
         String destinationRef = "sub:" + recipientSub;
@@ -142,6 +150,7 @@ public class NotificationSchedulingService {
         notificationJob.setStatus(NotificationStatus.PENDING);
         notificationJob.setAttempts(0);
         notificationJob.setNextAttemptAt(Instant.now());
+        notificationJob.setCorrelationId(event.correlationId());
 
         // 5. Persist both inbox receipt and notification job atomically
         try {
@@ -150,6 +159,13 @@ public class NotificationSchedulingService {
 
             log.info("Persisted inbox receipt and notification job [consumerGroup={}, eventId={}, notificationId={}, status={}]",
                     consumerGroup, eventId, notificationJob.getNotificationId(), notificationJob.getStatus());
+
+            if (communicationsMetrics != null) {
+                communicationsMetrics.recordNotificationMaterialized(
+                        notificationJob.getChannel() != null ? notificationJob.getChannel().name() : "EMAIL",
+                        notificationJob.getStatus() != null ? notificationJob.getStatus().name() : "PENDING"
+                );
+            }
 
             return SchedulingResult.persisted(result);
 
