@@ -146,3 +146,4 @@ keycloak:
 # Release candidates must interact with real PostgreSQL, Kafka KRaft, and MinIO stateful workloads.
 statefulInterfaces:
   createPlaceholderServices: false
+

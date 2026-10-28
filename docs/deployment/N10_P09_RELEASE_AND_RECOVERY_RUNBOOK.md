@@ -389,3 +389,4 @@ In strict adherence to [ADR-0011](file:///Users/suthankan/Desktop/swiftdrop/docs
    PostgreSQL uses Write-Ahead Logging (WAL). In the event of an unclean container kill, the StatefulSet controller will restart the container on the same host PVC; PostgreSQL executes automatic crash recovery without data loss.
 3. **Accidental PVC Deletion Protection:**
    The `local-path` provisioner binds storage directly to `/Users/suthankan/.swiftdrop/k3d/storage/`. Take periodic offline directory snapshots via `rsync` before performing any major cluster recreation.
+

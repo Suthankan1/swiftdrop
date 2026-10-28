@@ -138,3 +138,4 @@ echo "✓ MINIO PRIVATE PROOF OBJECTS BACKED UP AND ENCRYPTED SUCCESSFULLY."
 echo "Manifest: ${DEST_DIR}/minio-manifest.json"
 echo "================================================================================"
 exit 0
+

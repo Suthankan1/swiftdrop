@@ -70,3 +70,4 @@ Observed RTO: 240 seconds (4m 0s)
 3. **Application Rollback:** Simulated application rollback using `rollback-app.sh` reverted image revisions while preserving all database schemas and durable records.
 4. **Offline Backup Custody:** All backup files were stored strictly in `~/.swiftdrop/backups/`, completely outside Git. Zero secrets or dumps are tracked in version control.
 5. **Strict $0 Compliance:** 100% of execution occurred on local hardware (`k3d-swiftdrop-local`). Zero cloud resources or billable services were invoked.
+

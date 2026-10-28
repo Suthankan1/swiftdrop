@@ -149,3 +149,4 @@ if output_path:
         json.dump(report, out, indent=2)
     print(f"✓ Formatted measurement report saved to {output_path}")
 EOF
+

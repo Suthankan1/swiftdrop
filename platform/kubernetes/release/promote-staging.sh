@@ -192,3 +192,4 @@ echo "✓ STAGING PROMOTION COMPLETED SUCCESSFULLY."
 echo "Release '${RELEASE_NAME}' is ACTIVE and RUNNING approved candidate digests."
 echo "================================================================================"
 exit 0
+

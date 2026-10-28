@@ -154,3 +154,4 @@ with open(output_file, "w", encoding="utf-8") as f:
 
 print(f"✓ Generated P09A handoff document: {output_file}")
 EOF
+

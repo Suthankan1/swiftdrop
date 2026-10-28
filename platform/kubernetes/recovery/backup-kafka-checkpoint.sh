@@ -143,3 +143,4 @@ echo "✓ KAFKA AND OUTBOX/INBOX CHECKPOINT RECORDED SUCCESSFULLY."
 echo "Checkpoint: ${DEST_DIR}/kafka-checkpoint.json"
 echo "================================================================================"
 exit 0
+

@@ -74,3 +74,4 @@ kubectl --context "${CONTEXT_NAME}" get pvc -A -o custom-columns="NAMESPACE:.met
 echo ""
 echo "================================================================================"
 echo "Status check complete."
+

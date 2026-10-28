@@ -155,3 +155,4 @@ jobs:
           echo "In accordance with strict $0 local infrastructure policy (ADR-0011),"
           echo "promotion executes on local dedicated cluster: ./platform/kubernetes/release/promote-staging.sh"
           echo "================================================================================"
+

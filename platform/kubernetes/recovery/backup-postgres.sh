@@ -199,3 +199,4 @@ echo "Backup Manifest: ${DEST_DIR}/backup-manifest.json"
 echo "Checksums File:  ${DEST_DIR}/checksums.sha256"
 echo "================================================================================"
 exit 0
+

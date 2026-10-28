@@ -178,3 +178,4 @@ EOF
 
 chmod 644 "${OUTPUT_FILE}"
 echo "Manifest generation complete for candidate ${SHA_VAL}."
+

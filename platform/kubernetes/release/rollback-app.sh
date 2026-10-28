@@ -172,3 +172,4 @@ echo "Active revision: ${NEW_REV} (Restored from revision ${TARGET_REVISION})"
 echo "All application workloads are ready. Persistent databases remained intact."
 echo "================================================================================"
 exit 0
+
