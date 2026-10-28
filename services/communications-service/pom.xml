@@ -37,18 +37,6 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <!-- Override vulnerable transitive Guava (CVE-2026-102554). -->
-      <dependency>
-        <groupId>com.google.guava</groupId>
-        <artifactId>guava</artifactId>
-        <version>${guava.version}</version>
-      </dependency>
-      <!-- Kafka's Snappy runtime fixes CVE-2026-108106 and CVE-2026-93451. -->
-      <dependency>
-        <groupId>org.xerial.snappy</groupId>
-        <artifactId>snappy-java</artifactId>
-        <version>${snappy.version}</version>
-      </dependency>
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
