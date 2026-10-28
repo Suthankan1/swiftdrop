@@ -2,26 +2,28 @@
 
 **Contract Version:** 1.0.0  
 **Service:** Delivery Operations Service (`services/delivery-service`)  
-**Endpoint:** `GET /api/v1/parcels/{parcelId}/events`  
+**Endpoints:**  
+- Authenticated: `GET /api/v1/parcels/{parcelId}/events` (Keycloak Bearer JWT required)  
+- Public Redacted: `GET /api/v1/tracking/{trackingNumber}/events` (Unauthenticated anonymous)  
 **Media Type:** `text/event-stream`  
-**Security:** Verified Keycloak OIDC JWT (`Authorization: Bearer <token>`)  
-**Scope:** Multi-Replica Broadcast Fan-Out & REST Recovery (Issue #130 & Issue #161)
+**Security:** Verified Keycloak OIDC JWT for authenticated parcels; anonymous tracking-reference access for public stream  
+**Scope:** Multi-Replica Broadcast Fan-Out, Public Redacted Tracking, and REST Recovery (Issue #130, #148, #161)
 
 ---
 
 ## 1. Architectural Philosophy: Event Stream vs. Source of Truth
 
-The authenticated Server-Sent Events (SSE) channel is a **low-latency live notification mechanism**, **NOT** an authoritative event store.
-- **Authoritative State:** PostgreSQL persistence in `delivery-service` accessed via authorized REST endpoints (`GET /api/v1/parcels/{parcelId}` and `GET /api/v1/parcels/{parcelId}/history`) is the sole canonical source of truth.
-- **Live Stream:** Delivers real-time status transitions to connected, authorized viewers with zero PII.
+The Server-Sent Events (SSE) channels (authenticated and public) are **low-latency live notification mechanisms**, **NOT** authoritative event stores.
+- **Authoritative State:** PostgreSQL persistence in `delivery-service` accessed via authorized REST endpoints (`GET /api/v1/parcels/{parcelId}` for authenticated users, `GET /api/v1/tracking/{trackingNumber}` for public users) is the sole canonical source of truth.
+- **Live Stream:** Delivers real-time status transitions with strict data minimization (zero PII, zero internal metadata on public streams).
 - **Recovery Invariant:** A missed or dropped SSE live notification must never result in permanent client inconsistency. The client must reconcile its view with canonical REST state whenever an anomaly or disruption occurs.
 
 ---
 
 ## 2. Authorization & Access Lifecycle
 
-### 2.1 Connection Authorization
-1. Clients establish the SSE connection by sending an HTTP `GET` with a standard `Authorization: Bearer <keycloak_jwt>` header.
+### 2.1 Authenticated Connection Authorization
+1. Clients establish the authenticated SSE connection by sending an HTTP `GET` with a standard `Authorization: Bearer <keycloak_jwt>` header.
 2. The server verifies the token against the Keycloak JWKS endpoint (`issuer`, `audience=swiftdrop-api`, signature, unexpired).
 3. The server validates that the authenticated subject has read permissions on the requested parcel:
    - **Sender (CUSTOMER):** Caller `sub` must match `parcel.sender_sub`.
@@ -31,9 +33,19 @@ The authenticated Server-Sent Events (SSE) channel is a **low-latency live notif
 4. Any failure to authenticate yields `401 Unauthorized`. Any authorization mismatch yields `403 Forbidden`. If the parcel does not exist, `404 Not Found` is returned.
 
 ### 2.2 Token Expiry & Active Revocation
-- **Bounded Lifetime:** The SSE connection duration is capped by `min(server_max_timeout, remaining_token_lifetime)`.
+- **Bounded Lifetime:** The authenticated SSE connection duration is capped by `min(server_max_timeout, remaining_token_lifetime)`.
 - **Scheduled Termination:** When the JWT token expires, the server closes the SSE stream gracefully (`SseEmitter.complete()`).
 - **Dynamic Deauthorization (Couriers):** Before delivering any status event to an active courier session, the server re-checks that the courier is still actively assigned to the parcel. If the parcel has been unassigned or reassigned to another courier, the stream is closed immediately and the event is dropped.
+
+### 2.3 Public Anonymous Tracking Stream Lifecycle (Issue #148 / N10-B26)
+1. **Endpoint & Access Model:** `GET /api/v1/tracking/{trackingNumber}/events` (`text/event-stream`). Accessible anonymously without bearer tokens, cookies, or user credentials.
+2. **Reference Validation:** Tracking reference format is strictly validated against `^SWD-[0-9]{8}-[A-Z0-9]{4,8}$` (17-32 characters). Malformed references reject immediately with `400 Bad Request` (`INVALID_TRACKING_REFERENCE`).
+3. **Resource Existence:** Resolved against authoritative parcel store. Unknown tracking numbers return `404 Not Found` (`TRACKING_NOT_FOUND`) ProblemDetail without leaking private metadata.
+4. **Bounded Lifetime:** Public streams are bounded by connection timeout (`swiftdrop.sse.connection-timeout-seconds`, default 1800s / 30 minutes). When the timeout expires, the server completes the stream cleanly, prompting client reconnection if tracking view remains open.
+5. **Abuse & Concurrency Controls:**
+   - Gateway enforces a cap of 5 concurrent public streams per client IP (`SseConnectionPolicyGatewayFilter`).
+   - Delivery Service enforces a concurrency cap of 5 concurrent streams per parcel aggregate root and 100 global connections per replica.
+   - Any threshold breach yields `429 Too Many Requests` (`SSE_LIMIT_EXCEEDED`).
 
 ---
 
@@ -58,6 +70,23 @@ data: {"eventId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","parcelId":"9b1deb4d-3b7
 - Both the server session and client track `lastDeliveredVersion`.
 - **Deduplication Rule:** If an incoming event has `aggregateVersion <= lastDeliveredVersion`, it is discarded as duplicate or stale.
 - **Gap Detection Rule:** If an incoming event has `aggregateVersion > lastDeliveredVersion + 1`, a version gap has occurred (missed events). The client must trigger immediate REST recovery.
+
+### 3.3 Public Redacted Wire Format (Issue #148 / N10-B26)
+Public streaming clients (`GET /api/v1/tracking/{trackingNumber}/events`) receive strictly allowlisted, redacted events:
+
+```http
+:keepalive
+
+id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+event: parcel.status.changed
+data: {"eventId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","trackingNumber":"SWD-20261023-A1B2C3","aggregateVersion":2,"oldStatus":"CREATED","newStatus":"PICKED_UP","cityOrZone":"Picked Up (Western Province Sorting Hub)","occurredAt":"2026-10-23T10:30:00Z"}
+```
+
+- **Strict Redaction Allowlist:**
+  - **Forbidden Internal Identifiers:** `parcelId`, `quoteId`, `merchantId`, `senderSub`, `courierSub`, `actorSub`, `proofId`, `storagePath`, `objectKey`.
+  - **Forbidden Customer PII:** Recipient name, recipient phone, email addresses, pickup street address, dropoff street address, courier personal contact information.
+  - **Forbidden Operational Data:** Private delivery notes, raw internal failure reasons, proof URLs, receipt PDFs, financial amounts (`amountMinorUnits`).
+  - **Approved Public Fields:** `eventId`, `trackingNumber`, `aggregateVersion`, `oldStatus`, `newStatus`, `cityOrZone` (coarse milestone checkpoint), `occurredAt`.
 
 ---
 
@@ -102,11 +131,11 @@ Every consumer client (e.g., Customer UI, Courier App, Dispatcher Dashboard) mus
 ```
 
 ### 4.1 Trigger Conditions for REST Snapshot
-A client **MUST** trigger a canonical REST read (`GET /api/v1/parcels/{parcelId}`) under any of the following conditions:
-1. **Initial Mount / Page Load:** Always load the current parcel state and history via REST before or concurrent with establishing the SSE stream.
-2. **Connection Loss / Network Interruption:** When the SSE stream drops or closes.
+A client **MUST** trigger a canonical REST read (`GET /api/v1/parcels/{parcelId}` for authenticated parcel viewers, `GET /api/v1/tracking/{trackingNumber}` for public tracking clients) under any of the following conditions:
+1. **Initial Mount / Page Load:** Always load the current parcel state/milestones via REST before or concurrent with establishing the SSE stream.
+2. **Connection Loss / Network Interruption:** When the SSE stream drops, disconnects, or closes unexpectedly.
 3. **Version Gap Detected:** When `event.aggregateVersion > lastSeenVersion + 1`.
-4. **Token Expiry Reconnect:** When the connection terminates due to JWT expiration, obtain a refreshed Keycloak token and resynchronize via REST before reconnecting SSE.
+4. **Token Expiry Reconnect:** When an authenticated connection terminates due to JWT expiration, obtain a refreshed Keycloak token and resynchronize via REST before reconnecting SSE.
 5. **Server Error / 5xx:** When the server returns `503 Service Unavailable` or connection reset during restarts.
 
 ### 4.2 Reconnection Algorithm with Jitter

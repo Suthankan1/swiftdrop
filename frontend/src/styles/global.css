@@ -318,8 +318,9 @@ main:focus { outline: none; }
 .sse-status-badge.is-connecting { color: #0d47a1; background: #e3f2fd; }
 .sse-status-badge.is-disconnected { color: #616161; background: #eeeeee; }
 .sse-status-badge.is-error { color: #b71c1c; background: #ffebee; }
-.sse-retry-btn { align-self: flex-start; margin-top: 4px; font-size: 11px; padding: 4px 10px; cursor: pointer; }
 .live-stream-chip { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; color: #2e7d32; background: #e8f5e9; border-radius: 9999px; padding: 2px 8px; letter-spacing: 0.04em; text-transform: uppercase; margin-left: 8px; }
+.live-stream-chip.reconnecting { color: #f57c00; background: #fff3e0; }
+.live-stream-chip.offline { color: #757575; background: #eeeeee; }
 
 @media (max-width: 760px) {
   .tracking-grid { grid-template-columns: 1fr; }

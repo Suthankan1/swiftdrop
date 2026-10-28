@@ -53,4 +53,17 @@ public class PublicTrackingProblemHandler {
         problem.setProperty("code", "BAD_REQUEST");
         return problem;
     }
+
+    @ExceptionHandler(com.swiftdrop.deliveryservice.sse.exception.SseConnectionLimitExceededException.class)
+    ProblemDetail handleLimitExceeded(com.swiftdrop.deliveryservice.sse.exception.SseConnectionLimitExceededException e, HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
+        problem.setTitle("Too Many Requests");
+        problem.setType(URI.create("https://swiftdrop.com/errors/SSE_LIMIT_EXCEEDED"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("timestamp", Instant.now().toString());
+        problem.setProperty("code", "SSE_LIMIT_EXCEEDED");
+        problem.setProperty("limitType", e.getLimitType());
+        problem.setProperty("maxAllowed", e.getMaxAllowed());
+        return problem;
+    }
 }

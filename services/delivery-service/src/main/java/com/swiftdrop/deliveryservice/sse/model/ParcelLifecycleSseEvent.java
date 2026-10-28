@@ -19,7 +19,8 @@ public record ParcelLifecycleSseEvent(
         String oldStatus,
         String newStatus,
         String reason,
-        Instant occurredAt
+        Instant occurredAt,
+        String cityOrZone
 ) {
     public ParcelLifecycleSseEvent {
         Objects.requireNonNull(eventId, "eventId cannot be null");
@@ -27,5 +28,18 @@ public record ParcelLifecycleSseEvent(
         Objects.requireNonNull(trackingNumber, "trackingNumber cannot be null");
         Objects.requireNonNull(newStatus, "newStatus cannot be null");
         Objects.requireNonNull(occurredAt, "occurredAt cannot be null");
+    }
+
+    public ParcelLifecycleSseEvent(
+            UUID eventId,
+            UUID parcelId,
+            String trackingNumber,
+            long aggregateVersion,
+            String oldStatus,
+            String newStatus,
+            String reason,
+            Instant occurredAt
+    ) {
+        this(eventId, parcelId, trackingNumber, aggregateVersion, oldStatus, newStatus, reason, occurredAt, null);
     }
 }

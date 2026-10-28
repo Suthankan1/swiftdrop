@@ -209,6 +209,97 @@ public class ParcelSseConnectionManager {
     }
 
     /**
+     * Registers an anonymous public subscriber session for a parcel's public tracking reference.
+     * Enforces global and per-parcel connection limits, sets idle/connection timeout,
+     * wires heartbeat pings, and returns an unauthenticated SseEmitter.
+     *
+     * @param parcelId target parcel identifier
+     * @param trackingNumber public tracking reference (e.g. SWD-20261023-A1B2C3)
+     * @return configured SseEmitter
+     */
+    public SseEmitter registerPublicSession(UUID parcelId, String trackingNumber) {
+        Objects.requireNonNull(parcelId, "parcelId cannot be null");
+        Objects.requireNonNull(trackingNumber, "trackingNumber cannot be null");
+
+        // 1. Enforce global connection limit
+        int currentGlobal = globalConnectionCount.incrementAndGet();
+        if (currentGlobal > properties.getMaxConnections()) {
+            globalConnectionCount.decrementAndGet();
+            recordRejected("limit_global");
+            log.warn("Rejected public SSE connection: global limit {} reached", properties.getMaxConnections());
+            throw new SseConnectionLimitExceededException(
+                    "GLOBAL",
+                    properties.getMaxConnections(),
+                    "Global SSE connection limit reached (max: " + properties.getMaxConnections() + ")"
+            );
+        }
+
+        // 2. Enforce per-parcel connection limit
+        CopyOnWriteArrayList<SseSubscriberSession> subscribers =
+                parcelSubscribers.computeIfAbsent(parcelId, k -> new CopyOnWriteArrayList<>());
+        synchronized (subscribers) {
+            if (subscribers.size() >= properties.getMaxConnectionsPerParcel()) {
+                globalConnectionCount.decrementAndGet();
+                recordRejected("limit_parcel");
+                log.warn("Rejected public SSE connection for tracking {}: parcel limit {} reached",
+                        trackingNumber, properties.getMaxConnectionsPerParcel());
+                throw new SseConnectionLimitExceededException(
+                        "PARCEL",
+                        properties.getMaxConnectionsPerParcel(),
+                        "Per-parcel SSE connection limit reached (max: " + properties.getMaxConnectionsPerParcel() + ")"
+                );
+            }
+        }
+
+        // 3. Configure bounded session timeout
+        long sessionTimeoutMs = Math.max(1000L, properties.getConnectionTimeoutSeconds() * 1000L);
+        Instant timeoutExpiresAt = Instant.now().plusSeconds(properties.getConnectionTimeoutSeconds());
+
+        SseEmitter emitter = new SseEmitter(sessionTimeoutMs);
+        SseSubscriberSession session = new SseSubscriberSession(
+                parcelId,
+                "public:" + trackingNumber,
+                false,
+                true,
+                emitter,
+                timeoutExpiresAt,
+                this::unregisterSession
+        );
+
+        // 4. Wire emitter completion and timeout callbacks
+        emitter.onCompletion(session::close);
+        emitter.onTimeout(session::close);
+        emitter.onError(t -> {
+            log.debug("Public SSE emitter error on session {}: {}", session.getSessionId(), t.getMessage());
+            session.close();
+        });
+
+        // 5. Schedule timeout cleanup task
+        ScheduledFuture<?> expiryFuture = scheduler.schedule(
+                () -> {
+                    log.info("Public SSE session {} reached connection timeout. Closing stream.", session.getSessionId());
+                    session.close();
+                },
+                sessionTimeoutMs,
+                TimeUnit.MILLISECONDS
+        );
+        session.setExpiryTask(expiryFuture);
+
+        // 6. Register active session
+        activeSessions.put(session.getSessionId(), session);
+        subscribers.add(session);
+
+        // 7. Send initial keepalive comment to client
+        session.sendHeartbeat();
+        recordAccepted();
+
+        log.info("Registered public SSE session {} for tracking {} (activeParcelSubscribers: {}, totalGlobal: {})",
+                session.getSessionId(), trackingNumber, subscribers.size(), globalConnectionCount.get());
+
+        return emitter;
+    }
+
+    /**
      * Unregisters and cleans up a subscriber session.
      */
     void unregisterSession(SseSubscriberSession session) {
@@ -229,14 +320,17 @@ public class ParcelSseConnectionManager {
                 }
             }
 
-            userConnectionCounts.computeIfPresent(userSub, (k, count) -> {
-                int val = count.decrementAndGet();
-                return val <= 0 ? null : count;
-            });
+            if (!session.isPublic()) {
+                userConnectionCounts.computeIfPresent(userSub, (k, count) -> {
+                    int val = count.decrementAndGet();
+                    return val <= 0 ? null : count;
+                });
+            }
 
             int remainingGlobal = globalConnectionCount.decrementAndGet();
             recordClosed();
-            log.info("Unregistered SSE session {} for parcel {} (remainingGlobal: {})", sessionId, parcelId, Math.max(0, remainingGlobal));
+            log.info("Unregistered SSE session {} for parcel {} (isPublic: {}, remainingGlobal: {})",
+                    sessionId, parcelId, session.isPublic(), Math.max(0, remainingGlobal));
         }
     }
 
@@ -261,6 +355,7 @@ public class ParcelSseConnectionManager {
     /**
      * Broadcasts a validated lifecycle status transition event to all active subscribers for the parcel.
      * Rechecks courier assignment if subscriber is a courier to ensure revoked couriers receive no events.
+     * For public subscribers, translates event to strictly redacted PublicTrackingSseEvent.
      *
      * @param parcelId target parcel ID
      * @param event domain SSE payload
@@ -284,6 +379,22 @@ public class ParcelSseConnectionManager {
                 continue;
             }
 
+            if (session.isPublic()) {
+                String coarseZone = event.cityOrZone() != null ? event.cityOrZone() : coarseZoneForStatus(event.newStatus());
+                com.swiftdrop.deliveryservice.tracking.dto.PublicTrackingSseEvent publicEvent =
+                        new com.swiftdrop.deliveryservice.tracking.dto.PublicTrackingSseEvent(
+                                event.eventId(),
+                                event.trackingNumber(),
+                                event.aggregateVersion(),
+                                event.oldStatus(),
+                                event.newStatus(),
+                                coarseZone,
+                                event.occurredAt()
+                        );
+                session.sendPublicEvent(publicEvent);
+                continue;
+            }
+
             // Re-validate courier assignment if subscriber connected with courier role
             if (session.isCourier()) {
                 boolean courierActive = assignmentRepository.existsByParcelIdAndCourierSubAndActiveTrue(
@@ -300,6 +411,21 @@ public class ParcelSseConnectionManager {
 
             session.sendEvent(event);
         }
+    }
+
+    public static String coarseZoneForStatus(String statusStr) {
+        if (statusStr == null) {
+            return "Western Province Hub";
+        }
+        return switch (statusStr) {
+            case "CREATED" -> "Order Confirmed (Colombo)";
+            case "PICKED_UP" -> "Picked Up (Western Province Sorting Hub)";
+            case "IN_TRANSIT" -> "In Transit (Western Province Sorting Hub)";
+            case "OUT_FOR_DELIVERY" -> "Out for Delivery (Local Zone)";
+            case "DELIVERED" -> "Delivered";
+            case "FAILED" -> "Delivery Attempted (Western Province)";
+            default -> "Transit Checkpoint (" + statusStr + ")";
+        };
     }
 
     /**

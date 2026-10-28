@@ -107,6 +107,8 @@ public class ParcelLifecycleKafkaConsumer {
             String newStatus = newStatusNode.asText();
             String oldStatus = (oldStatusNode != null && !oldStatusNode.isNull()) ? oldStatusNode.asText() : null;
             String reason = (reasonNode != null && !reasonNode.isNull()) ? reasonNode.asText() : null;
+            JsonNode cityOrZoneNode = payloadNode.get("cityOrZone");
+            String cityOrZone = (cityOrZoneNode != null && !cityOrZoneNode.isNull()) ? cityOrZoneNode.asText() : null;
 
             ParcelLifecycleSseEvent sseEvent = new ParcelLifecycleSseEvent(
                     eventId,
@@ -116,7 +118,8 @@ public class ParcelLifecycleKafkaConsumer {
                     oldStatus,
                     newStatus,
                     reason,
-                    occurredAt
+                    occurredAt,
+                    cityOrZone
             );
 
             // 4. Dispatch to connection manager

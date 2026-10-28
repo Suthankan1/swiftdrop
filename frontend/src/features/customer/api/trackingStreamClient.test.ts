@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   connectParcelTrackingStream,
+  connectPublicTrackingStream,
   StreamHttpError,
 } from './trackingStreamClient'
-import type { ParcelLifecycleSseEvent } from './trackingStreamContracts'
+import {
+  isPublicTrackingSseEvent,
+  type ParcelLifecycleSseEvent,
+  type PublicTrackingSseEvent,
+} from './trackingStreamContracts'
 
 function createSseStreamResponse(chunks: string[], status = 200, statusText = 'OK'): Response {
   const encoder = new TextEncoder()
@@ -240,3 +245,178 @@ describe('connectParcelTrackingStream', () => {
     ).rejects.toThrow(StreamHttpError)
   })
 })
+
+describe('connectPublicTrackingStream', () => {
+  const trackingNumber = 'SWD-20261023-A1B2C3'
+
+  it('connects anonymously with Accept text/event-stream and zero Authorization headers', async () => {
+    let capturedUrl = ''
+    let capturedHeaders: HeadersInit | undefined
+    let capturedCredentials: RequestCredentials | undefined
+
+    const mockFetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      capturedUrl = url
+      capturedHeaders = init?.headers
+      capturedCredentials = init?.credentials
+      return Promise.resolve(createSseStreamResponse([]))
+    })
+
+    const controller = new AbortController()
+
+    await connectPublicTrackingStream({
+      trackingNumber,
+      gatewayUrl: 'https://gateway.swiftdrop.internal',
+      fetch: mockFetch,
+      signal: controller.signal,
+      onEvent: vi.fn(),
+    })
+
+    expect(capturedUrl).toBe(`https://gateway.swiftdrop.internal/api/v1/tracking/${trackingNumber}/events`)
+    expect(capturedCredentials).toBe('omit')
+
+    const headers = capturedHeaders as Record<string, string>
+    expect(headers['Accept']).toBe('text/event-stream')
+    expect(headers['Authorization']).toBeUndefined()
+  })
+
+  it('parses valid public SSE messages and dispatches onEvent', async () => {
+    const rawPublicEvent: PublicTrackingSseEvent = {
+      eventId: '11111111-2222-3333-4444-555555555555',
+      trackingNumber,
+      aggregateVersion: 2,
+      oldStatus: 'CREATED',
+      newStatus: 'IN_TRANSIT',
+      cityOrZone: 'Colombo Sorting Hub',
+      occurredAt: '2026-10-23T11:00:00Z',
+    }
+
+    const sseChunk = [
+      ':keepalive\n\n',
+      `id: ${rawPublicEvent.eventId}\n`,
+      'event: tracking.status.changed\n',
+      `data: ${JSON.stringify(rawPublicEvent)}\n\n`,
+    ].join('')
+
+    const mockFetch = vi.fn().mockResolvedValue(createSseStreamResponse([sseChunk]))
+    const receivedEvents: PublicTrackingSseEvent[] = []
+    const onHeartbeat = vi.fn()
+    const onConnected = vi.fn()
+
+    const controller = new AbortController()
+
+    await connectPublicTrackingStream({
+      trackingNumber,
+      fetch: mockFetch,
+      signal: controller.signal,
+      onEvent: evt => receivedEvents.push(evt),
+      onHeartbeat,
+      onConnected,
+    })
+
+    expect(onConnected).toHaveBeenCalledTimes(1)
+    expect(onHeartbeat).toHaveBeenCalledTimes(1)
+    expect(receivedEvents).toHaveLength(1)
+    expect(receivedEvents[0]).toEqual(rawPublicEvent)
+  })
+
+  it('drops malformed or invalid public events without throwing', async () => {
+    const validEvent: PublicTrackingSseEvent = {
+      eventId: '22222222-3333-4444-5555-666666666666',
+      trackingNumber,
+      aggregateVersion: 3,
+      oldStatus: 'IN_TRANSIT',
+      newStatus: 'OUT_FOR_DELIVERY',
+      cityOrZone: 'Gampaha Delivery Hub',
+      occurredAt: '2026-10-23T13:00:00Z',
+    }
+
+    const chunks = [
+      'data: { invalid json\n\n',
+      'data: {"missingVersion": true}\n\n',
+      `data: ${JSON.stringify(validEvent)}\n\n`,
+    ]
+
+    const mockFetch = vi.fn().mockResolvedValue(createSseStreamResponse(chunks))
+    const receivedEvents: PublicTrackingSseEvent[] = []
+    const controller = new AbortController()
+
+    await connectPublicTrackingStream({
+      trackingNumber,
+      fetch: mockFetch,
+      signal: controller.signal,
+      onEvent: evt => receivedEvents.push(evt),
+    })
+
+    expect(receivedEvents).toHaveLength(1)
+    expect(receivedEvents[0]?.aggregateVersion).toBe(3)
+    expect(receivedEvents[0]?.newStatus).toBe('OUT_FOR_DELIVERY')
+  })
+
+  it('throws StreamHttpError(400) for malformed tracking reference', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response('Bad Request', { status: 400 }))
+    const controller = new AbortController()
+
+    const promise = connectPublicTrackingStream({
+      trackingNumber: 'BAD-REF',
+      fetch: mockFetch,
+      signal: controller.signal,
+      onEvent: vi.fn(),
+    })
+
+    await expect(promise).rejects.toMatchObject({ statusCode: 400 })
+  })
+
+  it('throws StreamHttpError(404) for unknown tracking reference', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response('Not Found', { status: 404 }))
+    const controller = new AbortController()
+
+    const promise = connectPublicTrackingStream({
+      trackingNumber,
+      fetch: mockFetch,
+      signal: controller.signal,
+      onEvent: vi.fn(),
+    })
+
+    await expect(promise).rejects.toMatchObject({ statusCode: 404 })
+  })
+
+  it('throws StreamHttpError(429) when connection limit exceeded', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response('Too Many Requests', { status: 429 }))
+    const controller = new AbortController()
+
+    const promise = connectPublicTrackingStream({
+      trackingNumber,
+      fetch: mockFetch,
+      signal: controller.signal,
+      onEvent: vi.fn(),
+    })
+
+    await expect(promise).rejects.toMatchObject({ statusCode: 429 })
+  })
+})
+
+describe('isPublicTrackingSseEvent', () => {
+  it('returns true for approved public redacted payload', () => {
+    const valid: PublicTrackingSseEvent = {
+      eventId: 'evt-1234',
+      trackingNumber: 'SWD-20261023-A1B2C3',
+      aggregateVersion: 2,
+      oldStatus: 'CREATED',
+      newStatus: 'IN_TRANSIT',
+      cityOrZone: 'Colombo Sorting Hub',
+      occurredAt: '2026-10-23T10:00:00Z',
+    }
+    expect(isPublicTrackingSseEvent(valid)).toBe(true)
+  })
+
+  it('returns false if trackingNumber or eventId is missing or empty', () => {
+    expect(isPublicTrackingSseEvent({ eventId: '', trackingNumber: 'SWD-1', aggregateVersion: 1, newStatus: 'CREATED', occurredAt: '2026-10-23T10:00:00Z' })).toBe(false)
+    expect(isPublicTrackingSseEvent({ eventId: '1', trackingNumber: '', aggregateVersion: 1, newStatus: 'CREATED', occurredAt: '2026-10-23T10:00:00Z' })).toBe(false)
+  })
+
+  it('returns false for invalid aggregateVersion or status', () => {
+    expect(isPublicTrackingSseEvent({ eventId: '1', trackingNumber: 'SWD-1', aggregateVersion: 0, newStatus: 'CREATED', occurredAt: '2026-10-23T10:00:00Z' })).toBe(false)
+    expect(isPublicTrackingSseEvent({ eventId: '1', trackingNumber: 'SWD-1', aggregateVersion: 1, newStatus: 'INVALID_STATUS', occurredAt: '2026-10-23T10:00:00Z' })).toBe(false)
+  })
+})
+

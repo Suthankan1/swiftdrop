@@ -16,6 +16,23 @@ export interface ParcelLifecycleSseEvent {
   occurredAt: string
 }
 
+/**
+ * Public redacted SSE event wire payload emitted by Delivery Operations.
+ * Adheres strictly to contracts/rest/openapi-delivery.yaml (#/components/schemas/PublicTrackingSseEvent)
+ * and docs/contracts/SSE_REST_RECOVERY.md section 3.3.
+ * Strictly excludes parcelId, PII, notes, reason, recipient details, and actor identifiers.
+ */
+export interface PublicTrackingSseEvent {
+  eventId: string
+  trackingNumber: string
+  aggregateVersion: number
+  oldStatus: ParcelStatus | null
+  newStatus: ParcelStatus
+  cityOrZone: string | null
+  occurredAt: string
+}
+
+
 export type StreamConnectionStatus =
   | 'idle'
   | 'connecting'
@@ -94,6 +111,33 @@ export function isParcelLifecycleSseEvent(value: unknown): value is ParcelLifecy
   }
   return true
 }
+
+/**
+ * Runtime type guard for incoming public redacted SSE payload.
+ * Verifies all required fields and ensures sensitive internal properties are not expected.
+ */
+export function isPublicTrackingSseEvent(value: unknown): value is PublicTrackingSseEvent {
+  if (!isRecord(value)) return false
+  if (typeof value.eventId !== 'string' || !value.eventId.trim()) return false
+  if (typeof value.trackingNumber !== 'string' || !value.trackingNumber.trim()) return false
+  if (typeof value.aggregateVersion !== 'number' || !Number.isInteger(value.aggregateVersion) || value.aggregateVersion < 1) {
+    return false
+  }
+  if (typeof value.newStatus !== 'string' || !VALID_STATUSES.includes(value.newStatus as ParcelStatus)) {
+    return false
+  }
+  if (value.oldStatus !== null && (typeof value.oldStatus !== 'string' || !VALID_STATUSES.includes(value.oldStatus as ParcelStatus))) {
+    return false
+  }
+  if (value.cityOrZone !== null && value.cityOrZone !== undefined && typeof value.cityOrZone !== 'string') {
+    return false
+  }
+  if (typeof value.occurredAt !== 'string' || Number.isNaN(Date.parse(value.occurredAt))) {
+    return false
+  }
+  return true
+}
+
 
 /**
  * Calculates bounded exponential backoff with full jitter (0 to exponential ceiling).

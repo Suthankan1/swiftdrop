@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createDeliveryApi, DeliveryError, isValidTrackingNumber } from '../customer/api/delivery'
 import type { PublicTrackingResponse } from '../customer/api/deliveryContracts'
 import { formatDateTime, getStatusPresentation } from '../customer/components/customerUiUtils'
+import { usePublicTrackingStream } from '../customer/hooks/usePublicTrackingStream'
 
 function safeDateTime(isoString: string): string {
   try {
@@ -98,7 +99,17 @@ export function PublicTrackingPage() {
     }
   }
 
-  const tracking: PublicTrackingResponse | undefined = trackingQuery.data
+  const { tracking: streamTracking, streamState } = usePublicTrackingStream({
+    trackingNumber: activeTrackingNumber,
+    enabled: !!activeTrackingNumber && !!trackingQuery.data,
+    initialTracking: trackingQuery.data,
+    reconcileRest: async (signal) => {
+      if (!activeTrackingNumber) return null
+      return deliveryApi.getTracking(activeTrackingNumber, signal)
+    },
+  })
+
+  const tracking: PublicTrackingResponse | undefined = streamTracking ?? trackingQuery.data
   const activeStatus = tracking?.currentStatus || 'CREATED'
   const presentation = getStatusPresentation(activeStatus)
 
@@ -205,12 +216,30 @@ export function PublicTrackingPage() {
           {/* Status Header Strip */}
           <div className="tracking-status-banner">
             <div className="status-summary-group">
-              <span className={presentation.pillClass}>{presentation.label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span className={presentation.pillClass}>{presentation.label}</span>
+                {streamState.status === 'connected' && (
+                  <span className="live-stream-chip" title="Live stream active" aria-label="Live updates active">
+                    ● Live
+                  </span>
+                )}
+                {streamState.status === 'reconnecting' && (
+                  <span className="live-stream-chip reconnecting" title="Reconnecting to real-time stream...">
+                    Reconnecting...
+                  </span>
+                )}
+                {streamState.isOffline && (
+                  <span className="live-stream-chip offline" title="Network offline">
+                    Offline
+                  </span>
+                )}
+              </div>
               <h2 id="tracking-details-heading" className="monospace tracking-number-heading">
                 {tracking.trackingNumber}
               </h2>
               <p className="muted banner-description">{presentation.description}</p>
             </div>
+
             <div className="tracking-status-banner-actions">
               <button
                 type="button"

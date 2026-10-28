@@ -65,6 +65,12 @@ class PublicTrackingControllerSecurityTest {
     @MockitoBean
     private PublicTrackingService trackingService;
 
+    @MockitoBean
+    private com.swiftdrop.deliveryservice.core.ParcelRepository parcelRepository;
+
+    @MockitoBean
+    private com.swiftdrop.deliveryservice.sse.service.ParcelSseConnectionManager connectionManager;
+
     @BeforeAll
     static void setUpServers() throws Exception {
         trustedRsaKey = new RSAKeyGenerator(2048)
@@ -180,4 +186,88 @@ class PublicTrackingControllerSecurityTest {
                         .content("{}"))
                 .andExpect(status().is4xxClientError());
     }
+
+    @Test
+    @DisplayName("5. Anonymous caller can connect to public SSE stream when tracking number exists")
+    void anonymousUser_CanConnectToSseStream() throws Exception {
+        String trackingNumber = "SWD-20261023-A1B2C3";
+        java.util.UUID parcelId = java.util.UUID.randomUUID();
+        com.swiftdrop.deliveryservice.core.Parcel parcel = org.mockito.Mockito.mock(com.swiftdrop.deliveryservice.core.Parcel.class);
+        when(parcel.getParcelId()).thenReturn(parcelId);
+        when(parcel.getTrackingNumber()).thenReturn(trackingNumber);
+
+        when(parcelRepository.findByTrackingNumber(trackingNumber)).thenReturn(java.util.Optional.of(parcel));
+        when(connectionManager.registerPublicSession(parcelId, trackingNumber))
+                .thenReturn(new org.springframework.web.servlet.mvc.method.annotation.SseEmitter());
+
+        mockMvc.perform(get("/api/v1/tracking/{trackingNumber}/events", trackingNumber)
+                        .accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, org.hamcrest.Matchers.startsWith(MediaType.TEXT_EVENT_STREAM_VALUE)))
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store, must-revalidate"))
+                .andExpect(header().string("X-Robots-Tag", "noindex, nofollow"))
+                .andExpect(header().string(HttpHeaders.VARY, "Accept-Encoding"));
+    }
+
+    @Test
+    @DisplayName("6. SSE stream with unknown tracking reference returns 404 ProblemDetail")
+    void sseStream_UnknownTrackingReference_Returns404ProblemDetail() throws Exception {
+        String unknown = "SWD-20261023-NOTFOUND";
+        when(parcelRepository.findByTrackingNumber(unknown)).thenReturn(java.util.Optional.empty());
+
+        mockMvc.perform(get("/api/v1/tracking/{trackingNumber}/events", unknown)
+                        .accept(MediaType.APPLICATION_PROBLEM_JSON, MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Content-Type", MediaType.APPLICATION_PROBLEM_JSON_VALUE))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Tracking Reference Not Found"))
+                .andExpect(jsonPath("$.code").value("TRACKING_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("7. SSE stream with malformed tracking reference returns 400 ProblemDetail")
+    void sseStream_MalformedTrackingReference_Returns400ProblemDetail() throws Exception {
+        String invalid = "BAD-REF-123";
+
+        mockMvc.perform(get("/api/v1/tracking/{trackingNumber}/events", invalid)
+                        .accept(MediaType.APPLICATION_PROBLEM_JSON, MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string("Content-Type", MediaType.APPLICATION_PROBLEM_JSON_VALUE))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.title").value("Invalid Tracking Reference"))
+                .andExpect(jsonPath("$.code").value("INVALID_TRACKING_REFERENCE"));
+    }
+
+    @Test
+    @DisplayName("8. SSE stream when connection limit exceeded returns 429 ProblemDetail")
+    void sseStream_ConnectionLimitExceeded_Returns429ProblemDetail() throws Exception {
+        String trackingNumber = "SWD-20261023-A1B2C3";
+        java.util.UUID parcelId = java.util.UUID.randomUUID();
+        com.swiftdrop.deliveryservice.core.Parcel parcel = org.mockito.Mockito.mock(com.swiftdrop.deliveryservice.core.Parcel.class);
+        when(parcel.getParcelId()).thenReturn(parcelId);
+        when(parcel.getTrackingNumber()).thenReturn(trackingNumber);
+
+        when(parcelRepository.findByTrackingNumber(trackingNumber)).thenReturn(java.util.Optional.of(parcel));
+        when(connectionManager.registerPublicSession(parcelId, trackingNumber))
+                .thenThrow(new com.swiftdrop.deliveryservice.sse.exception.SseConnectionLimitExceededException("parcel", 5, "Parcel connection limit reached"));
+
+        mockMvc.perform(get("/api/v1/tracking/{trackingNumber}/events", trackingNumber)
+                        .accept(MediaType.APPLICATION_PROBLEM_JSON, MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Content-Type", MediaType.APPLICATION_PROBLEM_JSON_VALUE))
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.title").value("Too Many Requests"))
+                .andExpect(jsonPath("$.code").value("SSE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    @DisplayName("9. Non-GET methods on /api/v1/tracking/{trackingNumber}/events are denied")
+    void postOnTrackingEventsEndpoint_IsDenied() throws Exception {
+        mockMvc.perform(post("/api/v1/tracking/SWD-20261023-A1B2C3/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().is4xxClientError());
+    }
 }
+
+
