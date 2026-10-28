@@ -413,6 +413,7 @@ describe('useParcelTrackingStream', () => {
   })
 
   it('reconnects when tab returns to foreground if stream was interrupted', async () => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     let callCount = 0
     const mockFetch = vi.fn().mockImplementation(() => {
       callCount++
@@ -452,6 +453,7 @@ describe('useParcelTrackingStream', () => {
     })
 
     expect(mockFetch).toHaveBeenCalledTimes(2)
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
   })
 
   it('pauses when browser goes offline and reconnects when browser returns online', async () => {
