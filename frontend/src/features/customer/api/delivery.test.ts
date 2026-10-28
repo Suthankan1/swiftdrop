@@ -2,6 +2,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   createDeliveryApi,
   DeliveryError,
+  isPublicTrackingResponse,
+  isTrackingTimelineItem,
+  isValidTrackingNumber,
   sanitizeReceiptFilename,
   triggerBlobDownload,
 } from './delivery'
@@ -247,7 +250,101 @@ describe('createDeliveryApi', () => {
   })
 
   describe('getTracking', () => {
-    it('retrieves public tracking with timeline checkpoints', async () => {
+    it('validates tracking references with isValidTrackingNumber', () => {
+      expect(isValidTrackingNumber('SWD-20261025-ABCD')).toBe(true)
+      expect(isValidTrackingNumber('SWD-20261023-A1B2C3')).toBe(true)
+      expect(isValidTrackingNumber('SWD-20261023-ABCDEFGH')).toBe(true)
+      expect(isValidTrackingNumber('  SWD-20261023-A1B2C3  ')).toBe(true)
+
+      expect(isValidTrackingNumber('')).toBe(false)
+      expect(isValidTrackingNumber('   ')).toBe(false)
+      expect(isValidTrackingNumber(null)).toBe(false)
+      expect(isValidTrackingNumber(undefined)).toBe(false)
+      expect(isValidTrackingNumber('INVALID-REF-001')).toBe(false)
+      expect(isValidTrackingNumber('SWD-1234-ABCD')).toBe(false)
+      expect(isValidTrackingNumber('SWD-20261023-ABC')).toBe(false)
+      expect(isValidTrackingNumber('SWD-20261023-ABCDEFGHI')).toBe(false)
+      expect(isValidTrackingNumber('SWD-20261023-A1B2C3;DROP TABLE')).toBe(false)
+      expect(isValidTrackingNumber('SWD-20261023-A1B2C3'.repeat(3))).toBe(false)
+    })
+
+    it('validates timeline item schema with isTrackingTimelineItem', () => {
+      expect(
+        isTrackingTimelineItem({
+          status: 'CREATED',
+          occurredAt: '2026-10-25T08:00:00Z',
+          cityOrZone: 'Colombo',
+        }),
+      ).toBe(true)
+      expect(
+        isTrackingTimelineItem({
+          status: 'PICKED_UP',
+          occurredAt: '2026-10-25T10:00:00Z',
+        }),
+      ).toBe(true)
+
+      // Invalid status
+      expect(
+        isTrackingTimelineItem({
+          status: 'INVALID_STATUS',
+          occurredAt: '2026-10-25T08:00:00Z',
+        }),
+      ).toBe(false)
+
+      // Invalid date
+      expect(
+        isTrackingTimelineItem({
+          status: 'CREATED',
+          occurredAt: 'invalid-date-string',
+        }),
+      ).toBe(false)
+
+      // Oversized cityOrZone
+      expect(
+        isTrackingTimelineItem({
+          status: 'CREATED',
+          occurredAt: '2026-10-25T08:00:00Z',
+          cityOrZone: 'x'.repeat(101),
+        }),
+      ).toBe(false)
+    })
+
+    it('validates public tracking response schema with isPublicTrackingResponse', () => {
+      const valid: PublicTrackingResponse = {
+        trackingNumber: 'SWD-20261025-ABCD',
+        currentStatus: 'PICKED_UP',
+        originCity: 'Colombo',
+        destinationCity: 'Gampaha',
+        timeline: [
+          { status: 'CREATED', occurredAt: '2026-10-25T08:00:00Z', cityOrZone: 'Colombo Central' },
+        ],
+      }
+      expect(isPublicTrackingResponse(valid)).toBe(true)
+
+      // Missing trackingNumber
+      expect(isPublicTrackingResponse({ ...valid, trackingNumber: '' })).toBe(false)
+      // Invalid status
+      expect(isPublicTrackingResponse({ ...valid, currentStatus: 'UNKNOWN' })).toBe(false)
+      // Invalid timeline item
+      expect(
+        isPublicTrackingResponse({
+          ...valid,
+          timeline: [{ status: 'BAD', occurredAt: '2026-10-25T08:00:00Z' }],
+        }),
+      ).toBe(false)
+      // Oversized timeline
+      expect(
+        isPublicTrackingResponse({
+          ...valid,
+          timeline: Array.from({ length: 101 }, () => ({
+            status: 'CREATED',
+            occurredAt: '2026-10-25T08:00:00Z',
+          })),
+        }),
+      ).toBe(false)
+    })
+
+    it('retrieves public tracking with timeline checkpoints and normalizes reference', async () => {
       const mockTracking: PublicTrackingResponse = {
         trackingNumber: 'SWD-20261025-ABCD',
         currentStatus: 'PICKED_UP',
@@ -261,11 +358,196 @@ describe('createDeliveryApi', () => {
       mockFetch.mockResolvedValueOnce(new Response(JSON.stringify(mockTracking), { status: 200 }))
 
       const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
-      const tracking = await api.getTracking('SWD-20261025-ABCD')
+      const tracking = await api.getTracking('  swd-20261025-abcd  ')
 
       expect(tracking.trackingNumber).toBe('SWD-20261025-ABCD')
       expect(tracking.timeline).toHaveLength(2)
       expect(tracking.timeline[0]?.status).toBe('CREATED')
+
+      // Verify request parameters: unauthenticated, omit credentials, no-store
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8080/api/v1/tracking/SWD-20261025-ABCD',
+        expect.objectContaining({
+          method: 'GET',
+          credentials: 'omit',
+          cache: 'no-store',
+          headers: {
+            Accept: 'application/json, application/problem+json',
+          },
+        }),
+      )
+      // Ensure NO Authorization header is sent
+      const headers = mockFetch.mock.calls[0]?.[1]?.headers as Record<string, string>
+      expect(headers.Authorization).toBeUndefined()
+    })
+
+    it('throws validation-error for invalid or empty tracking references without calling fetch', async () => {
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+
+      await expect(api.getTracking('')).rejects.toMatchObject({
+        kind: 'validation-error',
+        statusCode: 400,
+      })
+
+      await expect(api.getTracking('INVALID-FORMAT')).rejects.toMatchObject({
+        kind: 'validation-error',
+        statusCode: 400,
+      })
+
+      await expect(api.getTracking('SWD-20261023-A1B2C3'.repeat(3))).rejects.toMatchObject({
+        kind: 'validation-error',
+        statusCode: 400,
+      })
+
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it('handles HTTP 404 tracking not found', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            title: 'Not Found',
+            status: 404,
+            detail: 'Tracking number not found.',
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.getTracking('SWD-20261025-ABCD')).rejects.toMatchObject({
+        kind: 'not-found',
+        statusCode: 404,
+      })
+    })
+
+    it('handles HTTP 429 rate limit exceeded safely', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            title: 'Rate Limit Exceeded',
+            status: 429,
+            detail: 'Too many tracking requests from this network.',
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.getTracking('SWD-20261025-ABCD')).rejects.toMatchObject({
+        kind: 'unavailable',
+        statusCode: 429,
+      })
+    })
+
+    it('handles HTTP 503 service unavailable', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            title: 'Service Unavailable',
+            status: 503,
+            detail: 'Tracking service temporarily down.',
+          }),
+          { status: 503, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.getTracking('SWD-20261025-ABCD')).rejects.toMatchObject({
+        kind: 'unavailable',
+        statusCode: 503,
+      })
+    })
+
+    it('handles network unreachable error', async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.getTracking('SWD-20261025-ABCD')).rejects.toMatchObject({
+        kind: 'unavailable',
+      })
+    })
+
+    it('handles aborted signal without swallowing abort error', async () => {
+      const controller = new AbortController()
+      controller.abort()
+
+      mockFetch.mockRejectedValueOnce(new DOMException('The operation was aborted', 'AbortError'))
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.getTracking('SWD-20261025-ABCD', controller.signal)).rejects.toThrow()
+    })
+
+    it('handles invalid non-JSON response payload', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response('<html><body>502 Bad Gateway</body></html>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.getTracking('SWD-20261025-ABCD')).rejects.toMatchObject({
+        kind: 'invalid-response',
+      })
+    })
+
+    it('handles payload failing contract validation', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            trackingNumber: 'SWD-20261025-ABCD',
+            currentStatus: 'UNAPPROVED_STATUS',
+            timeline: [],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      await expect(api.getTracking('SWD-20261025-ABCD')).rejects.toMatchObject({
+        kind: 'invalid-response',
+      })
+    })
+
+    it('strips unauthorized sensitive fields from provider response (defense in depth)', async () => {
+      const maliciousPayload = {
+        trackingNumber: 'SWD-20261025-ABCD',
+        currentStatus: 'IN_TRANSIT',
+        originCity: 'Colombo',
+        destinationCity: 'Kandy',
+        timeline: [
+          { status: 'CREATED', occurredAt: '2026-10-25T08:00:00Z', cityOrZone: 'Colombo' },
+        ],
+        // Extraneous sensitive fields that should never pass through
+        recipientName: 'PRIVATE_RECIPIENT',
+        recipientPhone: 'PRIVATE_PHONE',
+        pickupAddress: 'PRIVATE_STREET',
+        proofUrl: 'PRIVATE_PROOF_URL',
+        receiptUrl: 'PRIVATE_RECEIPT',
+        courierSub: 'PRIVATE_COURIER',
+        privateNotes: 'CONFIDENTIAL_NOTE',
+      }
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(maliciousPayload), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+
+      const api = createDeliveryApi({ getAccessToken, fetch: mockFetch })
+      const result = await api.getTracking('SWD-20261025-ABCD')
+
+      expect(result.trackingNumber).toBe('SWD-20261025-ABCD')
+      expect(result.currentStatus).toBe('IN_TRANSIT')
+      const stripped = result as unknown as Record<string, unknown>
+      expect(stripped.recipientName).toBeUndefined()
+      expect(stripped.recipientPhone).toBeUndefined()
+      expect(stripped.pickupAddress).toBeUndefined()
+      expect(stripped.proofUrl).toBeUndefined()
+      expect(stripped.receiptUrl).toBeUndefined()
+      expect(stripped.courierSub).toBeUndefined()
+      expect(stripped.privateNotes).toBeUndefined()
     })
   })
 

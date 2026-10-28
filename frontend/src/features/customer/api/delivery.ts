@@ -65,29 +65,64 @@ const VALID_STATUSES: readonly ParcelStatus[] = [
   'FAILED',
 ]
 
+export const TRACKING_NUMBER_REGEX = /^SWD-[0-9]{8}-[A-Z0-9]{4,8}$/
+export const MIN_TRACKING_LENGTH = 17
+export const MAX_TRACKING_LENGTH = 32
+export const MAX_TIMELINE_ITEMS = 100
+
+export function isValidTrackingNumber(reference: unknown): boolean {
+  if (typeof reference !== 'string') return false
+  const trimmed = reference.trim()
+  return (
+    trimmed.length >= MIN_TRACKING_LENGTH &&
+    trimmed.length <= MAX_TRACKING_LENGTH &&
+    TRACKING_NUMBER_REGEX.test(trimmed)
+  )
+}
+
 export function isParcelStatus(value: unknown): value is ParcelStatus {
   return typeof value === 'string' && VALID_STATUSES.includes(value as ParcelStatus)
 }
 
 export function isTrackingTimelineItem(value: unknown): value is TrackingTimelineItem {
-  return (
-    isRecord(value) &&
-    typeof value.status === 'string' &&
-    typeof value.occurredAt === 'string' &&
-    (value.cityOrZone === undefined || typeof value.cityOrZone === 'string')
-  )
+  if (!isRecord(value)) return false
+  if (typeof value.status !== 'string' || !isParcelStatus(value.status)) return false
+  if (
+    typeof value.occurredAt !== 'string' ||
+    value.occurredAt.length > 40 ||
+    Number.isNaN(Date.parse(value.occurredAt))
+  ) {
+    return false
+  }
+  if (value.cityOrZone !== undefined && (typeof value.cityOrZone !== 'string' || value.cityOrZone.length > 100)) {
+    return false
+  }
+  return true
 }
 
 export function isPublicTrackingResponse(value: unknown): value is PublicTrackingResponse {
-  return (
-    isRecord(value) &&
-    typeof value.trackingNumber === 'string' &&
-    isParcelStatus(value.currentStatus) &&
-    Array.isArray(value.timeline) &&
-    value.timeline.every(isTrackingTimelineItem) &&
-    (value.originCity === undefined || typeof value.originCity === 'string') &&
-    (value.destinationCity === undefined || typeof value.destinationCity === 'string')
-  )
+  if (!isRecord(value)) return false
+  if (
+    typeof value.trackingNumber !== 'string' ||
+    !isValidTrackingNumber(value.trackingNumber)
+  ) {
+    return false
+  }
+  if (!isParcelStatus(value.currentStatus)) return false
+  if (
+    !Array.isArray(value.timeline) ||
+    value.timeline.length > MAX_TIMELINE_ITEMS ||
+    !value.timeline.every(isTrackingTimelineItem)
+  ) {
+    return false
+  }
+  if (value.originCity !== undefined && (typeof value.originCity !== 'string' || value.originCity.length > 100)) {
+    return false
+  }
+  if (value.destinationCity !== undefined && (typeof value.destinationCity !== 'string' || value.destinationCity.length > 100)) {
+    return false
+  }
+  return true
 }
 
 export function isParcelDetailResponse(value: unknown): value is ParcelDetailResponse {
@@ -368,10 +403,20 @@ export function createDeliveryApi({
 
     /**
      * Public redacted tracking view by tracking number (IF-REST-04).
-     * Open to all users; strictly redacts sensitive PII.
+     * Open to all users anonymously; strictly redacts sensitive PII.
      */
     async getTracking(trackingNumber: string, signal?: AbortSignal): Promise<PublicTrackingResponse> {
-      const url = `${normalizedGateway}/api/v1/tracking/${encodeURIComponent(trackingNumber)}`
+      const normalized = (trackingNumber || '').trim().toUpperCase()
+      if (!isValidTrackingNumber(normalized)) {
+        throw new DeliveryError(
+          'validation-error',
+          'Enter a valid SwiftDrop tracking number.',
+          undefined,
+          400,
+        )
+      }
+
+      const url = `${normalizedGateway}/api/v1/tracking/${encodeURIComponent(normalized)}`
 
       let response: Response
       try {
@@ -389,13 +434,26 @@ export function createDeliveryApi({
         throw new DeliveryError('unavailable', 'Tracking service is currently unreachable.')
       }
 
+      if (response.status === 400) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError('validation-error', problem?.detail || 'Enter a valid SwiftDrop tracking number.', problem, 400)
+      }
       if (response.status === 404) {
         const problem = await parseProblemDetail(response)
-        throw new DeliveryError('not-found', 'Tracking number not found.', problem, 404)
+        throw new DeliveryError('not-found', problem?.detail || 'Tracking number not found.', problem, 404)
+      }
+      if (response.status === 429) {
+        const problem = await parseProblemDetail(response)
+        throw new DeliveryError(
+          'unavailable',
+          problem?.detail || 'Too many tracking requests from this network. Please wait a moment and try again.',
+          problem,
+          429,
+        )
       }
       if (!response.ok) {
         const problem = await parseProblemDetail(response)
-        throw new DeliveryError('unavailable', `Tracking service returned status ${response.status}.`, problem, response.status)
+        throw new DeliveryError('unavailable', problem?.detail || `Tracking service returned status ${response.status}.`, problem, response.status)
       }
 
       let payload: unknown
@@ -409,7 +467,24 @@ export function createDeliveryApi({
         throw new DeliveryError('invalid-response', 'Tracking response does not match the approved contract.')
       }
 
-      return payload
+      // Strictly allowlisted defense-in-depth projection: omits any extraneous or private properties
+      return {
+        trackingNumber: payload.trackingNumber,
+        currentStatus: payload.currentStatus,
+        ...(typeof payload.originCity === 'string' && payload.originCity.trim()
+          ? { originCity: payload.originCity.trim() }
+          : {}),
+        ...(typeof payload.destinationCity === 'string' && payload.destinationCity.trim()
+          ? { destinationCity: payload.destinationCity.trim() }
+          : {}),
+        timeline: payload.timeline.map((item) => ({
+          status: item.status,
+          occurredAt: item.occurredAt,
+          ...(typeof item.cityOrZone === 'string' && item.cityOrZone.trim()
+            ? { cityOrZone: item.cityOrZone.trim() }
+            : {}),
+        })),
+      }
     },
 
     /**
