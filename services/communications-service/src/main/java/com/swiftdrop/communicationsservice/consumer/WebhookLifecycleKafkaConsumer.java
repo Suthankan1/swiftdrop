@@ -28,6 +28,13 @@ public class WebhookLifecycleKafkaConsumer {
     private final ParcelLifecycleEventParser eventParser;
     private final WebhookJobMaterializationService materializationService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.swiftdrop.communicationsservice.metrics.CommunicationsMetrics communicationsMetrics;
+
+    public void setCommunicationsMetrics(com.swiftdrop.communicationsservice.metrics.CommunicationsMetrics communicationsMetrics) {
+        this.communicationsMetrics = communicationsMetrics;
+    }
+
     public WebhookLifecycleKafkaConsumer(
             ParcelLifecycleEventParser eventParser,
             WebhookJobMaterializationService materializationService) {
@@ -44,17 +51,32 @@ public class WebhookLifecycleKafkaConsumer {
         log.info("Received Kafka lifecycle event for webhooks [topic={}, partition={}, offset={}, key={}]",
                 record.topic(), record.partition(), record.offset(), record.key());
 
-        // 1. Validate envelope, version, and partition key alignment
-        ParcelStatusChangedEvent event = eventParser.parseAndValidate(record.key(), record.value());
+        try {
+            // 1. Validate envelope, version, and partition key alignment
+            ParcelStatusChangedEvent event = eventParser.parseAndValidate(record.key(), record.value());
 
-        // 2. Materialize durable webhook jobs in PostgreSQL within atomic transaction boundary
-        WebhookMaterializationResult result = materializationService.processLifecycleEvent(event, record.value());
+            // 2. Materialize durable webhook jobs in PostgreSQL within atomic transaction boundary
+            final WebhookMaterializationResult[] holder = new WebhookMaterializationResult[1];
+            com.swiftdrop.security.correlation.CorrelationContext.runWith(event.correlationId(), () -> {
+                holder[0] = materializationService.processLifecycleEvent(event, record.value());
+            });
+            WebhookMaterializationResult result = holder[0];
 
-        // 3. Acknowledge Kafka record offset strictly AFTER database commit or verified duplicate
-        if (acknowledgment != null) {
-            acknowledgment.acknowledge();
-            log.info("Acknowledged Kafka record offset for webhooks [topic={}, partition={}, offset={}, eventId={}, outcome={}]",
-                    record.topic(), record.partition(), record.offset(), event.eventId(), result.summary());
+            if (communicationsMetrics != null) {
+                communicationsMetrics.recordKafkaConsumerProcessed("communications.webhooks.v1", "success");
+            }
+
+            // 3. Acknowledge Kafka record offset strictly AFTER database commit or verified duplicate
+            if (acknowledgment != null) {
+                acknowledgment.acknowledge();
+                log.info("Acknowledged Kafka record offset for webhooks [topic={}, partition={}, offset={}, eventId={}, outcome={}]",
+                        record.topic(), record.partition(), record.offset(), event.eventId(), result != null ? result.summary() : "UNKNOWN");
+            }
+        } catch (Exception ex) {
+            if (communicationsMetrics != null) {
+                communicationsMetrics.recordKafkaConsumerProcessed("communications.webhooks.v1", "failure");
+            }
+            throw ex;
         }
     }
 }

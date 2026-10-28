@@ -64,6 +64,13 @@ public class WebhookDeliveryExecutionService {
     private final Clock clock;
     private final DoubleSupplier randomSupplier;
 
+    @Autowired(required = false)
+    private com.swiftdrop.communicationsservice.metrics.CommunicationsMetrics communicationsMetrics;
+
+    public void setCommunicationsMetrics(com.swiftdrop.communicationsservice.metrics.CommunicationsMetrics communicationsMetrics) {
+        this.communicationsMetrics = communicationsMetrics;
+    }
+
     public WebhookDeliveryExecutionService(
             WebhookDeliveryRepository webhookDeliveryRepository,
             WebhookAttemptRepository webhookAttemptRepository,
@@ -181,9 +188,10 @@ public class WebhookDeliveryExecutionService {
         Objects.requireNonNull(delivery, "delivery cannot be null");
         UUID deliveryId = delivery.getDeliveryId();
 
-        // 1. Guard against re-executing already terminal jobs
-        if (delivery.getStatus() == WebhookDeliveryStatus.SUCCESS) {
-            log.info("Delivery job already completed successfully [deliveryId={}]. Skipping execution.", deliveryId);
+        return com.swiftdrop.security.correlation.CorrelationContext.executeWith(delivery.getCorrelationId(), () -> {
+            // 1. Guard against re-executing already terminal jobs
+            if (delivery.getStatus() == WebhookDeliveryStatus.SUCCESS) {
+                log.info("Delivery job already completed successfully [deliveryId={}]. Skipping execution.", deliveryId);
             Optional<WebhookAttempt> latest = webhookAttemptRepository.findTopByDeliveryIdOrderByAttemptedAtDesc(deliveryId);
             return new WebhookAttemptResult(
                     deliveryId,
@@ -305,17 +313,25 @@ public class WebhookDeliveryExecutionService {
                 deliveryId, classification.outcomeCategory(), classification.httpStatusCode(),
                 classification.responseTimeMs(), classification.isRetryable());
 
-        // 9. Persist attempt record and update job state atomically IN database transaction
-        WebhookAttempt savedAttempt = persistAttemptAndUpdateDelivery(delivery, classification);
+            // 9. Persist attempt record and update job state atomically IN database transaction
+            WebhookAttempt savedAttempt = persistAttemptAndUpdateDelivery(delivery, classification);
 
-        return new WebhookAttemptResult(
-                deliveryId,
-                savedAttempt.getAttemptId(),
-                delivery.getStatus(),
-                delivery.getAttemptCount(),
-                classification,
-                savedAttempt
-        );
+            if (communicationsMetrics != null) {
+                long durationMs = classification.responseTimeMs() != null
+                        ? classification.responseTimeMs().longValue()
+                        : Math.max(0, clock.millis() - startTime);
+                communicationsMetrics.recordWebhookAttempt(classification.outcomeCategory().name(), durationMs);
+            }
+
+            return new WebhookAttemptResult(
+                    deliveryId,
+                    savedAttempt.getAttemptId(),
+                    delivery.getStatus(),
+                    delivery.getAttemptCount(),
+                    classification,
+                    savedAttempt
+            );
+        });
     }
 
     /**
@@ -359,6 +375,9 @@ public class WebhookDeliveryExecutionService {
             delivery.setUpdatedAt(now);
             webhookDeliveryRepository.save(delivery);
             count++;
+        }
+        if (communicationsMetrics != null && count > 0) {
+            communicationsMetrics.recordWebhookStuckRecovered(count);
         }
         return count;
     }
@@ -423,12 +442,18 @@ public class WebhookDeliveryExecutionService {
                             dispatchProperties.getMaxAttempts(), delivery.getDeliveryId());
                     delivery.setStatus(WebhookDeliveryStatus.EXHAUSTED);
                     delivery.setNextAttemptAt(null);
+                    if (communicationsMetrics != null) {
+                        communicationsMetrics.recordWebhookExhausted();
+                    }
                 } else {
                     delivery.setStatus(WebhookDeliveryStatus.PENDING);
                     long backoffSeconds = calculateBackoff(newAttemptCount, classification.retryAfterSeconds());
                     delivery.setNextAttemptAt(clock.instant().plusSeconds(backoffSeconds));
                     log.info("Scheduled retry attempt #{} in {}s [deliveryId={}]",
                             newAttemptCount + 1, backoffSeconds, delivery.getDeliveryId());
+                    if (communicationsMetrics != null) {
+                        communicationsMetrics.recordWebhookRetryScheduled();
+                    }
                 }
             } else {
                 // Non-retryable error (4xx client error, redirect, or security policy violation)

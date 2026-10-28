@@ -104,7 +104,7 @@ public class WebhookJobMaterializationService {
         if (merchantId == null) {
             log.info("Lifecycle event is for a direct retail parcel with no merchant tenant [eventId={}, parcelId={}]. " +
                     "Recording inbox receipt without webhook jobs.", eventId, parcelId);
-            return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, null,
+            return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, null, event.correlationId(),
                     WebhookMaterializationResult.retail(eventId));
         }
 
@@ -115,7 +115,7 @@ public class WebhookJobMaterializationService {
         if (activeSubscriptions.isEmpty()) {
             log.info("No active webhook subscriptions found for merchant tenant [merchantId={}, eventId={}]. " +
                     "Recording inbox receipt without webhook jobs.", merchantId, eventId);
-            return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, merchantId,
+            return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, merchantId, event.correlationId(),
                     WebhookMaterializationResult.noActiveSubscriptions(eventId, merchantId));
         }
 
@@ -163,6 +163,7 @@ public class WebhookJobMaterializationService {
             delivery.setStatus(WebhookDeliveryStatus.PENDING);
             delivery.setAttemptCount(0);
             delivery.setNextAttemptAt(Instant.now());
+            delivery.setCorrelationId(event.correlationId());
             deliveriesToPersist.add(delivery);
         }
 
@@ -171,12 +172,12 @@ public class WebhookJobMaterializationService {
             if (hadSubscribedEndpoint && allStale) {
                 log.info("All subscribed webhook endpoints for parcel already have equal or newer state versions " +
                         "[parcelId={}, eventId={}, eventVersion={}]. Recording inbox receipt.", parcelId, eventId, eventVersion);
-                return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, merchantId,
+                return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, merchantId, event.correlationId(),
                         WebhookMaterializationResult.stale(eventId, parcelId));
             } else {
                 log.info("No subscriptions match eventType [merchantId={}, eventType={}, eventId={}]. " +
                         "Recording inbox receipt without jobs.", merchantId, event.eventType(), eventId);
-                return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, merchantId,
+                return recordInboxOnly(eventId, event.eventType(), eventVersion, parcelId, merchantId, event.correlationId(),
                         new WebhookMaterializationResult(eventId, true, false, 0, List.of(), "NO_MATCHING_EVENT_TYPES"));
             }
         }
@@ -191,6 +192,7 @@ public class WebhookJobMaterializationService {
                 Instant.now()
         );
         consumedEvent.setScheduledAt(Instant.now());
+        consumedEvent.setCorrelationId(event.correlationId());
 
         try {
             InboxAndWebhookDeliveriesResult result =
@@ -210,7 +212,7 @@ public class WebhookJobMaterializationService {
     }
 
     private WebhookMaterializationResult recordInboxOnly(
-            UUID eventId, String eventType, int version, UUID parcelId, UUID merchantId,
+            UUID eventId, String eventType, int version, UUID parcelId, UUID merchantId, String correlationId,
             WebhookMaterializationResult outcomeOnSuccess) {
         ConsumedEvent consumedEvent = new ConsumedEvent(
                 new ConsumedEventId(consumerGroup, eventId),
@@ -221,6 +223,7 @@ public class WebhookJobMaterializationService {
                 Instant.now()
         );
         consumedEvent.setScheduledAt(Instant.now());
+        consumedEvent.setCorrelationId(correlationId);
 
         try {
             durableJobPersistenceService.persistInboxAndWebhookDeliveries(consumedEvent, List.of());

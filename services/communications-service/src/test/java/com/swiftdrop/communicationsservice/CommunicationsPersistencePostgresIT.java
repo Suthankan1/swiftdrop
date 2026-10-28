@@ -89,10 +89,10 @@ class CommunicationsPersistencePostgresIT {
     private PlatformTransactionManager transactionManager;
 
     @Test
-    @DisplayName("A. Flyway applies V1 and V2 migrations cleanly on real PostgreSQL communications_db")
+    @DisplayName("A. Flyway applies V1, V2, and V3 migrations cleanly on real PostgreSQL communications_db")
     void testFlywayMigrationCleanApplication() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("communications_db");
 
         List<String> tables = jdbc.queryForList("""
@@ -108,6 +108,31 @@ class CommunicationsPersistencePostgresIT {
                 "webhook_attempts",
                 "webhook_replays",
                 "flyway_schema_history"
+        );
+
+        // Verify correlation_id column on consumed_events, notifications, and webhook_deliveries (Issue #158)
+        List<String> correlationTables = List.of("consumed_events", "notifications", "webhook_deliveries");
+        for (String table : correlationTables) {
+            Integer count = jdbc.queryForObject("""
+                    SELECT count(*) FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = ?
+                      AND column_name = 'correlation_id'
+                      AND data_type = 'character varying'
+                      AND character_maximum_length = 64
+                    """, Integer.class, table);
+            assertThat(count).as("Table %s must have correlation_id VARCHAR(64) column", table).isEqualTo(1);
+        }
+
+        // Verify correlation_id indexes
+        List<String> indexes = jdbc.queryForList("""
+                SELECT indexname FROM pg_indexes
+                WHERE schemaname = 'public'
+                """, String.class);
+        assertThat(indexes).contains(
+                "idx_consumed_events_correlation_id",
+                "idx_notifications_correlation_id",
+                "idx_webhook_deliveries_correlation_id"
         );
     }
 

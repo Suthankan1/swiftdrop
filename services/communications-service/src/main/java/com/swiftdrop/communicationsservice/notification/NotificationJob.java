@@ -47,6 +47,9 @@ public class NotificationJob {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "correlation_id", length = 64)
+    private String correlationId;
+
     public NotificationJob() {
     }
 
@@ -179,5 +182,13 @@ public class NotificationJob {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
     }
 }

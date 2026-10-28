@@ -35,6 +35,9 @@ public class ConsumedEvent {
     @Column(name = "scheduled_at")
     private Instant scheduledAt;
 
+    @Column(name = "correlation_id", length = 64)
+    private String correlationId;
+
     public ConsumedEvent() {
     }
 
@@ -117,5 +120,13 @@ public class ConsumedEvent {
 
     public void setScheduledAt(Instant scheduledAt) {
         this.scheduledAt = scheduledAt;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
     }
 }
