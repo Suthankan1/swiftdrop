@@ -629,7 +629,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install test dependencies
-        run: pip install pyyaml
+        run: pip install pyyaml jsonschema
 
       - name: Install actionlint
         run: |

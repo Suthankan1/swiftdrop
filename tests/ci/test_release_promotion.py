@@ -89,12 +89,23 @@ class TestReleaseNegativeScenarios(unittest.TestCase):
     def test_invalid_sha_fails_manifest_verification(self):
         """Negative test: non-hex or short commit SHA is rejected."""
         verify_script = RELEASE_DIR / "verify-candidate-manifest.sh"
-        proc = subprocess.run(
-            [str(verify_script), "--expected-sha", "invalid-short-sha", "--skip-git-check"],
-            capture_output=True, text=True
-        )
-        self.assertNotEqual(proc.returncode, 0)
-        self.assertTrue("FATAL" in proc.stdout or "FATAL" in proc.stderr)
+        manifest_script = RELEASE_DIR / "generate-release-manifest.sh"
+        tmp_manifest = REPO_ROOT / "build" / "artifacts" / "test-neg-manifest.json"
+        tmp_manifest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            subprocess.run(
+                [str(manifest_script), "--sha", "0" * 40, "--branch", "test", "--approval-ref", "test", "--output", str(tmp_manifest)],
+                capture_output=True, check=True
+            )
+            proc = subprocess.run(
+                [str(verify_script), "--manifest", str(tmp_manifest), "--expected-sha", "invalid-short-sha", "--skip-git-check"],
+                capture_output=True, text=True
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertTrue("FATAL" in proc.stdout or "FATAL" in proc.stderr)
+        finally:
+            if tmp_manifest.is_file():
+                tmp_manifest.unlink()
 
     def test_missing_manifest_fails_promotion_preflight(self):
         """Negative test: missing manifest file blocks promotion."""

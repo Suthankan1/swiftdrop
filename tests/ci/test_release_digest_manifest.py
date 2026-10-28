@@ -5,10 +5,14 @@ immutability guarantees, architecture constraints, and Helm rendering parity.
 """
 
 import json
+import shutil
 import subprocess
 import unittest
 from pathlib import Path
-import jsonschema
+try:
+    import jsonschema
+except ImportError:
+    jsonschema = None
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -26,6 +30,8 @@ class TestReleaseDigestManifest(unittest.TestCase):
 
     def test_schema_file_is_valid_json_schema(self):
         """Verifies manifest-schema.json parses cleanly and complies with Draft-07."""
+        if jsonschema is None:
+            self.skipTest("jsonschema not installed")
         self.assertEqual(self.schema.get("title"), "SwiftDropReleaseCandidateManifest")
         self.assertEqual(self.schema.get("type"), "object")
         self.assertIn("source_commit_sha", self.schema.get("required", []))
@@ -59,6 +65,8 @@ class TestReleaseDigestManifest(unittest.TestCase):
 
     def test_helm_template_renders_manifest_digests(self):
         """Verifies that Helm templates render repository@sha256:... when digests are provided."""
+        if not shutil.which("helm"):
+            self.skipTest("helm binary not found in PATH")
         chart_dir = REPO_ROOT / "platform" / "kubernetes" / "helm" / "swiftdrop"
         test_digest = "sha256:" + "d" * 64
         

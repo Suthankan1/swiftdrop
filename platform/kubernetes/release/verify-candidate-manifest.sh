@@ -39,7 +39,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ ! -f "${MANIFEST_FILE}" ]; then
-  echo "ERROR: Manifest file not found: '${MANIFEST_FILE}'" >&2
+  echo "FATAL: Manifest file not found: '${MANIFEST_FILE}'" >&2
   exit 1
 fi
 
