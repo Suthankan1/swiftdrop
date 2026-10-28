@@ -1043,19 +1043,25 @@ describe('Public Redacted Parcel Tracking (Issue #133 / N10-WF06)', () => {
         currentStatus: 'DELIVERED',
       }
 
-      mockFetch
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(responseA), {
+      mockFetch.mockImplementation(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString()
+        if (url.includes('/events')) {
+          return new Response(new ReadableStream(), {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          })
+        }
+        if (url.includes('SWD-20261023-BBBB')) {
+          return new Response(JSON.stringify(responseB), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(responseB), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
+          })
+        }
+        return new Response(JSON.stringify(responseA), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      })
 
       renderPublicTracking('/tracking/SWD-20261023-AAAA')
 
@@ -1074,4 +1080,65 @@ describe('Public Redacted Parcel Tracking (Issue #133 / N10-WF06)', () => {
       })
     })
   })
+
+  // ── Real-time anonymous SSE stream delivery (Issue #148) ─────────────
+
+  describe('real-time anonymous SSE stream delivery (Issue #148 / N10-B26)', () => {
+    it('displays Live chip and applies live SSE milestone updates', async () => {
+      const sseEvent = {
+        eventId: 'evt-sse-out-for-delivery',
+        trackingNumber: 'SWD-20261023-A1B2C3',
+        aggregateVersion: 4,
+        oldStatus: 'IN_TRANSIT',
+        newStatus: 'OUT_FOR_DELIVERY',
+        cityOrZone: 'Kandy Regional Depot',
+        occurredAt: '2026-10-23T15:30:00Z',
+      }
+
+      const encoder = new TextEncoder()
+      const sseBody = [
+        ':keepalive\n\n',
+        'event: tracking.status.changed\n',
+        `data: ${JSON.stringify(sseEvent)}\n\n`,
+      ].join('')
+
+      const sseStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(sseBody))
+        },
+      })
+
+      mockFetch.mockImplementation(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString()
+        if (url.includes('/events')) {
+          return new Response(sseStream, {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          })
+        }
+        return new Response(JSON.stringify(testTrackingResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      })
+
+      renderPublicTracking('/tracking/SWD-20261023-A1B2C3')
+
+      // Assert Live chip appears
+      await waitFor(() => {
+        expect(screen.getByText('● Live')).toBeInTheDocument()
+      })
+
+      // Assert updated status and new milestone checkpoint are rendered
+      await waitFor(() => {
+        expect(screen.getAllByText('Out for Delivery').length).toBeGreaterThanOrEqual(1)
+        expect(screen.getByText(/Kandy Regional Depot/i)).toBeInTheDocument()
+      })
+
+      // Assert strict data minimization: zero credentials or private tokens
+      expect(document.body.innerHTML).not.toContain('parcelId')
+      expect(document.body.innerHTML).not.toContain('PRIVATE_')
+    })
+  })
 })
+
