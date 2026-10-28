@@ -150,7 +150,10 @@ describe('ProofCaptureForm component', () => {
 
     await user.upload(fileInput, emptyFile)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/empty \(0 bytes\)/i)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/empty \(0 bytes\)/i)
+    expect(fileInput).toHaveAttribute('aria-invalid', 'true')
+    expect(fileInput).toHaveAccessibleDescription(/jpeg, png, or webp up to 5 mib.*empty \(0 bytes\)/i)
     expect(api.uploadProof).not.toHaveBeenCalled()
   })
 
@@ -223,6 +226,41 @@ describe('ProofCaptureForm component', () => {
     expect(screen.getByText(MOCK_PROOF_ID)).toBeInTheDocument()
   })
 
+  it('supports keyboard-only confirmation, traps focus, Escape cancellation, and focus restoration', async () => {
+    const user = userEvent.setup()
+    render(
+      <ProofCaptureForm
+        parcel={outForDeliveryParcel}
+        api={createMockApi()}
+        subject="courier-test-sub"
+      />,
+    )
+
+    const fileInput = document.getElementById(
+      `proof-file-input-${MOCK_PARCEL_ID}`,
+    ) as HTMLInputElement
+    await user.upload(fileInput, new File([new Uint8Array(2048)], 'keyboard.jpg', { type: 'image/jpeg' }))
+
+    const submit = screen.getByRole('button', { name: /submit proof of delivery/i })
+    submit.focus()
+    await user.keyboard('{Enter}')
+
+    const dialog = screen.getByRole('dialog', { name: /confirm proof submission/i })
+    const confirm = within(dialog).getByRole('button', { name: /yes, upload proof/i })
+    const cancel = within(dialog).getByRole('button', { name: /^cancel$/i })
+    expect(confirm).toHaveFocus()
+
+    cancel.focus()
+    await user.keyboard('{Tab}')
+    expect(confirm).toHaveFocus()
+    await user.keyboard('{Shift>}{Tab}{/Shift}')
+    expect(cancel).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /submit proof of delivery/i })).toHaveFocus()
+  })
+
   it('renders existing proof status directly if proof already confirmed', () => {
     const api = createMockApi()
     render(
@@ -285,6 +323,7 @@ describe('ProofCaptureForm component', () => {
     const user = userEvent.setup()
     let abortCallback: (() => void) | undefined
     const uploadProof = vi.fn(async (params) => {
+      params.onProgress?.(37)
       return new Promise<ProofResponse>((_, reject) => {
         abortCallback = () => {
           reject(new CourierProofError('ambiguous-failure', 'Upload operation was cancelled by caller.'))
@@ -317,6 +356,7 @@ describe('ProofCaptureForm component', () => {
     // Progress bar and Cancel button should be visible
     const cancelBtn = await screen.findByRole('button', { name: /cancel upload/i })
     expect(cancelBtn).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: /proof photo upload progress/i })).toHaveAttribute('aria-valuenow', '37')
 
     // Trigger cancel
     await user.click(cancelBtn)

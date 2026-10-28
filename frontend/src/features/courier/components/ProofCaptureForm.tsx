@@ -62,6 +62,9 @@ export function ProofCaptureForm({
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const confirmationRef = useRef<HTMLDivElement | null>(null)
+  const submitTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const confirmationWasOpenRef = useRef(false)
 
   // Abort in-flight requests on unmount
   useEffect(() => {
@@ -72,6 +75,18 @@ export function ProofCaptureForm({
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (showConfirmation) {
+      confirmationWasOpenRef.current = true
+      confirmationRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+      return
+    }
+    if (confirmationWasOpenRef.current && !isUploading) {
+      submitTriggerRef.current?.focus()
+    }
+    confirmationWasOpenRef.current = false
+  }, [isUploading, showConfirmation])
 
   // Lifecycle check: only OUT_FOR_DELIVERY allows proof upload per conservative rule
   const isTerminal = parcel.currentStatus === 'DELIVERED' || parcel.currentStatus === 'FAILED'
@@ -362,6 +377,8 @@ export function ProofCaptureForm({
               className="file-input-hidden"
               onChange={onFileInputChange}
               disabled={!isEligibleStage || isUploading || (proofLookupStatus !== undefined && proofLookupStatus !== 'verified-none')}
+              aria-invalid={Boolean(validationError)}
+              aria-describedby={`proof-file-hint-${parcel.parcelId}${validationError ? ` proof-file-error-${parcel.parcelId}` : ''}`}
             />
             <div className="dropzone-content">
               <svg className="dropzone-icon" width="36" height="36" viewBox="0 0 24 24" fill="none">
@@ -371,7 +388,7 @@ export function ProofCaptureForm({
               <p className="dropzone-text">
                 <strong>Tap to capture with camera</strong> or choose a photo
               </p>
-              <p className="dropzone-hint muted">JPEG, PNG, or WebP up to 5 MiB</p>
+              <p id={`proof-file-hint-${parcel.parcelId}`} className="dropzone-hint muted">JPEG, PNG, or WebP up to 5 MiB</p>
               <button
                 type="button"
                 className="button button-secondary button-small"
@@ -438,7 +455,7 @@ export function ProofCaptureForm({
 
       {/* Validation Feedback */}
       {validationError && (
-        <div className="feedback-banner is-error" role="alert">
+        <div id={`proof-file-error-${parcel.parcelId}`} className="feedback-banner is-error" role="alert">
           <span>{validationError}</span>
         </div>
       )}
@@ -480,7 +497,14 @@ export function ProofCaptureForm({
             <span>Uploading proof photo...</span>
             <span className="progress-percent monospace">{uploadProgress}%</span>
           </div>
-          <div className="progress-track" aria-hidden="true">
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-label="Proof photo upload progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={uploadProgress}
+          >
             <div
               className="progress-fill"
               style={{ width: `${uploadProgress}%` }}
@@ -500,7 +524,32 @@ export function ProofCaptureForm({
 
       {/* Confirmation Step Dialog / Modal */}
       {showConfirmation && selectedFile && (
-        <div className="confirmation-dialog" role="dialog" aria-labelledby="confirm-heading">
+        <div
+          className="confirmation-dialog"
+          ref={confirmationRef}
+          role="dialog"
+          aria-labelledby="confirm-heading"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              setShowConfirmation(false)
+              return
+            }
+            if (event.key !== 'Tab') return
+            const buttons = confirmationRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+            const first = buttons?.[0]
+            const last = buttons?.[buttons.length - 1]
+            if (!first) {
+              event.preventDefault()
+            } else if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault()
+              last?.focus()
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault()
+              first.focus()
+            }
+          }}
+        >
           <h3 id="confirm-heading">Confirm Proof Submission</h3>
           <p className="muted">
             Please verify the handover details before uploading. Evidence cannot be modified once committed.
@@ -548,6 +597,7 @@ export function ProofCaptureForm({
           <button
             type="button"
             className="button button-primary"
+            ref={submitTriggerRef}
             onClick={handleStartSubmit}
             disabled={
               !isEligibleStage ||
