@@ -1433,6 +1433,12 @@ main:focus { outline: none; }
     margin-left: 0;
   }
 }
+.reports-page .report-section { margin-block: 1.5rem 2rem; }
+.reports-page .report-period { margin-block: .5rem; overflow-wrap: anywhere; }
+.reports-page .report-freshness { margin-block: .5rem; font-size: .85rem; }
+.reports-page .report-partial { padding: .8rem 1rem; border: 1px solid #e3c98a; border-left: 4px solid #b7791f; border-radius: .4rem; background: #fdf6e3; }
+.reports-page .metric-value { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .reports-page .metric-value { font-size: 26px; } }
 
 /* Operational Reporting Styles (Issue #147 / N10-WF24) */
 .admin-reports-page { padding-block: 30px 60px; }

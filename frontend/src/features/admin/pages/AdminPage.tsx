@@ -31,8 +31,8 @@ export function AdminPage() {
             <p><Link to="/admin/staff">Manage staff profiles</Link></p>
             <h3>Zones and pricing</h3>
             <p><Link to="/admin/pricing">Manage zones and pricing</Link></p>
-            <h3>Daily outcomes and reports</h3>
-            <p><Link to="/admin/reports">View operational reports</Link></p>
+            <h3>Reports</h3>
+            <p><Link to="/admin/reports">View daily outcomes and admin reports</Link></p>
           </>}
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out

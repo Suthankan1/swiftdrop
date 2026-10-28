@@ -1,5 +1,6 @@
 import { render, screen, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AuthContextValue } from '../../auth/context'
 import { CourierPage } from '../courier/pages/CourierPage'
@@ -167,7 +168,8 @@ describe('Staff cross-session isolation and regression tests', () => {
     rerender(
       <QueryClientProvider client={queryClient}>
         <AuthContext value={authDispatcher}>
-          <DispatcherPage />
+          {/* DispatcherPage links to its reports route, so it needs router context as in the app. */}
+          <MemoryRouter><DispatcherPage /></MemoryRouter>
         </AuthContext>
       </QueryClientProvider>,
     )
