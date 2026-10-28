@@ -328,3 +328,4 @@ Test coverage includes:
 - `test_helm_chart_security.py`: 12 automated tests for application chart security.
 - `test_cluster_config.py` & `test_cluster_safety.py`: Cluster isolation and local safety tests.
 - `test_persistent_workloads.py` & `test_storage_contract.py`: Bounded PVC contracts.
+
