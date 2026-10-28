@@ -130,4 +130,18 @@ class GrpcBookingQuoteProviderTest {
         assertThat(validation.isValid()).isFalse();
         assertThat(validation.validationCode()).isEqualTo("DEADLINE_EXCEEDED");
     }
+
+    @Test
+    @DisplayName("Fails closed on gRPC UNAVAILABLE without accepting a price snapshot")
+    void validate_unavailableFailsClosed() {
+        when(pricingStub.validateQuote(any(ValidateQuoteRequest.class)))
+                .thenThrow(new StatusRuntimeException(Status.UNAVAILABLE.withDescription("Provider unavailable")));
+
+        QuoteValidation validation = provider.validate(quoteId, customerSub);
+
+        assertThat(validation.isValid()).isFalse();
+        assertThat(validation.validationCode()).isEqualTo("UNAVAILABLE");
+        assertThat(validation.verifiedAmountMinorUnits()).isZero();
+        assertThat(validation.rateVersion()).isNull();
+    }
 }

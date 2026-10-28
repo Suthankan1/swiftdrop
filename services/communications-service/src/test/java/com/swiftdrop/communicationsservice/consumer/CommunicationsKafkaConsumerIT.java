@@ -11,6 +11,7 @@ import com.swiftdrop.communicationsservice.notification.NotificationJob;
 import com.swiftdrop.communicationsservice.notification.NotificationJobRepository;
 import com.swiftdrop.communicationsservice.notification.NotificationStatus;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -40,6 +42,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -77,6 +84,9 @@ class CommunicationsKafkaConsumerIT {
 
     @Autowired
     private NotificationJobRepository notificationJobRepository;
+
+    @Autowired
+    private ParcelLifecycleKafkaConsumer lifecycleConsumer;
 
     @MockitoBean
     private DeliveryRecipientAuthorizationClient deliveryAuthorizationClient;
@@ -266,5 +276,64 @@ class CommunicationsKafkaConsumerIT {
         assertThat(notificationJobRepository.findAll().stream()
                 .filter(j -> j.getEventId().equals(eventId))
                 .count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Integration C: Crash after durable commit but before acknowledgement redelivers without duplicating work")
+    void testCrashAfterCommitBeforeAcknowledgementRecoversIdempotently() {
+        long started = System.nanoTime();
+        UUID eventId = UUID.randomUUID();
+        UUID parcelId = UUID.randomUUID();
+        String recipientSub = "sub-crash-recovery-" + UUID.randomUUID();
+
+        DeliveryEventAuthorization auth = new DeliveryEventAuthorization(
+                true, parcelId, eventId, recipientSub, null,
+                "SWD-20261028-RECOVERY", "IN_TRANSIT", "parcel.status.changed.v1",
+                2L, 2L, false, false, "AUTHORIZED");
+        PermittedRecipientContact contact = new PermittedRecipientContact(
+                recipientSub, "redacted@test.test", null, "Recovery Fixture",
+                true, true, false, "ACTIVE", "ELIGIBLE");
+
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eq(eventId), eq(parcelId), any(), any(), anyBoolean()))
+                .thenReturn(auth);
+        when(accountsContactClient.resolveContact(eq(recipientSub), eq(NotificationSchedulingService.NOTIFICATION_PURPOSE), eq(NotificationChannel.EMAIL)))
+                .thenReturn(Optional.of(contact));
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>(
+                TOPIC, 0, 164L, parcelId.toString(),
+                buildEventJson(eventId, parcelId, "IN_TRANSIT", "PICKED_UP", null));
+        Acknowledgment firstAttempt = mock(Acknowledgment.class);
+        doThrow(new IllegalStateException("injected crash before offset acknowledgement"))
+                .when(firstAttempt).acknowledge();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> lifecycleConsumer.onMessage(record, firstAttempt))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("injected crash");
+
+        assertThat(consumedEventRepository.findAll().stream()
+                .filter(e -> e.getConsumerName().equals(CONSUMER_GROUP) && e.getEventId().equals(eventId))
+                .count()).isEqualTo(1);
+        assertThat(notificationJobRepository.findAll().stream()
+                .filter(j -> j.getEventId().equals(eventId))
+                .count()).isEqualTo(1);
+
+        Acknowledgment redelivery = mock(Acknowledgment.class);
+        doNothing().when(redelivery).acknowledge();
+        lifecycleConsumer.onMessage(record, redelivery);
+
+        verify(redelivery, times(1)).acknowledge();
+        verify(deliveryAuthorizationClient, times(1))
+                .authorizeEventRecipient(eq(eventId), eq(parcelId), any(), any(), anyBoolean());
+        assertThat(consumedEventRepository.findAll().stream()
+                .filter(e -> e.getConsumerName().equals(CONSUMER_GROUP) && e.getEventId().equals(eventId))
+                .count()).isEqualTo(1);
+        assertThat(notificationJobRepository.findAll().stream()
+                .filter(j -> j.getEventId().equals(eventId))
+                .count()).isEqualTo(1);
+
+        long elapsedMillis = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+        assertThat(elapsedMillis).isLessThan(5_000L);
+        System.out.printf("ISSUE164_COMMUNICATIONS_ACK_RECOVERY elapsedMs=%d proposedTestBudgetMs=5000%n", elapsedMillis);
     }
 }

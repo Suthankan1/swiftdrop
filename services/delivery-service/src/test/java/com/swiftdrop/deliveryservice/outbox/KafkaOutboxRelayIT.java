@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -27,8 +28,14 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -64,6 +71,15 @@ class KafkaOutboxRelayIT {
 
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
+
+    @Autowired
+    private OutboxRelayProperties relayProperties;
+
+    @Autowired
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
+    @Autowired
+    private OutboxMetrics outboxMetrics;
 
     private Consumer<String, String> consumer;
     private static final String TOPIC = "parcel.lifecycle.v1";
@@ -256,5 +272,98 @@ class KafkaOutboxRelayIT {
         OutboxEvent recovered = outboxEventRepository.findById(crashedEventId).orElseThrow();
         assertThat(recovered.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
         assertThat(recovered.getAcknowledgedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("4. Broker outage recovery: committed parcel/outbox survives failure and publishes unchanged after bounded backoff")
+    void testBrokerOutageRecoveryPreservesCanonicalTransaction() throws Exception {
+        long parcelsBefore = parcelRepository.count();
+        UUID parcelId = UUID.randomUUID();
+        createParcel(parcelId);
+        UUID eventId = UUID.randomUUID();
+        String payload = "{\"eventId\":\"" + eventId + "\",\"aggregateId\":\"" + parcelId
+                + "\",\"aggregateVersion\":1,\"correlationId\":\"issue-164-redacted\"}";
+        OutboxEvent event = new OutboxEvent(eventId, "PARCEL", parcelId, 1L,
+                "parcel.status.changed.v1", "1.0.0", payload, TOPIC, parcelId.toString());
+        event.setNextAttemptAt(Instant.now().minusSeconds(1));
+        outboxEventRepository.saveAndFlush(event);
+
+        UUID unrelatedParcelId = UUID.randomUUID();
+        createParcel(unrelatedParcelId);
+        UUID unrelatedEventId = UUID.randomUUID();
+        OutboxEvent unrelated = new OutboxEvent(unrelatedEventId, "PARCEL", unrelatedParcelId, 1L,
+                "parcel.status.changed.v1", "1.0.0", "{\"unrelated\":true}", TOPIC, unrelatedParcelId.toString());
+        unrelated.setNextAttemptAt(Instant.now().plusSeconds(300));
+        outboxEventRepository.saveAndFlush(unrelated);
+
+        double failuresBefore = meterRegistry.find("swiftdrop.outbox.publish.total")
+                .tag("outcome", "failure").counter().count();
+        long started = System.nanoTime();
+        @SuppressWarnings("unchecked")
+        KafkaTemplate<String, String> unavailableKafka = mock(KafkaTemplate.class);
+        when(unavailableKafka.send(anyString(), anyString(), anyString()))
+                .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("injected isolated broker outage")));
+        KafkaOutboxRelay failingRelay = new KafkaOutboxRelay(
+                outboxEventRepository, relayProperties, unavailableKafka, outboxMetrics);
+
+        assertThat(failingRelay.processBatch()).isZero();
+        OutboxEvent failed = outboxEventRepository.findById(eventId).orElseThrow();
+        assertThat(failed.getStatus()).isEqualTo(OutboxStatus.FAILED);
+        assertThat(failed.getAttemptCount()).isEqualTo(1);
+        assertThat(failed.getNextAttemptAt()).isAfter(failed.getLastAttemptAt());
+        assertThat(objectMapper.readTree(failed.getPayload())).isEqualTo(objectMapper.readTree(payload));
+        assertThat(parcelRepository.existsById(parcelId)).isTrue();
+        assertThat(parcelRepository.count()).isEqualTo(parcelsBefore + 2);
+        assertThat(outboxEventRepository.findById(unrelatedEventId).orElseThrow().getAttemptCount()).isZero();
+        assertThat(meterRegistry.find("swiftdrop.outbox.publish.total")
+                .tag("outcome", "failure").counter().count()).isEqualTo(failuresBefore + 1.0d);
+
+        awaitCondition(() -> {
+            outboxRelay.processBatch();
+            return outboxEventRepository.findById(eventId)
+                    .map(candidate -> candidate.getStatus() == OutboxStatus.PUBLISHED)
+                    .orElse(false);
+        }, Duration.ofSeconds(15));
+
+        OutboxEvent recovered = outboxEventRepository.findById(eventId).orElseThrow();
+        assertThat(recovered.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
+        assertThat(recovered.getAttemptCount()).isEqualTo(2);
+        assertThat(objectMapper.readTree(recovered.getPayload())).isEqualTo(objectMapper.readTree(payload));
+        assertThat(parcelRepository.count()).isEqualTo(parcelsBefore + 2);
+        assertThat(outboxEventRepository.findById(unrelatedEventId).orElseThrow().getAttemptCount()).isZero();
+
+        ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(10));
+        List<String> recoveredPayloads = new ArrayList<>();
+        for (ConsumerRecord<String, String> record : records.records(TOPIC)) {
+            if (parcelId.toString().equals(record.key())) {
+                recoveredPayloads.add(record.value());
+            }
+        }
+        assertThat(recoveredPayloads).hasSize(1);
+        assertThat(objectMapper.readTree(recoveredPayloads.getFirst()))
+                .isEqualTo(objectMapper.readTree(payload));
+
+        long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+        assertThat(elapsedMillis).isLessThan(20_000L);
+        System.out.printf("ISSUE164_OUTBOX_RECOVERY elapsedMs=%d proposedTestBudgetMs=20000%n", elapsedMillis);
+    }
+
+    private static void awaitCondition(Callable<Boolean> condition, Duration timeout) throws Exception {
+        long deadline = System.nanoTime() + timeout.toNanos();
+        Throwable lastFailure = null;
+        while (System.nanoTime() < deadline) {
+            try {
+                if (condition.call()) {
+                    return;
+                }
+            } catch (Throwable failure) {
+                lastFailure = failure;
+            }
+            Thread.sleep(100);
+        }
+        if (lastFailure != null) {
+            throw new AssertionError("Condition did not complete within " + timeout, lastFailure);
+        }
+        throw new AssertionError("Condition did not complete within " + timeout);
     }
 }
