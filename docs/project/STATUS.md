@@ -1,5 +1,31 @@
 # Current project status — update only with evidence
 
+## Issue #168 Post-Rollback Application Consistency Verification (N10-P09A) — 2026-10-28
+
+Owner Sinthuha Nadesan (@Sinthuha-n — Platform QA / Consistency Engineer); branch `tests/n10-p09a-recovery-consistency`, base `test`.
+Linked Parent Issue: #167 (Platform Staging Rollback and Disaster Recovery Drill, PR #277).
+
+Implements independent application-level consistency assertions following operator rollback and restore drills:
+- **Quote-to-Booking Provenance:** Enforces global single-use quote consumption (`uq_parcels_quote_id`), quote snapshot integrity, integer minor units, and LKR currency invariants.
+- **Parcel Version Monotonicity & Lifecycle Transitions:** Sequential versioning (1..N) without regressions/gaps; terminal states (`DELIVERED`, `FAILED`) are strictly immutable.
+- **Courier Assignment Invariant:** Enforces single active courier assignment per parcel (`uq_delivery_assignments_active_parcel`).
+- **Durable Job State Machines:** Bounded retries (`attempts < 5` or `EXHAUSTED`), terminal closure for `SENT` and `SUCCESS` jobs, and lease recovery for notifications and webhooks.
+- **Transactional Outbox & Inbox Deduplication:** Outbox aggregate version sequencing and inbox composite PK `(consumer_name, event_id)` deduplication prevent duplicate side-effects.
+- **Point-in-Time Boundary Auditing:** Evaluates records against `snapshot_cutoff` (`2026-10-28T05:00:00Z`), distinguishing approved RPO data boundaries from corruption.
+- **Negative Regression Suite:** 17 isolated failure-injection factories verify fail-closed detection of corruption, illegal state transitions, and concurrency violations.
+
+Actual local verification (Python 3.14.6):
+- PASS `python3 tests/recovery/run_recovery_consistency_verification.py --mode offline`: **17/17 baseline invariants passed, 17/17 negative corruption scenarios detected and rejected**.
+- PASS `python3 -m unittest discover -s tests/recovery -p "test_*.py" -v`: **32/32 unit tests passed in 0.017s**.
+- PASS `python3 -m unittest discover -s tests/ci -p "test_*.py" -v`: **46/46 tests passed**.
+- PASS `python3 -m unittest tests/kubernetes/test_recovery_safety.py -v`: **6/6 tests passed**.
+- PASS `python3 -m unittest discover -s tests/contracts -p "test_*.py" -v`: **90/90 tests passed**.
+- BLOCKED `python3 tests/recovery/run_recovery_consistency_verification.py --mode operator-checkpoint`: Fails closed with exit code 2 and status `BLOCKED — OPERATOR CHECKPOINT NOT VERIFIED` when operator targets are not configured on local environment.
+- Outstanding: Staging cluster restoration on `k3d-swiftdrop-local` by `@Suthankan1`; formal release budget approval for measured RPO (300s) / RTO (240s) pending team ADR sign-off; independent reviews by `@Harithkeshan` and `@Vibhushan-2003`.
+
+See [Recovery Verification Guide](../testing/N10_P09A_RECOVERY_CONSISTENCY_GUIDE.md), [Evidence Register](../reviews/N10_P09A_APPLICATION_CONSISTENCY_EVIDENCE.md), and [Operator Handoff](../handoff/ISSUE_168_TO_OPERATOR_VERIFICATION_HANDOFF.md).
+
+
 ## Issue #25 Dispatcher frontend consumer — 2026-10-26
 
 Owner HarithKeshan; branch `feat/later-07-dispatcher-queue`, starting integration
