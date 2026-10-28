@@ -178,3 +178,50 @@ Tests use source-verified synthetic DTOs and isolated provider/fetch mocks; they
 do not demonstrate a real Keycloak/Gateway/Accounts/PostgreSQL flow. Actual commands,
 results, file inventory, unverified acceptance and the next owner task are in the
 [Issue #137 handoff](../../../../docs/ai/ISSUE_137_HANDOFF.md).
+
+## Daily outcomes and admin reports — Issue #147
+
+Owner @pushmitha20. Depends on #139 (`adminDashboard`) and #30 (`deliveryStats`).
+Base `test`. Read-only; no mutations, exports, charts or new dependencies.
+
+| Route | Guard | GraphQL roots |
+| --- | --- | --- |
+| `/admin/reports` | shared ADMIN route + feature check | `adminDashboard`, `deliveryStats` |
+| `/dispatcher/reports` | shared DISPATCHER route + feature check | `deliveryStats` only, no zone input |
+
+Both roots are POSTed to the single GraphQL Query API at `/graphql` through the
+Gateway with the in-memory token (`credentials: 'omit'`, `no-store`,
+`redirect: 'error'`, 15-second deadline, no automatic retry). Responses are
+explicitly projected and validated: Int32 non-negative counts, status groups
+summing to at most the total, a finite 0..1 rate, at most 50 unique UUID merchant
+rows, and contract fields only. GraphQL `extensions.code` maps to fixed text;
+provider messages are never rendered. 401 delegates to shared session expiry;
+401/403 removes report content and the subject/session-scoped cache.
+
+### Reporting semantics (from the frozen contracts)
+
+- Reporting days are `Asia/Colombo` (UTC+05:30) calendar days, shown on screen.
+  Filters are sent as `YYYY-MM-DD`; the GraphQL service converts them to UTC
+  (LATER-11 Q13). The browser timezone never decides a boundary. One day maps to
+  `[00:00, next 00:00)` Colombo, i.e. `[18:30Z previous day, 18:30Z)`.
+- Ranges must be ordered, end no later than today in Colombo and at most 90
+  inclusive days (provider ceiling Q16). The day-by-day table runs only for 2–7
+  days; each row is its own server aggregate and rows are never summed.
+- Success/failure rate denominator = delivered + failed (N10-WF23 decision D),
+  on every screen. Zero terminal outcomes shows "Not available", never 0%, NaN
+  or Infinity. `adminDashboard.terminalSuccessRate` is displayed as returned; the
+  contract reports `0.0` when no outcome exists yet, and the card says so.
+- `adminDashboard` has no arguments and always covers today; filters do not
+  change it. No status filter is offered: under Q8 it zeroes other groups and
+  would make rates misleading.
+
+### Integration status
+
+`adminDashboard` has a registered resolver. **`deliveryStats` has none**: it is in
+the schema and `GraphqlFieldPolicy`, but `GraphqlRuntimeConfig` answers
+`UNAVAILABLE` because no `RootQueryResolver` is registered. Until the #30 resolver
+lands, the outcomes section shows a distinct unavailable state (and Admin a
+partial-report notice) instead of figures. Dispatcher zone confinement is the
+provider's job (Q11); the UI sends no zone for dispatchers. Tests use synthetic
+fixtures and stubbed Gateway fetches; they do not prove a real Gateway →
+GraphQL → gRPC → PostgreSQL read. Details: [Issue #147 handoff](../../../../docs/ai/ISSUE_147_HANDOFF.md).
