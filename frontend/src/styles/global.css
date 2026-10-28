@@ -1027,8 +1027,8 @@ main:focus { outline: none; }
 
 /* Courier Mobile Assignment & Dashboard Styles (Issue #146) */
 .courier-dashboard-container { display: flex; flex-direction: column; gap: 32px; margin-top: 36px; }
-.courier-summary-section { width: 100%; }
-.courier-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+.courier-summary-section, .customer-dashboard-section { width: 100%; margin-top: 24px; }
+.courier-summary-grid, .customer-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
 .metric-card { border-top: 4px solid var(--color-teal); display: flex; flex-direction: column; gap: 8px; }
 .metric-value { font-size: 32px; font-weight: 700; color: var(--color-ink); }
 .metric-caption { font-size: 12px; margin: 0; }
