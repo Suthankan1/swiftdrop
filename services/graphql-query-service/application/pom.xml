@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>com.swiftdrop</groupId><artifactId>graphql-query-build</artifactId><version>0.0.1-SNAPSHOT</version><relativePath>..</relativePath></parent>
+  <groupId>com.swiftdrop</groupId><artifactId>graphql-query-service</artifactId><version>0.0.1-SNAPSHOT</version>
+  <dependencies>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-graphql</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
+    <dependency><groupId>com.swiftdrop</groupId><artifactId>security-adapter</artifactId><version>0.0.1-SNAPSHOT</version></dependency>
+    <dependency><groupId>com.swiftdrop</groupId><artifactId>proto-contracts</artifactId><version>0.0.1-SNAPSHOT</version></dependency>
+    <dependency><groupId>io.grpc</groupId><artifactId>grpc-netty-shaded</artifactId><version>${grpc.version}</version></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.graphql</groupId><artifactId>spring-graphql-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>io.grpc</groupId><artifactId>grpc-inprocess</artifactId><version>${grpc.version}</version><scope>test</scope></dependency>
+  </dependencies>
+  <build>
+    <directory>${project.basedir}/../target</directory>
+    <sourceDirectory>${project.basedir}/../src/main/java</sourceDirectory>
+    <testSourceDirectory>${project.basedir}/../src/test/java</testSourceDirectory>
+    <testResources><testResource><directory>${project.basedir}/../src/test/resources</directory></testResource></testResources>
+    <resources>
+      <resource><directory>${project.basedir}/../src/main/resources</directory></resource>
+      <resource><directory>${project.basedir}/../../../contracts/graphql</directory><targetPath>graphql</targetPath><includes><include>schema.graphql</include></includes></resource>
+    </resources>
+    <plugins>
+      <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><configuration><workingDirectory>${project.basedir}/..</workingDirectory></configuration></plugin>
+      <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins>
+  </build>
+</project>

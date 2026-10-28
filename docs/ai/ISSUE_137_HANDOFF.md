@@ -136,7 +136,7 @@ Sources: [Guava maintainer advisory](https://github.com/google/guava/security/ad
 No scan, severity, exit code, branch rule, CVE exclusion or workflow was changed.
 Public APIs, schemas, identity policy and business code are unchanged.
 
-### Remaining vendor blockers
+### Vendor blockers at the first correction (superseded below)
 
 Maven dependency management cannot replace relocated classes inside GraphQL
 Java's own JAR. Inspection of the actual cached `graphql-java-25.0.jar` found
@@ -190,3 +190,39 @@ PASS contract compatibility validator (all four protocols) and `git diff --check
 No frontend source changed in this follow-up; the original CI frontend job passed
 all **734 tests in 51 files**, lint, typecheck and production build. Maven package
 runs do not execute Failsafe `*IT` suites, and no local Docker/Trivy pass is claimed.
+
+## Vendor remediation integration — 2026-10-28
+
+The target branch subsequently merged PR #267 at `e94544c`, including security
+commit `742486a`. Its [CI run 40624117168](https://github.com/Suthankan1/swiftdrop/actions/runs/40624117168)
+passed all eight image scans, all Java suites and the required gate. This feature
+integrates that merged target rather than creating another vendor patch.
+The single GraphQL parent-POM conflict was resolved with the target's complete
+reactor configuration, retaining Guava 33.7.2-jre. Backend, shared-library,
+identity and workflow files now exactly match `origin/test` at `e94544c`.
+
+The merged repair rebuilds the official GraphQL Java 25.0 sources with fixed
+Guava 33.7.2-jre, verifies the source SHA-256 and retains the upstream package
+relocations and license. Application tests execute against that rebuilt engine;
+the original executable-JAR path is preserved. The Keycloak Dockerfile replaces
+the actual vulnerable JAR with checksum-pinned Guava 33.7.2-jre and rebuilds
+Quarkus metadata, preserving its fast-jar classpath filename. Realm settings,
+JWT/role policies, public contracts and scan gates are unchanged. No vulnerable
+bytecode or metadata is hidden, and no CVE exclusion is introduced.
+
+Local integration checks: container-definition tests **13 passed**; workflow
+tests **19 passed, 1 skipped** (optional local actionlint availability); all four
+contract validation/compatibility gates passed against `origin/test`.
+GraphQL Maven `-B -ntp clean verify` passed all three reactor modules and all
+**189 application tests**, with zero failures, errors or skips. Executable-JAR
+inspection confirmed the rebuilt engine contains Guava **33.7.2-jre** metadata,
+relocated `MapMakerInternalMap` bytecode and the upstream license.
+`git diff origin/test --check` passed. The upstream QA document has an existing
+extra blank line at EOF; it is preserved verbatim rather than edited here.
+
+The earlier vendor-blocker text records the state at `87daee6`; it is superseded
+by this integration. Docker Linux remains stopped locally, so image validation
+comes from GitHub Actions rather than a claimed local scan. The new feature-head
+CI must still pass before claiming this PR is green. Live user/staff workflow
+and responsive browser acceptance remain the next bounded owner review task
+described above; they are independent of this CI repair.

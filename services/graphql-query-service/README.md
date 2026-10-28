@@ -14,9 +14,8 @@ cd shared/proto-contracts
 cd ../security-adapter
 .\mvnw.cmd clean install
 cd ../../services/graphql-query-service
-.\mvnw.cmd clean test
 .\mvnw.cmd clean verify
-.\mvnw.cmd spring-boot:run
+java -jar target/graphql-query-service-0.0.1-SNAPSHOT.jar
 ```
 
 The executable JAR runs with `java -jar target/graphql-query-service-0.0.1-SNAPSHOT.jar`.
@@ -63,6 +62,17 @@ remain failures; see `tests/contracts/test_graphql_compatibility.py`.
 The service aligns gRPC runtime libraries on **1.83.1**. The earlier shaded
 transport 1.68.1 is vulnerable to CVE-2025-55163; no scanner suppression is used.
 Shared generated contracts and security adapter source remain unchanged.
+
+The published GraphQL Java **25.0** engine embeds Guava **32.1.2-jre**; a normal
+Guava dependency override cannot replace that shaded copy. The service-local
+Maven reactor therefore rebuilds the unmodified official 25.0 source artifact
+with Guava **33.7.2-jre** for CVE-2026-102554. It verifies the source artifact's
+pinned SHA-256, preserves its resources, MIT license and module name, and reapplies
+the upstream Guava/ANTLR package relocations. No development GraphQL release or
+scanner suppression is used. `application/pom.xml` builds the existing `src/`
+tree and keeps the executable JAR and test reports in `target/`; application
+tests run against the rebuilt engine. Remove this temporary source rebuild when
+a compatible upstream release includes fixed Guava.
 
 ## Execution limits
 
