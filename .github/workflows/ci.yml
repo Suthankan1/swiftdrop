@@ -885,10 +885,27 @@ jobs:
           echo "================================================================================"
           cat "$MANIFEST_FILE"
 
+          echo ""
+          echo "Generating structured release candidate manifest JSON..."
+          ./platform/kubernetes/release/generate-release-manifest.sh \
+            --sha "${SHA_FULL}" \
+            --branch "test" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --approval-ref "test-push-sha-${SHA_SHORT}" \
+            --digests-file "$MANIFEST_FILE" \
+            --output "build/artifacts/digests/release-candidate-manifest.json"
+
+          ./platform/kubernetes/release/verify-candidate-manifest.sh \
+            --manifest "build/artifacts/digests/release-candidate-manifest.json" \
+            --expected-sha "${SHA_FULL}"
+
       - name: Upload publication manifests
         if: always()
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: ghcr-published-image-digests
-          path: build/artifacts/digests/published-images.txt
+          path: |
+            build/artifacts/digests/published-images.txt
+            build/artifacts/digests/release-candidate-manifest.json
           retention-days: 30
