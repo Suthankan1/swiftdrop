@@ -1,0 +1,24 @@
+# ==============================================================================
+# SwiftDrop Platform — Prometheus ClusterIP Service (Issue #160)
+# Private internal service; zero public ingress or external node ports.
+# ==============================================================================
+
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: swiftdrop-prometheus
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "prometheus") | nindent 4 }}
+spec:
+  type: {{ .Values.prometheus.service.type }}
+  selector:
+    {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "prometheus") | nindent 4 }}
+  ports:
+    - name: http-metrics
+      port: {{ .Values.prometheus.service.port }}
+      targetPort: 9090
+      protocol: TCP
+{{- end }}
+

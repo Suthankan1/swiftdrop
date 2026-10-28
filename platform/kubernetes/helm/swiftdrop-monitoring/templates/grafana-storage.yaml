@@ -1,0 +1,22 @@
+# ==============================================================================
+# SwiftDrop Platform — Grafana Persistent Storage PVC (Issue #160)
+# Strictly bounded storage for Grafana user sessions, state and plugins.
+# ==============================================================================
+
+{{- if and .Values.grafana.enabled .Values.grafana.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: swiftdrop-grafana-data
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.grafana.persistence.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.grafana.persistence.size | quote }}
+{{- end }}
+

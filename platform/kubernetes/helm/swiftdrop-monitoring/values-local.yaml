@@ -1,0 +1,109 @@
+# ==============================================================================
+# SwiftDrop Platform — Local Development Monitoring Helm Values (Issue #160)
+# Environment: k3d-swiftdrop-local (Single-node K3s v1.31.2, Apple Silicon ARM64)
+# Allocatable Docker RAM: 4.06 GiB. Conservative memory footprints.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+
+namespaces:
+  monitoring: swiftdrop-monitoring
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+prometheus:
+  enabled: true
+  scrapeInterval: 15s
+  evaluationInterval: 15s
+  retention: 24h
+  retentionSize: 1500MB
+  resources:
+    requests:
+      cpu: 40m
+      memory: 96Mi
+    limits:
+      cpu: 200m
+      memory: 192Mi
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 2Gi
+
+blackboxExporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 24Mi
+    limits:
+      cpu: 50m
+      memory: 48Mi
+
+alertmanager:
+  enabled: true
+  retention: 24h
+  resources:
+    requests:
+      cpu: 15m
+      memory: 32Mi
+    limits:
+      cpu: 80m
+      memory: 64Mi
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 500Mi
+  config:
+    mailHost: mailpit.swiftdrop-messaging.svc.cluster.local
+    mailPort: 1025
+    mailFrom: alerts@swiftdrop.local
+    mailTo: operator@swiftdrop.local
+
+grafana:
+  enabled: true
+  secretRefs:
+    adminSecretName: grafana-admin-secret
+  resources:
+    requests:
+      cpu: 30m
+      memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 128Mi
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 1Gi
+
+logging:
+  enabled: true
+  loki:
+    retention: 24h
+    resources:
+      requests:
+        cpu: 20m
+        memory: 48Mi
+      limits:
+        cpu: 100m
+        memory: 96Mi
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 1Gi
+  promtail:
+    resources:
+      requests:
+        cpu: 15m
+        memory: 24Mi
+      limits:
+        cpu: 80m
+        memory: 48Mi
+

@@ -1,0 +1,100 @@
+# ==============================================================================
+# SwiftDrop Platform — Prometheus Server Deployment (Issue #160)
+# Minimal, secure, non-root deployment with bounded TSDB retention.
+# ==============================================================================
+
+{{- if .Values.prometheus.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swiftdrop-prometheus
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "prometheus") | nindent 4 }}
+spec:
+  replicas: {{ .Values.prometheus.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "prometheus") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "prometheus") | nindent 8 }}
+    spec:
+      serviceAccountName: swiftdrop-prometheus-sa
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.prometheus.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.prometheus.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.prometheus.securityContext.fsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: prometheus
+          image: {{ include "swiftdrop-monitoring.image" .Values.prometheus.image }}
+          imagePullPolicy: {{ .Values.prometheus.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.prometheus.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.prometheus.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time={{ .Values.prometheus.retention }}"
+            - "--storage.tsdb.retention.size={{ .Values.prometheus.retentionSize }}"
+            - "--web.enable-lifecycle"
+            - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+            - "--web.console.templates=/usr/share/prometheus/consoles"
+          ports:
+            - name: http-metrics
+              containerPort: 9090
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.prometheus.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+              readOnly: true
+            - name: rules-volume
+              mountPath: /etc/prometheus/rules
+              readOnly: true
+            - name: storage-volume
+              mountPath: /prometheus
+      volumes:
+        - name: config-volume
+          configMap:
+            name: swiftdrop-prometheus-config
+        - name: rules-volume
+          configMap:
+            name: swiftdrop-prometheus-rules
+        - name: storage-volume
+          {{- if .Values.prometheus.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: swiftdrop-prometheus-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}
+

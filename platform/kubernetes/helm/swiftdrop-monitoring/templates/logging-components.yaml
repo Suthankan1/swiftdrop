@@ -1,0 +1,283 @@
+# ==============================================================================
+# SwiftDrop Platform — Lightweight Private Logging (Loki + Promtail) (Issue #160)
+# Strictly bounded, single-binary Loki with redaction regex pipeline in Promtail.
+# ==============================================================================
+
+{{- if .Values.logging.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-loki-config
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "loki") | nindent 4 }}
+data:
+  loki.yaml: |
+    auth_enabled: false
+    server:
+      http_listen_port: 3100
+      grpc_listen_port: 9096
+      log_level: info
+
+    common:
+      path_prefix: /loki
+      storage:
+        filesystem:
+          chunks_directory: /loki/chunks
+          rules_directory: /loki/rules
+      replication_factor: 1
+      ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: inmemory
+
+    schema_config:
+      configs:
+        - from: 2026-01-01
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+
+    limits_config:
+      reject_old_samples: true
+      reject_old_samples_max_age: 24h
+      retention_period: {{ .Values.logging.loki.retention }}
+      max_query_length: 24h
+      max_query_parallelism: 2
+
+    compactor:
+      working_directory: /loki/compactor
+      compactor_ring:
+        kvstore:
+          store: inmemory
+      retention_enabled: true
+      delete_request_store: filesystem
+
+---
+{{- if .Values.logging.loki.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: swiftdrop-loki-data
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "loki") | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.logging.loki.persistence.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.logging.loki.persistence.size | quote }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swiftdrop-loki
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "loki") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "loki") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "loki") | nindent 8 }}
+    spec:
+      serviceAccountName: swiftdrop-loki-sa
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.logging.loki.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.logging.loki.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.logging.loki.securityContext.fsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: loki
+          image: {{ include "swiftdrop-monitoring.image" .Values.logging.loki.image }}
+          imagePullPolicy: {{ .Values.logging.loki.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.logging.loki.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.logging.loki.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
+          args:
+            - "-config.file=/etc/loki/loki.yaml"
+          ports:
+            - name: http
+              containerPort: 3100
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.logging.loki.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/loki
+              readOnly: true
+            - name: storage-volume
+              mountPath: /loki
+      volumes:
+        - name: config-volume
+          configMap:
+            name: swiftdrop-loki-config
+        - name: storage-volume
+          {{- if .Values.logging.loki.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: swiftdrop-loki-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swiftdrop-loki
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "loki") | nindent 4 }}
+spec:
+  type: {{ .Values.logging.loki.service.type }}
+  selector:
+    {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "loki") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.logging.loki.service.port }}
+      targetPort: 3100
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-promtail-config
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "promtail") | nindent 4 }}
+data:
+  promtail.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+      log_level: info
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://swiftdrop-loki.{{ .Values.namespaces.monitoring }}.svc.{{ .Values.global.clusterDomain }}:3100/loki/api/v1/push
+
+    scrape_configs:
+      - job_name: swiftdrop-apps-logs
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: swiftdrop-apps
+              namespace: {{ .Values.namespaces.apps }}
+              __path__: /var/log/pods/{{ .Values.namespaces.apps }}_*/*/*.log
+
+        pipeline_stages:
+          # Redaction pipeline: Ensure zero tokens, passwords, secrets, or keys are ingested
+          - replace:
+              expression: '(Bearer\s+)[A-Za-z0-9\-\._~\+\/]+=*'
+              replace: '${1}[REDACTED_JWT]'
+          - replace:
+              expression: '(password[\"\']?\s*[:=]\s*[\"\']?)[^\"\'\s]+'
+              replace: '${1}[REDACTED_PASSWORD]'
+          - replace:
+              expression: '(secret[\"\']?\s*[:=]\s*[\"\']?)[^\"\'\s]+'
+              replace: '${1}[REDACTED_SECRET]'
+          - replace:
+              expression: '(Authorization:\s*)[^\r\n]+'
+              replace: '${1}[REDACTED_AUTH]'
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: swiftdrop-promtail
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "promtail") | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "promtail") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "promtail") | nindent 8 }}
+    spec:
+      serviceAccountName: swiftdrop-promtail-sa
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        runAsNonRoot: false
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: promtail
+          image: {{ include "swiftdrop-monitoring.image" .Values.logging.promtail.image }}
+          imagePullPolicy: {{ .Values.logging.promtail.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          args:
+            - "-config.file=/etc/promtail/promtail.yaml"
+          ports:
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.logging.promtail.resources | nindent 12 }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/promtail
+              readOnly: true
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: swiftdrop-promtail-config
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+{{- end }}
+

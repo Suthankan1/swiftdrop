@@ -1,0 +1,61 @@
+# ==============================================================================
+# SwiftDrop Platform — Grafana Provisioning ConfigMap (Issue #160)
+# Declarative datasources and dashboard providers. Zero runtime passwords in git.
+# ==============================================================================
+
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-grafana-datasources
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://swiftdrop-prometheus.{{ .Values.namespaces.monitoring }}.svc.{{ .Values.global.clusterDomain }}:9090
+        isDefault: true
+        uid: swiftdrop-prometheus
+        editable: false
+        jsonData:
+          timeInterval: {{ .Values.prometheus.scrapeInterval }}
+          httpMethod: POST
+
+      {{- if .Values.logging.enabled }}
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://swiftdrop-loki.{{ .Values.namespaces.monitoring }}.svc.{{ .Values.global.clusterDomain }}:3100
+        uid: swiftdrop-loki
+        editable: false
+        jsonData:
+          maxLines: 1000
+      {{- end }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-grafana-providers
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'SwiftDrop Dashboards'
+        orgId: 1
+        folder: 'SwiftDrop Platform'
+        type: file
+        disableDeletion: true
+        editable: false
+        options:
+          path: /var/lib/grafana/dashboards
+{{- end }}
+
