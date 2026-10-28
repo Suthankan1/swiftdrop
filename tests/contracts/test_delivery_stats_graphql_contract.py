@@ -434,8 +434,8 @@ def main():
 
     # Check whether #113 has added stats method
     has_stats_rpc = "GetDeliveryStatsInternal" in proto_content
-    runner.check(not has_stats_rpc,
-                 "GetDeliveryStatsInternal is currently absent from delivery.proto (confirms #113 dependency is pending)")
+    runner.check(has_stats_rpc,
+                 "GetDeliveryStatsInternal is present in delivery.proto (#113 dependency resolved)")
 
     # Verify deadline constant
     deadline_ms = 2000

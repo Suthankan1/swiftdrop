@@ -32,7 +32,6 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <!-- Override vulnerable transitive Guava (CVE-2026-102554). -->
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>

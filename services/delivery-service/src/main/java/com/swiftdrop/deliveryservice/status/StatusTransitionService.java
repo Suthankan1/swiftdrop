@@ -125,6 +125,13 @@ public class StatusTransitionService {
 
         // 6. Record append-only immutable history entry in same local database transaction
         Instant occurredAt = Instant.now();
+
+        // Close active courier assignment atomically upon terminal state transition (Issue #125)
+        if ((request.newStatus() == ParcelStatus.DELIVERED || request.newStatus() == ParcelStatus.FAILED)
+                && courierAssignmentContract != null) {
+            courierAssignmentContract.closeActiveAssignmentForTerminalParcel(parcelId, occurredAt);
+        }
+
         StatusHistory history = new StatusHistory(
                 UUID.randomUUID(),
                 parcelId,

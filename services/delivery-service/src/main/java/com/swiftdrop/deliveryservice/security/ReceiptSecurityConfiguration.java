@@ -45,7 +45,7 @@ public class ReceiptSecurityConfiguration {
             );
         }
         return http
-                .securityMatcher("/api/v1/parcels", "/api/v1/parcels/**", "/api/v1/merchant/parcels", "/api/v1/merchant/parcels/**", "/api/v1/assignments", "/api/v1/assignments/**", "/actuator/health", "/actuator/health/**")
+                .securityMatcher("/api/v1/parcels", "/api/v1/parcels/**", "/api/v1/merchant/parcels", "/api/v1/merchant/parcels/**", "/api/v1/assignments", "/api/v1/assignments/**", "/actuator/health", "/actuator/health/**", "/api/v1/tracking", "/api/v1/tracking/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -55,13 +55,14 @@ public class ReceiptSecurityConfiguration {
                 .anonymous(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tracking", "/api/v1/tracking/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/merchant/parcels").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/receipt").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/events").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/parcels/*/proof").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels/*/proof", "/api/v1/parcels/*/proof/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/assignments").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/assignments", "/api/v1/assignments/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/assignments", "/api/v1/assignments/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/parcels", "/api/v1/parcels/*", "/api/v1/parcels/*/history").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/parcels").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
