@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useContext, useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { AuthContext } from '../../../auth/context'
 import type { createDeliveryApi } from '../api/delivery'
 import { DeliveryError } from '../api/delivery'
 import type { ParcelDetailResponse } from '../api/deliveryContracts'
@@ -11,6 +12,8 @@ import {
   LIFECYCLE_STEPS,
 } from './customerUiUtils'
 import { ReceiptDownloadButton } from './ReceiptDownloadButton'
+import { useParcelTrackingStream } from '../hooks/useParcelTrackingStream'
+import type { ReconnectConfig } from '../api/trackingStreamContracts'
 
 interface CustomerTrackingModalProps {
   parcelId: string | null
@@ -20,6 +23,13 @@ interface CustomerTrackingModalProps {
   deliveryApi: ReturnType<typeof createDeliveryApi>
   onDownloadReceipt: (parcelId: string) => Promise<void>
   isDownloadingReceipt: boolean
+  getAccessToken?: () => Promise<string | null>
+  handleSessionExpiry?: () => Promise<void>
+  subject?: string | null
+  gatewayUrl?: string
+  fetch?: typeof globalThis.fetch
+  reconnectConfig?: ReconnectConfig
+  randomFn?: () => number
 }
 
 export function CustomerTrackingModal({
@@ -30,10 +40,24 @@ export function CustomerTrackingModal({
   deliveryApi,
   onDownloadReceipt,
   isDownloadingReceipt,
+  getAccessToken: propGetAccessToken,
+  handleSessionExpiry: propHandleSessionExpiry,
+  subject: propSubject,
+  gatewayUrl,
+  fetch: customFetch,
+  reconnectConfig,
+  randomFn,
 }: CustomerTrackingModalProps) {
   const [copyFeedback, setCopyFeedback] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
+  const queryClient = useQueryClient()
+
+  const auth = useContext(AuthContext)
+  const effectiveGetAccessToken = propGetAccessToken ?? auth?.getAccessToken
+  const effectiveHandleSessionExpiry = propHandleSessionExpiry ?? auth?.handleSessionExpiry
+  const effectiveSubject =
+    propSubject ?? (auth?.snapshot.status === 'authenticated' ? auth.snapshot.subject : null)
 
   const query = useQuery({
     queryKey: ['private', 'parcel-detail', parcelId],
@@ -43,6 +67,33 @@ export function CustomerTrackingModal({
       return deliveryApi.getParcel(parcelId, signal)
     },
     staleTime: 10_000,
+  })
+
+  const {
+    parcel: liveParcel,
+    streamState,
+    retry: retryStream,
+  } = useParcelTrackingStream({
+    parcelId,
+    enabled: isOpen && !!parcelId && !!effectiveSubject && !!effectiveGetAccessToken && !!query.data,
+    initialParcel: query.data,
+    getAccessToken: effectiveGetAccessToken ?? (async () => null),
+    handleSessionExpiry: effectiveHandleSessionExpiry,
+    subject: effectiveSubject,
+    reconcileRest: async signal => {
+      if (!parcelId) return null
+      try {
+        const fresh = await deliveryApi.getParcel(parcelId, signal)
+        queryClient.setQueryData(['private', 'parcel-detail', parcelId], fresh)
+        return fresh
+      } catch {
+        return null
+      }
+    },
+    gatewayUrl,
+    fetch: customFetch,
+    reconnectConfig,
+    randomFn,
   })
 
   // Keyboard navigation & focus management
@@ -61,7 +112,7 @@ export function CustomerTrackingModal({
 
   if (!isOpen) return null
 
-  const parcel: ParcelDetailResponse | undefined = query.data
+  const parcel: ParcelDetailResponse | undefined = liveParcel || query.data
   const activeStatus = parcel?.currentStatus || 'CREATED'
   const presentation = getStatusPresentation(activeStatus)
   const activeStep = getActiveStepIndex(activeStatus)
@@ -116,14 +167,14 @@ export function CustomerTrackingModal({
         </header>
 
         <div className="modal-body">
-          {query.isPending && (
+          {query.isPending && !parcel && (
             <div className="tracking-loading-state" aria-busy="true">
               <span className="btn-spinner large" aria-hidden="true" />
               <p>Fetching authoritative parcel state...</p>
             </div>
           )}
 
-          {query.isError && (
+          {query.isError && !parcel && (
             <div className="state-panel state-panel-error" role="alert">
               <h3>Unable to load parcel details</h3>
               <p>
@@ -149,6 +200,11 @@ export function CustomerTrackingModal({
               <div className="tracking-status-banner">
                 <div className="banner-left">
                   <span className={presentation.pillClass}>{presentation.label}</span>
+                  {streamState.status === 'connected' && (
+                    <span className="live-stream-chip" title="Live stream active" aria-label="Live updates active">
+                      ● Live
+                    </span>
+                  )}
                   <p className="banner-description">{presentation.description}</p>
                 </div>
                 <button
@@ -241,13 +297,65 @@ export function CustomerTrackingModal({
                 />
               </div>
 
-              {/* SSE Stream Protocol Notice */}
+              {/* SSE Stream Protocol Notice & Live Status */}
               <aside className="sse-notice" aria-label="Streaming note">
-                <span className="sse-dot" aria-hidden="true" />
-                <p>
-                  <strong>Real-Time Updates:</strong> Live updates are refreshed via secure REST on demand.
-                  Server-Sent Events (SSE) live streaming integration is scheduled for the Phase 3b platform cutover.
-                </p>
+                <span
+                  className={`sse-dot ${
+                    streamState.status === 'connected'
+                      ? 'is-live'
+                      : streamState.status === 'reconnecting'
+                        ? 'is-reconnecting'
+                        : streamState.status === 'error' || streamState.status === 'forbidden'
+                          ? 'is-error'
+                          : 'is-disconnected'
+                  }`}
+                  aria-hidden="true"
+                />
+                <div className="sse-notice-body">
+                  <p>
+                    <strong>Real-Time Updates:</strong>{' '}
+                    {streamState.status === 'connected' && (
+                      <span className="sse-status-badge is-live">Live stream active</span>
+                    )}
+                    {streamState.status === 'reconnecting' && (
+                      <span className="sse-status-badge is-reconnecting">
+                        Interrupted — reconnecting (attempt {streamState.retryAttempt}/{streamState.maxRetries})...
+                      </span>
+                    )}
+                    {streamState.status === 'connecting' && (
+                      <span className="sse-status-badge is-connecting">Connecting live stream...</span>
+                    )}
+                    {streamState.status === 'disconnected' && (
+                      <span className="sse-status-badge is-disconnected">
+                        {streamState.isOffline ? 'Offline — updates paused' : 'Disconnected'}
+                      </span>
+                    )}
+                    {streamState.status === 'auth-required' && (
+                      <span className="sse-status-badge is-error">Authentication expired. Please sign in again.</span>
+                    )}
+                    {streamState.status === 'forbidden' && (
+                      <span className="sse-status-badge is-error">Access denied to parcel live stream.</span>
+                    )}
+                    {streamState.status === 'error' && (
+                      <span className="sse-status-badge is-error">
+                        {streamState.errorMessage || 'Connection recovery failed.'}
+                      </span>
+                    )}
+                    {streamState.status === 'idle' && (
+                      <span>Live stream initialized for authenticated viewer.</span>
+                    )}
+                  </p>
+                  {streamState.status === 'error' && (
+                    <button
+                      type="button"
+                      className="button button-secondary button-small sse-retry-btn"
+                      onClick={retryStream}
+                      aria-label="Retry live updates connection"
+                    >
+                      Retry Connection
+                    </button>
+                  )}
+                </div>
               </aside>
             </div>
           )}
