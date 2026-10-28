@@ -1439,3 +1439,51 @@ main:focus { outline: none; }
 .reports-page .report-partial { padding: .8rem 1rem; border: 1px solid #e3c98a; border-left: 4px solid #b7791f; border-radius: .4rem; background: #fdf6e3; }
 .reports-page .metric-value { overflow-wrap: anywhere; }
 @media (max-width: 600px) { .reports-page .metric-value { font-size: 26px; } }
+
+/* Operational Reporting Styles (Issue #147 / N10-WF24) */
+.admin-reports-page { padding-block: 30px 60px; }
+.admin-reports-header { margin-bottom: 24px; }
+.admin-back-link { display: inline-block; margin-bottom: 16px; font-size: 14px; }
+.reporting-timezone-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 10px;
+  background: #f0f4ee;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+.report-filter-card { margin-bottom: 32px; }
+.report-filter-form { margin-top: 16px; }
+.report-section { margin-top: 36px; }
+.report-error-text { color: #b42318; font-weight: 500; font-size: 14px; margin-top: 8px; }
+.report-empty-panel { margin-bottom: 20px; }
+.report-error-panel { border-left: 4px solid #b42318; }
+.report-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.merchant-pending-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.button-small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.report-footer-meta {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+@media (max-width: 600px) {
+  .admin-reports-page { padding-inline: 12px; }
+  .merchant-pending-badge-row { flex-direction: column; align-items: stretch; }
+  .merchant-pending-badge-row .button { width: 100%; text-align: center; }
+}
