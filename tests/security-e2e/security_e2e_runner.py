@@ -23,6 +23,7 @@ from harness_common import (
 )
 from test_jwt_rejection import run_jwt_rejection_suite
 from test_role_and_ownership import run_role_and_ownership_suite
+from test_business_authorization import BusinessAuthorizationRegressionRunner
 
 REPORT_OUTPUT_DIR = Path(__file__).resolve().parent / "reports"
 
@@ -73,7 +74,7 @@ def run_full_security_e2e_suite(
     report = SecurityTestReport()
     start_time = time.time()
 
-    print("\n[Step 2/4] Executing Suite 1: L06 JWT Authentication Rejection (401)...")
+    print("\n[Step 2/5] Executing Suite 1: L06 JWT Authentication Rejection (401)...")
     run_jwt_rejection_suite(
         gateway_url=gateway_url,
         accounts_url=accounts_url,
@@ -81,7 +82,7 @@ def run_full_security_e2e_suite(
         report=report,
     )
 
-    print("\n[Step 3/4] Executing Suite 2: L07 Role Denial (403) & L08 Ownership Isolation...")
+    print("\n[Step 3/5] Executing Suite 2: L07 Role Denial (403) & L08 Ownership Isolation...")
     run_role_and_ownership_suite(
         gateway_url=gateway_url,
         accounts_url=accounts_url,
@@ -89,8 +90,17 @@ def run_full_security_e2e_suite(
         report=report,
     )
 
+    print("\n[Step 4/5] Executing Suite 3: L09-L15 Business Workflow Authorization Regression (#162)...")
+    biz_runner = BusinessAuthorizationRegressionRunner(
+        gateway_url=gateway_url,
+        accounts_url=accounts_url,
+        keycloak_url=keycloak_url,
+        report=report,
+    )
+    biz_runner.run_all()
+
     duration = time.time() - start_time
-    print(f"\n[Step 4/4] Completed all test executions in {duration:.2f}s.")
+    print(f"\n[Step 5/5] Completed all test executions in {duration:.2f}s.")
 
     report.print_summary()
 
@@ -134,7 +144,21 @@ def main():
     parser.add_argument("--accounts-url", default="http://localhost:8081", help="Accounts Service URL")
     parser.add_argument("--keycloak-url", default="http://localhost:8090", help="Keycloak IdP URL")
     parser.add_argument("--mailpit-url", default="http://localhost:8025", help="Mailpit SMTP Dev URL")
+    parser.add_argument("--business-auth-only", action="store_true", help="Run only the Issue #162 multi-actor business authorization regression suite")
     args = parser.parse_args()
+
+    if args.business_auth_only:
+        report = SecurityTestReport()
+        runner = BusinessAuthorizationRegressionRunner(
+            gateway_url=args.gateway_url,
+            accounts_url=args.accounts_url,
+            keycloak_url=args.keycloak_url,
+            report=report,
+        )
+        runner.run_all()
+        report.print_summary()
+        has_failures = any(r.status == "FAIL" for r in report.results)
+        return 1 if has_failures else 0
 
     return run_full_security_e2e_suite(
         gateway_url=args.gateway_url,
