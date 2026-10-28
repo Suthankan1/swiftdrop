@@ -1,0 +1,148 @@
+# ==============================================================================
+# SwiftDrop Platform — Staging Deployment Helm Values (Issue #167)
+# Validates release candidates under isolated staging conditions with full
+# persistent stateful dependencies, complete readiness scaling, and zero placeholders.
+# Canonical Reference: docs/architecture/BASELINE.md, ADR-0011
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+
+namespaces:
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+ingress:
+  enabled: true
+  className: traefik
+  host: staging.swiftdrop.local
+  subdomains:
+    enabled: true
+    app: app.staging.swiftdrop.local
+    api: api.staging.swiftdrop.local
+    auth: auth.staging.swiftdrop.local
+  tls:
+    enabled: true
+    secretName: swiftdrop-tls-cert
+  keycloak:
+    exposeAdmin: false
+
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+frontend:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 30m
+      memory: 48Mi
+    limits:
+      cpu: 100m
+      memory: 96Mi
+
+apiGateway:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+accounts:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+pricing:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+delivery:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+communications:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=32m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+graphql:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 80m
+      memory: 192Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  config:
+    accountsGrpcTarget: ""
+    deliveryGrpcTarget: ""
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=32m -Xss512k"
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  args:
+    - "start"
+    - "--http-enabled=true"
+    - "--import-realm"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      cpu: 1000m
+      memory: 768Mi
+  config:
+    javaOptsAppend: "-Dkeycloak.migration.replace-placeholders=true -Xms128m -Xmx512m"
+
+# Stateful service interface stubs are strictly prohibited in staging release promotion.
+# Release candidates must interact with real PostgreSQL, Kafka KRaft, and MinIO stateful workloads.
+statefulInterfaces:
+  createPlaceholderServices: false
