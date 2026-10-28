@@ -16,7 +16,7 @@
       "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
       "targets": [
         {
-          "expr": "min(probe_success{job=\"swiftdrop-readiness\"})",
+          "expr": "min(probe_success{job=\"swiftdrop-readiness\"}) or vector(0)",
           "legendFormat": "Gate State",
           "refId": "A"
         }

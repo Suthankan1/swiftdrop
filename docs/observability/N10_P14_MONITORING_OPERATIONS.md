@@ -184,6 +184,11 @@ Grafana automatically provisions six operational dashboards via ConfigMaps:
 
 Prometheus evaluates 12 reviewed alert rules defined in `files/alerts/swiftdrop-alerts.yaml`:
 
+Unless an alert links to a separate approved policy decision, its threshold is an
+initial operating value: **PROPOSED — OWNER APPROVAL REQUIRED**. Query verification
+evidence and known provider gaps are recorded in
+`N10_P14A_MONITORING_QUERY_VERIFICATION.md`.
+
 ### 5.1 ServiceReadinessFailed
 - **Severity:** `critical`
 - **Condition:** `probe_success == 0` for 30 seconds.
@@ -201,15 +206,15 @@ Prometheus evaluates 12 reviewed alert rules defined in `files/alerts/swiftdrop-
 
 ### 5.3 OutboxRelayOldestAgeExceeded
 - **Severity:** `critical`
-- **Condition:** `swiftdrop_outbox_oldest_age_seconds > 120` for 2 minutes.
-- **Description:** Delivery outbox relay backlog contains uncommitted events older than 120 seconds.
+- **Condition:** `swiftdrop_outbox_oldest_age_seconds > 60` for 2 minutes.
+- **Description:** Delivery outbox relay backlog contains uncommitted events older than 60 seconds.
 - **Operator Runbook:**
   1. Check Kafka broker availability in `swiftdrop-messaging`.
   2. Inspect `delivery-service` outbox relay thread logs for transaction rollback or serialization errors.
 
 ### 5.4 OutboxRelayBacklogAccumulation
 - **Severity:** `warning`
-- **Condition:** `swiftdrop_outbox_pending > 50` for 3 minutes.
+- **Condition:** `swiftdrop_outbox_pending > 100` for 3 minutes.
 - **Description:** Pending outbox events are accumulating faster than the relay can publish.
 - **Operator Runbook:** Review database I/O performance and Kafka producer batching.
 
@@ -221,32 +226,32 @@ Prometheus evaluates 12 reviewed alert rules defined in `files/alerts/swiftdrop-
 
 ### 5.6 WebhookTerminalExhaustionSpike
 - **Severity:** `warning`
-- **Condition:** `rate(swiftdrop_webhook_exhausted_total[5m]) > 0` for 2 minutes.
+- **Condition:** `rate(swiftdrop_webhook_exhausted_total[5m]) > 5` for 2 minutes (more than five events per second, not five events per five minutes).
 - **Description:** Merchant webhooks have exhausted maximum retry attempts.
 - **Operator Runbook:** Check merchant receiver URL status and inspect HMAC signing configuration.
 
 ### 5.7 NotificationPendingBacklogAgeExceeded
 - **Severity:** `critical`
-- **Condition:** `swiftdrop_notification_pending_age_seconds > 180` for 3 minutes.
+- **Condition:** `swiftdrop_notification_pending_age_seconds > 120` for 3 minutes.
 - **Description:** Communications notification jobs are stalled in pending state.
 - **Operator Runbook:** Verify Mailpit/SMTP sink connectivity and worker thread pool saturation.
 
 ### 5.8 KafkaConsumerFailureSpike
 - **Severity:** `warning`
-- **Condition:** `rate(swiftdrop_kafka_consumer_processed_total{status="failure"}[5m]) > 0.08` for 2 minutes.
+- **Condition:** `rate(swiftdrop_kafka_consumer_processed_total{status="failure"}[5m]) > 0` for 2 minutes.
 - **Description:** Kafka consumer error rate in `communications-service` exceeds threshold.
 - **Operator Runbook:** Check deserialization errors and database lock contention in `consumed_events`.
 
 ### 5.9 GrpcServerDeadlineExceededSpike
 - **Severity:** `warning`
-- **Condition:** `rate(swiftdrop_grpc_server_errors{code="DEADLINE_EXCEEDED"}[5m]) > 0.05` for 2 minutes.
+- **Condition:** `rate(swiftdrop_grpc_server_errors_total{status="DEADLINE_EXCEEDED"}[5m]) > 2` for 2 minutes.
 - **Description:** Internal synchronous gRPC calls between services are timing out.
 - **Operator Runbook:** Identify slow downstream database queries in target microservice.
 
 ### 5.10 ApplicationPodCrashLooping
 - **Severity:** `critical`
-- **Condition:** `increase(kube_pod_container_status_restarts_total[5m]) > 3` for 3 minutes.
-- **Description:** Microservice pod is in CrashLoopBackOff.
+- **Condition:** `rate(kube_pod_container_status_restarts_total{namespace=~"swiftdrop-.*"}[5m]) > 0.05` for 3 minutes.
+- **Description:** A microservice container has a sustained restart rate; this expression does not directly inspect the CrashLoopBackOff state.
 - **Operator Runbook:** Inspect OOMKilled status and previous container logs: `kubectl logs -p`.
 
 ### 5.11 MonitoringDiskSpaceLow
@@ -257,7 +262,7 @@ Prometheus evaluates 12 reviewed alert rules defined in `files/alerts/swiftdrop-
 
 ### 5.12 ReleaseCandidateReadinessRegression
 - **Severity:** `critical`
-- **Condition:** Staging release readiness probe failing during release window.
+- **Condition:** `(min(probe_success{job="swiftdrop-readiness"}) or vector(0)) == 0` for 1 minute; a completely missing readiness vector fails closed.
 - **Description:** Automated release gate detected readiness regression on candidate pod.
 - **Operator Runbook:** Halt staging promotion and initiate automated rollback per #167 runbook.
 
@@ -305,25 +310,25 @@ kubectl port-forward -n swiftdrop-messaging svc/mailpit 8025:8025
 
 ## 8. Synthetic Failure Injection & P14A Handoff
 
-The synthetic failure injection script `simulate-failure.sh` provides deterministic validation for Issue #166 (P14A):
+The synthetic failure injection script `simulate-failure.sh` is an operator-owned starting point for Issue #166 (P14A), not completed acceptance evidence. Before use it must capture the original replica count, restore through a trap, fail when the expected metric/alert/message is absent, and verify alert resolution. The intended observation sequence is:
 1. Scales `pricing-service` to 0 replicas: `kubectl scale deployment/pricing-service --replicas=0 -n swiftdrop-apps`
-2. Blackbox probe `probe_success{instance="http://pricing-service.swiftdrop-apps.svc.cluster.local:8081/actuator/health"}` transitions from 1 to 0.
+2. Blackbox probe `probe_success{instance="http://pricing-service.swiftdrop-apps.svc.cluster.local:8082/actuator/health"}` transitions from 1 to 0.
 3. Prometheus alert rule `ServiceReadinessFailed` transitions to `PENDING` then `FIRING` within 30 seconds.
 4. Alertmanager routes email notification to Mailpit.
 5. Operator inspects notification in Mailpit UI at `http://127.0.0.1:8025`.
-6. Restoration: Scales `pricing-service` back to 1 replica. Probe returns to 1, alert resolves, and resolved notification is received.
+6. Restoration: Restores `pricing-service` to its captured original replica count. Probe returns to 1, the alert resolves, and a resolved notification is received.
 
 ---
 
 ## 9. Verification & Test Evidence
 
-All 57 Kubernetes and platform automated tests pass:
+Historical PR #272 evidence reported 57 Kubernetes and platform automated tests passing in its author environment:
 ```bash
 pytest tests/kubernetes/
 ============================== 57 passed in 1.41s ==============================
 ```
 
-Test coverage includes:
+This historical result is not a live-runtime verification and was not reproducible on the Issue #166 workstation because Helm is unavailable. Test coverage includes:
 - `test_monitoring_chart.py`: 13 automated tests verifying metadata, least-privilege ServiceAccounts, ClusterIP enforcement, zero Ingress, non-root security contexts, bounded TSDB retention, alert rule integrity, Mailpit SMTP routing, anonymous access rejection, Promtail secret redaction, and strict $0 policy compliance.
 - `test_helm_chart_security.py`: 12 automated tests for application chart security.
 - `test_cluster_config.py` & `test_cluster_safety.py`: Cluster isolation and local safety tests.

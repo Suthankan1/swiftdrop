@@ -23,7 +23,7 @@ groups:
           affected_component: "{{ $labels.instance }}"
           operational_impact: "Traffic routing shifted; dependent calls may fail or return 503 Service Unavailable."
           suggested_investigation: "Check pod logs and health endpoint (/actuator/health/readiness) for database/broker connectivity issues."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-service-readiness-failure"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#51-servicereadinessfailed"
           expected_recovery: "probe_success returns 1 after underlying dependencies recover."
 
       - alert: MonitoringTargetScrapeMissing
@@ -41,7 +41,7 @@ groups:
           affected_component: "{{ $labels.job }}/{{ $labels.instance }}"
           operational_impact: "Telemetry blindness for this instance; degradation or failures will not be visible."
           suggested_investigation: "Verify network policies, pod status, and whether management port is reachable from monitoring namespace."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-missing-scrape-target"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#52-monitoringtargetscrapemissing"
           expected_recovery: "Target scrape status returns to up == 1."
 
   - name: swiftdrop-outbox-delivery
@@ -62,7 +62,7 @@ groups:
           affected_component: "delivery-service/KafkaOutboxRelay"
           operational_impact: "Domain events (parcel.status.changed.v1) are not reaching Kafka; downstream notifications stalled."
           suggested_investigation: "Inspect delivery-service Kafka producer logs, broker reachability, and scheduling thread state."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-outbox-oldest-age"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#53-outboxrelayoldestageexceeded"
           expected_recovery: "swiftdrop_outbox_oldest_age_seconds drops below 60s as outbox relay commits backlog."
 
       - alert: OutboxRelayBacklogAccumulation
@@ -80,7 +80,7 @@ groups:
           affected_component: "delivery-service/KafkaOutboxRelay"
           operational_impact: "Increased latency for downstream event dispatch and webhook delivery."
           suggested_investigation: "Check database connection pool, Kafka broker publish latency, and relay batch throughput."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-outbox-backlog"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#54-outboxrelaybacklogaccumulation"
           expected_recovery: "swiftdrop_outbox_pending drops below 100 events."
 
       - alert: OutboxDeadLetterEventsAccumulated
@@ -98,7 +98,7 @@ groups:
           affected_component: "delivery-service/KafkaOutboxRelay"
           operational_impact: "Data loss or permanent delivery stall for affected parcel status transitions."
           suggested_investigation: "Query outbox table for status='DEAD_LETTER', examine failure reasons and event payloads."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-outbox-dead-letter"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#55-outboxdeadlettereventsaccumulated"
           expected_recovery: "Dead-letter events are resolved or manually re-queued and gauge returns to 0."
 
   - name: swiftdrop-communications-webhooks
@@ -119,7 +119,7 @@ groups:
           affected_component: "communications-service/WebhookDeliveryExecutionService"
           operational_impact: "Merchants are missing critical real-time parcel transition events."
           suggested_investigation: "Inspect terminal failure visibility endpoint, merchant target endpoints, and DNS/network reachability."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-webhook-exhaustion"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#56-webhookterminalexhaustionspike"
           expected_recovery: "Exhaustion rate returns to 0 as merchant endpoints recover or bad subscriptions are corrected."
 
       - alert: NotificationPendingBacklogAgeExceeded
@@ -137,11 +137,11 @@ groups:
           affected_component: "communications-service/NotificationSchedulingService"
           operational_impact: "Customer and merchant delivery update emails or alerts are severely delayed."
           suggested_investigation: "Inspect Mailpit/SMTP connectivity, worker thread pool, and notifications database queue."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-notification-backlog"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#57-notificationpendingbacklogageexceeded"
           expected_recovery: "Pending notification age returns to normal operating bounds (< 120s)."
 
       - alert: KafkaConsumerFailureSpike
-        expr: rate(swiftdrop_kafka_consumer_processed_total{status="invalid"}[5m]) > 0
+        expr: rate(swiftdrop_kafka_consumer_processed_total{status="failure"}[5m]) > 0
         for: 2m
         labels:
           severity: warning
@@ -150,13 +150,13 @@ groups:
           owner: abhi190503
           approval_ref: "issue-166-p14a-kafka-consumer-contract"
         annotations:
-          summary: "Kafka consumer has rejected invalid records in the last 5 minutes"
-          description: "Kafka listener received payloads failing contract schema validation or correlation checks."
+          summary: "Kafka consumer processing failures occurred in the last 5 minutes"
+          description: "Kafka listener failed while validating or processing one or more consumed records."
           affected_component: "communications-service/ParcelLifecycleKafkaConsumer"
-          operational_impact: "Malformed events quarantined or skipped; potential integration mismatch."
-          suggested_investigation: "Inspect communications-service logs for schema validation or deserialization errors."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-kafka-consumer-failure"
-          expected_recovery: "rate(swiftdrop_kafka_consumer_processed_total{status='invalid'}[5m]) returns to 0."
+          operational_impact: "Consumed events may be retried or skipped; downstream notifications or webhooks can be delayed."
+          suggested_investigation: "Inspect communications-service logs for validation, persistence, or event-processing errors."
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#58-kafkaconsumerfailurespike"
+          expected_recovery: "rate(swiftdrop_kafka_consumer_processed_total{status='failure'}[5m]) returns to 0."
 
   - name: swiftdrop-grpc-operations
     interval: 15s
@@ -176,7 +176,7 @@ groups:
           affected_component: "{{ $labels.service }}/{{ $labels.method }}"
           operational_impact: "Internal microservice request chain degradation; caller timeouts cascade."
           suggested_investigation: "Check database query latency, downstream service response times, and thread-pool utilization."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-grpc-deadline-exceeded"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#59-grpcserverdeadlineexceededspike"
           expected_recovery: "Deadline error rate drops below 2 calls/s."
 
   - name: swiftdrop-platform-release
@@ -197,7 +197,7 @@ groups:
           affected_component: "{{ $labels.namespace }}/{{ $labels.pod }}"
           operational_impact: "Service unavailability, request drops, and degradation of release candidate."
           suggested_investigation: "Inspect kubectl logs -p on failing container and describe pod for OOMKilled or liveness failures."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-pod-crash-looping"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#510-applicationpodcrashlooping"
           expected_recovery: "Container restarts stabilize and rate returns to 0."
 
       - alert: MonitoringDiskSpaceLow
@@ -215,11 +215,11 @@ groups:
           affected_component: "swiftdrop-monitoring/prometheus-storage"
           operational_impact: "Risk of Prometheus crash, read-only TSDB lockdown, or disk starvation on host."
           suggested_investigation: "Verify TSDB compaction and retention size limits (--storage.tsdb.retention.size)."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-monitoring-disk-exhaustion"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#511-monitoringdiskspacelow"
           expected_recovery: "Available storage exceeds 15% after retention cleanup."
 
       - alert: ReleaseCandidateReadinessRegression
-        expr: min(probe_success{job="swiftdrop-readiness"}) == 0
+        expr: (min(probe_success{job="swiftdrop-readiness"}) or vector(0)) == 0
         for: 1m
         labels:
           severity: critical
@@ -233,6 +233,6 @@ groups:
           affected_component: "swiftdrop-platform/release-gate"
           operational_impact: "Release acceptance blocked; automated rollback criteria triggered for staging promotion."
           suggested_investigation: "Identify unready service from probe_success breakdown; check migration or startup failures."
-          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#runbook-release-readiness-regression"
+          runbook_url: "docs/observability/N10_P14_MONITORING_OPERATIONS.md#512-releasecandidatereadinessregression"
           expected_recovery: "All core service readiness probes report probe_success == 1 simultaneously."
 
