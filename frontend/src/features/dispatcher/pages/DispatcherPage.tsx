@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { useAuth } from '../../../auth/context'
 import { StaffProfile } from '../../staff/components/StaffProfile'
 import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
@@ -24,6 +25,7 @@ export function DispatcherPage() {
             Review unassigned parcels and eligible courier workloads before confirming an assignment.
           </p>
           <p className="muted">Assigning a courier does not change the parcel lifecycle status.</p>
+          <p><Link to="/dispatcher/reports">View daily outcomes for your zones</Link></p>
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out
           </button>
