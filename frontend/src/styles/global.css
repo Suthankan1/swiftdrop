@@ -1324,6 +1324,22 @@ main:focus { outline: none; }
   font-size: 12px;
   margin-bottom: 16px;
 }
+.admin-management-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-block: 1rem; }
+.staff-confirmation { overflow-wrap: anywhere; }
+.admin-management-toolbar a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
+.admin-management-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-block: 1rem; }
+.admin-management-filters label { display: grid; gap: .4rem; flex: 1 1 12rem; }
+.admin-management-filters input, .admin-management-filters select { width: 100%; min-height: 2.75rem; padding: .6rem; border: 1px solid var(--color-border); border-radius: .4rem; background: white; color: inherit; }
+.admin-management-scroll { overflow-x: auto; margin-block: 1rem; border: 1px solid var(--color-border); border-radius: .5rem; }
+.admin-management table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.admin-management caption { text-align: left; padding: 1rem; font-weight: 700; }
+.admin-management th, .admin-management td { padding: .8rem; text-align: left; border-bottom: 1px solid var(--color-border); vertical-align: top; overflow-wrap: anywhere; min-width: 8rem; }
+.admin-management-fields { display: grid; grid-template-columns: minmax(8rem, 1fr) minmax(0, 3fr); gap: .6rem 1rem; }
+.admin-management-fields dd { margin: 0; overflow-wrap: anywhere; }
+.admin-management-audit { padding-left: 1.5rem; }
+.admin-management-audit li { padding-block: .7rem; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+.admin-management :focus-visible { outline: 3px solid var(--color-primary, #245b46); outline-offset: 3px; }
+@media (max-width: 600px) { .admin-management-fields { grid-template-columns: 1fr; } .admin-management-fields dd { margin-bottom: .5rem; } .admin-management-filters { align-items: stretch; flex-direction: column; } .admin-management-filters label { flex-basis: auto; } }
 .routing-grid {
   display: flex;
   flex-direction: column;

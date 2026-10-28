@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { AppLayout } from '../../components/layout/AppLayout'
 import { AdminPage } from '../../features/admin/pages/AdminPage'
+import { UserStaffPage } from '../../features/admin/pages/UserStaffPage'
 import { MerchantReviewPage } from '../../features/admin/pages/MerchantReviewPage'
 import { CourierPage } from '../../features/courier/pages/CourierPage'
 import { CustomerPage } from '../../features/customer/pages/CustomerPage'
@@ -46,6 +47,9 @@ export function AppRoutes() {
         <Route element={<ProtectedRoute role="DISPATCHER" />}><Route path="dispatcher" element={<DispatcherPage />} /></Route>
         <Route element={<ProtectedRoute role="ADMIN" />}>
           <Route path="admin" element={<AdminPage />} />
+          <Route path="admin/users" element={<UserStaffPage section="users" />} />
+          <Route path="admin/staff" element={<UserStaffPage section="staff" />} />
+          <Route path="admin/staff/:profileId" element={<UserStaffPage section="detail" />} />
           <Route path="admin/merchants" element={<MerchantReviewPage />} />
         </Route>
         <Route path="login" element={<LoginPage />} />

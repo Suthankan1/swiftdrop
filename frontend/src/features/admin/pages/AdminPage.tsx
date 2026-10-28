@@ -25,9 +25,14 @@ export function AdminPage() {
           </p>
           <h3>Merchant review</h3>
           <p><Link to="/admin/merchants">Review merchant applications</Link></p>
+          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && <>
+            <h3>User and staff management</h3>
+            <p><Link to="/admin/users">Browse account users</Link></p>
+            <p><Link to="/admin/staff">Manage staff profiles</Link></p>
+          </>}
           <h3>More administration tools are coming later</h3>
           <p className="muted">
-            Staff administration, zone and pricing management, and operational reporting are future features.
+            Zone and pricing management and operational reporting are future features.
           </p>
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out

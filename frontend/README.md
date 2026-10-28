@@ -40,6 +40,9 @@ pnpm lint
 | `/courier` | Courier role entry; guarded for `COURIER` role with denial feedback |
 | `/dispatcher` | Dispatcher-only staff entry; verified ACTIVE profile gates bounded queue/workload reads and manual assignment; live integration blocked on #135 and Gateway routing |
 | `/admin` | Admin-only landing, staff self-read and merchant-review navigation |
+| `/admin/users` | ADMIN-only paged Accounts user summaries; retry and refresh |
+| `/admin/staff` | ADMIN-only paged/filtered staff profiles and controlled provisioning |
+| `/admin/staff/:profileId` | ADMIN-only staff detail, identity audit, suspension, synchronization and audit recovery |
 | `/admin/merchants` | Admin-only merchant review presentation; production review reads/commands await the reviewed #121 provider |
 | `/login` | Keycloak login, Google broker and registration entries; authenticated role navigation |
 | `/auth/callback` | Single adapter-managed code exchange; scrub callback parameters and return to login/session page |
