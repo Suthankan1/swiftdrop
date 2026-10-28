@@ -93,6 +93,7 @@ message UnassignedParcelSummary {
   string merchant_id = 10;
   string pickup_zone = 11;
   string dropoff_zone = 12;
+  string size_category = 13; // Bounded size classification (e.g. "SMALL", "MEDIUM", "LARGE", "OVERSIZED")
 }
 
 // Paginated response containing unassigned parcel summaries.

@@ -39,7 +39,8 @@ class GraphqlEndpointSecurityTest {
     }
     @TestConfiguration(proxyBeanMethods = false)
     static class Keys {
-        @Bean com.swiftdrop.graphql.resolver.RootQueryResolver providerDenialFixture() {
+        @Bean("dispatcherDashboardResolver")
+        com.swiftdrop.graphql.resolver.RootQueryResolver providerDenialFixture() {
             return new com.swiftdrop.graphql.resolver.RootQueryResolver() {
                 public String field() { return "dispatcherDashboard"; }
                 public Object resolve(graphql.schema.DataFetchingEnvironment env) {

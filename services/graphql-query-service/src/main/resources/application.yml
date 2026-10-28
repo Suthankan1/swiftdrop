@@ -23,3 +23,9 @@ management:
   endpoint:
     health:
       show-details: never
+
+swiftdrop:
+  graphql:
+    dispatcher:
+      # DEC-ASG-04: Recommended operating capacity (advisory soft-cap). Defaults to 5 per runtime decision register.
+      courier-max-capacity: ${DISPATCHER_COURIER_MAX_CAPACITY:5}
