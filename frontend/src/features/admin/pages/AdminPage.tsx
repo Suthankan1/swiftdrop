@@ -29,10 +29,12 @@ export function AdminPage() {
             <h3>User and staff management</h3>
             <p><Link to="/admin/users">Browse account users</Link></p>
             <p><Link to="/admin/staff">Manage staff profiles</Link></p>
+            <h3>Zones and pricing</h3>
+            <p><Link to="/admin/pricing">Manage zones and pricing</Link></p>
           </>}
           <h3>More administration tools are coming later</h3>
           <p className="muted">
-            Zone and pricing management and operational reporting are future features.
+            Operational reporting is a future feature.
           </p>
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out

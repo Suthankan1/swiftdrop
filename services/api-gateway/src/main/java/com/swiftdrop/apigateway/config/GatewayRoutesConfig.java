@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * Programmatic Spring Cloud Gateway route definitions for approved SwiftDrop business endpoints.
  * Wires approved routes to downstream microservices in accordance with the frozen interface matrix:
  *   - Accounts & Partners: /api/v1/users/me, /api/v1/merchants/**, /api/v1/admin/**
- *   - Pricing & Zones: /api/v1/quotes/**, /api/v1/zones/**
+ *   - Pricing & Zones: /api/v1/quotes/**, /api/v1/zones/**, /api/v1/admin/pricing/**
  *   - Delivery Operations: /api/v1/tracking/**, /api/v1/merchant/parcels/**, /api/v1/assignments/**, /api/v1/parcels/**
  *   - Communications: /api/v1/merchants/webhooks/**
  *   - GraphQL Query API: /graphql
@@ -52,6 +52,11 @@ public class GatewayRoutesConfig {
                         .uri(accountsServiceUrl))
 
                 // Pricing & Zones service routes
+                // More specific than Accounts' generic admin route; ADMIN policy is unchanged.
+                .route("pricing-service-admin", r -> r
+                        .order(SPECIFIC_ROUTE_ORDER)
+                        .path("/api/v1/admin/pricing", "/api/v1/admin/pricing/**")
+                        .uri(pricingServiceUrl))
                 .route("pricing-service-quotes", r -> r
                         .order(ROUTE_ORDER)
                         .path("/api/v1/quotes", "/api/v1/quotes/**")

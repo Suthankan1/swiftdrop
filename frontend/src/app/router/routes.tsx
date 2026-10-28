@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { AppLayout } from '../../components/layout/AppLayout'
 import { AdminPage } from '../../features/admin/pages/AdminPage'
+import { PricingAdminPage } from '../../features/admin/pages/PricingAdminPage'
 import { UserStaffPage } from '../../features/admin/pages/UserStaffPage'
 import { MerchantReviewPage } from '../../features/admin/pages/MerchantReviewPage'
 import { CourierPage } from '../../features/courier/pages/CourierPage'
@@ -51,6 +52,7 @@ export function AppRoutes() {
           <Route path="admin/staff" element={<UserStaffPage section="staff" />} />
           <Route path="admin/staff/:profileId" element={<UserStaffPage section="detail" />} />
           <Route path="admin/merchants" element={<MerchantReviewPage />} />
+          <Route path="admin/pricing" element={<PricingAdminPage />} />
         </Route>
         <Route path="login" element={<LoginPage />} />
         <Route path="auth/callback" element={<CallbackPage />} />

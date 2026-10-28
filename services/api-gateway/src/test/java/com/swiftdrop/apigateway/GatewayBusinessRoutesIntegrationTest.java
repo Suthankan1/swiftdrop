@@ -352,6 +352,54 @@ public class GatewayBusinessRoutesIntegrationTest {
         assertThat(req.getPath()).isEqualTo("/api/v1/zones");
     }
 
+    @Test
+    @DisplayName("Pricing admin routes take precedence over generic Accounts admin routing")
+    void routesPricingAdminToPricingService() throws Exception {
+        String token = createToken("synthetic-admin", List.of("ADMIN"));
+        pricingServer.enqueue(new MockResponse().setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"items\":[],\"page\":0,\"size\":20,\"totalElements\":0}"));
+        webTestClient.get().uri("/api/v1/admin/pricing/zones?page=0&size=20")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).exchange()
+                .expectStatus().isOk().expectBody().jsonPath("$.totalElements").isEqualTo(0);
+        RecordedRequest request = pricingServer.takeRequest(3, TimeUnit.SECONDS);
+        assertThat(request).isNotNull();
+        assertThat(request.getPath()).isEqualTo("/api/v1/admin/pricing/zones?page=0&size=20");
+        assertThat(request.getHeader("Authorization")).isEqualTo("Bearer " + token);
+        assertThat(accountsServer.takeRequest(100, TimeUnit.MILLISECONDS)).isNull();
+    }
+
+    @Test
+    @DisplayName("Pricing admin commands preserve method, body and bearer for Pricing enforcement")
+    void routesPricingAdminCommandToPricingService() throws Exception {
+        String token = createToken("synthetic-admin", List.of("ADMIN"));
+        pricingServer.enqueue(new MockResponse().setResponseCode(200)
+                .setHeader("Content-Type", "application/json").setBody("{}"));
+        String path = "/api/v1/admin/pricing/rate-versions/20000000-0000-0000-0000-000000000002/activate";
+        String body = "{\"expectedRevision\":7,\"expectedActiveVersionId\":null}";
+        webTestClient.post().uri(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(body).exchange().expectStatus().isOk();
+        RecordedRequest request = pricingServer.takeRequest(3, TimeUnit.SECONDS);
+        assertThat(request).isNotNull();
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getPath()).isEqualTo(path);
+        assertThat(request.getBody().readUtf8()).isEqualTo(body);
+        assertThat(accountsServer.takeRequest(100, TimeUnit.MILLISECONDS)).isNull();
+    }
+
+    @Test
+    @DisplayName("Every non-ADMIN role is denied before Pricing admin forwarding")
+    void deniesNonAdminPricingRequests() throws Exception {
+        for (String role : List.of("DISPATCHER", "CUSTOMER", "MERCHANT", "COURIER")) {
+            webTestClient.get().uri("/api/v1/admin/pricing/zones")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + createToken("synthetic-" + role, List.of(role)))
+                    .exchange().expectStatus().isForbidden();
+        }
+        webTestClient.get().uri("/api/v1/admin/pricing/zones").exchange().expectStatus().isUnauthorized();
+        assertThat(pricingServer.takeRequest(100, TimeUnit.MILLISECONDS)).isNull();
+        assertThat(accountsServer.takeRequest(100, TimeUnit.MILLISECONDS)).isNull();
+    }
+
     // =========================================================================
     // 3. DELIVERY OPERATIONS ROUTES
     // =========================================================================
