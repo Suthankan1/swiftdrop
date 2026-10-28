@@ -116,3 +116,4 @@ The frontend applies a strict **defense-in-depth allowlist projection** on the A
 - ESLint: clean
 - TypeScript: clean
 - Production build: successful
+
