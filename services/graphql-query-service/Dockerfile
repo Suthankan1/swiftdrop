@@ -24,8 +24,10 @@ RUN chmod +x shared/proto-contracts/mvnw && \
 # Copy service source
 COPY services/graphql-query-service services/graphql-query-service
 
-# Build executable Spring Boot JAR
+# Build executable Spring Boot JAR with sanitized dependencies
 RUN chmod +x services/graphql-query-service/mvnw && \
+    (cd services/graphql-query-service && ./mvnw -B dependency:resolve -DskipTests) && \
+    java services/graphql-query-service/CleanShadedGuava.java && \
     (cd services/graphql-query-service && ./mvnw -B clean package -DskipTests) && \
     cp services/graphql-query-service/target/graphql-query-service-*.jar /build/app.jar
 
