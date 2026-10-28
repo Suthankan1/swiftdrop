@@ -124,3 +124,68 @@ An initial direct host invocation started zero tests and reported 59 worker erro
 ## Next small task
 
 After #283 and #284 are fixed and an approved local stack with controlled identities is running, execute one Chrome/Edge browser matrix at 375 × 812 and 1440 × 900 first, retest the two field/error defects, and record actual Gateway/API outcomes without changing #147 ownership.
+
+## Final verification — 2026-10-28 (Asia/Colombo)
+
+### Baseline and scope
+
+- Verification branch: `qa/n10-wf26-final-acceptance`.
+- Starting baseline: `99418839ea3086e77f28bd6aefcd09fdcc8ffb82`.
+- Issue #147 is **CLOSED**. PRs [#287](https://github.com/Suthankan1/swiftdrop/pull/287) and [#288](https://github.com/Suthankan1/swiftdrop/pull/288) are merged into `test`.
+- This final pass adds frontend acceptance tests only; it does not change production reporting, auth, service, schema, or ownership code.
+
+### Admin and Dispatcher reporting results
+
+- The active router mounts `ReportsPage` at `/admin/reports` and `/dispatcher/reports`; the merged `AdminReportsPage` is not the active route.
+- Mocked jsdom coverage passed for ADMIN and DISPATCHER role restrictions, anonymous and wrong-role denial, navigation, loading, empty results, daily outcomes, authorized merchant review summaries, date-range validation, Asia/Colombo midnight boundaries, success/failure calculations, filters, network errors, timeout and manual retry, partial provider failure, forbidden/session-expiry handling, cross-subject cache isolation, dispatcher server-scoped requests, and accessible loading/error/status feedback.
+- Keyboard interaction and accessible labels were verified only through the existing React Testing Library/jsdom coverage. This is not real browser or WCAG conformance evidence.
+
+### GraphQL provider status and API evidence
+
+- `deliveryStats` is present in the approved SDL, `GraphqlRuntimeConfig.ROOTS`, and `GraphqlFieldPolicy`, so the field is exposed and role-gated.
+- It is **not operational in the current backend**: no `RootQueryResolver` bean registers the `deliveryStats` field. The runtime therefore fails closed with `UNAVAILABLE` after authorization rather than returning fabricated statistics. The GraphQL service README also documents the production resolvers as deferred.
+- No real GraphQL, Gateway, Keycloak, business-service, database, Kafka, or SSE request was executed. All provider responses in the frontend tests were isolated mocks; they are not API success evidence.
+- The frontend correctly renders the unavailable-provider and partial-report states when `deliveryStats` is unavailable.
+
+### Accessibility defect retest
+
+- #283 remains **OPEN**, assigned to @Gajanthan23. The customer quote/booking field-error association fix was not merged; retest is pending.
+- #284 remains **OPEN**, assigned to @EricPraveen. The merchant enrollment field-error association fix was not merged; retest is pending.
+- No other owner's production feature code was changed.
+
+### Browser and viewport verification
+
+| Viewport | Result |
+| --- | --- |
+| 375 × 812 | **NOT RUN** — no supported browser automation session was available |
+| 390 × 844 | **NOT RUN** — no supported browser automation session was available |
+| 768 × 1024 | **NOT RUN** — no supported browser automation session was available |
+| 1440 × 900 | **NOT RUN** — no supported browser automation session was available |
+
+No screenshots, rendered focus/overflow results, real labels, pointer-target measurements, or screen-reader results are claimed.
+
+### Validation commands and results
+
+Executed from `frontend/` in the approved `node:24.21.0-bookworm-slim` container with frozen `frontend/pnpm-lock.yaml`, Node 24.21.0, pnpm 12.11.2:
+
+```text
+corepack pnpm test --run --reporter=dot
+  PASS — 68 files, 1,232 tests, 0 failed, 0 skipped
+corepack pnpm typecheck
+  PASS — exit 0
+corepack pnpm lint
+  PASS — exit 0
+corepack pnpm build
+  PASS — exit 0; 245 modules transformed
+git diff --check
+  PASS
+```
+
+The build emitted only the existing non-failing advisory that the minified JavaScript chunk is 725.81 kB, above Vite's 500 kB threshold. The host Node 22.17.1 was not used for validation because the project requires Node 24.21.0; no global installation, lockfile, dependency, Docker volume, database, or platform service was changed.
+
+### Remaining blockers and exact files changed
+
+- Final acceptance remains **BLOCKED**, not passed: real browser/API evidence is unavailable; `deliveryStats` has no production resolver; #283 and #284 remain open.
+- Files changed in this final pass:
+  - `frontend/src/features/admin/pages/ReportsPageFinalAcceptance.test.tsx`
+  - `docs/reviews/N10_WF26_RESPONSIVE_ACCESSIBILITY_SESSION_RECOVERY.md`
