@@ -191,6 +191,46 @@ describe('CustomerQuotePage & Booking Workflow (Issue #118)', () => {
     )
   })
 
+  it('associates quote validation errors with fields and focuses the first invalid control', async () => {
+    const user = userEvent.setup({ delay: null })
+    render(
+      <TestProviders auth={customerAuth}>
+        <MemoryRouter initialEntries={['/customer/quote']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </TestProviders>,
+    )
+
+    const weight = screen.getByLabelText(/physical weight/i)
+    const length = screen.getByLabelText(/^length/i)
+    const width = screen.getByLabelText(/^width/i)
+    const height = screen.getByLabelText(/^height/i)
+    await user.clear(weight)
+    await user.type(weight, '45')
+    await user.clear(length)
+    await user.type(length, '0')
+    await user.clear(width)
+    await user.type(width, '151')
+    await user.clear(height)
+    await user.type(height, '0')
+    await user.click(screen.getByRole('button', { name: /calculate delivery quote/i }))
+
+    expect(weight).toHaveAttribute('aria-invalid', 'true')
+    expect(length).toHaveAttribute('aria-invalid', 'true')
+    expect(width).toHaveAttribute('aria-invalid', 'true')
+    expect(height).toHaveAttribute('aria-invalid', 'true')
+    for (const field of [weight, length, width, height]) {
+      const describedBy = field.getAttribute('aria-describedby')!.split(' ')
+      expect(describedBy.some((id) => document.getElementById(id)?.textContent)).toBe(true)
+    }
+    expect(document.activeElement).toBe(weight)
+
+    await user.clear(weight)
+    await user.type(weight, '2.5')
+    expect(weight).toHaveAttribute('aria-invalid', 'false')
+    expect(weight.getAttribute('aria-describedby')).toBe('weight-hint')
+  })
+
   it('calculates quote, displays guaranteed price breakdown, and shows live timer', async () => {
     const user = userEvent.setup({ delay: null })
     render(
@@ -284,6 +324,34 @@ describe('CustomerQuotePage & Booking Workflow (Issue #118)', () => {
       expect.stringContaining('/api/v1/parcels'),
       expect.objectContaining({ method: 'POST' }),
     )
+  })
+
+  it('associates booking errors with fields and focuses the first invalid address', async () => {
+    const user = userEvent.setup({ delay: null })
+    render(
+      <TestProviders auth={customerAuth}>
+        <MemoryRouter initialEntries={['/customer/quote']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </TestProviders>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /calculate delivery quote/i }))
+    await screen.findByRole('heading', { name: /complete booking information/i })
+    await user.click(screen.getByRole('button', { name: /confirm & book delivery/i }))
+
+    const pickup = screen.getByLabelText(/pickup street address/i)
+    const dropoff = screen.getByLabelText(/dropoff street address/i)
+    const recipient = screen.getByLabelText(/recipient full name/i)
+    expect(pickup).toHaveAttribute('aria-invalid', 'true')
+    expect(dropoff).toHaveAttribute('aria-invalid', 'true')
+    expect(recipient).toHaveAttribute('aria-invalid', 'true')
+    expect(pickup.getAttribute('aria-describedby')).toMatch(/-error/)
+    expect(document.activeElement).toBe(pickup)
+
+    await user.type(pickup, '123 Galle Road')
+    expect(pickup).toHaveAttribute('aria-invalid', 'false')
+    expect(pickup.getAttribute('aria-describedby')).toBeNull()
   })
 
   it('submits booking with stable Idempotency-Key and navigates to confirmed screen on 201 Created', async () => {

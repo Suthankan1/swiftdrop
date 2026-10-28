@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -6,6 +6,7 @@ import { AppRoutes } from '../../../app/router/routes'
 import type { AuthContextValue } from '../../../auth/context'
 import { anonymousAuth, TestProviders } from '../../../test/authFixture'
 import { customerFixture } from '../../../test/fixtures'
+import { MerchantEnrollmentForm } from '../components/MerchantEnrollmentForm'
 
 function authenticatedCustomer(
   userProfile = customerFixture,
@@ -38,6 +39,49 @@ afterEach(() => {
 })
 
 describe('Merchant Pending-Enrollment Screen & Workflow', () => {
+  it('associates local validation errors, hints, and focus with each enrollment field', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn(async () => {})
+    render(
+      <MerchantEnrollmentForm isSubmitting={false} onSubmit={onSubmit} />,
+    )
+
+    const businessName = screen.getByRole('textbox', { name: /business legal name/i })
+    const registrationNumber = screen.getByRole('textbox', { name: /business registration/i })
+    const submit = screen.getByRole('button', { name: /submit merchant application/i })
+
+    await user.click(submit)
+    expect(businessName).toHaveAttribute('aria-invalid', 'true')
+    expect(businessName.getAttribute('aria-describedby')).toContain('business-name-hint')
+    expect(businessName.getAttribute('aria-describedby')).toContain('business-name-error')
+    expect(document.activeElement).toBe(businessName)
+
+    fireEvent.change(businessName, { target: { value: 'x'.repeat(256) } })
+    await user.click(submit)
+    expect(businessName).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent(/cannot exceed 255 characters/i)
+
+    await user.clear(businessName)
+    await user.type(businessName, 'Valid Business Name')
+    await user.type(registrationNumber, '12')
+    await user.click(submit)
+    expect(businessName).toHaveAttribute('aria-invalid', 'false')
+    expect(registrationNumber).toHaveAttribute('aria-invalid', 'true')
+    expect(registrationNumber.getAttribute('aria-describedby')).toContain('registration-number-hint')
+    expect(registrationNumber.getAttribute('aria-describedby')).toContain('registration-number-error')
+    expect(document.activeElement).toBe(registrationNumber)
+
+    await user.clear(registrationNumber)
+    await user.type(registrationNumber, 'PV-12345')
+    await user.click(submit)
+    expect(onSubmit).toHaveBeenCalledWith({
+      businessName: 'Valid Business Name',
+      registrationNumber: 'PV-12345',
+    })
+    expect(registrationNumber).toHaveAttribute('aria-invalid', 'false')
+    expect(registrationNumber.getAttribute('aria-describedby')).toBe('registration-number-hint')
+  })
+
   it('redirects unauthenticated visitor to login', () => {
     const request = vi.fn<typeof fetch>()
     vi.stubGlobal('fetch', request)
