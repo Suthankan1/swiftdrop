@@ -35,7 +35,7 @@ pnpm lint
 | Route | Current behavior |
 |---|---|
 | `/` | Public landing page and shared responsive navigation |
-| `/customer` | Customer role entry; redirects anonymous sessions to login, reads real profile through Gateway |
+| `/customer` | Customer role entry; redirects anonymous sessions to login, reads real profile and live customerDashboard summary cards through Gateway |
 | `/merchant` | Merchant role entry; guarded for `MERCHANT` role, presents approval states (Pending, Approved, Rejected, Suspended, Unknown) and merchant business details |
 | `/courier` | Courier role entry; guarded for `COURIER` role with denial feedback |
 | `/dispatcher` | Dispatcher-only staff entry; verified ACTIVE profile gates bounded queue/workload reads and manual assignment; live integration blocked on #135 and Gateway routing |
