@@ -10,6 +10,8 @@ import com.swiftdrop.communicationsservice.notification.NotificationChannel;
 import com.swiftdrop.communicationsservice.notification.NotificationJob;
 import com.swiftdrop.communicationsservice.notification.NotificationJobRepository;
 import com.swiftdrop.communicationsservice.notification.NotificationStatus;
+import com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine;
+import com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantineRepository;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -84,6 +86,9 @@ class CommunicationsKafkaConsumerIT {
 
     @Autowired
     private NotificationJobRepository notificationJobRepository;
+
+    @Autowired
+    private PoisonEventQuarantineRepository poisonEventQuarantineRepository;
 
     @Autowired
     private ParcelLifecycleKafkaConsumer lifecycleConsumer;
@@ -335,5 +340,44 @@ class CommunicationsKafkaConsumerIT {
         long elapsedMillis = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
         assertThat(elapsedMillis).isLessThan(5_000L);
         System.out.printf("ISSUE164_COMMUNICATIONS_ACK_RECOVERY elapsedMs=%d proposedTestBudgetMs=5000%n", elapsedMillis);
+    }
+
+    @Test
+    @DisplayName("Integration D: Poison Kafka event is quarantined durably and offset is acknowledged without blocking partition")
+    void testPoisonEventQuarantine_AcknowledgesOffsetAndPersistsDurableQuarantine() {
+        UUID parcelId = UUID.randomUUID();
+        String malformedJson = "{\"invalid\":\"json-without-required-envelope\""; // malformed JSON
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>(
+                TOPIC, 1, 999L, parcelId.toString(), malformedJson
+        );
+        Acknowledgment ack = mock(Acknowledgment.class);
+
+        lifecycleConsumer.onMessage(record, ack);
+
+        // Verify offset acknowledged so partition is not blocked
+        verify(ack, times(1)).acknowledge();
+
+        // Verify record in poison_event_quarantine
+        Optional<PoisonEventQuarantine> quarantined = poisonEventQuarantineRepository
+                .findByConsumerGroupAndSourceTopicAndSourcePartitionAndSourceOffset(
+                        CONSUMER_GROUP, TOPIC, 1, 999L
+                );
+        assertThat(quarantined).isPresent();
+        assertThat(quarantined.get().getStatus()).isEqualTo("QUARANTINED");
+        assertThat(quarantined.get().getPayloadDigest()).isNotEmpty();
+
+        // Test idempotent redelivery of the same poison record
+        Acknowledgment redeliveryAck = mock(Acknowledgment.class);
+        lifecycleConsumer.onMessage(record, redeliveryAck);
+
+        // Redelivery acknowledges again safely
+        verify(redeliveryAck, times(1)).acknowledge();
+
+        // Count in table remains 1
+        long count = poisonEventQuarantineRepository.findAll().stream()
+                .filter(q -> q.getConsumerGroup().equals(CONSUMER_GROUP) && q.getSourceOffset() == 999L)
+                .count();
+        assertThat(count).isEqualTo(1L);
     }
 }

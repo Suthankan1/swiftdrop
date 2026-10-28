@@ -172,4 +172,103 @@ class CommunicationsEntityTest {
         assertThat(empty.getReplayId()).isEqualTo(replayId);
         assertThat(empty.getActorRole()).isEqualTo("MERCHANT");
     }
+
+    @Test
+    @DisplayName("Verify NotificationAttempt entity fields and prePersist lifecycle")
+    void testNotificationAttempt() {
+        UUID attemptId = UUID.randomUUID();
+        UUID notificationId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        com.swiftdrop.communicationsservice.notification.NotificationAttempt attempt =
+                new com.swiftdrop.communicationsservice.notification.NotificationAttempt(
+                        attemptId, notificationId, 1, NotificationChannel.EMAIL, "SUCCESS",
+                        null, "DELIVERED", 120, now, now
+                );
+
+        assertThat(attempt.getAttemptId()).isEqualTo(attemptId);
+        assertThat(attempt.getNotificationId()).isEqualTo(notificationId);
+        assertThat(attempt.getAttemptNumber()).isEqualTo(1);
+        assertThat(attempt.getChannel()).isEqualTo(NotificationChannel.EMAIL);
+        assertThat(attempt.getOutcome()).isEqualTo("SUCCESS");
+        assertThat(attempt.getFailureCategory()).isNull();
+        assertThat(attempt.getSafeErrorCode()).isEqualTo("DELIVERED");
+        assertThat(attempt.getDurationMs()).isEqualTo(120);
+        assertThat(attempt.getAttemptedAt()).isEqualTo(now);
+        assertThat(attempt.getCompletedAt()).isEqualTo(now);
+
+        com.swiftdrop.communicationsservice.notification.NotificationAttempt empty =
+                new com.swiftdrop.communicationsservice.notification.NotificationAttempt();
+        empty.prePersist();
+        assertThat(empty.getAttemptId()).isNotNull();
+        assertThat(empty.getAttemptedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Verify NotificationReplayAudit entity fields and prePersist lifecycle")
+    void testNotificationReplayAudit() {
+        UUID replayId = UUID.randomUUID();
+        UUID notificationId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        com.swiftdrop.communicationsservice.notification.NotificationReplayAudit audit =
+                new com.swiftdrop.communicationsservice.notification.NotificationReplayAudit(
+                        replayId, notificationId, eventId, "operator-1", "ADMIN",
+                        "Manual recovery", "EXHAUSTED", "ACCEPTED", now
+                );
+
+        assertThat(audit.getReplayId()).isEqualTo(replayId);
+        assertThat(audit.getNotificationId()).isEqualTo(notificationId);
+        assertThat(audit.getOriginalEventId()).isEqualTo(eventId);
+        assertThat(audit.getActorSub()).isEqualTo("operator-1");
+        assertThat(audit.getActorRole()).isEqualTo("ADMIN");
+        assertThat(audit.getReason()).isEqualTo("Manual recovery");
+        assertThat(audit.getPreviousStatus()).isEqualTo("EXHAUSTED");
+        assertThat(audit.getDecision()).isEqualTo("ACCEPTED");
+        assertThat(audit.getReplayedAt()).isEqualTo(now);
+
+        com.swiftdrop.communicationsservice.notification.NotificationReplayAudit empty =
+                new com.swiftdrop.communicationsservice.notification.NotificationReplayAudit();
+        empty.prePersist();
+        assertThat(empty.getReplayId()).isNotNull();
+        assertThat(empty.getReplayedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Verify PoisonEventQuarantine entity fields and prePersist lifecycle")
+    void testPoisonEventQuarantine() {
+        UUID qId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine q =
+                new com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine(
+                        qId, "notifications.group", "parcel.lifecycle.v1", 0, 100L,
+                        eventId, "parcel.status.changed.v1", "1.0.0", "INVALID_JSON",
+                        "Json parse error", "hash123", "corr-1", "QUARANTINED", now
+                );
+
+        assertThat(q.getQuarantineId()).isEqualTo(qId);
+        assertThat(q.getConsumerGroup()).isEqualTo("notifications.group");
+        assertThat(q.getSourceTopic()).isEqualTo("parcel.lifecycle.v1");
+        assertThat(q.getSourcePartition()).isZero();
+        assertThat(q.getSourceOffset()).isEqualTo(100L);
+        assertThat(q.getEventIdIfValid()).isEqualTo(eventId);
+        assertThat(q.getEventTypeIfValid()).isEqualTo("parcel.status.changed.v1");
+        assertThat(q.getSchemaVersionIfValid()).isEqualTo("1.0.0");
+        assertThat(q.getFailureCategory()).isEqualTo("INVALID_JSON");
+        assertThat(q.getSafeErrorSummary()).isEqualTo("Json parse error");
+        assertThat(q.getPayloadDigest()).isEqualTo("hash123");
+        assertThat(q.getCorrelationReferenceIfSafe()).isEqualTo("corr-1");
+        assertThat(q.getStatus()).isEqualTo("QUARANTINED");
+        assertThat(q.getQuarantinedAt()).isEqualTo(now);
+
+        com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine empty =
+                new com.swiftdrop.communicationsservice.consumer.quarantine.PoisonEventQuarantine();
+        empty.prePersist();
+        assertThat(empty.getQuarantineId()).isNotNull();
+        assertThat(empty.getQuarantinedAt()).isNotNull();
+        assertThat(empty.getStatus()).isEqualTo("QUARANTINED");
+    }
 }

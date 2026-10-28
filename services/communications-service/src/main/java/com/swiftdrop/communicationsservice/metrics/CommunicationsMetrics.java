@@ -58,6 +58,12 @@ public class CommunicationsMetrics {
     private final Counter webhookStuckRecoveredCounter;
     private final Timer webhookAttemptTimer;
 
+    private final Counter notificationRetryCounter;
+    private final Counter notificationExhaustedCounter;
+    private final Counter notificationClaimsRecoveredCounter;
+    private final Counter poisonQuarantineFailedCounter;
+    private final Timer notificationAttemptTimer;
+
     private final ConcurrentHashMap<String, AtomicLong> cachedWebhookDeliveries = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicLong> cachedNotificationJobs = new ConcurrentHashMap<>();
     private final AtomicLong cachedOldestNotificationAge = new AtomicLong(0);
@@ -100,6 +106,26 @@ public class CommunicationsMetrics {
 
         this.webhookAttemptTimer = Timer.builder("swiftdrop.webhook.attempt.duration")
                 .description("Latency distribution of outbound webhook HTTP attempts")
+                .register(registry);
+
+        this.notificationRetryCounter = Counter.builder("swiftdrop.notification.retry.scheduled.total")
+                .description("Total number of notification retry dispatches scheduled")
+                .register(registry);
+
+        this.notificationExhaustedCounter = Counter.builder("swiftdrop.notification.exhausted.total")
+                .description("Total number of notifications transitioning to terminal EXHAUSTED")
+                .register(registry);
+
+        this.notificationClaimsRecoveredCounter = Counter.builder("swiftdrop.notification.claims.recovered.total")
+                .description("Total number of stuck PROCESSING notification claims recovered")
+                .register(registry);
+
+        this.poisonQuarantineFailedCounter = Counter.builder("swiftdrop.notification.poison.quarantine.failed.total")
+                .description("Total number of poison quarantine persistence failures")
+                .register(registry);
+
+        this.notificationAttemptTimer = Timer.builder("swiftdrop.notification.attempt.duration")
+                .description("Latency distribution of outbound notification attempts")
                 .register(registry);
 
         // 2. Pre-register webhook delivery gauges
@@ -167,6 +193,38 @@ public class CommunicationsMetrics {
         String safeChannel = (channel != null && !channel.isBlank()) ? channel.toLowerCase() : "email";
         String safeStatus = (status != null && !status.isBlank()) ? status.toLowerCase() : "persisted";
         registry.counter("swiftdrop.notification.materialized.total", "channel", safeChannel, "status", safeStatus).increment();
+    }
+
+    public void recordNotificationAttempt(String outcome, long durationMs) {
+        String safeOutcome = (outcome != null && !outcome.isBlank()) ? outcome.toLowerCase() : "unknown";
+        registry.counter("swiftdrop.notification.attempts.total", "outcome", safeOutcome).increment();
+        notificationAttemptTimer.record(durationMs, TimeUnit.MILLISECONDS);
+    }
+
+    public void recordNotificationRetryScheduled() {
+        notificationRetryCounter.increment();
+    }
+
+    public void recordNotificationExhausted() {
+        notificationExhaustedCounter.increment();
+    }
+
+    public void recordNotificationClaimsRecovered(int count) {
+        notificationClaimsRecoveredCounter.increment(count);
+    }
+
+    public void recordPoisonEventQuarantined(String category) {
+        String safeCategory = (category != null && !category.isBlank()) ? category.toLowerCase() : "unknown";
+        registry.counter("swiftdrop.notification.poison.quarantined.total", "category", safeCategory).increment();
+    }
+
+    public void recordPoisonQuarantineFailed() {
+        poisonQuarantineFailedCounter.increment();
+    }
+
+    public void recordNotificationReplay(String result) {
+        String safeResult = (result != null && !result.isBlank()) ? result.toLowerCase() : "unknown";
+        registry.counter("swiftdrop.notification.replay.total", "result", safeResult).increment();
     }
 
     public void recordKafkaConsumerProcessed(String consumerGroup, String status) {

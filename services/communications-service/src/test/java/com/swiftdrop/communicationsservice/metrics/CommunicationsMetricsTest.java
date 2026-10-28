@@ -133,4 +133,45 @@ class CommunicationsMetricsTest {
         assertThat(consumerSuccess).isEqualTo(1.0);
         assertThat(consumerFailure).isEqualTo(1.0);
     }
+
+    @Test
+    @DisplayName("Notification operational counters, timer, poison, and replay metrics record accurately")
+    void notificationOperationalCounters_RecordCorrectly() {
+        metrics.recordNotificationAttempt("SUCCESS", 100);
+        metrics.recordNotificationAttempt("TRANSIENT_FAILURE", 250);
+        metrics.recordNotificationRetryScheduled();
+        metrics.recordNotificationExhausted();
+        metrics.recordNotificationClaimsRecovered(2);
+        metrics.recordPoisonEventQuarantined("MALFORMED_SCHEMA");
+        metrics.recordPoisonQuarantineFailed();
+        metrics.recordNotificationReplay("succeeded");
+        metrics.recordNotificationReplay("rejected");
+
+        double successAttempts = registry.get("swiftdrop.notification.attempts.total")
+                .tag("outcome", "success").counter().count();
+        double failedAttempts = registry.get("swiftdrop.notification.attempts.total")
+                .tag("outcome", "transient_failure").counter().count();
+        double retriesScheduled = registry.get("swiftdrop.notification.retry.scheduled.total").counter().count();
+        double exhausted = registry.get("swiftdrop.notification.exhausted.total").counter().count();
+        double recovered = registry.get("swiftdrop.notification.claims.recovered.total").counter().count();
+        long timerCount = registry.get("swiftdrop.notification.attempt.duration").timer().count();
+        double poisonQuarantined = registry.get("swiftdrop.notification.poison.quarantined.total")
+                .tag("category", "malformed_schema").counter().count();
+        double poisonFailed = registry.get("swiftdrop.notification.poison.quarantine.failed.total").counter().count();
+        double replaySucceeded = registry.get("swiftdrop.notification.replay.total")
+                .tag("result", "succeeded").counter().count();
+        double replayRejected = registry.get("swiftdrop.notification.replay.total")
+                .tag("result", "rejected").counter().count();
+
+        assertThat(successAttempts).isEqualTo(1.0);
+        assertThat(failedAttempts).isEqualTo(1.0);
+        assertThat(retriesScheduled).isEqualTo(1.0);
+        assertThat(exhausted).isEqualTo(1.0);
+        assertThat(recovered).isEqualTo(2.0);
+        assertThat(timerCount).isEqualTo(2L);
+        assertThat(poisonQuarantined).isEqualTo(1.0);
+        assertThat(poisonFailed).isEqualTo(1.0);
+        assertThat(replaySucceeded).isEqualTo(1.0);
+        assertThat(replayRejected).isEqualTo(1.0);
+    }
 }
