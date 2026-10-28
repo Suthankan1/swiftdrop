@@ -1,8 +1,12 @@
+import { Link } from 'react-router'
 import { useAuth } from '../../../auth/context'
-import { StaffProfileUnavailable } from '../../staff/components/StaffProfileUnavailable'
+import { StaffProfile } from '../../staff/components/StaffProfile'
+import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
+import { DispatcherOperations } from '../components/DispatcherOperations'
 
 export function DispatcherPage() {
   const auth = useAuth()
+  const { state, query, refetch } = useStaffProfile('DISPATCHER')
 
   return (
     <div className="page-container staff-page dispatcher-page">
@@ -14,18 +18,29 @@ export function DispatcherPage() {
         </p>
       </header>
       <div className="profile-grid">
-        <StaffProfileUnavailable />
+        <StaffProfile state={state} onRetry={() => { void refetch() }} />
         <aside className="card staff-note" aria-labelledby="dispatcher-next-heading">
-          <h2 className="section-heading" id="dispatcher-next-heading">The work ahead</h2>
+          <h2 className="section-heading" id="dispatcher-next-heading">Dispatch operations</h2>
           <p className="muted">
-            Live unassigned parcel queues, courier workloads, assignment commands and delivery analytics will arrive in future releases.
+            Review unassigned parcels and eligible courier workloads before confirming an assignment.
           </p>
-          <p className="muted">This entry does not assign parcels or change deliveries.</p>
+          <p className="muted">Assigning a courier does not change the parcel lifecycle status.</p>
+          <p><Link to="/dispatcher/reports">View daily outcomes for your zones</Link></p>
           <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out
           </button>
+          {query.isError && (
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={() => { void refetch() }}
+            >
+              Retry profile
+            </button>
+          )}
         </aside>
       </div>
+      {state.status === 'ready' && <DispatcherOperations key={auth.snapshot.subject} />}
     </div>
   )
 }

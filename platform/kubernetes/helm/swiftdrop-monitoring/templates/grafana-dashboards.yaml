@@ -1,0 +1,40 @@
+# ==============================================================================
+# SwiftDrop Platform — Grafana Operational Dashboards ConfigMap (Issue #160)
+# Declaratively provisioned dashboards for health, outbox, gRPC, comms, and release.
+# ==============================================================================
+
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-grafana-dashboards-health
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+    dashboard-provider: swiftdrop
+data:
+  swiftdrop-service-health.json: |
+{{ .Files.Get "files/dashboards/swiftdrop-service-health.json" | indent 4 }}
+  swiftdrop-release-monitoring.json: |
+{{ .Files.Get "files/dashboards/swiftdrop-release-monitoring.json" | indent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-grafana-dashboards-ops
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+    dashboard-provider: swiftdrop
+data:
+  swiftdrop-delivery-outbox.json: |
+{{ .Files.Get "files/dashboards/swiftdrop-delivery-outbox.json" | indent 4 }}
+  swiftdrop-grpc.json: |
+{{ .Files.Get "files/dashboards/swiftdrop-grpc.json" | indent 4 }}
+  swiftdrop-communications.json: |
+{{ .Files.Get "files/dashboards/swiftdrop-communications.json" | indent 4 }}
+  swiftdrop-sse.json: |
+{{ .Files.Get "files/dashboards/swiftdrop-sse.json" | indent 4 }}
+{{- end }}
+

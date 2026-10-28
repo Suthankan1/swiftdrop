@@ -245,6 +245,95 @@ paths:
               schema:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
 
+  /api/v1/merchants/{id}/api-keys/{keyId}:
+    delete:
+      summary: Revoke a merchant machine API key
+      description: |
+        Durably revokes the specified machine API key immediately.
+        Subsequent verification attempts with this key fail closed.
+        Safe for idempotent duplicate revocation.
+      operationId: revokeApiKey
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: API key successfully revoked
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller does not own this merchant tenant
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: API key not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/merchants/{id}/api-keys/{keyId}/revoke:
+    post:
+      summary: Revoke a merchant machine API key (POST alias)
+      description: |
+        Alternative POST route for clients unable to issue HTTP DELETE requests.
+        Durably revokes the specified machine API key immediately.
+      operationId: revokeApiKeyPost
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: API key successfully revoked
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller does not own this merchant tenant
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: API key not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
 components:
   securitySchemes:
     BearerAuth:

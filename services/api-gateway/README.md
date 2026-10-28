@@ -39,14 +39,32 @@ In accordance with [SwiftDrop Architecture Baseline v1.3](../../docs/architectur
 
 ---
 
-## 3. Approved Route Specifications (November 1 Milestone)
+## 3. Approved Route Specifications (Architecture Baseline v1.3 & Issue #127)
 
-| Method | Public Gateway Path | Downstream Target URL | Downstream Service | Auth Required |
-|---|---|---|---|---|
-| `GET` | `http://localhost:8080/api/v1/users/me` | `http://localhost:8081/api/v1/users/me` | Accounts & Partners | Yes (Bearer JWT) |
-| `GET` | `http://localhost:8080/actuator/health` | Local actuator handler | API Gateway | No (Public) |
+| Method | Public Gateway Path | Downstream Target URL | Downstream Service | Auth Required | Route Order |
+|---|---|---|---|---|---|
+| `POST` | `/api/v1/merchants/webhooks` | `${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}/api/v1/merchants/webhooks` | Communications | Yes (`ROLE_MERCHANT`, `ROLE_ADMIN`) | 5 |
+| `GET` | `/api/v1/merchants/webhooks/deliveries` | `${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}/api/v1/merchants/webhooks/deliveries` | Communications | Yes (`ROLE_MERCHANT`, `ROLE_ADMIN`) | 5 |
+| `GET` | `/api/v1/users/me` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/users/me` | Accounts & Partners | Yes (`ROLE_CUSTOMER`, etc.) | 10 |
+| `POST` | `/api/v1/merchants` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/merchants` | Accounts & Partners | Yes (Authenticated) | 10 |
+| `POST` | `/api/v1/merchants/{id}/approve` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/merchants/{id}/approve` | Accounts & Partners | Yes (`ROLE_ADMIN`) | 10 |
+| `*` | `/api/v1/merchants/**` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/merchants/**` | Accounts & Partners | Yes (`ROLE_MERCHANT`, `ROLE_ADMIN`) | 10 |
+| `*` | `/api/v1/admin/**` | `${ACCOUNTS_SERVICE_URL:http://localhost:8081}/api/v1/admin/**` | Accounts & Partners | Yes (`ROLE_ADMIN`) | 10 |
+| `POST, GET` | `/api/v1/quotes/**` | `${PRICING_SERVICE_URL:http://localhost:8082}/api/v1/quotes/**` | Pricing & Zones | No (Public) | 10 |
+| `GET` | `/api/v1/zones/**` | `${PRICING_SERVICE_URL:http://localhost:8082}/api/v1/zones/**` | Pricing & Zones | Yes (Authenticated) | 10 |
+| `GET` | `/api/v1/tracking/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/tracking/**` | Delivery Operations | No (Public, SSE unbuffered) | 10 |
+| `POST` | `/api/v1/merchant/parcels/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/merchant/parcels/**` | Delivery Operations | Yes (`ROLE_MERCHANT` via JWT or `X-API-Key`) | 10 |
+| `POST, GET` | `/api/v1/assignments/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/assignments/**` | Delivery Operations | Yes (`ROLE_COURIER`, `ROLE_DISPATCHER`, `ROLE_ADMIN`) | 10 |
+| `*` | `/api/v1/parcels/**` | `${DELIVERY_SERVICE_URL:http://localhost:8083}/api/v1/parcels/**` | Delivery Operations | Yes (Authenticated, SSE unbuffered) | 10 |
+| `POST` | `/graphql` | `${GRAPHQL_SERVICE_URL:http://localhost:8084}/graphql` | GraphQL Query API | Yes (Authenticated) | 10 |
+| `GET` | `/actuator/health` | Local actuator handler | API Gateway | No (Public) | Local |
 
-The downstream target URL is fully configurable via the environment variable `ACCOUNTS_SERVICE_URL` (default: `http://localhost:8081`).
+Target service URLs are configured via environment variables:
+- `ACCOUNTS_SERVICE_URL` (default: `http://localhost:8081`)
+- `PRICING_SERVICE_URL` (default: `http://localhost:8082`)
+- `DELIVERY_SERVICE_URL` (default: `http://localhost:8083`)
+- `COMMUNICATIONS_SERVICE_URL` (default: `http://localhost:8084`)
+- `GRAPHQL_SERVICE_URL` (default: `http://localhost:8084`)
 
 ---
 
@@ -58,6 +76,12 @@ The Gateway configures a reactive `NimbusReactiveJwtDecoder` with:
 - **Required Audience:** `swiftdrop-api` (enforced via `AudienceValidator`)
 - **Cryptographic Signature:** Verified via public keys from the Keycloak realm's published JWKS.
 - **Token Lifetime:** Validates non-expired token (`exp`), issue time (`iat`), and not-before (`nbf`).
+- **Role Extraction:** Maps Keycloak `roles` and `realm_access.roles` claims to Spring Security `ROLE_*` authorities (`ROLE_CUSTOMER`, `ROLE_MERCHANT`, `ROLE_COURIER`, `ROLE_DISPATCHER`, `ROLE_ADMIN`).
+- **Merchant Machine Credentials:** Authenticates machine callers on `POST /api/v1/merchant/parcels` via `X-API-Key` headers matching `^swd_live_[0-9a-zA-Z]{32}$`, granting `ROLE_MERCHANT` authority without exposing credentials or bypassing JWT security on other routes.
+- **Internal Delegation Stripping:** Strips both client identity headers and internal gRPC actor delegation headers (`x-swiftdrop-*`) introduced in Issue #100, preventing external impersonation of internal services.
+- **Abuse & Rate Limiting:** Enforces bounded token-bucket rate limits (60 req/min public, 120 req/min verified merchant, 10 req/min unauthenticated probes) with HTTP 429 and `Retry-After`.
+- **Payload Size Enforcement:** Enforces maximum request body sizes (64 KB for quotes, 256 KB standard parcel commands, 5 MB courier proof uploads) with HTTP 413 `Payload Too Large`.
+- **SSE Connection Policy:** Bounded concurrency caps (5 public tracking streams, 10 authenticated parcel streams) with zero response buffering and clean disconnect cleanup.
 
 ### RFC 7807 Problem Details Error Structure
 Unauthenticated or invalid requests receive:
@@ -71,7 +95,40 @@ Unauthenticated or invalid requests receive:
 }
 ```
 
-When downstream Accounts Service is offline/unreachable:
+Forbidden or insufficient role requests receive:
+```json
+{
+  "type": "about:blank",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "Access Denied",
+  "instance": "/api/v1/admin/merchants"
+}
+```
+
+Rate limit exceeded requests receive:
+```json
+{
+  "type": "about:blank",
+  "title": "Too Many Requests",
+  "status": 429,
+  "detail": "Too many requests. Please retry in 12 seconds.",
+  "instance": "/api/v1/tracking/SWD-123"
+}
+```
+
+Payload too large requests receive:
+```json
+{
+  "type": "about:blank",
+  "title": "Payload Too Large",
+  "status": 413,
+  "detail": "Payload size exceeds maximum allowed limit of 65536 bytes.",
+  "instance": "/api/v1/quotes"
+}
+```
+
+When downstream service is offline/unreachable (HTTP 503):
 ```json
 {
   "type": "about:blank",
@@ -79,6 +136,28 @@ When downstream Accounts Service is offline/unreachable:
   "status": 503,
   "detail": "Downstream service is currently unavailable.",
   "instance": "/api/v1/users/me"
+}
+```
+
+When downstream service times out (HTTP 504):
+```json
+{
+  "type": "about:blank",
+  "title": "Gateway Timeout",
+  "status": 504,
+  "detail": "The gateway timed out waiting for upstream service response.",
+  "instance": "/api/v1/quotes/standard"
+}
+```
+
+When downstream connection terminates prematurely or returns invalid upstream response (HTTP 502):
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Gateway",
+  "status": 502,
+  "detail": "Bad gateway or invalid response from upstream service.",
+  "instance": "/api/v1/parcels/SWD-101"
 }
 ```
 
@@ -90,7 +169,11 @@ When downstream Accounts Service is offline/unreachable:
 |---|---|---|---|
 | **Frontend SPA** | `http://localhost:5173` | HTTP (Vite) | Browser client (in-memory token) |
 | **API Gateway** | `http://localhost:8080` | HTTP (WebFlux) | Edge routing & JWT gate |
-| **Accounts Service** | `http://localhost:8081` | HTTP (Spring Boot) | User profile & business auth (pending Issue #5) |
+| **Accounts Service** | `http://localhost:8081` | HTTP (Spring Boot) | User profile & business auth (Issue #5) |
+| **Pricing Service** | `http://localhost:8082` | HTTP (Spring Boot) | Zones & quote calculations |
+| **Delivery Service** | `http://localhost:8083` | HTTP (Spring Boot) | Parcels & lifecycle operations |
+| **GraphQL Query API** | `http://localhost:8084` | HTTP (Spring Boot) | Read-only composite queries |
+| **Communications Service** | `http://localhost:8084` | HTTP (Spring Boot) | Merchant notifications & webhooks |
 | **Keycloak Identity** | `http://localhost:8090` | HTTP (Docker) | OIDC provider & realm authority (Issue #2) |
 
 ---
@@ -99,7 +182,7 @@ When downstream Accounts Service is offline/unreachable:
 
 ### 6.1 Prerequisites
 - Java 21 LTS (`export JAVA_HOME=$(/usr/libexec/java_home -v 21)`)
-- Docker (for optional Keycloak live smoke testing)
+- Maven Wrapper (`./mvnw`)
 
 ### 6.2 Running Automated Gateway Tests
 The automated test suite runs independently of external dependencies using synthetic RSA keys and MockWebServer:
@@ -108,20 +191,41 @@ cd services/api-gateway
 ./mvnw clean test
 ```
 
-**Test Coverage Summary (13 Automated Tests):**
-1. Application context load (`ApiGatewayApplicationTests`)
-2. Public `/actuator/health` endpoint accessibility without token
-3. Missing Bearer token rejection with HTTP 401 and RFC 7807 Problem Details
-4. Malformed JWT rejection with HTTP 401
-5. Untrusted signature rejection with HTTP 401
-6. Wrong issuer rejection with HTTP 401
-7. Wrong audience rejection with HTTP 401
-8. Expired JWT rejection with HTTP 401
-9. Valid JWT routing to Accounts Service with preserved `Authorization` header
-10. Stripping of client-supplied spoofed headers (`X-User-Id`, `X-Roles`, `X-Tenant-Id`, etc.)
-11. Permissive CORS headers for authorized origin `http://localhost:5173`
-12. Denial of permissive CORS headers for unauthorized origins
-13. Downstream service unavailable translation to HTTP 503 Problem Details without leaking stack traces
+**Test Coverage Summary (75 Automated Tests across 7 Test Classes):**
+1. Application context load (`ApiGatewayApplicationTests` - 1 test)
+2. Downstream service unavailable error mapping (`ApiGatewayDownstreamUnavailableTest` - 1 test)
+3. Target contract routing tests (`SwiftDropTargetContractGatewayTest` - 6 tests)
+4. Baseline security & routing tests (`ApiGatewaySecurityAndRoutingTest` - 12 tests)
+5. Business edge security policy tests (`GatewayBusinessEdgeSecurityTest` - 21 tests)
+   - Missing, expired, malformed, wrong issuer/audience JWT rejection (HTTP 401)
+   - Keycloak role extraction and role-gate enforcement (`ROLE_CUSTOMER`, `ROLE_COURIER`, `ROLE_DISPATCHER`, `ROLE_ADMIN`)
+   - Merchant machine `X-API-Key` authentication and authorization on `POST /api/v1/merchant/parcels`
+   - Denial of merchant API keys on non-merchant routes
+   - Case-insensitive stripping of caller identity (`X-User-Id`, `X-Roles`, etc.) and internal gRPC delegation headers (`x-swiftdrop-*`)
+   - Preservation of `Authorization: Bearer <token>` and `Idempotency-Key`
+6. Bounded abuse and SSE policy tests (`GatewayAbuseAndSsePolicyTest` - 8 tests)
+   - Public IP rate-limiting (HTTP 429 with `Retry-After`)
+   - Merchant verified identity rate-limiting with independent quota buckets
+   - Quotes calculation payload size limit (HTTP 413 on > 64 KB)
+   - Parcel booking standard payload size limit (HTTP 413 on > 256 KB)
+   - Public tracking SSE stream concurrency cap (HTTP 429 on > 5 concurrent streams)
+   - Authenticated SSE stream Bearer token enforcement and concurrency limit
+   - In-memory rate limiter capacity bounding and stale bucket pruning
+7. Gateway business routes integration tests (`GatewayBusinessRoutesIntegrationTest` - 12 tests, Issue #127)
+   - Verified routing to Accounts & Partners (`/api/v1/users/me`, `/api/v1/merchants/**`, `/api/v1/admin/**`)
+   - Verified routing to Pricing & Zones (`/api/v1/quotes/**`, `/api/v1/zones/**`)
+   - Verified routing to Delivery Operations (`/api/v1/merchant/parcels/**`, `/api/v1/assignments/**`, `/api/v1/parcels/**`)
+   - Verified unbuffered SSE live tracking stream forwarding (`/api/v1/tracking/**`)
+   - Verified routing to Communications webhooks (`/api/v1/merchants/webhooks/**`) with higher order precedence over generic merchants
+   - Verified routing to GraphQL Query API (`/graphql`)
+   - Edge security header sanitization and negative 401/403 authorization regressions
+8. Gateway upstream error handling and timeout tests (`GatewayUpstreamErrorHandlingTest` - 7 tests, Issue #127)
+   - Propagation of upstream 4xx client errors (`400 Bad Request`, `404 Not Found`, `409 Conflict`)
+   - Propagation of upstream 500 Internal Server Error
+   - Translation of connection refusal / unreachable upstream to RFC 7807 HTTP 503 Service Unavailable
+   - Translation of upstream timeout to RFC 7807 HTTP 504 Gateway Timeout
+   - Translation of premature upstream disconnect to RFC 7807 HTTP 502 Bad Gateway
+   - Sanitization of error responses to guarantee zero leakage of internal hostnames, IPs, or stack traces
 
 ### 6.3 Running the Gateway Locally
 ```bash
@@ -133,8 +237,10 @@ The gateway listens on `http://localhost:8080`.
 
 ---
 
-## 7. Cross-Team Integration & Next Steps
+## 7. Downstream Route Integration Status (Issue #127)
 
-- **Downstream Accounts Service:** Owned by Customer backend lead (Sinthuha, Issue #5). Gateway forwarding contract is complete and verified against mock downstream server.
-- **Frontend SPA:** Owned by Customer frontend lead (Gajanthan, Issue #6). CORS policy is configured and allowlisted for `http://localhost:5173`.
-- **November 1 Login Milestone:** End-to-end browser integration (`React -> Gateway -> Accounts`) will be proven once Accounts Service and React SPA are merged into main.
+Implemented under **Issue #127** by **@Gajanthan23**:
+- All approved business routes integrated in programmatic `RouteLocator` (`GatewayRoutesConfig.java`) and declarative `application.yml`.
+- Unbuffered SSE forwarding configured for live parcel lifecycle updates and public tracking.
+- RFC 7807 Problem Detail error handling distinguishing 502, 503, and 504 without leaking internal network topology or Java traces.
+- All 75 unit, security, routing, and error handling integration tests verified passing.

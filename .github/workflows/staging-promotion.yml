@@ -1,0 +1,157 @@
+name: SwiftDrop Staging Promotion & Release Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: 'Candidate Git commit SHA (40-char hex)'
+        required: true
+        type: string
+      approval_reference:
+        description: 'Independent review / PR approval reference'
+        required: true
+        type: string
+      target_environment:
+        description: 'Target promotion environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - 'staging'
+      dry_run_only:
+        description: 'Dry-run preflight verification only'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-promotion-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-gate-verification:
+    name: Release Candidate Provenance & Check Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install jsonschema pyyaml
+
+      - name: Verify candidate commit SHA and approval
+        env:
+          CANDIDATE_SHA: ${{ github.event.inputs.candidate_sha }}
+          APPROVAL_REF: ${{ github.event.inputs.approval_reference }}
+        run: |
+          echo "================================================================================"
+          echo "           SWIFTDROP RELEASE CANDIDATE PROVENANCE CHECK                         "
+          echo "================================================================================"
+          echo "Candidate SHA: ${CANDIDATE_SHA}"
+          echo "Approval Ref:  ${APPROVAL_REF}"
+
+          if [[ ! "${CANDIDATE_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "FATAL: Invalid candidate SHA format: '${CANDIDATE_SHA}'. Expected 40-char hex." >&2
+            exit 1
+          fi
+
+          if [ -z "${APPROVAL_REF}" ]; then
+            echo "FATAL: Approval reference is mandatory for staging promotion." >&2
+            exit 1
+          fi
+
+          if ! git cat-file -e "${CANDIDATE_SHA}^{commit}"; then
+            echo "FATAL: Candidate SHA '${CANDIDATE_SHA}' not found in Git commit tree!" >&2
+            exit 1
+          fi
+          echo "✓ Candidate SHA verified in repository history."
+
+      - name: Generate and validate release candidate manifest
+        env:
+          CANDIDATE_SHA: ${{ github.event.inputs.candidate_sha }}
+          APPROVAL_REF: ${{ github.event.inputs.approval_reference }}
+        run: |
+          mkdir -p build/artifacts/digests
+          ./platform/kubernetes/release/generate-release-manifest.sh \
+            --sha "${CANDIDATE_SHA}" \
+            --branch "test" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --approval-ref "${APPROVAL_REF}" \
+            --output "build/artifacts/digests/release-candidate-manifest.json"
+
+          ./platform/kubernetes/release/verify-candidate-manifest.sh \
+            --manifest "build/artifacts/digests/release-candidate-manifest.json" \
+            --expected-sha "${CANDIDATE_SHA}"
+
+      - name: Upload candidate release manifest
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: release-candidate-manifest
+          path: build/artifacts/digests/release-candidate-manifest.json
+          retention-days: 14
+
+  staging-preflight-gate:
+    name: Staging Migration Preflight & Helm Validation
+    needs: candidate-gate-verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download candidate manifest
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          name: release-candidate-manifest
+          path: build/artifacts/digests/
+
+      - name: Setup Helm
+        uses: azure/setup-helm@b7246b12e77f71347c681265249a116b51261188 # v4.3.0
+        with:
+          version: v3.16.2
+
+      - name: Validate staging Helm values configuration
+        run: |
+          echo "Checking values-staging.yaml..."
+          test -f platform/kubernetes/helm/swiftdrop/values-staging.yaml
+          if grep -q "createPlaceholderServices: true" platform/kubernetes/helm/swiftdrop/values-staging.yaml; then
+            echo "FATAL: Staging values must not contain placeholder services!" >&2
+            exit 1
+          fi
+          echo "✓ values-staging.yaml verified: zero placeholder interfaces."
+
+      - name: Lint and template staging release
+        run: |
+          helm lint platform/kubernetes/helm/swiftdrop/ --values platform/kubernetes/helm/swiftdrop/values-staging.yaml
+          helm template swiftdrop-staging platform/kubernetes/helm/swiftdrop/ --values platform/kubernetes/helm/swiftdrop/values-staging.yaml > /dev/null
+          echo "✓ Helm chart templates rendered cleanly for staging."
+
+      - name: Run migration preflight in dry-run mode
+        run: |
+          ./platform/kubernetes/release/migration-preflight.sh --dry-run
+
+      - name: Output Operator Promotion Runbook Reference
+        run: |
+          echo "================================================================================"
+          echo "✓ STAGING PROMOTION PREFLIGHT GATE PASSED CLEANLY IN CI."
+          echo "Candidate SHA: ${{ github.event.inputs.candidate_sha }}"
+          echo "Target Context: k3d-swiftdrop-local"
+          echo "In accordance with strict $0 local infrastructure policy (ADR-0011),"
+          echo "promotion executes on local dedicated cluster: ./platform/kubernetes/release/promote-staging.sh"
+          echo "================================================================================"

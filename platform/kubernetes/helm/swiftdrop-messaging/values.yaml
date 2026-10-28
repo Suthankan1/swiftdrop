@@ -1,0 +1,78 @@
+# ==============================================================================
+# SwiftDrop Platform — Messaging Layer Base Helm Values (Issue #154)
+# Persistent Kafka KRaft broker, private MinIO S3 storage, and Mailpit receiver.
+# Strict $0 cost policy: Local k3d/K3s local-path persistent storage.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+  storageClass: local-path
+
+namespaces:
+  messaging: swiftdrop-messaging
+
+kafka:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: apache/kafka
+    tag: "4.2.1"
+    pullPolicy: IfNotPresent
+  clusterId: "4L622nShTUiAnsYh0-X41w"
+  service:
+    type: ClusterIP
+    clientPort: 29092
+    controllerPort: 9093
+  storage:
+    size: 3Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 1024Mi
+
+minio:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: cleanstart/minio
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    apiPort: 9000
+    consolePort: 9001
+  storage:
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  secretName: swiftdrop-minio-secret
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+mailpit:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: axllent/mailpit
+    tag: v1.27.4
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    smtpPort: 1025
+    uiPort: 8025
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+

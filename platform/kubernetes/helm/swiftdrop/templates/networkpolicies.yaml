@@ -1,0 +1,691 @@
+# ==============================================================================
+# SwiftDrop Platform — Kubernetes NetworkPolicies (Issue #149)
+# Enforces default-deny on ingress & egress, minimal scoped allows, and
+# strict database / gRPC / messaging isolation boundaries across all namespaces.
+# ==============================================================================
+
+{{- if .Values.networkPolicies.enabled }}
+
+# ------------------------------------------------------------------------------
+# A. swiftdrop-apps Namespace Policies
+# ------------------------------------------------------------------------------
+
+# 1. Default Deny All Ingress and Egress in swiftdrop-apps
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all-apps
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+# 2. Allow CoreDNS Egress for all pods in swiftdrop-apps
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress-apps
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# 3. Allow Kubernetes Node / Kubelet Health Probes to swiftdrop-apps
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-k8s-probes-apps
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8083
+        - protocol: TCP
+          port: 8084
+        - protocol: TCP
+          port: 8085
+
+---
+# 4. Ingress Controller (Traefik) -> Frontend SPA & API Gateway
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-controller-to-edge
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: ["frontend", "api-gateway"]
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+# 5. API Gateway Ingress & Egress Rules
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-egress
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "api-gateway") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+  policyTypes:
+    - Egress
+  egress:
+    # Gateway -> Microservices within swiftdrop-apps
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts-service
+      ports:
+        - protocol: TCP
+          port: 8081
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: pricing-service
+      ports:
+        - protocol: TCP
+          port: 8082
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: delivery-service
+      ports:
+        - protocol: TCP
+          port: 8083
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: communications-service
+      ports:
+        - protocol: TCP
+          port: 8084
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql-query-service
+      ports:
+        - protocol: TCP
+          port: 8085
+    # Gateway -> Keycloak JWKS in swiftdrop-identity
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.identity }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+# 6. Accounts Service Policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-accounts-traffic
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "accounts-service") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: accounts-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # HTTP from Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8081
+    # gRPC from GraphQL, Delivery, Communications
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["graphql-query-service", "communications-service", "delivery-service"]
+      ports:
+        - protocol: TCP
+          port: 9081
+  egress:
+    # Accounts -> Dedicated accounts-postgres in swiftdrop-data
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.data }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Accounts -> Keycloak JWKS in swiftdrop-identity
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.identity }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+# 7. Pricing Service Policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pricing-traffic
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "pricing-service") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: pricing-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # HTTP from Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8082
+    # gRPC from Delivery
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: delivery-service
+      ports:
+        - protocol: TCP
+          port: 9083
+  egress:
+    # Pricing -> business-postgres in swiftdrop-data
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.data }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Pricing -> Keycloak JWKS in swiftdrop-identity
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.identity }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+# 8. Delivery Service Policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-delivery-traffic
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "delivery-service") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: delivery-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # HTTP from Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8083
+    # gRPC from GraphQL, Communications
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["graphql-query-service", "communications-service"]
+      ports:
+        - protocol: TCP
+          port: 9082
+  egress:
+    # Delivery -> Pricing gRPC
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: pricing-service
+      ports:
+        - protocol: TCP
+          port: 9083
+    # Delivery -> Accounts gRPC
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts-service
+      ports:
+        - protocol: TCP
+          port: 9081
+    # Delivery -> business-postgres in swiftdrop-data
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.data }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Delivery -> Kafka & MinIO in swiftdrop-messaging
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.messaging }}
+      ports:
+        - protocol: TCP
+          port: 29092
+        - protocol: TCP
+          port: 9000
+    # Delivery -> Keycloak JWKS in swiftdrop-identity
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.identity }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+# 9. Communications Service Policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-communications-traffic
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "communications-service") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: communications-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # HTTP from Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8084
+  egress:
+    # Communications -> Accounts gRPC
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts-service
+      ports:
+        - protocol: TCP
+          port: 9081
+    # Communications -> Delivery gRPC
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: delivery-service
+      ports:
+        - protocol: TCP
+          port: 9082
+    # Communications -> business-postgres in swiftdrop-data
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.data }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Communications -> Kafka & Mailpit in swiftdrop-messaging
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.messaging }}
+      ports:
+        - protocol: TCP
+          port: 29092
+        - protocol: TCP
+          port: 1025
+
+---
+# 10. GraphQL Query API Policies (Read-Only Composite Gate)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-graphql-traffic
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: graphql-query-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # HTTP from Gateway only (No public ingress directly)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8085
+  egress:
+    # GraphQL -> Accounts gRPC & Delivery gRPC only!
+    # Strictly prohibited from querying databases, Kafka, or MinIO directly!
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts-service
+      ports:
+        - protocol: TCP
+          port: 9081
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: delivery-service
+      ports:
+        - protocol: TCP
+          port: 9082
+
+# ------------------------------------------------------------------------------
+# B. swiftdrop-identity Namespace Policies
+# ------------------------------------------------------------------------------
+
+---
+# 11. Default Deny All in swiftdrop-identity
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all-identity
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+# 12. Allow CoreDNS Egress for Keycloak in swiftdrop-identity
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress-identity
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# 13. Keycloak Ingress & Egress Rules
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-keycloak-traffic
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Ingress from Traefik controller in kube-system
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Ingress from microservices in swiftdrop-apps for JWKS token verification
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.apps }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Ingress from kubelet for health probes (port 9000)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 9000
+  egress:
+    # Keycloak -> keycloak-postgres in swiftdrop-data
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.data }}
+      ports:
+        - protocol: TCP
+          port: 5432
+
+# ------------------------------------------------------------------------------
+# C. Data & Messaging Namespace Cross-Boundary Isolation Policies
+# ------------------------------------------------------------------------------
+
+---
+# 14. Default Deny Ingress in swiftdrop-data
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-data-ingress
+  namespace: {{ .Values.namespaces.data }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# 15. Scoped Database Ingress from Authorized App Pods Only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-authorized-db-access
+  namespace: {{ .Values.namespaces.data }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only allow PostgreSQL port from swiftdrop-apps microservices and swiftdrop-identity
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.apps }}
+          podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["accounts-service", "pricing-service", "delivery-service", "communications-service"]
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.identity }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# 16. Default Deny Ingress in swiftdrop-messaging
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-messaging-ingress
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# 17. Scoped Messaging & Storage Ingress from Authorized App Pods Only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-authorized-messaging-access
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Kafka port 29092: only Delivery and Communications
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.apps }}
+          podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["delivery-service", "communications-service"]
+      ports:
+        - protocol: TCP
+          port: 29092
+    # MinIO port 9000: only Delivery
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.apps }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: delivery-service
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Mailpit port 1025: only Communications
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.apps }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: communications-service
+      ports:
+        - protocol: TCP
+          port: 1025
+
+{{- end }}

@@ -1,0 +1,120 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "minio") | nindent 4 }}
+spec:
+  type: {{ .Values.minio.service.type }}
+  selector:
+    {{- include "swiftdrop-messaging.selectorLabels" (dict "context" . "component" "minio") | nindent 4 }}
+  ports:
+    - name: s3-api
+      port: {{ .Values.minio.service.apiPort }}
+      targetPort: 9000
+      protocol: TCP
+    - name: console
+      port: {{ .Values.minio.service.consolePort }}
+      targetPort: 9001
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "minio") | nindent 4 }}
+spec:
+  serviceName: minio
+  replicas: {{ .Values.minio.replicaCount }}
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-messaging.selectorLabels" (dict "context" . "component" "minio") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "minio") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: init-bucket
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - mkdir -p /data/swiftdrop-pod
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: minio
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+          command:
+            - minio
+            - server
+            - /data
+            - --console-address
+            - :9001
+          ports:
+            - name: s3-api
+              containerPort: 9000
+              protocol: TCP
+            - name: console
+              containerPort: 9001
+              protocol: TCP
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.secretName }}
+                  key: accesskey
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.minio.secretName }}
+                  key: secretkey
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          startupProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            periodSeconds: 15
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "minio") | nindent 10 }}
+      spec:
+        accessModes:
+          - {{ .Values.minio.storage.accessMode }}
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.minio.storage.size }}
+{{- end }}
+

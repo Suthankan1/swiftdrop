@@ -1,0 +1,124 @@
+# ==============================================================================
+# SwiftDrop Platform — Test / CI Helm Values (Issue #149)
+# Validates template rendering, schema compliance, and isolated smoke tests.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+
+namespaces:
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+ingress:
+  enabled: true
+  className: traefik
+  host: swiftdrop.local
+  subdomains:
+    enabled: true
+    app: app.swiftdrop.local
+    api: api.swiftdrop.local
+    auth: auth.swiftdrop.local
+  tls:
+    enabled: true
+    secretName: swiftdrop-tls-cert
+  keycloak:
+    exposeAdmin: true
+
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+frontend:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+apiGateway:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+accounts:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+pricing:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+delivery:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+communications:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+graphql:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 30m
+      memory: 128Mi
+    limits:
+      cpu: 150m
+      memory: 256Mi
+
+statefulInterfaces:
+  createPlaceholderServices: true

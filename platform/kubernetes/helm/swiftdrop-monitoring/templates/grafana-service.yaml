@@ -1,0 +1,24 @@
+# ==============================================================================
+# SwiftDrop Platform — Grafana ClusterIP Service (Issue #160)
+# Private internal service; zero public ingress.
+# ==============================================================================
+
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: swiftdrop-grafana
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+spec:
+  type: {{ .Values.grafana.service.type }}
+  selector:
+    {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "grafana") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.grafana.service.port }}
+      targetPort: 3000
+      protocol: TCP
+{{- end }}
+

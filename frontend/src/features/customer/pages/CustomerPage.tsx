@@ -1,10 +1,19 @@
+import { Link, useInRouterContext } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { AccountsError, createAccountsApi } from '../api/accounts'
 import { CustomerProfile, type ProfileState } from '../components/CustomerProfile'
+import { CustomerNav } from '../components/CustomerNav'
+import { CustomerDashboardCards } from '../components/CustomerDashboardCards'
+import type { createCustomerDashboardApi } from '../api/customerDashboard'
 
-export function CustomerPage() {
+export interface CustomerPageProps {
+  dashboardApiOverride?: ReturnType<typeof createCustomerDashboardApi>
+}
+
+export function CustomerPage({ dashboardApiOverride }: CustomerPageProps = {}) {
   const auth = useAuth()
+  const inRouter = useInRouterContext()
   const subject = auth.snapshot.subject
   const query = useQuery({
     queryKey: ['private', 'profile', subject],
@@ -27,9 +36,29 @@ export function CustomerPage() {
   return <div className="page-container customer-page">
     <header className="page-heading"><p className="eyebrow">Customer space</p><h1>A little space for<br />everything you send.</h1>
       <p className="muted">Your SwiftDrop account starts here, with your personal details kept private.</p></header>
-    <div className="profile-grid"><CustomerProfile state={state} />
+    <CustomerNav />
+    {state.status === 'ready' && (
+      <CustomerDashboardCards key={auth.snapshot.subject} apiOverride={dashboardApiOverride} />
+    )}
+    <div className="profile-grid" style={{ marginTop: '24px' }}><CustomerProfile state={state} />
       <aside className="card customer-note" aria-labelledby="customer-note-heading"><h2 id="customer-note-heading">Built around you.</h2>
-        <p>Booking and parcel tracking will arrive in a later release.</p><button onClick={() => { void auth.logout() }}>Sign out</button>
+        <p>Calculate dynamic rates, book delivery dispatches, monitor active milestones, and download official receipts.</p>
+        {inRouter ? (
+          <Link to="/customer/quote" className="button button-primary">Request a quote &amp; book</Link>
+        ) : (
+          <a href="/customer/quote" className="button button-primary">Request a quote &amp; book</a>
+        )}
+        {inRouter ? (
+          <Link to="/customer/history" className="button button-secondary">View delivery history</Link>
+        ) : (
+          <a href="/customer/history" className="button button-secondary">View delivery history</a>
+        )}
+        {inRouter ? (
+          <Link to="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</Link>
+        ) : (
+          <a href="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</a>
+        )}
+        <button onClick={() => { void auth.logout() }}>Sign out</button>
         {query.isError && <button onClick={() => { void query.refetch() }}>Retry profile</button>}
       </aside></div>
   </div>

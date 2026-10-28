@@ -35,11 +35,15 @@ pnpm lint
 | Route | Current behavior |
 |---|---|
 | `/` | Public landing page and shared responsive navigation |
-| `/customer` | Customer role entry; redirects anonymous sessions to login, reads real profile through Gateway |
+| `/customer` | Customer role entry; redirects anonymous sessions to login, reads real profile and live customerDashboard summary cards through Gateway |
 | `/merchant` | Merchant role entry; guarded for `MERCHANT` role, presents approval states (Pending, Approved, Rejected, Suspended, Unknown) and merchant business details |
 | `/courier` | Courier role entry; guarded for `COURIER` role with denial feedback |
-| `/dispatcher` | Dispatcher-only landing; shared auth/logout, unavailable staff profile until #14; no operational commands |
-| `/admin` | Admin-only landing; controlled-access information, unavailable staff profile until #14; no provisioning/approval/pricing controls |
+| `/dispatcher` | Dispatcher-only staff entry; verified ACTIVE profile gates bounded queue/workload reads and manual assignment; live integration blocked on #135 and Gateway routing |
+| `/admin` | Admin-only landing, staff self-read and merchant-review navigation |
+| `/admin/users` | ADMIN-only paged Accounts user summaries; retry and refresh |
+| `/admin/staff` | ADMIN-only paged/filtered staff profiles and controlled provisioning |
+| `/admin/staff/:profileId` | ADMIN-only staff detail, identity audit, suspension, synchronization and audit recovery |
+| `/admin/merchants` | Admin-only merchant review presentation; production review reads/commands await the reviewed #121 provider |
 | `/login` | Keycloak login, Google broker and registration entries; authenticated role navigation |
 | `/auth/callback` | Single adapter-managed code exchange; scrub callback parameters and return to login/session page |
 | `/logout` | Clear local session and POST to Keycloak end-session |
@@ -56,6 +60,12 @@ Issue #14 is open and no staff-read controller/DTO/Gateway route is merged. **AP
 The 2026-10-22 frontend run passed **143 tests in 12 files**, TypeScript, lint and production build. Tests use synthetic auth contexts and prove React behavior, not genuine JWT/backend authorization. No browser is connected in this environment, so visual browser/mobile checks, real staff sign-in and Gateway/direct-Accounts reads were not performed. Full #16/L05/L07 staff acceptance remains blocked on #14 and controlled test identities. See [milestone evidence](../docs/milestones/LOGIN_ACCEPTANCE.md#issue-16-dispatcheradmin-ui-evidence--2026-10-22).
 
 ## Source layout
+
+Issue #25 extends the original Dispatcher landing with a queue, courier workloads
+and manual REST assignment confirmation. See [Dispatcher handoff](src/features/dispatcher/README.md)
+for current contracts, concurrency/session safeguards, the reviewed-in-PR GraphQL
+complexity correction and explicit provider/routing blockers. The Issue #16
+landing evidence above is historical; it does not describe the new operations.
 
 ```text
 src/

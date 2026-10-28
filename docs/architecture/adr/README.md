@@ -13,3 +13,5 @@ These records document the proposed **v1.3 target**; they do not prove code exis
 - [ADR-0007: SSE for status-only realtime tracking](ADR-0007.md)
 - [ADR-0008: Bonus scope deferred beyond login milestone](ADR-0008.md)
 - [ADR-0009: Email OTP Verification Strategy for SwiftDrop](ADR-0009.md)
+- [ADR-0010: Merchant Machine Credential Lifecycle & Tenant-Bound Order Security](ADR-0010-merchant-credential-lifecycle.md)
+- [ADR-0011: Strict $0 Hosting Decision and Subscription-Specific Azure Resource Allowlist](ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md)

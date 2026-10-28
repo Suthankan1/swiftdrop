@@ -1,0 +1,78 @@
+server:
+  port: 8082
+
+grpc:
+  server:
+    port: ${PRICING_GRPC_PORT:9083}
+    enabled: ${PRICING_GRPC_ENABLED:true}
+
+spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      accept-float-as-int: false
+  application:
+    name: pricing-service
+  datasource:
+    url: ${PRICING_DB_URL:jdbc:postgresql://127.0.0.1:5439/pricing_db}
+    username: ${PRICING_DB_USERNAME:pricing_app}
+    password: ${PRICING_DB_PASSWORD}
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:${swiftdrop.jwt.issuer-uri:${devarom.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}}
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:${swiftdrop.jwt.jwk-set-uri:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}}}
+swiftdrop:
+  jwt:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/swiftdrop}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}
+    audience: ${JWT_AUDIENCE:swiftdrop-api}
+  pricing:
+    quote-validity-seconds: ${QUOTE_VALIDITY_SECONDS:900}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    clean-disabled: true
+    locations: classpath:db/migration
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  mvc:
+    problemdetails:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
+server.error:
+  include-message: never
+  include-stacktrace: never
+  include-binding-errors: never

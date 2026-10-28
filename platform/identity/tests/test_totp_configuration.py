@@ -54,29 +54,44 @@ def validate_totp_policy(realm):
 
 class TotpConfigurationTests(unittest.TestCase):
     def setUp(self):
+        self.realm_files = [
+            f for f in [IDENTITY_DIR / "realm-swiftdrop.json", IDENTITY_DIR / "realm-devarom.json"]
+            if f.exists()
+        ]
         self.realm = json.loads(REALM_FILE.read_text(encoding="utf-8"))
 
     def test_committed_totp_policy_invariants(self):
-        """Verify realm-devarom.json contains standard RFC 6238 TOTP policy."""
-        validate_totp_policy(self.realm)
+        """Verify realm configurations contain standard RFC 6238 TOTP policy."""
+        for rf in self.realm_files:
+            with self.subTest(realm=rf.name):
+                realm = json.loads(rf.read_text(encoding="utf-8"))
+                validate_totp_policy(realm)
 
     def test_email_verification_preserved_in_realm(self):
         """Verify Phase A email verification is not regressed by TOTP configuration."""
-        self.assertTrue(self.realm.get("verifyEmail"), "Email verification must remain enabled")
-        self.assertTrue(self.realm.get("registrationAllowed"), "Public registration must remain enabled")
-        self.assertEqual(self.realm.get("actionTokenGeneratedByUserLifespan"), 300)
-        self.assertNotIn("requiredActions", self.realm, "Realm import must not overwrite native actions")
+        for rf in self.realm_files:
+            with self.subTest(realm=rf.name):
+                realm = json.loads(rf.read_text(encoding="utf-8"))
+                self.assertTrue(realm.get("verifyEmail"), "Email verification must remain enabled")
+                self.assertTrue(realm.get("registrationAllowed"), "Public registration must remain enabled")
+                self.assertEqual(realm.get("actionTokenGeneratedByUserLifespan"), 300)
+                self.assertNotIn("requiredActions", realm, "Realm import must not overwrite native actions")
 
     def test_privileged_roles_cannot_be_self_assigned(self):
         """Privileged staff roles must not be in default roles."""
-        roles = {r["name"]: r for r in self.realm["roles"]["realm"]}
-        self.assertTrue(PRIVILEGED_ROLES.issubset(set(roles)))
-        default_role_name = self.realm.get("defaultRole", {}).get("name", "default-roles-swiftdrop")
-        default_role = roles[default_role_name]
-        composites = default_role.get("composites", {}).get("realm", [])
-        for priv in PRIVILEGED_ROLES:
-            self.assertNotIn(priv, composites, f"Privileged role {priv} found in default role composites")
-        self.assertIn("CUSTOMER", composites, "Default role must include CUSTOMER")
+        for rf in self.realm_files:
+            with self.subTest(realm=rf.name):
+                realm = json.loads(rf.read_text(encoding="utf-8"))
+                roles = {r["name"]: r for r in realm["roles"]["realm"]}
+                self.assertTrue(PRIVILEGED_ROLES.issubset(set(roles)))
+                realm_name = realm.get("realm", "swiftdrop")
+                default_role_name = realm.get("defaultRole", {}).get("name", f"default-roles-{realm_name}")
+                default_role = roles[default_role_name]
+                composites = default_role.get("composites", {}).get("realm", [])
+                for priv in PRIVILEGED_ROLES:
+                    self.assertNotIn(priv, composites, f"Privileged role {priv} found in default role composites")
+                self.assertIn("CUSTOMER", composites, "Default role must include CUSTOMER")
+
 
     def test_reusable_otp_code_is_rejected(self):
         """Negative test: enabling OTP code reuse must fail invariant check."""

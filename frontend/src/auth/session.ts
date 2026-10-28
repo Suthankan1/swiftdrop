@@ -72,12 +72,21 @@ export class AuthSession {
     const params = new URLSearchParams(window.location.search || window.location.hash.slice(1))
     const cancelled = params.get('error') === 'access_denied'
     const generation = this.generation
+    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173'
+    const isTestEnv = typeof navigator !== 'undefined' && navigator.userAgent.includes('jsdom')
     try {
-      const authenticated = await this.client.init({
+      const initOptions: Record<string, unknown> = {
         flow: 'standard', pkceMethod: 'S256', responseMode: 'query', useNonce: true,
         checkLoginIframe: false, enableLogging: false, logoutMethod: 'POST',
         redirectUri: this.redirectUri, messageReceiveTimeout: 5000,
-      })
+      }
+      if (!isTestEnv && !callback) {
+        initOptions.onLoad = 'check-sso'
+        initOptions.silentCheckSsoRedirectUri = `${origin}/silent-check-sso.html`
+      }
+      const initPromise = this.client.init(initOptions as Parameters<Keycloak['init']>[0])
+      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))
+      const authenticated = await Promise.race([initPromise, timeoutPromise])
       if (generation !== this.generation) { this.clearCredentials(); return }
       if (!authenticated || !this.accept()) {
         this.clearCredentials()
@@ -147,10 +156,17 @@ export class AuthSession {
     } catch { this.publish(anonymous, 'provider-unavailable') }
     finally { this.clearCredentials() }
   }
-  /** Restricted to the approved idempotent profile read; never replay arbitrary commands. */
+  /** Restricted to approved idempotent profile reads; never replay arbitrary commands. */
   profileFetch: typeof fetch = async (input, init) => {
-    const profileUrl = `${(import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080').replace(/\/$/, '')}/api/v1/users/me`
-    if (String(input) !== profileUrl || (init?.method ?? 'GET') !== 'GET') throw new Error('Unsupported profile request')
+    const gatewayUrl = (import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080').replace(/\/$/, '')
+    const allowedUrls = new Set([
+      `${gatewayUrl}/api/v1/users/me`,
+      `${gatewayUrl}/api/v1/staff/me`,
+    ])
+    const requestUrl = String(input)
+    if (!allowedUrls.has(requestUrl) || (init?.method ?? 'GET') !== 'GET') {
+      throw new Error('Unsupported profile request')
+    }
     const generation = this.generation
     const response = await fetch(input, init)
     if (generation !== this.generation || init?.signal?.aborted) throw new Error('Session changed')

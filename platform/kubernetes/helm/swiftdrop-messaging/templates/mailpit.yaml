@@ -1,0 +1,82 @@
+{{- if .Values.mailpit.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "mailpit") | nindent 4 }}
+spec:
+  type: {{ .Values.mailpit.service.type }}
+  selector:
+    {{- include "swiftdrop-messaging.selectorLabels" (dict "context" . "component" "mailpit") | nindent 4 }}
+  ports:
+    - name: smtp
+      port: {{ .Values.mailpit.service.smtpPort }}
+      targetPort: 1025
+      protocol: TCP
+    - name: ui
+      port: {{ .Values.mailpit.service.uiPort }}
+      targetPort: 8025
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "mailpit") | nindent 4 }}
+spec:
+  replicas: {{ .Values.mailpit.replicaCount }}
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-messaging.selectorLabels" (dict "context" . "component" "mailpit") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "mailpit") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: mailpit
+          image: "{{ .Values.mailpit.image.repository }}:{{ .Values.mailpit.image.tag }}"
+          imagePullPolicy: {{ .Values.mailpit.image.pullPolicy }}
+          ports:
+            - name: smtp
+              containerPort: 1025
+              protocol: TCP
+            - name: ui
+              containerPort: 8025
+              protocol: TCP
+          env:
+            - name: MP_MAX_MESSAGES
+              value: "100"
+          startupProbe:
+            exec:
+              command:
+                - /mailpit
+                - readyz
+            initialDelaySeconds: 2
+            periodSeconds: 2
+            failureThreshold: 15
+          readinessProbe:
+            exec:
+              command:
+                - /mailpit
+                - readyz
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            exec:
+              command:
+                - /mailpit
+                - readyz
+            periodSeconds: 15
+            timeoutSeconds: 2
+          resources:
+            {{- toYaml .Values.mailpit.resources | nindent 12 }}
+{{- end }}
+

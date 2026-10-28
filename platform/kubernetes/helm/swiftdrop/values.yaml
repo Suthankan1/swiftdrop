@@ -1,0 +1,497 @@
+# ==============================================================================
+# SwiftDrop Platform — Base Helm Chart Values (Issue #149 / ADR-0011)
+# Pinned immutable OCI image digests from Issue #128.
+# Strict $0 cost policy: zero Azure resources, all workloads target local k3d/K3s.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+  imagePullSecrets: []
+
+namespaces:
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+# Ingress Configuration (Reuses embedded K3s Traefik controller)
+ingress:
+  enabled: true
+  className: traefik
+  host: swiftdrop.local
+  subdomains:
+    enabled: true
+    app: app.swiftdrop.local
+    api: api.swiftdrop.local
+    auth: auth.swiftdrop.local
+  tls:
+    enabled: true
+    secretName: swiftdrop-tls-cert
+  keycloak:
+    exposeAdmin: true
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+# NetworkPolicy Isolation Configuration
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+# ------------------------------------------------------------------------------
+# 1. Frontend React SPA
+# ------------------------------------------------------------------------------
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-frontend
+    tag: b8ac497
+    digest: sha256:778ce75418fcf9eca3135afec8bd58b77be747d3f38534aca6bbbf6b9aeac1dc
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  securityContext:
+    runAsUser: 101
+    runAsGroup: 101
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /health
+      port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readiness:
+      path: /health
+      port: 8080
+      initialDelaySeconds: 3
+      periodSeconds: 5
+
+# ------------------------------------------------------------------------------
+# 2. Spring Cloud API Gateway
+# ------------------------------------------------------------------------------
+apiGateway:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-api-gateway
+    tag: b8ac497
+    digest: sha256:b42c2dcd199aaedbe4a5cb8c34198a02fe19de452c0a1b9e2c53ed3decf060a5
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /actuator/health
+      port: 8080
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readiness:
+      path: /actuator/health
+      port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 5
+  config:
+    serverPort: 8080
+    keycloakIssuerUri: https://swiftdrop.local:18443/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    jwtAudience: swiftdrop-api
+    accountsServiceUrl: http://accounts-service.swiftdrop-apps.svc.cluster.local:8081
+    pricingServiceUrl: http://pricing-service.swiftdrop-apps.svc.cluster.local:8082
+    deliveryServiceUrl: http://delivery-service.swiftdrop-apps.svc.cluster.local:8083
+    communicationsServiceUrl: http://communications-service.swiftdrop-apps.svc.cluster.local:8084
+    graphqlServiceUrl: http://graphql-query-service.swiftdrop-apps.svc.cluster.local:8085
+    corsAllowedOrigin: "https://swiftdrop.local:18443,http://localhost:5173,http://localhost:3000"
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+# ------------------------------------------------------------------------------
+# 3. Accounts & Partners Service
+# ------------------------------------------------------------------------------
+accounts:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-accounts
+    tag: b8ac497
+    digest: sha256:450c7671e2e6d4796b13a9226da42ad6429c094a0c8e65523955b46b9e70182c
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8081
+    grpcPort: 9081
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /actuator/health
+      port: 8081
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readiness:
+      path: /actuator/health
+      port: 8081
+      initialDelaySeconds: 15
+      periodSeconds: 5
+  config:
+    serverPort: 8081
+    grpcPort: 9081
+    dbUrl: jdbc:postgresql://accounts-postgres.swiftdrop-data.svc.cluster.local:5432/accounts_db
+    keycloakIssuerUri: https://swiftdrop.local:18443/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    jwtAudience: swiftdrop-api
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+  secretRefs:
+    dbSecretName: accounts-db-secret
+    dbUsernameKey: username
+    dbPasswordKey: password
+
+# ------------------------------------------------------------------------------
+# 4. Pricing & Zones Service
+# ------------------------------------------------------------------------------
+pricing:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-pricing
+    tag: b8ac497
+    digest: sha256:b75182da6660d8c56f451948580bdbd17262fc2970c9215c61bdc3874fc7e9aa
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8082
+    grpcPort: 9083
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /actuator/health
+      port: 8082
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readiness:
+      path: /actuator/health
+      port: 8082
+      initialDelaySeconds: 15
+      periodSeconds: 5
+  config:
+    serverPort: 8082
+    grpcPort: 9083
+    dbUrl: jdbc:postgresql://business-postgres.swiftdrop-data.svc.cluster.local:5432/pricing_db
+    keycloakIssuerUri: https://swiftdrop.local:18443/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    jwtAudience: swiftdrop-api
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+  secretRefs:
+    dbSecretName: pricing-db-secret
+    dbUsernameKey: username
+    dbPasswordKey: password
+
+# ------------------------------------------------------------------------------
+# 5. Delivery Operations Service
+# ------------------------------------------------------------------------------
+delivery:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-delivery
+    tag: b8ac497
+    digest: sha256:f40955a3072e3b0d6246a0503530ccd39aac47b6a96c4c44082512eaef224763
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8083
+    grpcPort: 9082
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /actuator/health
+      port: 8083
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readiness:
+      path: /actuator/health
+      port: 8083
+      initialDelaySeconds: 15
+      periodSeconds: 5
+  config:
+    serverPort: 8083
+    grpcPort: 9082
+    dbUrl: jdbc:postgresql://business-postgres.swiftdrop-data.svc.cluster.local:5432/delivery_db
+    kafkaBootstrapServers: kafka.swiftdrop-messaging.svc.cluster.local:29092
+    keycloakIssuerUri: https://swiftdrop.local:18443/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    jwtAudience: swiftdrop-api
+    pricingGrpcHost: pricing-service.swiftdrop-apps.svc.cluster.local
+    pricingGrpcPort: 9083
+    storageEnabled: "true"
+    s3Endpoint: http://minio.swiftdrop-messaging.svc.cluster.local:9000
+    storageBucket: swiftdrop-pod
+    storageRegion: us-east-1
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+  secretRefs:
+    dbSecretName: delivery-db-secret
+    dbUsernameKey: username
+    dbPasswordKey: password
+    storageSecretName: swiftdrop-minio-secret
+    storageAccessKeyKey: accesskey
+    storageSecretKeyKey: secretkey
+
+# ------------------------------------------------------------------------------
+# 6. Communications Service
+# ------------------------------------------------------------------------------
+communications:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-communications
+    tag: b8ac497
+    digest: sha256:418e65e64ca0af6b2ed7e8e8359e03f5264f6c2bf4a29bb7409f6f52cbc4cac6
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8084
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /actuator/health
+      port: 8084
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readiness:
+      path: /actuator/health
+      port: 8084
+      initialDelaySeconds: 15
+      periodSeconds: 5
+  config:
+    serverPort: 8084
+    dbUrl: jdbc:postgresql://business-postgres.swiftdrop-data.svc.cluster.local:5432/communications_db
+    accountsGrpcHost: accounts-service.swiftdrop-apps.svc.cluster.local
+    accountsGrpcPort: 9081
+    deliveryGrpcHost: delivery-service.swiftdrop-apps.svc.cluster.local
+    deliveryGrpcPort: 9082
+    mailHost: mailpit.swiftdrop-messaging.svc.cluster.local
+    mailPort: 1025
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+  secretRefs:
+    dbSecretName: communications-db-secret
+    dbUsernameKey: username
+    dbPasswordKey: password
+
+# ------------------------------------------------------------------------------
+# 7. GraphQL Query API
+# ------------------------------------------------------------------------------
+graphql:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-graphql
+    tag: b8ac497
+    digest: sha256:268a8e7bb919974126b33c047065069955df9f36c790b5b561001710986f2043
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8085
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /actuator/health
+      port: 8085
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readiness:
+      path: /actuator/health
+      port: 8085
+      initialDelaySeconds: 15
+      periodSeconds: 5
+  config:
+    serverPort: 8085
+    accountsGrpcTarget: accounts-service.swiftdrop-apps.svc.cluster.local:9081
+    deliveryGrpcTarget: delivery-service.swiftdrop-apps.svc.cluster.local:9082
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+# ------------------------------------------------------------------------------
+# 8. Keycloak Identity Provider (in swiftdrop-identity namespace)
+# ------------------------------------------------------------------------------
+keycloak:
+  enabled: true
+  namespace: swiftdrop-identity
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-keycloak
+    tag: b8ac497
+    digest: sha256:75effccfc0bf90a2947bbc9dee322ad7a644ea26477e655a5f0e9d5895cd8501
+    pullPolicy: IfNotPresent
+  args:
+    - "start"
+    - "--http-enabled=true"
+    - "--import-realm"
+  service:
+    type: ClusterIP
+    httpPort: 8080
+    managementPort: 9000
+  resources:
+    requests:
+      cpu: 150m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 768Mi
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 0
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /health/live
+      port: 9000
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    readiness:
+      path: /health/ready
+      port: 9000
+      initialDelaySeconds: 25
+      periodSeconds: 10
+  config:
+    db: postgres
+    dbUrl: jdbc:postgresql://keycloak-postgres.swiftdrop-data.svc.cluster.local:5432/keycloak_db
+    hostname: https://swiftdrop.local:18443
+    httpPort: 8080
+    managementPort: 9000
+    proxyHeaders: xforwarded
+    httpEnabled: "true"
+    healthEnabled: "true"
+    javaOptsAppend: "-Dkeycloak.migration.replace-placeholders=true -Xms192m -Xmx384m"
+  secretRefs:
+    adminSecretName: keycloak-admin-secret
+    adminUsernameKey: admin-username
+    adminPasswordKey: admin-password
+    dbSecretName: keycloak-db-secret
+    dbUsernameKey: username
+    dbPasswordKey: password
+    googleSecretName: swiftdrop-google-oidc-secret
+    googleClientIdKey: client-id
+    googleClientSecretKey: client-secret
+    smtpSecretName: swiftdrop-smtp-secret
+    smtpHostKey: host
+    smtpPortKey: port
+    smtpUserKey: username
+    smtpPasswordKey: password
+    smtpFromKey: from
+    smtpAuthKey: auth
+    smtpSslKey: ssl
+    smtpStarttlsKey: starttls
+
+# ------------------------------------------------------------------------------
+# Stateful Interface Placeholders (Contract interfaces for Issue #154)
+# ------------------------------------------------------------------------------
+statefulInterfaces:
+  createPlaceholderServices: false

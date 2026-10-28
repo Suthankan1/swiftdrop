@@ -1,0 +1,22 @@
+# ==============================================================================
+# SwiftDrop Platform — Prometheus Storage PVC (Issue #160)
+# Strictly bounded persistent storage using local-path storage class.
+# ==============================================================================
+
+{{- if and .Values.prometheus.enabled .Values.prometheus.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: swiftdrop-prometheus-data
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "prometheus") | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.prometheus.persistence.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.persistence.size | quote }}
+{{- end }}
+

@@ -1,5 +1,11 @@
 server:
   port: 8083
+
+grpc:
+  server:
+    port: ${DELIVERY_GRPC_PORT:9082}
+    enabled: ${DELIVERY_GRPC_ENABLED:true}
+
 spring:
   application:
     name: delivery-service
@@ -7,20 +13,118 @@ spring:
     url: ${DELIVERY_DB_URL}
     username: ${DELIVERY_DB_USERNAME}
     password: ${DELIVERY_DB_PASSWORD}
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
   flyway:
+    enabled: true
     clean-disabled: true
+    locations: classpath:db/migration
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  mvc:
+    problemdetails:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:${swiftdrop.jwt.issuer-uri:${devarom.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}}
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:${swiftdrop.jwt.jwk-set-uri:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}}}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: ${KAFKA_SSE_CONSUMER_GROUP_ID:delivery-service-sse}
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+devarom:
+  jwt:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/swiftdrop}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}
+    audience: ${JWT_AUDIENCE:swiftdrop-api}
+
+swiftdrop:
+  jwt:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:${devarom.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:${devarom.jwt.jwk-set-uri:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}}
+    audience: ${JWT_AUDIENCE:${devarom.jwt.audience:swiftdrop-api}}
+  outbox:
+    relay:
+      enabled: ${OUTBOX_RELAY_ENABLED:true}
+      polling-interval-ms: ${OUTBOX_POLLING_INTERVAL_MS:1000}
+      batch-size: ${OUTBOX_BATCH_SIZE:50}
+      claim-timeout-seconds: ${OUTBOX_CLAIM_TIMEOUT_SECONDS:30}
+      max-attempts: ${OUTBOX_MAX_ATTEMPTS:5}
+      initial-backoff-seconds: ${OUTBOX_INITIAL_BACKOFF_SECONDS:2}
+      backoff-multiplier: 2.0
+      max-backoff-seconds: 300
+      topic: ${KAFKA_TOPIC_PARCEL_LIFECYCLE:parcel.lifecycle.v1}
+  proof-storage:
+    enabled: ${SWIFTDROP_STORAGE_ENABLED:false}
+    endpoint: ${S3_ENDPOINT:}
+    bucket: ${SWIFTDROP_STORAGE_BUCKET:}
+    region: ${SWIFTDROP_STORAGE_REGION:}
+    access-key: ${SWIFTDROP_STORAGE_ACCESS_KEY:}
+    secret-key: ${SWIFTDROP_STORAGE_SECRET_KEY:}
+    api-call-timeout: ${SWIFTDROP_STORAGE_API_CALL_TIMEOUT:10s}
+    api-call-attempt-timeout: ${SWIFTDROP_STORAGE_API_CALL_ATTEMPT_TIMEOUT:3s}
+  delivery:
+    retention:
+      enabled: ${PROOF_RETENTION_ENABLED:false}
+      policy-approved: ${PROOF_RETENTION_POLICY_APPROVED:false}
+      scheduler-enabled: ${PROOF_RETENTION_SCHEDULER_ENABLED:false}
+      batch-size: ${PROOF_RETENTION_BATCH_SIZE:50}
+  sse:
+    heartbeat-interval-seconds: ${SSE_HEARTBEAT_INTERVAL_SECONDS:15}
+    max-connections: ${SSE_MAX_CONNECTIONS:100}
+    max-connections-per-user: ${SSE_MAX_CONNECTIONS_PER_USER:10}
+    max-connections-per-parcel: ${SSE_MAX_CONNECTIONS_PER_PARCEL:5}
+    connection-timeout-seconds: ${SSE_CONNECTION_TIMEOUT_SECONDS:1800}
+    buffer-size: ${SSE_BUFFER_SIZE:50}
+    kafka:
+      consumer:
+        enabled: ${SSE_KAFKA_CONSUMER_ENABLED:true}
+        group-prefix: ${SSE_KAFKA_GROUP_PREFIX:tracking.}
+        group-id: ${SSE_KAFKA_CONSUMER_GROUP_ID:}
+        replica-id: ${SSE_REPLICA_ID:${POD_NAME:${INSTANCE_ID:${HOSTNAME:}}}}
+        auto-offset-reset: ${SSE_KAFKA_AUTO_OFFSET_RESET:latest}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info
   endpoint:
     health:
-      show-details: never
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
+server.error:
+  include-message: never
+  include-stacktrace: never
+  include-binding-errors: never

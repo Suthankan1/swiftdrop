@@ -1,0 +1,810 @@
+# ==============================================================================
+# SwiftDrop Platform — Microservice Workloads (Deployments) (Issue #149 / #154)
+# Enforces non-root execution, minimal privilege, read-only root filesystems,
+# dropped capabilities, startup/readiness/liveness probes, graceful shutdown,
+# safe rolling update strategy, and decoupled external Secret references.
+# ==============================================================================
+
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "frontend") | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "frontend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "frontend") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 15
+      serviceAccountName: swiftdrop-frontend-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: {{ include "swiftdrop.image" .Values.frontend.image }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.frontend.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 2"]
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.frontend.probes.readiness.path }}
+              port: {{ .Values.frontend.probes.readiness.port }}
+            initialDelaySeconds: 2
+            periodSeconds: 2
+            failureThreshold: 15
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.frontend.probes.liveness.path }}
+              port: {{ .Values.frontend.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.frontend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds }}
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.frontend.probes.readiness.path }}
+              port: {{ .Values.frontend.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.frontend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.readiness.periodSeconds }}
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: var-cache-nginx
+              mountPath: /var/cache/nginx
+            - name: var-run-nginx
+              mountPath: /var/run
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        - name: var-cache-nginx
+          emptyDir: {}
+        - name: var-run-nginx
+          emptyDir: {}
+{{- end }}
+
+{{- if .Values.apiGateway.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "api-gateway") | nindent 4 }}
+spec:
+  replicas: {{ .Values.apiGateway.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "api-gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "api-gateway") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: swiftdrop-gateway-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api-gateway
+          image: {{ include "swiftdrop.image" .Values.apiGateway.image }}
+          imagePullPolicy: {{ .Values.apiGateway.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.apiGateway.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-gateway-config
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.apiGateway.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.apiGateway.probes.readiness.path }}
+              port: {{ .Values.apiGateway.probes.readiness.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.apiGateway.probes.liveness.path }}
+              port: {{ .Values.apiGateway.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.apiGateway.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.apiGateway.probes.liveness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.apiGateway.probes.readiness.path }}
+              port: {{ .Values.apiGateway.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.apiGateway.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.apiGateway.probes.readiness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+{{- end }}
+
+{{- if .Values.accounts.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounts-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "accounts-service") | nindent 4 }}
+spec:
+  replicas: {{ .Values.accounts.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "accounts-service") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "accounts-service") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: swiftdrop-accounts-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: accounts-service
+          image: {{ include "swiftdrop.image" .Values.accounts.image }}
+          imagePullPolicy: {{ .Values.accounts.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.accounts.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+            - name: grpc
+              containerPort: 9081
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-accounts-config
+          env:
+            - name: ACCOUNTS_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.accounts.secretRefs.dbSecretName }}
+                  key: {{ .Values.accounts.secretRefs.dbUsernameKey }}
+            - name: ACCOUNTS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.accounts.secretRefs.dbSecretName }}
+                  key: {{ .Values.accounts.secretRefs.dbPasswordKey }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.accounts.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.accounts.probes.readiness.path }}
+              port: {{ .Values.accounts.probes.readiness.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.accounts.probes.liveness.path }}
+              port: {{ .Values.accounts.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.accounts.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.accounts.probes.liveness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.accounts.probes.readiness.path }}
+              port: {{ .Values.accounts.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.accounts.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.accounts.probes.readiness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+{{- end }}
+
+{{- if .Values.pricing.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pricing-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "pricing-service") | nindent 4 }}
+spec:
+  replicas: {{ .Values.pricing.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "pricing-service") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "pricing-service") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: swiftdrop-pricing-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pricing-service
+          image: {{ include "swiftdrop.image" .Values.pricing.image }}
+          imagePullPolicy: {{ .Values.pricing.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.pricing.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8082
+              protocol: TCP
+            - name: grpc
+              containerPort: 9083
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-pricing-config
+          env:
+            - name: PRICING_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.pricing.secretRefs.dbSecretName }}
+                  key: {{ .Values.pricing.secretRefs.dbUsernameKey }}
+            - name: PRICING_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.pricing.secretRefs.dbSecretName }}
+                  key: {{ .Values.pricing.secretRefs.dbPasswordKey }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.pricing.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.pricing.probes.readiness.path }}
+              port: {{ .Values.pricing.probes.readiness.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.pricing.probes.liveness.path }}
+              port: {{ .Values.pricing.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.pricing.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.pricing.probes.liveness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.pricing.probes.readiness.path }}
+              port: {{ .Values.pricing.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.pricing.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.pricing.probes.readiness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+{{- end }}
+
+{{- if .Values.delivery.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delivery-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "delivery-service") | nindent 4 }}
+spec:
+  replicas: {{ .Values.delivery.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "delivery-service") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "delivery-service") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 45
+      serviceAccountName: swiftdrop-delivery-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: delivery-service
+          image: {{ include "swiftdrop.image" .Values.delivery.image }}
+          imagePullPolicy: {{ .Values.delivery.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.delivery.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8083
+              protocol: TCP
+            - name: grpc
+              containerPort: 9082
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-delivery-config
+          env:
+            - name: DELIVERY_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.delivery.secretRefs.dbSecretName }}
+                  key: {{ .Values.delivery.secretRefs.dbUsernameKey }}
+            - name: DELIVERY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.delivery.secretRefs.dbSecretName }}
+                  key: {{ .Values.delivery.secretRefs.dbPasswordKey }}
+            - name: SWIFTDROP_STORAGE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.delivery.secretRefs.storageSecretName }}
+                  key: {{ .Values.delivery.secretRefs.storageAccessKeyKey }}
+            - name: SWIFTDROP_STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.delivery.secretRefs.storageSecretName }}
+                  key: {{ .Values.delivery.secretRefs.storageSecretKeyKey }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.delivery.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.delivery.probes.readiness.path }}
+              port: {{ .Values.delivery.probes.readiness.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.delivery.probes.liveness.path }}
+              port: {{ .Values.delivery.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.delivery.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.delivery.probes.liveness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.delivery.probes.readiness.path }}
+              port: {{ .Values.delivery.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.delivery.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.delivery.probes.readiness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+{{- end }}
+
+{{- if .Values.communications.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: communications-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "communications-service") | nindent 4 }}
+spec:
+  replicas: {{ .Values.communications.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "communications-service") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "communications-service") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: swiftdrop-communications-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: communications-service
+          image: {{ include "swiftdrop.image" .Values.communications.image }}
+          imagePullPolicy: {{ .Values.communications.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.communications.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8084
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-communications-config
+          env:
+            - name: COMMUNICATIONS_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.communications.secretRefs.dbSecretName }}
+                  key: {{ .Values.communications.secretRefs.dbUsernameKey }}
+            - name: COMMUNICATIONS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.communications.secretRefs.dbSecretName }}
+                  key: {{ .Values.communications.secretRefs.dbPasswordKey }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.communications.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.communications.probes.readiness.path }}
+              port: {{ .Values.communications.probes.readiness.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.communications.probes.liveness.path }}
+              port: {{ .Values.communications.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.communications.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.communications.probes.liveness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.communications.probes.readiness.path }}
+              port: {{ .Values.communications.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.communications.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.communications.probes.readiness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+{{- end }}
+
+{{- if .Values.graphql.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql-query-service
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
+spec:
+  replicas: {{ .Values.graphql.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "graphql-query-service") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: swiftdrop-graphql-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: graphql-query-service
+          image: {{ include "swiftdrop.image" .Values.graphql.image }}
+          imagePullPolicy: {{ .Values.graphql.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.graphql.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8085
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-graphql-config
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.graphql.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.graphql.probes.readiness.path }}
+              port: {{ .Values.graphql.probes.readiness.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.graphql.probes.liveness.path }}
+              port: {{ .Values.graphql.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.graphql.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.graphql.probes.liveness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.graphql.probes.readiness.path }}
+              port: {{ .Values.graphql.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.graphql.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.graphql.probes.readiness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+{{- end }}
+
+{{- if .Values.keycloak.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: {{ .Values.namespaces.identity }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 4 }}
+spec:
+  replicas: {{ .Values.keycloak.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "keycloak") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "keycloak") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      serviceAccountName: swiftdrop-keycloak-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak
+          image: {{ include "swiftdrop.image" .Values.keycloak.image }}
+          imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
+          args:
+            {{- toYaml .Values.keycloak.args | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.keycloak.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-keycloak-config
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.adminSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.adminUsernameKey }}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.adminSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.adminPasswordKey }}
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.dbSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.dbUsernameKey }}
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.dbSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.dbPasswordKey }}
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.googleSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.googleClientIdKey }}
+                  optional: true
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.googleSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.googleClientSecretKey }}
+                  optional: true
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpHostKey }}
+                  optional: true
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpPortKey }}
+                  optional: true
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpUserKey }}
+                  optional: true
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpPasswordKey }}
+                  optional: true
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpFromKey }}
+                  optional: true
+            - name: SMTP_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpAuthKey }}
+                  optional: true
+            - name: SMTP_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpSslKey }}
+                  optional: true
+            - name: SMTP_STARTTLS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.smtpSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.smtpStarttlsKey }}
+                  optional: true
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.keycloak.probes.readiness.path }}
+              port: {{ .Values.keycloak.probes.readiness.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 50
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.keycloak.probes.liveness.path }}
+              port: {{ .Values.keycloak.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.keycloak.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.keycloak.probes.liveness.periodSeconds }}
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.keycloak.probes.readiness.path }}
+              port: {{ .Values.keycloak.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.keycloak.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.keycloak.probes.readiness.periodSeconds }}
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import/realm-swiftdrop.json
+              subPath: realm-swiftdrop.json
+              readOnly: true
+      volumes:
+        - name: realm-config
+          configMap:
+            name: swiftdrop-keycloak-realm
+{{- end }}

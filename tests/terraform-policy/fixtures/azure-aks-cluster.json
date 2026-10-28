@@ -1,0 +1,47 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.3",
+  "variables": {
+    "enable_azure_deployment": {
+      "value": false
+    }
+  },
+  "planned_values": {
+    "root_module": {
+      "resources": []
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "azurerm_kubernetes_cluster.k8s_cluster",
+      "mode": "managed",
+      "type": "azurerm_kubernetes_cluster",
+      "name": "k8s_cluster",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "swiftdrop-aks",
+          "location": "eastus2",
+          "dns_prefix": "swiftdrop"
+        },
+        "after_unknown": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "azurerm": {
+        "name": "azurerm",
+        "full_name": "registry.terraform.io/hashicorp/azurerm",
+        "version_constraint": "~> 4.0"
+      }
+    },
+    "root_module": {
+      "resources": []
+    }
+  }
+}

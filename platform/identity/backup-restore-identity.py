@@ -53,18 +53,50 @@ FORBIDDEN_CONTAINERS = {
 }
 
 
-def detect_active_keycloak_container() -> str:
-    """Detects whether swiftdrop-keycloak or legacy devarom-keycloak is active."""
-    for name in ("swiftdrop-keycloak", "devarom-keycloak"):
-        res = subprocess.run(["docker", "inspect", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if res.returncode == 0:
-            return name
-    return "swiftdrop-keycloak"
-
-
 class BackupError(Exception):
     """Sanitized failure for backup and recovery operations."""
     pass
+
+
+def detect_active_keycloak_container() -> str:
+    """Detects whether swiftdrop-keycloak or legacy devarom-keycloak is active.
+
+    Safety policy:
+    1. If exactly one container is running, it is the active container.
+    2. If both containers are running, fail closed due to ambiguous operational state.
+    3. If neither is running, prefer canonical swiftdrop-keycloak if present, else legacy devarom-keycloak.
+    4. If neither container exists, default to swiftdrop-keycloak.
+    """
+    candidates = ("swiftdrop-keycloak", "devarom-keycloak")
+    running: List[str] = []
+    present: List[str] = []
+
+    for name in candidates:
+        try:
+            res = subprocess.run(
+                ["docker", "inspect", name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            if res.returncode == 0:
+                present.append(name)
+                data = json.loads(res.stdout)[0]
+                if data.get("State", {}).get("Running", False):
+                    running.append(name)
+        except Exception:
+            pass
+
+    if len(running) == 1:
+        return running[0]
+    if len(running) > 1:
+        raise BackupError(
+            f"Ambiguous active Keycloak container state: multiple containers are running ({', '.join(running)})."
+        )
+    if present:
+        return present[0]
+
+    return "swiftdrop-keycloak"
 
 
 def generate_secure_password(length: int = 24) -> str:
@@ -279,21 +311,28 @@ class BackupEngine:
         confirm_maintenance_stop: str = "",
     ) -> Dict[str, Any]:
         """Executes a consistent cold backup from the stopped Keycloak container."""
+        # Security Gate: explicit maintenance authorization is mandatory
+        if confirm_maintenance_stop != "SWIFTDROP-MAINTENANCE-STOP-AUTHORIZED":
+            raise BackupError(
+                "Cold backup requires stopping the running Keycloak container to prevent torn pages and file lock corruption.\n"
+                "Stopping the container is a maintenance operation that requires explicit authorization.\n"
+                "You must provide: --confirm-maintenance-stop 'SWIFTDROP-MAINTENANCE-STOP-AUTHORIZED'.\n"
+                "The active container was NOT stopped and no data was touched."
+            )
+
         if container_name is None:
             container_name = detect_active_keycloak_container()
+
         # 1. Inspect container state
         storage = StorageInspector.inspect_live_keycloak_storage(container_name)
+        if storage.get("error"):
+            raise BackupError(
+                f"Target Keycloak container '{container_name}' is not accessible: {storage.get('error')}"
+            )
+
         was_running = storage.get("container_running", False)
 
         if was_running:
-            if confirm_maintenance_stop != "SWIFTDROP-MAINTENANCE-STOP-AUTHORIZED":
-                raise BackupError(
-                    "Cold backup requires stopping the running Keycloak container to prevent torn pages and file lock corruption.\n"
-                    "Stopping the container is a maintenance operation that requires explicit authorization.\n"
-                    "You must provide: --confirm-maintenance-stop 'SWIFTDROP-MAINTENANCE-STOP-AUTHORIZED'.\n"
-                    "The active container was NOT stopped and no data was touched."
-                )
-
             print(f"[COLD BACKUP] Stopping container '{container_name}' cleanly (timeout 30s)...")
             stop_res = subprocess.run(["docker", "stop", container_name, "-t", "30"], capture_output=True, text=True)
             if stop_res.returncode != 0:
@@ -827,7 +866,7 @@ class SafetyGateEvaluator:
     """Evaluates the cutover safety gate using machine-verifiable evidence and explicit human authorization."""
 
     @staticmethod
-    def evaluate_cutover_gate() -> Dict[str, Any]:
+    def evaluate_cutover_gate(backup_base_dir: Optional[Path] = None) -> Dict[str, Any]:
         """Evaluates whether live cutover is authorized and safe to execute."""
         active_container = detect_active_keycloak_container()
         storage = StorageInspector.inspect_live_keycloak_storage(active_container)
@@ -847,8 +886,9 @@ class SafetyGateEvaluator:
 
         # 2. Machine-verifiable: Check for verified cold backups in .local
         backups = []
-        if BACKUP_BASE_DIR.exists():
-            for child in sorted(BACKUP_BASE_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        base_dir = backup_base_dir or BACKUP_BASE_DIR
+        if base_dir.exists():
+            for child in sorted(base_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
                 if child.is_dir():
                     try:
                         v = BackupEngine.verify_backup_directory(child)

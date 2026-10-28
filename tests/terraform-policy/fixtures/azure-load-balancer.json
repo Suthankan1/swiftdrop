@@ -1,0 +1,47 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.3",
+  "variables": {
+    "enable_azure_deployment": {
+      "value": false
+    }
+  },
+  "planned_values": {
+    "root_module": {
+      "resources": []
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "azurerm_lb.ingress_lb",
+      "mode": "managed",
+      "type": "azurerm_lb",
+      "name": "ingress_lb",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "swiftdrop-lb",
+          "location": "eastus2",
+          "sku": "Standard"
+        },
+        "after_unknown": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "azurerm": {
+        "name": "azurerm",
+        "full_name": "registry.terraform.io/hashicorp/azurerm",
+        "version_constraint": "~> 4.0"
+      }
+    },
+    "root_module": {
+      "resources": []
+    }
+  }
+}

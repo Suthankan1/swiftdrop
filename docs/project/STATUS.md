@@ -1,8 +1,117 @@
 # Current project status — update only with evidence
 
+## Issue #169 Release-Candidate Feature Acceptance & Blocker Triage (N10-P12A) — 2026-10-28
+
+Owner Eric Praveen (@EricPraveen — Senior Release Engineer & QA Lead); branch `chore/n10-p12a-release-candidate-acceptance-triage`, base `test`.
+Linked Issues: Milestone Nov 10 (#169), Recovery Drills (#167, #168), Business Authorization (#162), Merchant & Operator QA (#163), Customer/Courier E2E (#157), Capacity Budgets (#165), Reporting & Accessibility (#147, #156).
+
+Coordinates evidence-based release candidate acceptance across implemented workflows and services:
+- **Comprehensive Acceptance Matrix:** 80 criteria evaluated across Merchant Orders, Webhooks, Operator Management, Protocol Compatibility, Recovery, Frontend, CI/CD, and Strict $0 Hosting. 68 PASS (85%), 7 BLOCKED (8.8%), 3 NOT RUN (3.8%), 2 NEEDS REVIEW (2.5%), 0 FAIL.
+- **Triage & Blocker Disposition:** 4 P1 release blockers catalogued with reproducible validations, owners, and retest criteria:
+  1. Mode B disaster recovery verification blocked awaiting operator-restored PostgreSQL staging cluster (`@Suthankan1`).
+  2. Capacity budgets numeric SLA thresholds unapproved in `capacity-budgets.v1.json` (`@pushmitha20` / reviewers).
+  3. Mandatory independent release approvals pending from designated reviewers (`@Harithkeshan`, `@Vibhushan-2003`).
+  4. Local host missing `helm` binary preventing automated validation of Kubernetes manifests.
+- **In-Scope Defect Remediation & Verification:**
+  - Resolved merchant lost-response idempotency bug in `BookingRepository.java`: `replayMerchant` now matches both `merchant:<uuid>` and `<uuid>`, returning cached canonical `ParcelDetailResponse` instead of throwing `QUOTE_ALREADY_CONSUMED`.
+  - Re-enabled regression test in `BookingEntryPointRecoveryPostgresIT.java` and added in-process test in `BookingCorrelationTest.java`.
+  - Aligned `IF-GRPC-04` quote verification default deadline from 5,000 ms to the approved 2,000 ms contract in `PricingGrpcClientConfig.java` and `GrpcBookingQuoteProvider.java`.
+- **Release Decision:** **NOT READY** — Staging promotion gated until Mode B disaster recovery drill is executed on `k3d-swiftdrop-local` and reviewer SLA sign-offs are completed.
+
+Actual local verification (Java 21.0.10, Node 26.8.1, Python 3.14.7):
+- PASS `services/delivery-service`: **484 tests passed** (including merchant idempotency replay and 2,000 ms quote deadline).
+- PASS `services/accounts-service`: **311 tests passed**.
+- PASS `services/pricing-service`: **167 tests passed**.
+- PASS `services/graphql-query-service`: **251 tests passed**.
+- PASS `services/communications-service`: **364 tests passed**.
+- PASS `services/api-gateway`: **87 tests passed**.
+- PASS `shared/proto-contracts` & `shared/security-adapter`: **79 tests passed**.
+- Total Java Service Tests: **1,743 tests passed, 0 failures**.
+- PASS `pnpm --dir frontend test --run`: **1,235 tests passed across 68 files**.
+- PASS `pnpm --dir frontend typecheck`: `tsc -b` 0 errors; `vite build` 245 modules transformed.
+- PASS `python3 tests/contracts/validate_contracts.py --mode all --check-compatibility --base-ref origin/test`: 4/4 contract gates passed.
+- PASS `python3 tests/security-e2e/test_business_authorization.py`: **52/52 multi-actor scenarios passed**.
+- PASS `python3 tests/e2e/run_merchant_webhook_operator_acceptance.py`: **46/46 acceptance criteria passed**.
+- PASS `python3 tests/e2e/run_customer_courier_e2e.py`: **13/13 E2E journey assertions passed**.
+- PASS `python3 -m unittest discover -s tests/terraform-policy -p "test_*.py"`: **85/85 tests passed**.
+- PASS `python3 -m unittest discover -s tests/ci -p "test_*.py"`: **46 tests passed (2 skipped)**.
+- PASS `python3 tests/recovery/run_recovery_consistency_verification.py --mode offline`: **17/17 invariants passed, 17/17 corruptions detected**.
+- BLOCKED `python3 tests/recovery/run_recovery_consistency_verification.py --mode operator-checkpoint`: Fails closed with exit code 2 awaiting live staging databases.
+- BLOCKED `tests/kubernetes`: 8 test classes failed with `FileNotFoundError: 'helm'` on local host.
+
+See [Release Candidate Acceptance & Blocker Triage Report](../reviews/N10_P12A_RELEASE_CANDIDATE_ACCEPTANCE_TRIAGE.md).
+
+
+
+## Issue #168 Post-Rollback Application Consistency Verification (N10-P09A) — 2026-10-28
+
+Owner Sinthuha Nadesan (@Sinthuha-n — Platform QA / Consistency Engineer); branch `tests/n10-p09a-recovery-consistency`, base `test`.
+Linked Parent Issue: #167 (Platform Staging Rollback and Disaster Recovery Drill, PR #277).
+
+Implements independent application-level consistency assertions following operator rollback and restore drills:
+- **Quote-to-Booking Provenance:** Enforces global single-use quote consumption (`uq_parcels_quote_id`), quote snapshot integrity, integer minor units, and LKR currency invariants.
+- **Parcel Version Monotonicity & Lifecycle Transitions:** Sequential versioning (1..N) without regressions/gaps; terminal states (`DELIVERED`, `FAILED`) are strictly immutable.
+- **Courier Assignment Invariant:** Enforces single active courier assignment per parcel (`uq_delivery_assignments_active_parcel`).
+- **Durable Job State Machines:** Bounded retries (`attempts < 5` or `EXHAUSTED`), terminal closure for `SENT` and `SUCCESS` jobs, and lease recovery for notifications and webhooks.
+- **Transactional Outbox & Inbox Deduplication:** Outbox aggregate version sequencing and inbox composite PK `(consumer_name, event_id)` deduplication prevent duplicate side-effects.
+- **Point-in-Time Boundary Auditing:** Evaluates records against `snapshot_cutoff` (`2026-10-28T05:00:00Z`), distinguishing approved RPO data boundaries from corruption.
+- **Negative Regression Suite:** 17 isolated failure-injection factories verify fail-closed detection of corruption, illegal state transitions, and concurrency violations.
+
+Actual local verification (Python 3.14.6):
+- PASS `python3 tests/recovery/run_recovery_consistency_verification.py --mode offline`: **17/17 baseline invariants passed, 17/17 negative corruption scenarios detected and rejected**.
+- PASS `python3 -m unittest discover -s tests/recovery -p "test_*.py" -v`: **32/32 unit tests passed in 0.017s**.
+- PASS `python3 -m unittest discover -s tests/ci -p "test_*.py" -v`: **46/46 tests passed**.
+- PASS `python3 -m unittest tests/kubernetes/test_recovery_safety.py -v`: **6/6 tests passed**.
+- PASS `python3 -m unittest discover -s tests/contracts -p "test_*.py" -v`: **90/90 tests passed**.
+- BLOCKED `python3 tests/recovery/run_recovery_consistency_verification.py --mode operator-checkpoint`: Fails closed with exit code 2 and status `BLOCKED — OPERATOR CHECKPOINT NOT VERIFIED` when operator targets are not configured on local environment.
+- Outstanding: Staging cluster restoration on `k3d-swiftdrop-local` by `@Suthankan1`; formal release budget approval for measured RPO (300s) / RTO (240s) pending team ADR sign-off; independent reviews by `@Harithkeshan` and `@Vibhushan-2003`.
+
+See [Recovery Verification Guide](../testing/N10_P09A_RECOVERY_CONSISTENCY_GUIDE.md), [Evidence Register](../reviews/N10_P09A_APPLICATION_CONSISTENCY_EVIDENCE.md), and [Operator Handoff](../handoff/ISSUE_168_TO_OPERATOR_VERIFICATION_HANDOFF.md).
+
+
+## Issue #25 Dispatcher frontend consumer — 2026-10-26
+
+Owner HarithKeshan; branch `feat/later-07-dispatcher-queue`, starting integration
+SHA `6191835c51e34f16413e7f80bf44fdc1aa7757fe`. Extends the existing authenticated
+staff landing with bounded GraphQL queue/workloads, projected parcel details,
+manual REST assignment confirmation, version/conflict/unknown-outcome handling,
+canonical refresh, subject-scoped cache/cancellation and responsive presentation.
+No runtime fixtures, service credentials, infrastructure or identity edits.
+
+User-delegated scope decision: separate GraphQL complexity correction counts
+selected fields once while retaining limit 100, depth 5, bounded pagination,
+50-item results and payload/deadline guards. Required projection costs 23 rather
+than 709 with the old fixed list multiplier. Two new endpoint regressions prove
+the projection reaches authorized provider policy and oversized aliases/fragments
+still fail. Security review remains required before merge.
+
+Actual local verification (Node 24.11.0, installed pinned pnpm 12.11.2):
+
+- PASS `pnpm.cmd install --frozen-lockfile` (Corepack shim was broken).
+- PASS `pnpm.cmd typecheck`, `pnpm.cmd lint`, `pnpm.cmd build`.
+- PASS `pnpm.cmd test --run`: **395 tests, 31 files**, including existing
+  Customer/Merchant/Courier/Admin and shared auth regressions; synthetic HTTP mocks.
+- PASS `services/graphql-query-service/mvnw.cmd test -q`: **31 tests**, no
+  failures/errors/skips, including actual signed-JWT endpoint tests with isolated
+  providers. This is not a live business-provider verification.
+- PASS contract validator `--mode all --check-compatibility --base-ref origin/test`:
+  all four REST/GraphQL/Kafka/Protobuf gates; no contract artifacts changed.
+- BLOCKED live queue/assignment/wrong-role/conflict verification: #135 resolver
+  remains OPEN, Gateway lacks `/api/v1/staff/me`, `/graphql` and assignment routes,
+  authoritative sizeCategory/zone/capacity mappings need provider handoff, and no
+  isolated full-stack authenticated dataset was exercised. #24/#113/#109/#119 are
+  CLOSED; provider existence/issue closure does not prove Gateway integration.
+- DEFERRED Dispatcher abort/failure (#98 OPEN) and advanced assignment lifecycle
+  (#125 OPEN); no unsupported controls are exposed.
+- SKIPPED visual/browser/mobile checks: no browser connection available.
+
+See [Dispatcher handoff](../../frontend/src/features/dispatcher/README.md).
+Next small task: integrate #135/provider mappings and Platform Gateway routes,
+then verify the authorized flow using controlled identities and synthetic parcels.
+
 > **Branding revision — 2026-10-20:** The platform was previously referred to as Devarom during initial development and was renamed SwiftDrop on 2026-10-20 by the project owner. Dated evidence, prior review wording and technical identifiers below retain their original values. See the [Phase 1 audit](../branding/PHASE_1_AUDIT.md).
 
-Last documentation update: **2026-10-22**. This file describes the **starter artifact**, not unknown external repositories.
+Last documentation update: **2026-10-25**. This file describes the **starter artifact**, not unknown external repositories.
 
 | Area | State | Evidence |
 |---|---|---|
@@ -10,13 +119,328 @@ Last documentation update: **2026-10-22**. This file describes the **starter art
 | Team allocation | **Proposed; names recorded** | `docs/team/OWNERSHIP.md` |
 | November 1 report | **Existing external design package reviewed; platform handoff complete, final submission pending** | `docs/milestones/NOV_01.md` and `docs/team/PLATFORM_HANDOFF_NOV01.md` |
 | GitHub repository | **Official rename complete (`Suthankan1/swiftdrop`); Git remotes and documentation updated (Phase 3B)** | Merged PR #65 into `test`, release PR #66 into `main`; repository renamed; remote verified at `https://github.com/Suthankan1/swiftdrop.git` |
-| Spring Boot services | **API Gateway & Accounts canonical defaults aligned to SwiftDrop; independent JWT security verified** | `services/api-gateway/`: 19 tests passed; Accounts `services/accounts-service/`: 44 unit/MVC/integration tests passed (63 total); OAuth2 Resource Server independently validates SwiftDrop JWTs (`swiftdrop-api` audience), roles, and profile persistence |
+| Spring Boot services | **Pending Merchant Enrollment Command IMPLEMENTED (Issue #97); API Gateway Edge Security & Abuse Policy IMPLEMENTED (Issue #106); Validated Expiring Quote REST API & Immutable Quote Snapshots IMPLEMENTED (Issue #108); Delivery Foundation Verified (Issue #126)** | `services/accounts-service/`: 174 tests passed (0 failures); `services/pricing-service/`: 67 tests passed (0 failures); `services/api-gateway/`: 48 tests passed (0 failures); `services/delivery-service/`: 18 tests passed; edge Keycloak JWT validation, merchant enrollment command (`POST /api/v1/merchants`), CUSTOMER role gate, verified subject binding, PENDING status lifecycle, strict JSON rejection, expiring quote REST API (`POST /api/v1/quotes`, `GET /api/v1/quotes/{id}`, `GET /api/v1/zones`), immutable quote snapshots, and concurrency safety verified |
+
+## Issue #108 Validated Expiring Quote REST API & Immutable Quote Snapshots — 2026-10-26
+
+Primary Implementer: **Harithkeshan (@Harithkeshan)** (Pricing & Admin Lead); branch `feat/n10-b03-pricing-quotes`, targeting `test`.
+Reviewers: **Suthankan1 (@Suthankan1)** (Platform Identity & Delivery Boundary Coordination), **Thuvarahan (@thuvarahan-t)** (Merchant / Pricing Consumer Lead).
+
+Delivered validated expiring quote REST API and immutable quote snapshots in `services/pricing-service` per openapi-pricing.yaml and DEC-PRC-06:
+- **Flyway Schema Migration (`V3__create_pricing_quotes.sql`):**
+  - Added `pricing_quotes` table with non-nullable constraints, foreign key to `pricing_rate_versions(id)`, and strict checks (`expires_at > created_at`, positive dimensions/weights/fees).
+  - Added index on `(id, expires_at)` for performant quote verification and retrieval.
+- **Immutable Domain Model (`QuoteSnapshot`):**
+  - Domain value object enforcing all invariants, fee matching, and clock-based expiry checks (`isExpired(Clock)`).
+- **Application Orchestration (`QuoteApplicationService`):**
+  - Orchestrates deterministic tariff calculation, snapshot generation with configurable validity window (default 900s), JPA persistence, and secure retrieval enforcing `QuoteOwnershipPolicy`.
+- **Read/Insert-Only Persistence (`QuoteEntity` & `QuoteRepository`):**
+  - Read/insert-only JPA entity (`updatable = false` on all columns, `DynamicUpdate(false)`) mapping directly to `pricing_quotes`.
+- **Public & Authenticated REST API (`PricingController`):**
+  - Implements `POST /api/v1/quotes`, `GET /api/v1/quotes/{quoteId}`, and `GET /api/v1/zones`.
+  - Rejects unknown and client-injected pricing fields with HTTP 400 `MALFORMED_REQUEST_BODY`.
+  - RFC 7807 `PricingProblemHandler` providing uniform problem details (`ZONE_NOT_FOUND`, `ZONE_INACTIVE`, `INVALID_MEASUREMENTS`, `QUOTE_NOT_FOUND`, `VALIDATION_FAILED`).
+  - `SecurityContextCallerResolver` strictly extracts authenticated caller context from `SecurityContextHolder` (JWT subject and tenant ID) or defaults safely to anonymous caller.
+- **Automated Validation Evidence:**
+  - Automated Pricing test suite: **67 tests PASS** (0 failures, 0 skips, 0 errors).
+  - `PricingControllerTest` (10 PASS), `PricingCalculationServiceTest` (5 PASS), `QuoteApplicationServiceTest` (4 PASS), `RateVersionQueryServiceTest` (4 PASS), `QuoteSnapshotTest` (6 PASS), `QuoteOwnershipPolicyTest` (4 PASS), `MoneyTest` (7 PASS), `ParcelMeasurementsTest` (12 PASS), `RateVersionTest` (4 PASS), `TieredWeightPricingStrategyTest` (5 PASS), `PricingPackageContractsTest` (6 PASS).
 | React application | **Single SPA canonical defaults aligned to SwiftDrop OIDC; flow verified (PR #41, #42, #64, #80)** | `frontend/`: official keycloak-js 26.2.4; strict typecheck, 101 unit tests, lint, and production build verified; live browser login/profile flow through Gateway to Accounts demonstrated with `swiftdrop` realm; `/customer` and `/merchant` protected routes verified |
 | Keycloak/Google login | **Real Google login operator-verified PASS (2026-10-21); Live realm cutover to `swiftdrop` COMPLETE (PR #64); Fresh bootstrap verified** | Human operator completed Google authentication; agent verified Customer profile and Gateway `/api/v1/users/me` HTTP 200, corroborated Google federated identity/CUSTOMER-only roles. Live cutover and fresh-install bootstrap verified. See `docs/branding/PHASE_2_FINAL_SIGNOFF.md`. |
-| GraphQL/gRPC/Kafka/SSE flows | **Designed, implementation pending** | Design documentation; no runtime evidence |
+| Email Verification & MFA Policy (Issue #47) | **Native Email Verification (PR #48) & RFC 6238 TOTP (PR #49) VERIFIED; Production Policy & ADR-0009 Finalized** | 14/14 static invariant checks PASS; 93 unit tests PASS (pytest 49 subtests, unittest parity); production policy in `docs/security/EMAIL_VERIFICATION_MFA_POLICY.md`; ADR-0009 recommendation Outcome A (no typed email OTP); handoff to #150 and #159 |
+| GraphQL/gRPC/Kafka/SSE flows | **Shared JWT Resource Server & Authenticated gRPC Delegation Adapters IMPLEMENTED (Issue #100)** | 38 automated security tests PASS (JWT validation, gRPC service auth, actor delegation spoof rejection, deadline enforcement, direct service access) |
+| Keycloak Role Reconciliation | **Controlled Keycloak Staff & Merchant-Role Reconciliation Adapter IMPLEMENTED (Issue #107)** | 52 automated reconciliation/security tests PASS (193 total in Accounts Service); server-only least privilege Keycloak administration; idempotent staff/merchant reconciliation; stale-retry protection; V5 durable audit schema; Spring Security admin guard (`hasRole('ADMIN')`) |
+| Strict $0 Hosting Decision & Azure Allowlist (Issue #172) | **Strict $0 Local Hosting Decision Frozen; Azure Allowlist INITIALIZED TO EMPTY (ADR-0011)** | Complete resource-by-resource decision matrix; Azure for Students credit disqualified; SWA Free blocked on missing subscription hard-stop & local reachability; local k3d/K3s topology frozen for all 8 workloads; machine-readable policy contract published in `platform/security/azure-allowlist-policy.yaml`; handoff to #173-#178 |
 | CI/CD, Compose, Kubernetes/AI | **Local container startup, full-stack readiness & independent clean-clone reproduction verified (PR #53, Issue #17)** | `platform/local/start-local.sh`, `platform/local/check-readiness.sh` (13/13 passed), `tests/security-e2e/demo_smoke.py` (4/4 passed), `run-security-e2e.sh` (36 PASS / 4 BLOCKED), independent clean-clone reproduction (L10 PASS); Kubernetes/AI remain bonuses |
 
-When real work begins, record commit IDs, actual test commands/results, known blockers and next slice. Never mark a milestone green just because its diagram exists. See [handoff template](../ai/HANDOFF_TEMPLATE.md).
+## Issue #97 Pending Merchant Enrollment Command — 2026-10-25
+
+Primary Implementer: **Thuvarahan (@thuvarahan-t)** (Merchant / Backend); branch `feat/n10-wf07-merchant-enrollment`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts Business Service & Database Owner), **Harithkeshan (@Harithkeshan)** (Merchant/Admin Boundary Reviewer), **Eric Praveen (@EricPraveen)** (Merchant Frontend Contract Handoff), **Suthankan1 (@Suthankan1)** (Platform Identity Coordination).
+
+Delivered tenant-bound, secure merchant enrollment command inside Accounts & Partners Service, adhering strictly to SwiftDrop v1.3 architecture and OpenAPI contract:
+- **CUSTOMER Reachable Enrollment (`POST /api/v1/merchants`):**
+  - Updated Spring Security filter chain (`ProfileSecurityConfiguration`) enabling newly authenticated users with `CUSTOMER` role to submit merchant enrollment without a pre-existing `MERCHANT` role or second Keycloak signup.
+  - Fail-closed security matcher ensures general `/api/v1/merchants/**` routes continue to require `MERCHANT` or `ADMIN`.
+- **Verified Identity & Account Profile Binding:**
+  - Authenticated subject is resolved strictly from the verified JWT via `CurrentIdentityProvider.currentIdentity()`. Never accepts user identity or tenant ownership from request JSON or unverified headers.
+  - Reuses trusted `AccountProfileRepository` to bind the merchant tenant to the owning account profile, leveraging existing conflict-safe `insertIfAbsent` JIT provisioning when absent.
+- **Server-Controlled PENDING Approval Lifecycle:**
+  - Initial merchant enrollment strictly forces `MerchantStatus.PENDING`. No client-controlled approval, roles, or order execution capabilities are granted.
+  - Privileged merchant actions (e.g. API credential generation under Issue #22) remain fail-closed via `requireApprovedTenantAccess`.
+- **Strict Input Validation & Prohibited Field Rejection:**
+  - DTO `MerchantRegistrationRequest` validated with Jakarta Bean Validation (`@NotBlank`, `@Size`).
+  - Strict Jackson deserializer (`MerchantRegistrationRequestDeserializer`) rejects client-supplied privileged/ownership fields (`merchantId`, `id`, `accountProfileId`, `keycloakSub`, `status`, `approved`, `roles`, `ADMIN`, `MERCHANT`, `createdAt`, `updatedAt`, `ownerId`) with HTTP 400 Bad Request ProblemDetail.
+- **Duplicate Prevention & Concurrency Safety:**
+  - Evaluates single-merchant-per-owner constraint (`findByKeycloakSub`) and registration number uniqueness (`findByRegistrationNumber`), returning RFC 7807 409 Conflict.
+  - Database engine constraints `uq_merchants_keycloak_sub` and `uq_merchants_registration_number` protect against concurrent request races, mapped cleanly to HTTP 409 while letting general persistence errors propagate without masking.
+- **Same-Subject Pending Status Retrieval:**
+  - `MerchantAuthorizationService` provides same-subject pending read exception allowing authenticated `CUSTOMER` owners to check their own pending tenant status via `GET /api/v1/merchants/{merchantId}/status` and retrieve their record via `GET /api/v1/merchants/me`.
+  - Probes across tenant boundaries fail closed with HTTP 403 Forbidden.
+- **Automated Validation Evidence:**
+  - Automated Accounts test suite: **174 tests PASS** (0 failures, 0 skips, 0 errors).
+  - Unit tests: `MerchantRegistrationRequestTest` (9 PASS), `MerchantEnrollmentServiceTest` (11 PASS), `MerchantControllerTest` (8 PASS), `MerchantAuthorizationServiceTest` (22 PASS).
+  - Security slice tests: `MerchantHttpSecurityTest` (16 PASS) verifying CUSTOMER access, 401 unauthenticated, 403 cross-tenant/unauthorized roles, 400 prohibited fields, 409 conflicts.
+  - Testcontainers PostgreSQL IT harness (`MerchantEnrollmentPostgresIT`) created for full failsafe verification against real PostgreSQL 16 Alpine and Flyway migrations.
+
+## Issue #172 Strict $0 Hosting Decision & Subscription-Specific Azure Allowlist — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / DevOps / Security Lead); branch `docs/n10-zc01-strict-zero-cost-hosting`, targeting `test`.
+Reviewers: **Harithkeshan (@Harithkeshan)** (Platform & Staff/Admin Lead), **Vibhushan (@Vibhushan-2003)** (Independent Security & Quality Lead).
+
+Delivered comprehensive research, financial risk analysis, architectural decision formalization, and downstream execution contracts for GitHub Issue #172 ([N10-ZC01]):
+- **Strict $0 Cost Policy Formalization:**
+  - Codified the non-negotiable definition of Strict $0: zero unauthorized cloud charges and zero consumption of Azure Students promotional credits ($100 credit balance).
+  - Explicitly disqualified promotional credits, pricing calculators, trial offsets, and marketing "Free" labels as proof of non-billable hosting.
+  - Enforced fail-closed governance: any unverified SKU, dependency, or overage behavior automatically fails closed to `BLOCKED` or `REJECTED`.
+- **Azure Allowlist Default State:**
+  - Initialized subscription-specific Azure allowlist to **EMPTY (`allowed_resources: []`)**.
+  - Set `azure.deployment_authorized: false`.
+  - Machine-readable policy contract published in `platform/security/azure-allowlist-policy.yaml`.
+- **Comprehensive Resource-by-Resource Decision Matrix (21 Categories):**
+  - Evaluated all candidate Azure resources (VMs, Managed Disks, Public IPs, NAT Gateways, Load Balancers, AKS Nodes, Storage Accounts, Terraform State Storage, ACR, Flexible PostgreSQL, Functions, App Insights, Monitor/Log Analytics, Paid Alerts, Key Vault, Front Door, Purchased Domains, Paid SSL, Egress Networking, Static Web Apps, and Cloud K3s VMs).
+  - Categorized each with exact SKUs, meter units, failure conditions, official Microsoft Learn citations, and retrieval timestamps (UTC).
+- **Rigorous Evaluation of Azure Static Web Apps Free Candidate:**
+  - Evaluated strictly for compiled SPA bundle (`frontend/dist/`).
+  - Found candidate **BLOCKED / NOT APPROVED** due to: (1) unverified subscription overage hard stops without active session inspection; and (2) the architectural browser reachability gap (public SPA calling local Gateway/Keycloak causes browser mixed-content rejections, localhost resolution failures on client machines, and OIDC redirect/CORS mismatch).
+- **Frozen Local Release Topology for November 10:**
+  - Assigned all eight SwiftDrop application and identity workloads (React SPA, API Gateway, Accounts, Pricing, Delivery, Communications, GraphQL, and Keycloak) to deploy locally on existing hardware via **k3d / K3s**.
+  - State dependencies frozen on local host: 5 dedicated PostgreSQL databases (`accounts_db`, `pricing_db`, `delivery_db`, `communications_db`, `keycloak_db`), Kafka KRaft broker, private MinIO S3 storage, and Mailpit SMTP.
+  - Suthankan1 recorded as Host Capacity Owner. Measured host metrics: Darwin `arm64`, 10 CPU cores, 16 GiB RAM, 93 GiB available disk, Docker 29.9.2. Full stack estimated working set (~6.5 to 7.5 GiB) fits comfortably within 16 GiB memory budget.
+  - Honest distinction between local demonstration release and Internet-hosted release (`PUBLIC INTERNET ACCESS — NOT VERIFIED / LOCAL-ONLY RELEASE`).
+- **Canonical Deliverables & Downstream Handoff:**
+  - Published Architecture Decision Record: `docs/architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md`.
+  - Published Technical Handoff Document: `docs/handoff/ISSUE_172_TO_173_178_ZERO_COST_HOSTING.md`.
+  - Linked policy to downstream infrastructure chain (#173, #174, #175, #176, #177, #178) and existing deployment tasks (#128, #149, #154, #150, #160, #167, #170). Issue #178 confirmed as an optional future spending gate, not a release prerequisite.
+
+## Issue #47 Keycloak Email Verification, MFA Policy & Security Acceptance — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Identity & Security Lead); branch `chore/later-15-identity-mfa-acceptance`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Harithkeshan (@Harithkeshan)** (Staff/Admin Business Policy).
+
+Delivered complete verification, production policy formalization, ADR-0009 review status recording, and downstream operational handoffs for GitHub Issue #47 ([LATER-15]):
+- **Historical Implementation Verification on Current `test` SHA (`0bc41e7`):**
+  - **Phase A (Native Email Verification — PR #48, commit `b72c005`):** Verified `verifyEmail: true`, `registrationAllowed: true`, 300s token lifetime, 60s resend cooldown, branded FreeMarker `login-verify-email.ftl`, and isolated local Mailpit (`mailpit:1025`) Compose network binding without public exposure.
+  - **Phase B (Authenticator-App TOTP MFA — PR #49, commit `7ecfc33`):** Verified RFC 6238 TOTP policy (`HmacSHA1`, 6 digits, 30s period, lookahead 1, `otpPolicyCodeReusable: false` replay prevention), unenrolled customer pass-through via `conditional-user-configured`, voluntary enrollment (`kc_action=CONFIGURE_TOTP`), branded QR screens, and non-destructive loopback recovery helper (`configure-totp.py reset-user`).
+  - **Phase C (Email OTP Feasibility & ADR-0009 — PR #52, commit `169d78e`):** Maintained architectural recommendation **OUTCOME A** (Do NOT implement custom typed email OTP; retain native signed links and app TOTP). Formal status recorded as **`PROPOSED — AWAITING SECURITY/PRODUCT APPROVAL`** pending independent human signoff. Custom email OTP is strictly rejected under Issue #47.
+- **Production Email Verification & MFA Policy Formalization:**
+  - Published comprehensive policy in `docs/security/EMAIL_VERIFICATION_MFA_POLICY.md` specifying approved baseline vs proposed production settings for new registrations, existing unverified users, Google brokered identities (`trustEmail`), email change re-verification, expired link handling, failed SMTP recovery, account-enumeration privacy protections, role-based voluntary vs mandatory MFA, and lost device recovery.
+- **Production SMTP Readiness & $0 Budget Boundary:**
+  - Documented strict criteria for production external SMTP relay (SendGrid free tier / university relay), TLS 1.2+ / STARTTLS encryption, verified sender identity (`no-reply@swiftdrop...`), SPF/DKIM/DMARC alignment, server-side environment secret injection (`KC_SPI_EMAIL_DEFAULT_*`), and zero secret logging.
+- **Downstream Handoff Contracts:**
+  - Published formal acceptance handoff in `docs/handoff/ISSUE_47_TO_150_159_IDENTITY_ACCEPTANCE.md` establishing clear boundaries for **Issue #150** (production external SMTP configuration, deployment secrets, DNS/TLS cutover) and **Issue #159** (independent synthetic browser E2E tests, external mailbox delivery validation, lost device recovery acceptance).
+- **Automated Regression Verification Evidence:**
+  - `./platform/identity/validate-identity.sh`: **14/14 static invariant checks PASSED**.
+  - `python3 -m pytest platform/identity/tests -v`: **93 passed, 49 subtests passed** in 18.18s.
+  - `python3 -m unittest discover -s platform/identity/tests -p "test_*.py" -v`: **93 passed** in 18.06s (100% discovery parity across runners).
+  - Strengthened `test_totp_configuration.py` and `test_email_configuration.py` to validate both canonical `swiftdrop` and legacy `devarom` realm configurations via subtests.
+  - Live smoke tests: `LIVE SMOKE — NOT EXECUTED` (local Docker daemon offline).
+
+
+## Issue #107 Controlled Keycloak Staff & Merchant-Role Reconciliation Adapter — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / IAM / Backend Lead); branch `feat/n10-p10-keycloak-role-reconciliation`, targeting `test`.
+Reviewers: **Harithkeshan (@Harithkeshan)** (Staff/Admin Business Policy), **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Thuvarahan (@thuvarahan-t)** (Merchant Domain Steward - Issues #97 & #121), **Eric Praveen (@EricPraveen)** (Merchant Frontend UI Steward - Issue #120).
+
+Delivered the controlled, least-privilege Keycloak identity administration adapter, idempotent staff and merchant role reconciliation services, partial-failure recovery with stale-grant prevention, and durable audit persistence:
+- **Server-Only Keycloak Administration Adapter (`com.swiftdrop.accountsservice.identity.keycloak`):**
+  - Implemented `KeycloakIdentityAdapter` via Java 21 `HttpClient` using standard Keycloak REST Administration APIs (`/admin/realms/{realm}/users/{id}/role-mappings/realm`).
+  - Zero browser administrative credentials: credentials are strictly server-only (`KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_CLIENT_SECRET`) managed via `KeycloakAdminCredentialProvider` with cached service-account access tokens and automatic token renewal.
+  - Strict allowlist enforcement: Only `COURIER`, `DISPATCHER`, `ADMIN`, and `MERCHANT` are reconcilable (`KeycloakRoleAllowlist`). Arbitrary or client-supplied role parameters are strictly rejected.
+- **Controlled Staff-Role Reconciliation (`StaffRoleReconciliationService`):**
+  - Requires authenticated `ADMIN` identity verified from JWT principal.
+  - Checks Keycloak user existence before creating domain profiles (`IdentityNotFoundException` on missing subject).
+  - Persists staff profile in `accounts_db` and synchronizes operational role in Keycloak.
+  - Enforces business status: Only `ACTIVE` staff retain privileged roles. Suspension/deactivation revokes operational roles in Keycloak immediately and enforces fail-closed authorization in Accounts.
+- **Controlled Merchant-Role Reconciliation (`MerchantRoleReconciliationService`):**
+  - Implements configurable role trigger policy (`MerchantReconciliationTriggerPolicy`):
+    - `ON_APPROVAL` (default): Pending enrollment (Issue #97) creates a `PENDING` merchant profile in Accounts but does NOT grant the `MERCHANT` role in Keycloak. When approved by an admin (Issue #121), the `MERCHANT` role is synchronized in Keycloak.
+    - `ON_ENROLLMENT`: Alternative policy where role is granted on enrollment with business access blocked until approved.
+  - Immediate role revocation on merchant suspension or rejection.
+  - Authoritative status enforcement: Accounts business endpoints enforce `status == APPROVED`, ensuring stale or unrevoked JWTs cannot perform merchant operations.
+- **Durable Audit & Stale-Grant Recovery (`ReconciliationRecoveryService`, `JpaReconciliationAuditService`):**
+  - Flyway V5 migration `V5__create_identity_reconciliation_audit.sql` creates `identity_reconciliation_audit` table with check constraints and index coverage.
+  - Audit logging with `REQUIRES_NEW` transaction propagation and automatic credential scrubbing (masks passwords, client secrets, and bearer tokens with `***`).
+  - Stale-retry protection: Retries re-read the authoritative state from Accounts. If a merchant or staff member was suspended after an earlier failure, the retry strictly enforces role revocation and never restores privileges.
+- **Protected Administrative Endpoints (`AdminReconciliationController`):**
+  - Exposes `/api/v1/admin/reconciliation/**` protected by Spring Security requiring `hasRole('ADMIN')`.
+  - Maps domain and Keycloak exceptions to RFC 7807 `ProblemDetail` via `ReconciliationProblemHandler` (503 for Keycloak unavailable, 404 for missing identity, 400 for unapproved role, 409 for duplicate profile).
+- **Integration Contract & Cross-Team Handoffs:**
+  - Published comprehensive integration specification in `docs/contracts/ROLE_RECONCILIATION_CONTRACT.md` detailing contracts for Issue #97, Issue #121, Issue #120, Harithkeshan, and Vibhushan.
+- **Automated Validation Evidence:**
+  - Automated Java test suite: **52 new tests PASS** (193 total passing in Accounts Service, 0 failures, 0 skips):
+    - `HttpKeycloakIdentityAdapterTest` (12 tests PASS)
+    - `DefaultKeycloakAdminCredentialProviderTest` (4 tests PASS)
+    - `StaffRoleReconciliationServiceTest` (7 tests PASS)
+    - `MerchantRoleReconciliationServiceTest` (6 tests PASS)
+    - `ReconciliationRecoveryServiceTest` (7 tests PASS)
+    - `JpaReconciliationAuditServiceTest` (3 tests PASS)
+    - `AdminReconciliationHttpSecurityTest` (13 tests PASS)
+  - Regression test suites preserved: `shared/security-adapter` (38/38 PASS), `platform/identity/tests` (93/93 PASS, 41 subtests).
+
+
+## Issue #106 Gateway Business-Edge Authentication & Abuse Policy — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Platform); branch `feat/n10-p03-gateway-edge-security`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Harithkeshan (@Harithkeshan)** (Functional Reviewer).
+
+Delivered comprehensive business-edge authentication, role-based authorization hooks, merchant machine credential validation, case-insensitive identity and gRPC internal delegation header sanitization, and bounded rate-limiting / payload / SSE connection abuse policies for Spring Cloud Gateway WebFlux:
+- **Reactive Keycloak JWT Edge Security & Role Policy Hooks (`com.swiftdrop.apigateway.security`):**
+  - Preserved verified Keycloak JWT signature, issuer URI (`/realms/swiftdrop`), required audience (`swiftdrop-api`), and lifetime verification with RFC 7807 Problem Detail responses.
+  - Implemented `KeycloakReactiveJwtAuthenticationConverter` mapping `roles` and `realm_access.roles` claims to Spring Security `ROLE_*` authorities (`ROLE_CUSTOMER`, `ROLE_MERCHANT`, `ROLE_COURIER`, `ROLE_DISPATCHER`, `ROLE_ADMIN`), filtering internal Keycloak roles.
+  - Configured explicit pathMatcher rules across approved route families (Customer booking, Courier status/proof, Dispatcher assignments, Admin approvals, GraphQL composite queries, authenticated user profile) backed by a fail-closed `.anyExchange().denyAll()` boundary.
+- **Merchant Machine Credential Validation Boundary (`com.swiftdrop.apigateway.security.merchant`):**
+  - Implemented `MerchantApiKeyAuthenticationFilter` attached at `SecurityWebFiltersOrder.AUTHENTICATION`, scoped strictly to `POST /api/v1/merchant/parcels`.
+  - Distinguishes Bearer JWT authentication from machine `X-API-Key` authentication without introducing universal bypasses.
+  - `DefaultMerchantApiKeyValidator` enforces syntax regex `^swd_live_[0-9a-zA-Z]{32}$`, constant-time candidate lookup (`MessageDigest.isEqual`), scope verification (`parcels:create`), merchant approval status (`APPROVED` vs `PENDING`/`SUSPENDED`), expiration, and revoked checks. Raw API keys are masked in logs.
+- **Hardened Client Identity & Internal gRPC Header Sanitization (`com.swiftdrop.apigateway.filter`):**
+  - `StripUntrustedHeadersGatewayFilter` case-insensitively strips caller-supplied identity headers (`X-User-Id`, `X-Roles`, `X-Tenant-Id`, `X-Keycloak-Sub`, `X-User-Email`) and all Issue #100 internal gRPC delegation headers (`x-swiftdrop-service-token`, `x-swiftdrop-actor-*`, `x-swiftdrop-correlation-id`).
+  - Strictly preserves valid `Authorization: Bearer <token>` and `Idempotency-Key` headers for downstream independent validation.
+- **Bounded In-Memory Abuse & Rate-Limiting Policy (`com.swiftdrop.apigateway.filter.ratelimit`):**
+  - Implemented `InMemoryRateLimiter` using token-bucket algorithm with bounded cardinality (max 10,000 tracked keys) and idle bucket eviction to prevent memory exhaustion from randomized caller keys.
+  - `RateLimitingGatewayFilter` enforces quotas:
+    - Public IP rate limit: 60 req/min (burst capacity 10)
+    - Verified merchant identity rate limit: 120 req/min (burst capacity 20)
+    - Unauthenticated probe limit: 10 req/min (burst capacity 5)
+  - Emits RFC 7807 Problem Detail on HTTP 429 `Too Many Requests` with standard `Retry-After` header.
+- **Payload Size Enforcement (`PayloadSizeLimitGatewayFilter`):**
+  - Enforces `Content-Length` limits: 64 KB for quotes calculation (`/api/v1/quotes`), 5 MB for courier proof uploads (`/api/v1/parcels/*/proof`), and 256 KB for standard parcel commands.
+  - Rejects oversized requests with HTTP 413 `Payload Too Large` Problem Detail before forwarding downstream.
+- **SSE Connection Policy (`SseConnectionPolicyGatewayFilter`):**
+  - Enforces connection concurrency caps: max 5 concurrent streams for public tracking SSE (`/api/v1/tracking/events`), max 10 concurrent streams for authenticated parcel SSE.
+  - Zero response body buffering; connection counters release upon disconnect (`.doFinally()`).
+- **Downstream Route Integration Handoff:**
+  - Published comprehensive handoff document `docs/handoff/ISSUE_127_GATEWAY_ROUTE_INTEGRATION.md` for @Gajanthan23 (Issue #127).
+- **Validation Evidence:**
+  - Automated Java test suite: **48 tests PASS** (0 failures, 0 skips, 0 errors):
+    - `GatewayBusinessEdgeSecurityTest`: 21 tests PASS
+    - `GatewayAbuseAndSsePolicyTest`: 8 tests PASS
+    - `ApiGatewaySecurityAndRoutingTest`: 12 tests PASS
+    - `SwiftDropTargetContractGatewayTest`: 6 tests PASS
+    - `ApiGatewayDownstreamUnavailableTest`: 1 test PASS
+    - `ApiGatewayApplicationTests`: 1 test PASS
+  - Preserved shared security adapter passing suite: `shared/security-adapter` (38/38 PASS).
+
+## Issue #126 Delivery Service Foundation & Bounded Context Packages — 2026-10-25
+
+Primary Implementer: **Sinthuha (@Sinthuha-n)** / **Gajanthan (@Gajanthan23)** (Delivery / Platform Lead); branch `feat/n10-b24-delivery-foundation`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Delivery domain & courier status transition steward), **Harithkeshan (@Harithkeshan)** (Dispatcher courier assignment steward), **Suthankan1 (@Suthankan1)** (Platform / integration coordinator).
+
+Delivered the Delivery Operations Spring Boot microservice foundation, independently owned base schema, and bounded package contracts:
+- **Application Foundation:** Scaffolded Delivery Service in `services/delivery-service/` using pinned Java 21 LTS and Spring Boot 4.1.1 on port 8083. Package root `com.swiftdrop.deliveryservice`.
+- **Independent Database & Schema Ownership (`delivery_db`):** Flyway V1 migration `V1__create_delivery_schema.sql` establishes canonical parcel persistence (`parcels`), immutable chronological status transition audit log (`status_history`), and mutation de-duplication (`idempotency_records`). Zero cross-service database access, shared tables, or foreign keys to Accounts, Keycloak, or Pricing.
+- **Base Opaque Schema Boundaries:** External entities are stored strictly as opaque scalar values (`sender_sub VARCHAR(64)`, `merchant_id UUID`, `quote_id UUID`, `proof_id UUID`, `actor_sub VARCHAR(64)`). Fee snapshotting preserved (`amount_minor_units BIGINT`, `currency CHAR(3)`, `rate_version VARCHAR(32)`).
+- **Bounded Feature Package Contracts:** Established clear package responsibilities and interfaces across team members to prevent competing scaffolds:
+  - `core`: `Parcel` aggregate root entity, `ParcelStatus` enum, `ParcelRepository`.
+  - `status`: `StatusHistory` entity, `StatusHistoryRepository`, `ParcelLifecycleTransitionContract` defining forward transition permissions and terminal state immutability for Issue #23.
+  - `idempotency`: `IdempotencyRecord` entity, `IdempotencyRecordRepository`, `IdempotencyServiceContract`.
+  - `booking`: `BookingContract`, `BookParcelCommand`, `BookingResult` for Issue #20.
+  - `assignment`: `CourierAssignmentContract` for Issue #24.
+  - `proof`: `ProofMetadataContract` for Issue #29.
+  - `query`: `ParcelProjection`, `ParcelQueryService` for Issue #94 and gRPC `GetParcelInternal`.
+- **Fail-Closed Configuration & Health:** Requires `DELIVERY_DB_URL`, `DELIVERY_DB_USERNAME`, `DELIVERY_DB_PASSWORD`. Startup fails immediately if database configuration is missing or invalid. Exposes `/actuator/health` on port 8083.
+- **Automated Validation Evidence:**
+  - Delivery Service automated unit and slice test suites: **18 tests PASS** (0 failures, 0 skips).
+  - Tests verify clean Flyway V1 script discovery and constraints, zero cross-service relationships, entity lifecycles and defaults, state machine forward/backward transitions, terminal state immutability, mandatory failure reason/proof requirements, and missing datasource startup failure.
+  - Testcontainers PostgreSQL IT harness (`DeliveryPersistencePostgresIT`) created for full failsafe verification on real PostgreSQL 16 Alpine.
+  - Strict scope bounds preserved: No delivery booking business workflows, quote calculations, courier assignments, proof uploads, Kafka publishers, or gRPC stubs claimed (cleanly handed off to Issues #20, #23, #24, #29, #31, #94).
+
+## Issue #100 Shared Service JWT & Authenticated gRPC Actor Delegation Adapters — 2026-10-25
+
+Primary Implementer: **Suthankan1 (@Suthankan1)** (Platform / Backend Lead); branch `feat/n10-p02-shared-jwt-grpc-delegation`, targeting `test`.
+Reviewers: **Vibhushan (@Vibhushan-2003)** (Independent Security Reviewer), **Harithkeshan (@Harithkeshan)** (Functional Reviewer).
+
+Delivered reusable security adapter module (`shared/security-adapter`) extending independent resource-server verification and production-grade internal gRPC authentication with cryptographic actor delegation:
+- **Reusable OAuth2 Resource Server Adapter (`com.swiftdrop.security.jwt`):**
+  - Configures Spring Security 6 resource server (`SwiftDropSecurityConfiguration`) with statelessness, CSRF disabled, default-deny boundary (`anyRequest().denyAll()`), and RFC 7807 Problem Detail handlers for 401 Unauthorized and 403 Forbidden.
+  - Reusable `AudienceValidator` (`swiftdrop-api`), `SubjectValidator` (opaque non-blank sub), and `SwiftDropJwtDecoderFactory`.
+  - Strict extraction of approved SwiftDrop business roles (`CUSTOMER`, `MERCHANT`, `COURIER`, `DISPATCHER`, `ADMIN`) via `KeycloakRoleExtractor`. Default and internal Keycloak roles (e.g. `offline_access`, `uma_authorization`) are explicitly ignored.
+  - Exposes `ServiceSecurityCustomizer` functional hook allowing Delivery, Pricing, Communications, and GraphQL Query API to register domain-specific endpoint access rules without duplicating security boilerplate.
+- **Independent Resource Server Enforcement & Direct Service Access Defense:**
+  - Directly addressed requirement 5.B: Verified that requests to service boundaries are evaluated independently; bypass attempts with forged headers (`X-Forwarded-For`, `X-Forwarded-Host`, `X-User-Sub`) without a valid Bearer token fail closed with HTTP 401 Unauthorized (`DirectServiceSecurityTest`).
+- **Cryptographic Internal gRPC Service Authentication (`com.swiftdrop.security.service`):**
+  - Strongly typed `SwiftDropServiceIdentity` for registered microservices (`DELIVERY_SERVICE`, `PRICING_SERVICE`, `ACCOUNTS_SERVICE`, `COMMUNICATIONS_SERVICE`, `GRAPHQL_QUERY_SERVICE`, `API_GATEWAY`).
+  - Implemented `JwtServiceTokenValidator` validating `x-swiftdrop-service-token` signatures, issuer, internal audience (`swiftdrop-internal`), and expiration.
+  - Missing, expired, forged, or unapproved service callers fail closed with gRPC `Status.UNAUTHENTICATED`.
+- **Verified Actor Delegation & Spoofing Defense (`com.swiftdrop.security.grpc`):**
+  - Authoritative `GrpcSecurityPolicy` mapping every internal RPC to allowed calling services, delegation requirement (`REQUIRED`, `FORBIDDEN`, `OPTIONAL`), and required actor roles per `docs/contracts/SERVICE_INTERFACE_MATRIX.md`.
+  - `ActorDelegationValidator` strictly denies blind trust of caller-forwarded strings: requires cryptographic delegation proof via verified actor JWT (`x-swiftdrop-actor-token`) or signed delegation claims in the service token.
+  - Forged actor subjects, forged role elevation (e.g. claiming `ADMIN` with `COURIER` token), unverified forwarding headers, and cross-tenant violations are rejected with gRPC `Status.PERMISSION_DENIED`.
+  - Service-only RPCs (e.g. `ValidateMerchantKeyDigest`, `ResolveRecipientContact`) reject synthetic human impersonation; background jobs execute safely without synthetic identities.
+- **gRPC Server & Client Interceptors (`SwiftDropGrpcServerSecurityInterceptor`, `SwiftDropGrpcClientInterceptor`):**
+  - Server interceptor binds validated service identity and delegated actor to thread-isolated `SwiftDropGrpcContext` (`io.grpc.Context`), preventing static cross-talk.
+  - Client interceptor injects service token, propagates authenticated actor context from `SecurityContextHolder`, attaches correlation ID, and enforces default 2000ms deadline (`DEFAULT_DEADLINE_MS`) while preserving shorter upstream deadlines.
+- **CI & Build Integration:** Added `shared/security-adapter` gate to `.github/workflows/ci.yml`.
+- **Validation Evidence:**
+  - Automated Java test suite: **38 tests PASS** (0 failures, 0 skips, 0 errors):
+    - `JwtValidationTest` (11 tests PASS): Valid token, missing token, malformed token, invalid signature, untrusted issuer, wrong audience, expired, not yet valid, missing role, unapproved role filtering, forged forwarding headers rejection.
+    - `GrpcServiceAuthenticationTest` (7 tests PASS): Valid signed service identity, missing service token, forged service token, expired service token, wrong audience, unauthorized caller service, metadata forwarding without service token.
+    - `GrpcDelegationSpoofingTest` (10 tests PASS): Valid delegation, missing actor when required, unverified actor forwarding rejected, forged actor subject, forged role elevation rejected, non-admin denied admin RPC, admin allowed admin RPC, service-only rejects synthetic actor, background job without synthetic actor, signed delegation claims.
+    - `GrpcDeadlineAndCorrelationTest` (6 tests PASS): Default 2000ms deadline, shorter upstream deadline preservation, timeout fail-closed (`DEADLINE_EXCEEDED`), correlation ID propagation, malformed correlation sanitization, concurrent thread isolation.
+    - `DirectServiceSecurityTest` (4 tests PASS): Direct service access without token fails 401, forged gateway headers fail 401, valid token succeeds independently, insufficient role fails 403.
+  - Preserved existing passing suites: `shared/proto-contracts` (14/14 PASS), `services/api-gateway` (19/19 PASS), `services/accounts-service` (141/141 PASS), `services/communications-service` (19/19 PASS).
+
+
+## Issue #92 Freeze Versioned Protobuf Contracts & Reproducible Java Generation — 2026-10-25
+
+
+Primary Implementer: **Gajanthan (@Gajanthan23)** (Platform / Protobuf Lead); branch `feat/n10-b01-protobuf-contracts`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts/Platform steward), **Harithkeshan (@Harithkeshan)** (Pricing domain steward), **Vibhushan (@Vibhushan-2003)** (Delivery domain steward), **Thuvarahan (@thuvarahan-t)** (Communications domain steward).
+
+Delivered versioned Protocol Buffer contracts and reproducible Java generation tooling:
+- **Canonical Contracts Committed:** Created versioned Protocol Buffer v3 definitions under `contracts/grpc/swiftdrop/`:
+  - `accounts/v1/accounts.proto`: `AccountsInternalService` (`CheckCourierEligibility`, `ValidateMerchantKeyDigest`, `ResolveRecipientContact`, `GetPendingMerchantsSummary`).
+  - `pricing/v1/pricing.proto`: `PricingInternalService` (`ValidateQuote`).
+  - `delivery/v1/delivery.proto`: `DeliveryInternalService` (`GetParcelInternal`, `GetCourierWorkload`).
+  - Invariants preserved: `proto3`, `java_multiple_files = true`, `com.swiftdrop.<service>.v1` package, UTC timestamps (`google.protobuf.Timestamp`), integer minor units for monetary quantities (`int64`), and stable permanent field tags.
+- **Admin Pending-Merchant Summary RPC (#121/#139 Gap Closure):** Defined `GetPendingMerchantsSummary` on `AccountsInternalService` with bounded pagination (page, size 1-50), status filter ("PENDING"), and total pending count for GraphQL `adminDashboard` query projection.
+- **Java Generation Module (`shared/proto-contracts`):** Pinned `protobuf-maven-plugin:0.6.1`, `protoc:3.25.5`, `io.grpc:protoc-gen-grpc-java:1.68.1`, `io.grpc:grpc-bom:1.68.1`, and Java 21 LTS (`com.swiftdrop:proto-contracts:0.0.1-SNAPSHOT`).
+- **Zero Shared Entity JAR Invariant:** Packages wire contracts and stubs only; zero database entities or shared models.
+- **Security & Actor Delegation Helper:** Implemented `SwiftDropGrpcMetadata` providing constants for `x-swiftdrop-service-token`, `x-swiftdrop-actor-sub`, `x-swiftdrop-actor-roles`, `x-swiftdrop-correlation-id`, and `DEFAULT_DEADLINE_MS` (2000ms bounded timeout).
+- **Validation Evidence:**
+  - Automated Java test suite: **14 tests PASS** across 5 test classes (0 failures, 0 skips):
+    - `AccountsContractTest`: Courier eligibility, merchant key validation, contact resolution, pending merchant summary.
+    - `PricingContractTest`: Quote validation, minor units, mismatch detection.
+    - `DeliveryContractTest`: Parcel internal projection, courier workload count.
+    - `SecurityMetadataAndDeadlineTest`: Service token authentication rejection, metadata propagation, 50ms deadline timeout (`DEADLINE_EXCEEDED`).
+    - `ContractDescriptorAndSerializationTest`: Descriptor validation, binary serialization roundtrip, JSON parser/printer.
+  - Python contract validation gate: **PASS** across all 4 gates (OpenAPI, GraphQL, Kafka, Protobuf).
+  - Python contract unit test suite (`test_protobuf_contracts.py`): **4 tests PASS**.
+  - Bit-for-bit reproducibility: Clean builds compared across two independent clean runs; 36 generated files verified with **zero SHA-256 hash mismatches**.
+
+## Issue #96 Communications Service Foundation & Durable Job Schema — 2026-10-24
+
+Primary Implementer: **Thuvarahan (@thuvarahan-t)** (Communications / Backend Lead); branch `feat/n10-b16-communications-foundation`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts/data ownership & persistence review), **Suthankan1 (@Suthankan1)** (Platform/integration architecture review).
+
+Delivered the Communications Spring Boot microservice foundation and independently owned durable job schema:
+- **Application Foundation:** Scaffolded Communications Service in `services/communications-service/` using pinned Java 21 LTS and Spring Boot 4.1.1. Package root `com.swiftdrop.communicationsservice`.
+- **Independent Database & Schema Ownership (`communications_db`):** Flyway V1 migration `V1__create_communications_schema.sql` establishes the 5 service-owned tables: `consumed_events`, `notifications`, `webhook_subscriptions`, `webhook_deliveries`, and `webhook_attempts`. Zero cross-service database access, shared tables, or foreign keys to Accounts or Delivery.
+- **Durable Deduplication & Invariants:** `consumed_events` enforces composite PK `(consumer_name, event_id)` enabling independent consumer groups to process identical events without key conflicts. `notifications` enforces `(event_id, recipient_sub, channel)` uniqueness; `webhook_deliveries` enforces `(subscription_id, event_id)` uniqueness. `webhook_subscriptions` enforces HTTPS-only endpoints (`^https://`).
+- **Atomic Transaction Boundary (`DurableJobPersistenceService`):** Created the transaction service providing atomic persistence of inbox receipts and durable notification/webhook jobs (`persistInboxAndNotification`, `persistInboxAndWebhookDeliveries`). Rolls back atomically on constraint violations; raises `DuplicateEventException` on replayed events. Ready for Kafka consumer handoff under Issue #32.
+- **Fail-Closed Configuration & Health:** Requires `COMMUNICATIONS_DB_URL`, `COMMUNICATIONS_DB_USERNAME`, `COMMUNICATIONS_DB_PASSWORD`. Startup fails immediately if database configuration is missing or invalid. Exposes `/actuator/health` check without credentials.
+- **Automated Validation Evidence:**
+  - Communications Service unit and slice test suites: **19 tests PASS** (0 failures, 0 skips).
+  - Tests verify atomic commit, transaction rollback, composite PK deduplication, Flyway V1 schema constraints, entity lifecycle callbacks, and missing datasource startup failure.
+  - Testcontainers PostgreSQL IT harness (`CommunicationsPersistencePostgresIT`) created for full failsafe execution on real PostgreSQL 16.
+  - Strict scope bounds preserved: No Kafka consumers, email/SMS senders, webhook HTTP dispatchers, or retry workers implemented (handoff to Issues #32 and #21).
+
+## Issue #22 Merchant Credential Lifecycle & Tenant-Bound Order Contract — 2026-10-24
+
+Primary Implementer: **Thuvarahan (@thuvarahan-t)** (Merchant Backend Lead); branch `feat/issue-22-merchant-credential-lifecycle`, targeting `test`.
+Reviewers: **Sinthuha (@Sinthuha-n)** (Accounts provider ownership & database boundaries), **Vibhushan (@Vibhushan-2003)** (Delivery contract & independent security boundary review — 1h), **Eric (@EricPraveen)** (Merchant contract & UI consumer review — 1.5h), **Suthankan1 (@Suthankan1)** (Platform/security contract coordination).
+
+Implemented the bounded Merchant API Credential Lifecycle in Accounts & Partners Service and established the reviewed tenant-bound order contract:
+- **Credential Security Decision Formalized:** Published [ADR-0010](../architecture/adr/ADR-0010-merchant-credential-lifecycle.md) establishing Option A: Scoped API Keys (`swd_live_<base62_32_chars>`), SHA-256 one-way hashing, constant-time validation (`MessageDigest.isEqual`), 3-key active rotation limit, and scopes `parcels:create`, `parcels:read`, `webhooks:manage` (`DEC-MER-01`, `02`, `04`).
+- **PostgreSQL Persistence & Immutability:** Accounts owns `merchant_api_keys` table and Flyway migration `V4__create_merchant_api_keys.sql`. Includes foreign key to `merchants(id)`, unique key digest constraint, index on `key_prefix`, and PostgreSQL trigger `merchant_api_key_immutable` preventing updates to `id`, `merchant_id`, `key_digest`, and `created_at`.
+- **Zero Plaintext Secrets:** Cryptographically secure `SecureRandom` Base62 generator (256-bit entropy). Plaintext key returned strictly once in `POST /api/v1/merchants/{id}/api-keys` response. Metadata listing `GET /api/v1/merchants/{id}/api-keys` strictly omits secret and digest.
+- **Strict Tenant & Approval-State Isolation:** Enforces Keycloak JWT subject binding. Non-merchant and cross-tenant callers fail closed with RFC 7807 403 Forbidden (`TENANT_ACCESS_DENIED`). Merchants in `PENDING`, `SUSPENDED`, or `REJECTED` states are denied key issuance and key validation (`MERCHANT_NOT_APPROVED` -> 403 Forbidden).
+- **Durable Revocation:** `DELETE /api/v1/merchants/{id}/api-keys/{keyId}` durably marks `revoked_at = NOW()`. Subsequent verification fails closed (`401 Unauthorized`). Idempotent revocation returns `204 No Content`.
+- **In-Process gRPC Provider Foundation:** Implemented `MerchantApiKeyValidator` matching `AccountsInternalService.ValidateMerchantKeyDigest` (`IF-GRPC-02`).
+- **Contract & Frontend Handoff:** Updated `contracts/rest/openapi-accounts.yaml`, documented routes in `docs/contracts/REST.md` and `SERVICE_INTERFACE_MATRIX.md`, and authored comprehensive frontend handoff in `docs/team/MERCHANT_CREDENTIAL_FRONTEND_HANDOFF.md` for Eric's Issue #120.
+- **Validation Evidence:**
+  - Accounts Service unit and security test suites: **141 tests PASS** (36 new credential tests: 18 unit tests, 14 Spring Security / WebMvc slice tests with real signed JWTs, 4 controller tests; 0 failures, 0 skips).
+  - Testcontainers PostgreSQL IT execution: Blocked by host Docker daemon unavailability (`failed to connect to docker API`); unit and MockMvc slice suites fully cover persistence constraints, DTO contracts, and security rules.
+  - Delivery Operations runtime: Downstream service runtime (`services/delivery-service`) un-scaffolded (placeholder README only); full delivery order creation reported honestly as **BLOCKED** on Delivery Operations implementation.
 
 ## Issue #17 Independent Clean-Clone Reproduction (L10) & Merchant Review — 2026-10-22
 
@@ -59,7 +483,7 @@ Implementation commit: `fca90f6e853f8da593fbb7977e63e70893ffc3ee`; base `test`: 
 
 ## Issue #7 OIDC Sequence, Accounts ERD & Master Login Evidence Review — 2026-10-22
 
-Lead Architectural Reviewer: **Gajanthan (@Gajanthan23)** (Customer Lead FE & Customer Feature Steward); branch `docs/nov07-oidc-erd-evidence`, targeting `test`.  
+Lead Architectural Reviewer: **Gajanthan (@Gajanthan23)** (Customer Lead FE & Customer Feature Steward); branch `docs/nov07-oidc-erd-evidence`, targeting `test`.
 Reviewers: **Sinthuha (@Sinthuha-n)** (Customer Lead BE & Accounts DB Steward), **Suthankan1 (@Suthankan1)** (Platform Lead, shared OIDC auth, Gateway & Accounts JWT), **Vibhushan (@Vibhushan-2003)** (Security QA Lead, Issue #18), **HarithKeshan (@Harithkeshan)** (Academic report assembly, Issue #19), **Eric (@EricPraveen)** (Clean-clone reproduction, Issue #17).
 
 Delivered comprehensive Customer pair architectural review of the OIDC login sequence, Accounts database ERD vs. actual schema, and master login acceptance evidence mapping for the November 1 milestone:

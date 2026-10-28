@@ -1,0 +1,22 @@
+# ==============================================================================
+# SwiftDrop Platform — Alertmanager Storage PVC (Issue #160)
+# Strictly bounded storage for Alertmanager state and silences.
+# ==============================================================================
+
+{{- if and .Values.alertmanager.enabled .Values.alertmanager.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: swiftdrop-alertmanager-data
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "alertmanager") | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.alertmanager.persistence.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.alertmanager.persistence.size | quote }}
+{{- end }}
+

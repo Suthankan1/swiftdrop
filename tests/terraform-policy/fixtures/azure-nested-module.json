@@ -1,0 +1,70 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.3",
+  "variables": {
+    "enable_azure_deployment": {
+      "value": false
+    }
+  },
+  "planned_values": {
+    "root_module": {
+      "resources": [],
+      "child_modules": [
+        {
+          "address": "module.platform_compute",
+          "child_modules": [
+            {
+              "address": "module.platform_compute.module.workers",
+              "resources": [
+                {
+                  "address": "module.platform_compute.module.workers.azurerm_linux_virtual_machine.worker_node",
+                  "mode": "managed",
+                  "type": "azurerm_linux_virtual_machine",
+                  "name": "worker_node",
+                  "provider_name": "registry.terraform.io/hashicorp/azurerm",
+                  "values": {
+                    "name": "worker-vm",
+                    "location": "eastus2"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "module.platform_compute.module.workers.azurerm_linux_virtual_machine.worker_node",
+      "mode": "managed",
+      "type": "azurerm_linux_virtual_machine",
+      "name": "worker_node",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "worker-vm",
+          "location": "eastus2",
+          "size": "Standard_B1s"
+        },
+        "after_unknown": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "azurerm": {
+        "name": "azurerm",
+        "full_name": "registry.terraform.io/hashicorp/azurerm",
+        "version_constraint": "~> 4.0"
+      }
+    },
+    "root_module": {
+      "resources": []
+    }
+  }
+}

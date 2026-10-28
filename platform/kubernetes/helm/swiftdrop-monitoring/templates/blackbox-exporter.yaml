@@ -1,0 +1,117 @@
+# ==============================================================================
+# SwiftDrop Platform — Blackbox Exporter Deployment & Service (Issue #160)
+# Probes application health & readiness endpoints to yield probe_success.
+# ==============================================================================
+
+{{- if .Values.blackboxExporter.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-blackbox-config
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "blackbox-exporter") | nindent 4 }}
+data:
+  blackbox.yml: |
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 5s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200, 204]
+          method: GET
+          no_follow_redirects: false
+          fail_if_ssl: false
+          fail_if_not_ssl: false
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swiftdrop-blackbox-exporter
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "blackbox-exporter") | nindent 4 }}
+spec:
+  replicas: {{ .Values.blackboxExporter.replicaCount }}
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "blackbox-exporter") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "blackbox-exporter") | nindent 8 }}
+    spec:
+      serviceAccountName: swiftdrop-blackbox-sa
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.blackboxExporter.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.blackboxExporter.securityContext.runAsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: blackbox-exporter
+          image: {{ include "swiftdrop-monitoring.image" .Values.blackboxExporter.image }}
+          imagePullPolicy: {{ .Values.blackboxExporter.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.blackboxExporter.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.blackboxExporter.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
+          args:
+            - "--config.file=/etc/blackbox_exporter/blackbox.yml"
+          ports:
+            - name: http
+              containerPort: 9115
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.blackboxExporter.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9115
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9115
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/blackbox_exporter
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: swiftdrop-blackbox-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swiftdrop-blackbox-exporter
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "blackbox-exporter") | nindent 4 }}
+spec:
+  type: {{ .Values.blackboxExporter.service.type }}
+  selector:
+    {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "blackbox-exporter") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.blackboxExporter.service.port }}
+      targetPort: 9115
+      protocol: TCP
+{{- end }}
+

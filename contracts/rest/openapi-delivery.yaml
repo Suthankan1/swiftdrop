@@ -142,8 +142,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PublicTrackingResponse'
+        '400':
+          description: Invalid tracking reference format
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
         '404':
           description: Tracking number not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/tracking/{trackingNumber}/events:
+    get:
+      summary: Public redacted parcel tracking Server-Sent Events (SSE) stream
+      description: |
+        Unauthenticated Server-Sent Events (SSE) stream for real-time parcel tracking updates.
+        Accessible anonymously to senders and recipients via approved tracking number format.
+        Emits 'parcel.status.changed' events with strictly redacted public fields:
+        trackingNumber, aggregateVersion, status transitions, coarse city/zone checkpoints, and timestamps.
+        Strictly excludes internal parcel IDs, customer names, phone numbers, street addresses,
+        courier identities, proof URLs, and financial/receipt details.
+        Streams are bounded by idle/session timeouts and emit keepalive comments (:keepalive) every 15 seconds.
+      operationId: streamPublicTrackingEvents
+      security: []
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^SWD-[0-9]{8}-[A-Z0-9]{4,8}$"
+            example: "SWD-20261023-A1B2C3"
+      responses:
+        '200':
+          description: Real-time public tracking event stream
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/PublicTrackingSseEvent'
+        '400':
+          description: Invalid tracking reference format
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Tracking number not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '429':
+          description: Concurrent SSE connection or rate limit exceeded
           content:
             application/problem+json:
               schema:
@@ -192,6 +245,159 @@ paths:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
         '409':
           description: Concurrency conflict (parcel version mismatch or already assigned)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/assignments/reassign:
+    post:
+      summary: Reassign an eligible replacement courier to a parcel
+      description: |
+        Atomically deactivates the current active assignment and assigns a substitute courier.
+        Requires DISPATCHER or ADMIN role.
+        Allowed only while parcel is in CREATED state per DEC-ASG-06.
+        Enforces optimistic locking (expectedVersion) and single active assignment per parcel.
+      operationId: reassignCourier
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignCourierRequest'
+      responses:
+        '200':
+          description: Courier reassigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentResponse'
+        '400':
+          description: Ineligible courier or invalid parcel state
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - DISPATCHER or ADMIN role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Parcel not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Concurrency conflict (parcel version mismatch, active assignment mismatch, or competing operation)
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/assignments/close:
+    post:
+      summary: Close/end an active courier assignment
+      description: |
+        Closes the active courier assignment for a parcel in CREATED state.
+        Requires DISPATCHER or ADMIN role.
+        Enforces optimistic locking (expectedVersion).
+      operationId: closeAssignment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseAssignmentRequest'
+      responses:
+        '200':
+          description: Assignment closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentResponse'
+        '400':
+          description: Invalid request or state
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - DISPATCHER or ADMIN role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Parcel not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '409':
+          description: Concurrency conflict or no active assignment
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/assignments/parcels/{parcelId}/history:
+    get:
+      summary: Retrieve courier assignment audit history for a parcel
+      description: |
+        Retrieves immutable historical assignment and reassignment audit events for a parcel.
+        Requires DISPATCHER or ADMIN role.
+      operationId: getAssignmentAuditHistory
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parcelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Assignment audit events retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssignmentAuditResponse'
+        '401':
+          description: Unauthenticated
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - DISPATCHER or ADMIN role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Parcel not found
           content:
             application/problem+json:
               schema:
@@ -407,6 +613,56 @@ paths:
               schema:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
 
+  /api/v1/parcels/{parcelId}/events:
+    get:
+      summary: Stream real-time parcel lifecycle events via Server-Sent Events (SSE)
+      description: |
+        Authorized Server-Sent Events (SSE) stream for real-time parcel lifecycle updates.
+        Accessible to parcel creator (Customer), approved merchant, assigned courier, or dispatcher/admin.
+        Emits 'parcel.status.changed' events with stable event IDs and aggregate versions.
+        Streams are bounded by token expiration and heartbeat pings every 15 seconds.
+      operationId: streamParcelLifecycleEvents
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parcelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Real-time event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '403':
+          description: Forbidden - caller unauthorized to view this parcel
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '404':
+          description: Parcel not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+        '429':
+          description: Concurrent SSE connection limit exceeded
+          content:
+            application/problem+json:
+              schema:
+                $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -494,6 +750,55 @@ components:
           description: Optimistic lock version matching PARCELS.version.
           example: 1
 
+    ReassignCourierRequest:
+      type: object
+      required:
+        - parcelId
+        - replacementCourierSub
+        - expectedVersion
+      properties:
+        parcelId:
+          type: string
+          format: uuid
+        replacementCourierSub:
+          type: string
+          description: Keycloak subject string identifying the replacement eligible courier.
+          example: "d67b5291-76bb-53fd-b056-6ge32efd1649"
+        expectedVersion:
+          type: integer
+          description: Optimistic lock version matching PARCELS.version.
+          example: 2
+        currentAssignmentId:
+          type: string
+          format: uuid
+          description: Optional ID of the expected current active assignment being superseded.
+        reason:
+          type: string
+          description: Optional operational reason for reassignment.
+          example: "VEHICLE_BREAKDOWN"
+
+    CloseAssignmentRequest:
+      type: object
+      required:
+        - parcelId
+        - expectedVersion
+      properties:
+        parcelId:
+          type: string
+          format: uuid
+        expectedVersion:
+          type: integer
+          description: Optimistic lock version matching PARCELS.version.
+          example: 2
+        assignmentId:
+          type: string
+          format: uuid
+          description: Optional ID of the specific active assignment to close.
+        reason:
+          type: string
+          description: Optional operational reason for closure.
+          example: "MANUAL_UNASSIGNMENT"
+
     AssignmentResponse:
       type: object
       required:
@@ -524,6 +829,58 @@ components:
         newParcelVersion:
           type: integer
           example: 2
+        endedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+
+    AssignmentAuditResponse:
+      type: object
+      required:
+        - auditId
+        - parcelId
+        - assignmentId
+        - courierSub
+        - action
+        - actorSub
+        - actorRole
+        - parcelVersion
+        - occurredAt
+      properties:
+        auditId:
+          type: string
+          format: uuid
+        parcelId:
+          type: string
+          format: uuid
+        assignmentId:
+          type: string
+          format: uuid
+        courierSub:
+          type: string
+        action:
+          type: string
+          description: Assignment lifecycle action (ASSIGNED, REASSIGNED, CLOSED, TERMINATED).
+          example: "REASSIGNED"
+        actorSub:
+          type: string
+        actorRole:
+          type: string
+          example: "DISPATCHER"
+        previousCourierSub:
+          type: string
+        previousAssignmentId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        parcelVersion:
+          type: integer
+          example: 3
+        occurredAt:
+          type: string
+          format: date-time
 
     UpdateStatusRequest:
       type: object
@@ -723,3 +1080,39 @@ components:
         cityOrZone:
           type: string
           example: "Western Province Sorting Hub"
+
+    PublicTrackingSseEvent:
+      type: object
+      required:
+        - eventId
+        - trackingNumber
+        - aggregateVersion
+        - newStatus
+        - occurredAt
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        trackingNumber:
+          type: string
+          example: "SWD-20261023-A1B2C3"
+        aggregateVersion:
+          type: integer
+          minimum: 1
+          example: 2
+        oldStatus:
+          type: string
+          nullable: true
+          example: "CREATED"
+        newStatus:
+          type: string
+          example: "PICKED_UP"
+        cityOrZone:
+          type: string
+          nullable: true
+          example: "Western Province Sorting Hub"
+        occurredAt:
+          type: string
+          format: date-time
+          example: "2026-10-23T10:30:00Z"

@@ -45,11 +45,22 @@ public class Merchant {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private Long version;
+
     protected Merchant() { }
 
     public Merchant(UUID id, UUID accountProfileId, String keycloakSub,
                     String businessName, String registrationNumber,
                     MerchantStatus status, Instant createdAt, Instant updatedAt) {
+        this(id, accountProfileId, keycloakSub, businessName, registrationNumber, status, createdAt, updatedAt, null);
+    }
+
+    public Merchant(UUID id, UUID accountProfileId, String keycloakSub,
+                    String businessName, String registrationNumber,
+                    MerchantStatus status, Instant createdAt, Instant updatedAt,
+                    Long version) {
         this.id = Objects.requireNonNull(id, "Merchant ID is required");
         this.accountProfileId = Objects.requireNonNull(accountProfileId, "Account profile ID is required");
         this.keycloakSub = Objects.requireNonNull(keycloakSub, "Keycloak subject is required");
@@ -58,6 +69,7 @@ public class Merchant {
         this.status = Objects.requireNonNull(status, "Status is required");
         this.createdAt = Objects.requireNonNull(createdAt, "Created at is required");
         this.updatedAt = Objects.requireNonNull(updatedAt, "Updated at is required");
+        this.version = version;
     }
 
     public UUID getId() { return id; }
@@ -68,6 +80,7 @@ public class Merchant {
     public MerchantStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public Long getVersion() { return version != null ? version : 0L; }
 
     public void setStatus(MerchantStatus status, Instant updatedAt) {
         this.status = Objects.requireNonNull(status, "Status is required");

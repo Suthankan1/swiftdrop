@@ -35,11 +35,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = {MerchantController.class},
@@ -55,6 +58,9 @@ class MerchantHttpSecurityTest {
     @MockitoBean CurrentUserProfileService profiles;
     @MockitoBean MerchantTenantAuthorizationProvider tenantAuthorizationProvider;
     @MockitoBean MerchantApprovalProvider approvalProvider;
+    @MockitoBean MerchantEnrollmentService enrollmentService;
+    @MockitoBean com.swiftdrop.accountsservice.reconciliation.MerchantRoleReconciliationService merchantReconciliationService;
+    @MockitoBean MerchantRepository merchantRepository;
 
     private static final UUID merchantAId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID merchantBId = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -240,5 +246,233 @@ class MerchantHttpSecurityTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("status").value(404))
                 .andExpect(jsonPath("detail").value("Merchant not found: " + missingId));
+    }
+
+    @Test
+    @DisplayName("10. Unauthenticated request to POST /api/v1/merchants returns 401 Unauthorized")
+    void unauthenticatedPostMerchants_returns401() throws Exception {
+        String body = """
+                {
+                    "businessName": "Store Direct LK",
+                    "registrationNumber": "PV-123456"
+                }
+                """;
+        mvc.perform(post("/api/v1/merchants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("status").value(401))
+                .andExpect(jsonPath("title").value("Unauthorized"));
+    }
+
+    @Test
+    @DisplayName("11. Valid CUSTOMER token can execute POST /api/v1/merchants without MERCHANT role")
+    void customerCanEnrollMerchant_returns201() throws Exception {
+        String token = createToken("cust-sub-1", List.of("CUSTOMER"));
+        var newMerchantId = UUID.randomUUID();
+        var response = new MerchantProfileResponse(
+                newMerchantId, "cust-sub-1",
+                "Lanka Retail Holdings Ltd", "PV-109923",
+                MerchantStatus.PENDING, Instant.now(), Instant.now()
+        );
+        when(enrollmentService.enrollMerchant(any(), any())).thenReturn(response);
+
+        String body = """
+                {
+                    "businessName": "Lanka Retail Holdings Ltd",
+                    "registrationNumber": "PV-109923"
+                }
+                """;
+
+        mvc.perform(post("/api/v1/merchants")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("id").value(newMerchantId.toString()))
+                .andExpect(jsonPath("keycloakSub").value("cust-sub-1"))
+                .andExpect(jsonPath("businessName").value("Lanka Retail Holdings Ltd"))
+                .andExpect(jsonPath("registrationNumber").value("PV-109923"))
+                .andExpect(jsonPath("status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("12. Valid CUSTOMER token can inspect own pending status via /status")
+    void customerReadsOwnPendingStatus_returns200() throws Exception {
+        String token = createToken("cust-sub-pending", List.of("CUSTOMER"));
+        UUID pendingMerchantId = UUID.randomUUID();
+
+        doNothing().when(tenantAuthorizationProvider).requireTenantAccess(any(), eq(pendingMerchantId));
+        when(approvalProvider.getApprovalStatus(pendingMerchantId)).thenReturn(Optional.of(MerchantStatus.PENDING));
+
+        mvc.perform(get("/api/v1/merchants/{merchantId}/status", pendingMerchantId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("merchantId").value(pendingMerchantId.toString()))
+                .andExpect(jsonPath("status").value("PENDING"))
+                .andExpect(jsonPath("approved").value(false));
+    }
+
+    @Test
+    @DisplayName("13. Valid CUSTOMER token is denied status of other merchant tenant with 403")
+    void customerDeniedOtherMerchantStatus_returns403() throws Exception {
+        String token = createToken("cust-sub-intruder", List.of("CUSTOMER"));
+        doThrow(new TenantAccessDeniedException("Cross-tenant access denied: Caller does not own merchant tenant " + merchantAId))
+                .when(tenantAuthorizationProvider).requireTenantAccess(any(), eq(merchantAId));
+
+        mvc.perform(get("/api/v1/merchants/{merchantId}/status", merchantAId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("status").value(403))
+                .andExpect(jsonPath("detail").value("Cross-tenant access denied: Caller does not own merchant tenant " + merchantAId));
+    }
+
+    @Test
+    @DisplayName("14. COURIER role is denied POST /api/v1/merchants with 403 Forbidden")
+    void courierRoleDeniedEnrollment_returns403() throws Exception {
+        String token = createToken("courier-sub", List.of("COURIER"));
+        String body = """
+                {
+                    "businessName": "Store Direct LK",
+                    "registrationNumber": "PV-123456"
+                }
+                """;
+
+        mvc.perform(post("/api/v1/merchants")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("status").value(403))
+                .andExpect(jsonPath("title").value("Forbidden"));
+    }
+
+    @Test
+    @DisplayName("15. Strict JSON policy rejects client-supplied privileged status on POST /api/v1/merchants")
+    void clientSuppliedStatusFieldRejected_returns400() throws Exception {
+        String token = createToken("cust-sub-1", List.of("CUSTOMER"));
+        String bodyWithPrivilegedField = """
+                {
+                    "businessName": "Store Direct LK",
+                    "registrationNumber": "PV-123456",
+                    "status": "APPROVED"
+                }
+                """;
+
+        mvc.perform(post("/api/v1/merchants")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bodyWithPrivilegedField))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("status").value(400))
+                .andExpect(jsonPath("title").value("Bad Request"));
+    }
+
+    @Test
+    @DisplayName("16. Duplicate enrollment returns 409 Conflict ProblemDetail")
+    void duplicateEnrollment_returns409() throws Exception {
+        String token = createToken("cust-sub-dup", List.of("CUSTOMER"));
+        when(enrollmentService.enrollMerchant(any(), any()))
+                .thenThrow(new MerchantConflictException("Authenticated user already owns a merchant tenant"));
+
+        String body = """
+                {
+                    "businessName": "Store Direct LK",
+                    "registrationNumber": "PV-123456"
+                }
+                """;
+
+        mvc.perform(post("/api/v1/merchants")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("status").value(409))
+                .andExpect(jsonPath("title").value("Conflict"))
+                .andExpect(jsonPath("detail").value("Authenticated user already owns a merchant tenant"));
+    }
+
+    @Test
+    @DisplayName("17. Unauthenticated request to POST /api/v1/merchants/{id}/approve returns 401 Unauthorized")
+    void unauthenticatedApprove_returns401() throws Exception {
+        mvc.perform(post("/api/v1/merchants/{merchantId}/approve", merchantAId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("status").value(401))
+                .andExpect(jsonPath("title").value("Unauthorized"));
+    }
+
+    @Test
+    @DisplayName("18. Non-ADMIN roles (CUSTOMER, MERCHANT, COURIER) rejected with 403 on POST approve")
+    void nonAdminRolesRejectedOnApprove_returns403() throws Exception {
+        for (String role : List.of("CUSTOMER", "MERCHANT", "COURIER")) {
+            String token = createToken("user-" + role, List.of(role));
+            mvc.perform(post("/api/v1/merchants/{merchantId}/approve", merchantAId)
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("status").value(403))
+                    .andExpect(jsonPath("title").value("Forbidden"));
+        }
+    }
+
+    @Test
+    @DisplayName("19. ADMIN role authorized on POST /api/v1/merchants/{id}/approve returns 200 OK")
+    void adminAuthorizedOnApprove_returns200() throws Exception {
+        String adminToken = createToken("admin-sub-1", List.of("ADMIN"));
+        var merchant = new Merchant(
+                merchantAId, UUID.randomUUID(), subMerchantA,
+                "Store Direct LK", "PV-123456", MerchantStatus.APPROVED,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(merchantAId)).thenReturn(Optional.of(merchant));
+
+        mvc.perform(post("/api/v1/merchants/{merchantId}/approve", merchantAId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\": 0}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("id").value(merchantAId.toString()))
+                .andExpect(jsonPath("status").value("APPROVED"));
+    }
+
+    @Test
+    @DisplayName("20. Non-ADMIN roles (CUSTOMER, MERCHANT, COURIER) rejected with 403 on POST suspend")
+    void nonAdminRolesRejectedOnSuspend_returns403() throws Exception {
+        for (String role : List.of("CUSTOMER", "MERCHANT", "COURIER")) {
+            String token = createToken("user-" + role, List.of(role));
+            mvc.perform(post("/api/v1/merchants/{merchantId}/suspend", merchantAId)
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"reason\": \"Compliance violation\"}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("status").value(403))
+                    .andExpect(jsonPath("title").value("Forbidden"));
+        }
+    }
+
+    @Test
+    @DisplayName("21. ADMIN role authorized on POST /api/v1/merchants/{id}/suspend returns 200 OK")
+    void adminAuthorizedOnSuspend_returns200() throws Exception {
+        String adminToken = createToken("admin-sub-1", List.of("ADMIN"));
+        var merchant = new Merchant(
+                merchantAId, UUID.randomUUID(), subMerchantA,
+                "Store Direct LK", "PV-123456", MerchantStatus.SUSPENDED,
+                Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(merchantAId)).thenReturn(Optional.of(merchant));
+
+        mvc.perform(post("/api/v1/merchants/{merchantId}/suspend", merchantAId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\": \"Repeated compliance breach\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("id").value(merchantAId.toString()))
+                .andExpect(jsonPath("status").value("SUSPENDED"));
     }
 }

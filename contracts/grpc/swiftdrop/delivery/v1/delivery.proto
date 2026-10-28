@@ -1,0 +1,305 @@
+syntax = "proto3";
+
+package swiftdrop.delivery.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.swiftdrop.delivery.v1";
+option java_outer_classname = "DeliveryProto";
+
+// Internal private gRPC service for Delivery Operations microservice.
+// Used by GraphQL Query API for composite dashboard projections and internal service checks.
+service DeliveryInternalService {
+  // Queries parcel aggregate for internal services and GraphQL resolvers (IF-GRPC-05).
+  rpc GetParcelInternal (GetParcelInternalRequest) returns (GetParcelInternalResponse);
+
+  // Queries active workload count for a specific courier.
+  rpc GetCourierWorkload (CourierWorkloadRequest) returns (CourierWorkloadResponse);
+
+  // Authorizes delivery lifecycle event to recipient and resolves approved recipient/merchant references (IF-GRPC-11, #111).
+  rpc AuthorizeEventRecipient (AuthorizeEventRecipientRequest) returns (AuthorizeEventRecipientResponse);
+
+  // Queries paginated unassigned parcel projections for dispatchers and admins (#113).
+  rpc ListUnassignedParcels (ListUnassignedParcelsRequest) returns (ListUnassignedParcelsResponse);
+
+  // Queries active workload counts for a batch of couriers within caller's scope (#113).
+  rpc GetCourierWorkloadSummary (CourierWorkloadSummaryRequest) returns (CourierWorkloadSummaryResponse);
+
+  // Queries delivery status and outcome statistics for a reporting window (#113).
+  rpc GetDeliveryStatsInternal (GetDeliveryStatsRequest) returns (GetDeliveryStatsResponse);
+
+  // Queries bounded owned parcels for authenticated customer views (Issue #112 / N10-B08).
+  rpc ListCustomerParcels (ListCustomerParcelsRequest) returns (ListCustomerParcelsResponse);
+
+  // Queries bounded tenant orders for authenticated merchant views (Issue #112 / N10-B08).
+  rpc ListMerchantOrders (ListMerchantOrdersRequest) returns (ListMerchantOrdersResponse);
+
+  // Queries bounded active/historical assignments for authenticated courier views (Issue #112 / N10-B08).
+  rpc ListCourierAssignments (ListCourierAssignmentsRequest) returns (ListCourierAssignmentsResponse);
+
+  // Queries authoritative delivery history and latest status projection (Issue #112 / N10-B08).
+  rpc GetDeliveryHistory (GetDeliveryHistoryRequest) returns (GetDeliveryHistoryResponse);
+}
+
+// Request to fetch internal parcel details.
+message GetParcelInternalRequest {
+  string parcel_id = 1; // UUID string
+}
+
+// Internal projection of parcel state for cross-service queries and GraphQL aggregations.
+message GetParcelInternalResponse {
+  string parcel_id = 1; // UUID string
+  string tracking_number = 2; // e.g. "SWD-2026-000001"
+  string current_status = 3; // "CREATED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED"
+  int64 version = 4; // Optimistic locking aggregate version
+  int64 amount_minor_units = 5; // Price charged in minor units
+  string currency = 6; // ISO 4217 currency code (e.g. "LKR")
+  string created_by_sub = 7; // Creator Keycloak subject UUID
+  string merchant_id = 8; // Associated merchant UUID or empty if consumer parcel
+  string active_courier_sub = 9; // Assigned courier Keycloak subject UUID or empty
+  google.protobuf.Timestamp created_at = 10; // UTC creation timestamp
+}
+
+// Request to query courier active assignment count.
+message CourierWorkloadRequest {
+  string courier_sub = 1; // Keycloak subject string
+}
+
+// Workload response containing active parcel assignment count.
+message CourierWorkloadResponse {
+  string courier_sub = 1;
+  int32 active_assignments_count = 2; // Current number of parcels in active assignment (capacity <= 5)
+}
+
+// Request to list unassigned parcels with deterministic pagination and optional zone filter.
+message ListUnassignedParcelsRequest {
+  int32 page = 1; // 0-based page index (must be >= 0)
+  int32 page_size = 2; // Bounded page size: 1 to 50, default 20
+  string zone = 3; // Optional zone filter
+}
+
+// Item summary in unassigned parcel queue.
+message UnassignedParcelSummary {
+  string parcel_id = 1; // UUID string
+  string tracking_number = 2; // e.g. "SWD-2026-000001"
+  string status = 3; // Always "CREATED"
+  int64 version = 4;
+  int64 amount_minor_units = 5;
+  string currency = 6;
+  double weight_kg = 7;
+  google.protobuf.Timestamp created_at = 8;
+  string sender_sub = 9;
+  string merchant_id = 10;
+  string pickup_zone = 11;
+  string dropoff_zone = 12;
+  string size_category = 13; // Bounded size classification (e.g. "SMALL", "MEDIUM", "LARGE", "OVERSIZED")
+}
+
+// Paginated response containing unassigned parcel summaries.
+message ListUnassignedParcelsResponse {
+  int32 total_count = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated UnassignedParcelSummary items = 4;
+}
+
+// Request to query workload counts for multiple couriers (capped at 50).
+message CourierWorkloadSummaryRequest {
+  repeated string courier_subs = 1; // Bounded list of courier subjects (max 50)
+}
+
+// Response containing workload summaries for requested couriers.
+message CourierWorkloadSummaryResponse {
+  repeated CourierWorkloadResponse workloads = 1;
+}
+
+// Request for daily delivery outcome aggregates and status statistics.
+message GetDeliveryStatsRequest {
+  google.protobuf.Timestamp start_time = 1; // Canonical UTC start instant (inclusive)
+  google.protobuf.Timestamp end_time = 2;   // Canonical UTC end instant (inclusive)
+  string zone = 3;                         // Optional zone filter (e.g. "CMB-01"); empty string if all authorized zones
+  string status = 4;                       // Optional status filter (e.g. "DELIVERED"); empty string if all statuses
+  repeated string authorized_zones = 5;    // Caller's verified operational zones for tenant confinement
+}
+
+// Response containing delivery outcome metrics and status statistics.
+message GetDeliveryStatsResponse {
+  int64 total_count = 1;
+  int64 delivered_count = 2;
+  int64 failed_count = 3;
+  int64 in_transit_count = 4;
+  int64 created_count = 5;
+  optional double average_delivery_hours = 6; // Omitted (empty) if delivered_count == 0 or no timestamps
+}
+
+// Request to authorize a delivery lifecycle event and resolve approved recipient/merchant references (IF-GRPC-11, #111).
+message AuthorizeEventRecipientRequest {
+  string event_id = 1; // UUID of the lifecycle domain event (from Kafka or outbox)
+  string parcel_id = 2; // UUID of the parcel aggregate
+  string recipient_sub = 3; // Optional candidate Keycloak subject string to verify, or empty to resolve authoritative recipient
+  string merchant_id = 4; // Optional merchant tenant UUID for cross-tenant boundary verification
+  bool allow_stale = 5; // If false (default), stale events (event_version < current_version) fail authorization
+}
+
+// Response containing authorization outcome and minimal approved recipient/merchant references (IF-GRPC-11, #111).
+message AuthorizeEventRecipientResponse {
+  bool is_authorized = 1; // True if the event-recipient pairing is authorized for notification dispatch
+  string parcel_id = 2; // Authoritative parcel UUID
+  string event_id = 3; // Authoritative event UUID
+  string recipient_sub = 4; // Authoritative recipient Keycloak subject string (zero contact PII)
+  string merchant_id = 5; // Merchant tenant UUID if commercial parcel; empty for consumer parcel
+  string tracking_number = 6; // Public tracking number (e.g. "SWD-20261023-A1B2")
+  string current_status = 7; // Current parcel status ("CREATED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED")
+  string event_type = 8; // Domain event type (e.g. "parcel.status.changed.v1")
+  int64 event_version = 9; // Aggregate version of the event
+  int64 current_version = 10; // Current aggregate version of the parcel
+  bool is_terminal = 11; // True if current status is terminal (DELIVERED or FAILED)
+  bool is_stale = 12; // True if event_version < current_version
+  string authorization_reason = 13; // Explicit outcome reason (e.g. "AUTHORIZED", "AUTHORIZED_STALE", "EVENT_NOT_FOUND", "PARCEL_NOT_FOUND", "PARCEL_MISMATCH", "RECIPIENT_NOT_AUTHORIZED", "MERCHANT_MISMATCH", "STALE_EVENT", "STALE_TERMINAL_EVENT")
+}
+
+// Request for bounded owned parcels for customer views (#112).
+message ListCustomerParcelsRequest {
+  string customer_sub = 1; // Keycloak subject string (derived/verified from actor delegation context)
+  int32 page = 2; // 0-based page index (must be >= 0)
+  int32 page_size = 3; // Bounded page size: 1 to 50, default 20
+  string status_filter = 4; // Optional status filter ("ACTIVE", "COMPLETED", or specific ParcelStatus)
+  repeated string parcel_ids = 5; // Optional bounded batch of parcel IDs (max 50)
+}
+
+// Bounded summary of a customer-owned parcel (#112).
+message CustomerParcelSummary {
+  string parcel_id = 1; // UUID string
+  string tracking_number = 2; // e.g. "SWD-2026-000001"
+  string current_status = 3; // "CREATED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED"
+  int64 amount_minor_units = 4; // Integer minor units (e.g. cents)
+  string currency = 5; // ISO 4217 currency code (e.g. "LKR")
+  string recipient_city = 6;
+  google.protobuf.Timestamp created_at = 7; // UTC creation timestamp
+  google.protobuf.Timestamp updated_at = 8; // UTC last update timestamp
+  int64 version = 9; // Aggregate version
+}
+
+// Paginated and counted response of customer-owned parcels (#112).
+message ListCustomerParcelsResponse {
+  int32 total_count = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated CustomerParcelSummary parcels = 4;
+  int32 active_count = 5; // Count of non-terminal parcels
+  int32 completed_count = 6; // Count of terminal parcels (DELIVERED, FAILED)
+}
+
+// Request for bounded tenant delivery orders for merchant views (#112).
+message ListMerchantOrdersRequest {
+  string merchant_id = 1; // Merchant tenant UUID string (verified against actor delegation)
+  int32 page = 2; // 0-based page index (must be >= 0)
+  int32 page_size = 3; // Bounded page size: 1 to 50, default 20
+  string status_filter = 4; // Optional status filter
+  repeated string parcel_ids = 5; // Optional bounded batch of parcel IDs (max 50)
+}
+
+// Bounded summary of a merchant tenant delivery order (#112).
+message MerchantOrderSummary {
+  string parcel_id = 1; // UUID string
+  string tracking_number = 2; // e.g. "SWD-2026-000001"
+  string current_status = 3;
+  double weight_kg = 4;
+  int64 fee_minor_units = 5; // Integer minor units
+  string currency = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_status_update = 8;
+  int64 version = 9;
+}
+
+// Paginated and counted response of merchant tenant orders (#112).
+message ListMerchantOrdersResponse {
+  int32 total_count = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated MerchantOrderSummary orders = 4;
+  int32 active_count = 5;
+  int32 delivered_count = 6;
+  int32 failed_count = 7;
+}
+
+// Request for bounded assignments for courier views (#112).
+message ListCourierAssignmentsRequest {
+  string courier_sub = 1; // Keycloak subject string (verified against actor delegation)
+  int32 page = 2; // 0-based page index (must be >= 0)
+  int32 page_size = 3; // Bounded page size: 1 to 50, default 20
+  bool active_only = 4; // If true (default), returns only active assignments (active = true)
+  repeated string parcel_ids = 5; // Optional bounded batch of parcel IDs (max 50)
+}
+
+// Bounded summary of an assigned delivery for courier views (#112).
+message CourierAssignmentSummary {
+  string parcel_id = 1; // UUID string
+  string tracking_number = 2;
+  string current_status = 3;
+  string pickup_address = 4;
+  string dropoff_address = 5;
+  string recipient_name = 6;
+  string recipient_phone = 7;
+  google.protobuf.Timestamp assigned_at = 8;
+  int64 version = 9;
+  string assignment_id = 10;
+  bool is_active = 11;
+}
+
+// Paginated and counted response of courier assignments (#112).
+message ListCourierAssignmentsResponse {
+  int32 total_count = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  repeated CourierAssignmentSummary assignments = 4;
+  int32 active_count = 5;
+  int32 today_delivered_count = 6;
+  int32 today_failed_count = 7;
+}
+
+// Request for delivery history and latest status projection (#112).
+message GetDeliveryHistoryRequest {
+  string parcel_id = 1; // UUID string (required for single-parcel history)
+  int32 page = 2; // 0-based page index (must be >= 0)
+  int32 page_size = 3; // Bounded page size: 1 to 50, default 20
+  repeated string parcel_ids = 4; // Optional bounded batch of parcel IDs (max 50) for batch status projection
+}
+
+// Single immutable status history record in delivery timeline (#112).
+message DeliveryStatusHistoryItem {
+  string history_id = 1; // UUID string
+  string parcel_id = 2;
+  string previous_status = 3;
+  string new_status = 4;
+  string reason = 5;
+  string note = 6;
+  string proof_id = 7;
+  int64 resulting_version = 8;
+  google.protobuf.Timestamp occurred_at = 9;
+}
+
+// Latest status and timeline summary for a single parcel in batch queries (#112).
+message DeliveryHistorySummary {
+  string parcel_id = 1;
+  string tracking_number = 2;
+  string current_status = 3;
+  int64 current_version = 4;
+  google.protobuf.Timestamp latest_status_at = 5;
+  repeated DeliveryStatusHistoryItem history_items = 6;
+}
+
+// Response containing delivery history and latest status projection (#112).
+message GetDeliveryHistoryResponse {
+  string parcel_id = 1;
+  string tracking_number = 2;
+  string current_status = 3;
+  int64 current_version = 4;
+  google.protobuf.Timestamp latest_status_at = 5;
+  int32 total_count = 6;
+  int32 page = 7;
+  int32 page_size = 8;
+  repeated DeliveryStatusHistoryItem items = 9;
+  repeated DeliveryHistorySummary summaries = 10;
+}

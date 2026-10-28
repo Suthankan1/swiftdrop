@@ -1,0 +1,116 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: communications-service
+  datasource:
+    url: ${COMMUNICATIONS_DB_URL}
+    username: ${COMMUNICATIONS_DB_USERNAME}
+    password: ${COMMUNICATIONS_DB_PASSWORD}
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    clean-disabled: true
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: ${NOTIFICATION_SMTP_CONNECTION_TIMEOUT_MS:3000}
+          timeout: ${NOTIFICATION_SMTP_READ_TIMEOUT_MS:5000}
+          writetimeout: 5000
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:communications.notifications.v1}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual_immediate
+
+swiftdrop:
+  kafka:
+    consumer:
+      enabled: ${COMMUNICATIONS_KAFKA_CONSUMER_ENABLED:true}
+      webhooks:
+        enabled: ${COMMUNICATIONS_WEBHOOKS_CONSUMER_ENABLED:true}
+        group-id: ${KAFKA_WEBHOOKS_CONSUMER_GROUP_ID:communications.webhooks.v1}
+    topics:
+      parcel-lifecycle: ${KAFKA_TOPIC_PARCEL_LIFECYCLE:parcel.lifecycle.v1}
+  notifications:
+    dispatch:
+      max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:5}
+      base-backoff-seconds: ${NOTIFICATION_BASE_BACKOFF_SECONDS:5}
+      max-backoff-seconds: ${NOTIFICATION_MAX_BACKOFF_SECONDS:300}
+      jitter-enabled: ${NOTIFICATION_JITTER_ENABLED:false}
+      jitter-factor: ${NOTIFICATION_JITTER_FACTOR:0.2}
+      transport-timeout-ms: ${NOTIFICATION_TRANSPORT_TIMEOUT_MS:5000}
+    scheduler:
+      enabled: ${NOTIFICATION_SCHEDULER_ENABLED:true}
+      poll-interval-ms: ${NOTIFICATION_POLL_INTERVAL_MS:5000}
+      recovery-interval-ms: ${NOTIFICATION_RECOVERY_INTERVAL_MS:60000}
+      lease-timeout-seconds: ${NOTIFICATION_LEASE_TIMEOUT_SECONDS:300}
+      batch-size: ${NOTIFICATION_BATCH_SIZE:50}
+      retention-days: ${NOTIFICATION_RETENTION_DAYS:30}
+    smtp:
+      host: ${SPRING_MAIL_HOST:localhost}
+      port: ${SPRING_MAIL_PORT:1025}
+      from: ${NOTIFICATION_EMAIL_FROM:notifications@swiftdrop.com}
+  webhooks:
+    encryption-key: ${WEBHOOK_ENCRYPTION_KEY:}
+    dispatch:
+      connect-timeout-ms: ${WEBHOOK_CONNECT_TIMEOUT_MS:3000}
+      request-timeout-ms: ${WEBHOOK_REQUEST_TIMEOUT_MS:5000}
+      max-attempts: ${WEBHOOK_MAX_ATTEMPTS:5}
+      base-backoff-seconds: ${WEBHOOK_BASE_BACKOFF_SECONDS:5}
+      max-backoff-seconds: ${WEBHOOK_MAX_BACKOFF_SECONDS:300}
+      jitter-enabled: ${WEBHOOK_JITTER_ENABLED:false}
+      jitter-factor: ${WEBHOOK_JITTER_FACTOR:0.2}
+    scheduler:
+      enabled: ${WEBHOOK_SCHEDULER_ENABLED:true}
+      poll-interval-ms: ${WEBHOOK_POLL_INTERVAL_MS:5000}
+      recovery-interval-ms: ${WEBHOOK_RECOVERY_INTERVAL_MS:60000}
+      lease-timeout-seconds: ${WEBHOOK_LEASE_TIMEOUT_SECONDS:300}
+      batch-size: ${WEBHOOK_BATCH_SIZE:50}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+server.error:
+  include-message: never
+  include-stacktrace: never
+  include-binding-errors: never
+
+grpc:
+  client:
+    accounts:
+      host: ${ACCOUNTS_GRPC_HOST:localhost}
+      port: ${ACCOUNTS_GRPC_PORT:9081}
+      deadline-ms: ${ACCOUNTS_GRPC_DEADLINE_MS:2000}
+    delivery:
+      host: ${DELIVERY_GRPC_HOST:localhost}
+      port: ${DELIVERY_GRPC_PORT:9082}
+      deadline-ms: ${DELIVERY_GRPC_DEADLINE_MS:2000}

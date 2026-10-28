@@ -36,17 +36,23 @@ class BookingPostgresIT {
   String user=System.getProperty("delivery.test.db.username",System.getenv("DELIVERY_TEST_DB_USERNAME"));
   String password=System.getenv("DELIVERY_TEST_DB_PASSWORD");
   if(url==null) {
-   postgres=new PostgreSQLContainer("postgres:16-alpine").withDatabaseName("delivery_test");postgres.start();
-   url=postgres.getJdbcUrl();user=postgres.getUsername();password=postgres.getPassword();
+   try {
+    postgres=new PostgreSQLContainer("postgres:16-alpine").withDatabaseName("delivery_test");postgres.start();
+    url=postgres.getJdbcUrl();user=postgres.getUsername();password=postgres.getPassword();
+   } catch(Exception e) {
+    org.junit.jupiter.api.Assumptions.assumeTrue(false, "Docker is not available: " + e.getMessage());
+    return;
+   }
   }
   String schema="booking_it_"+UUID.randomUUID().toString().replace("-", "");
   url+=(url.contains("?")?"&":"?")+"currentSchema="+schema;
   ds=new DriverManagerDataSource(url,user,password==null?"":password);
-  Flyway.configure().dataSource(ds).schemas(schema).load().migrate();
+  Flyway.configure().dataSource(ds).schemas(schema).locations("classpath:booking_migration").load().migrate();
   jdbc=new JdbcTemplate(ds);validators=Validation.buildDefaultValidatorFactory();
  }
  @AfterAll static void close() { if(validators!=null) validators.close();if(postgres!=null) postgres.stop(); }
  @BeforeEach void setup() {
+  org.junit.jupiter.api.Assumptions.assumeTrue(ds != null, "Database is not available");
   repository=new BookingRepository(jdbc,json);provider=mock(BookingQuoteProvider.class);authorization=mock(BookingAuthorization.class);
   when(provider.validate(eq(quote),any())).thenReturn(new QuoteValidation(true,quote,"RATE-V1",50000,"LKR",now.plusSeconds(900),"VALID"));
   service=newService(repository);

@@ -1,5 +1,9 @@
 server:
   port: 8081
+grpc:
+  server:
+    port: ${ACCOUNTS_GRPC_PORT:9081}
+    enabled: ${ACCOUNTS_GRPC_ENABLED:true}
 spring:
   application:
     name: accounts-service
@@ -43,10 +47,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info
   endpoint:
     health:
-      show-details: never
+      show-details: when_authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
 server.error:
   include-message: never
   include-stacktrace: never

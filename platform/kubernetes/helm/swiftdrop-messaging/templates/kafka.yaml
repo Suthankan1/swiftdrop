@@ -1,0 +1,170 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "kafka") | nindent 4 }}
+spec:
+  publishNotReadyAddresses: true
+  type: {{ .Values.kafka.service.type }}
+  selector:
+    {{- include "swiftdrop-messaging.selectorLabels" (dict "context" . "component" "kafka") | nindent 4 }}
+  ports:
+    - name: kraft-internal
+      port: {{ .Values.kafka.service.clientPort }}
+      targetPort: 29092
+      protocol: TCP
+    - name: controller
+      port: {{ .Values.kafka.service.controllerPort }}
+      targetPort: 9093
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "kafka") | nindent 4 }}
+spec:
+  serviceName: kafka
+  replicas: {{ .Values.kafka.replicaCount }}
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-messaging.selectorLabels" (dict "context" . "component" "kafka") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "kafka") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: kafka
+          image: "{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"
+          imagePullPolicy: {{ .Values.kafka.image.pullPolicy }}
+          ports:
+            - name: client
+              containerPort: 29092
+              protocol: TCP
+            - name: controller
+              containerPort: 9093
+              protocol: TCP
+          env:
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka.{{ .Values.namespaces.messaging }}.svc.{{ .Values.global.clusterDomain }}:29092"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@127.0.0.1:9093"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            - name: KAFKA_LOG_DIRS
+              value: "/var/lib/kafka/data"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xmx256m -Xms128m"
+            - name: CLUSTER_ID
+              value: {{ .Values.kafka.clusterId | quote }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+          startupProbe:
+            tcpSocket:
+              port: 29092
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 29092
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: 29092
+            periodSeconds: 15
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.kafka.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "kafka") | nindent 10 }}
+      spec:
+        accessModes:
+          - {{ .Values.kafka.storage.accessMode }}
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.kafka.storage.size }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-init-topics
+  namespace: {{ .Values.namespaces.messaging }}
+  labels:
+    {{- include "swiftdrop-messaging.componentLabels" (dict "context" . "component" "kafka-init-topics") | nindent 4 }}
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-messaging.selectorLabels" (dict "context" . "component" "kafka-init-topics") | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init-topics
+          image: "{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"
+          imagePullPolicy: {{ .Values.kafka.image.pullPolicy }}
+          env:
+            - name: KAFKA_JVM_PERFORMANCE_OPTS
+              value: "-Xms32m -Xmx64m"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Kafka broker to become ready..."
+              until /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka.{{ .Values.namespaces.messaging }}.svc.{{ .Values.global.clusterDomain }}:29092 >/dev/null 2>&1; do
+                sleep 2
+              done
+              echo "Kafka broker is ready. Provisioning lifecycle topics idempotently..."
+              /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka.{{ .Values.namespaces.messaging }}.svc.{{ .Values.global.clusterDomain }}:29092 \
+                --create --if-not-exists \
+                --topic parcel.lifecycle.v1 \
+                --partitions 3 \
+                --replication-factor 1
+              /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka.{{ .Values.namespaces.messaging }}.svc.{{ .Values.global.clusterDomain }}:29092 \
+                --create --if-not-exists \
+                --topic parcel.lifecycle.v1.dlt \
+                --partitions 3 \
+                --replication-factor 1
+              echo "Kafka topics provisioned successfully."
+{{- end }}

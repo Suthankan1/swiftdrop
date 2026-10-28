@@ -6,12 +6,18 @@ import { AppRoutes } from '../../../app/router/routes'
 import type { AuthContextValue } from '../../../auth/context'
 import type { SwiftDropRole } from '../../../auth/contracts'
 import { anonymousAuth, TestProviders } from '../../../test/authFixture'
+import { courierStaffFixture } from '../../../test/fixtures'
 
-function authenticated(roles: readonly SwiftDropRole[] = ['COURIER'], subject = 'courier-test-subject'): AuthContextValue {
+function authenticated(
+  roles: readonly SwiftDropRole[] = ['COURIER'],
+  subject = 'courier-test-subject',
+  profileResponse = courierStaffFixture,
+): AuthContextValue {
   return {
     ...anonymousAuth,
     snapshot: { status: 'authenticated', subject, roles },
-    getAccessToken: async () => 'synthetic-memory-only-test-value',
+    getAccessToken: async () => 'synthetic-courier-token',
+    profileFetch: vi.fn(async () => new Response(JSON.stringify(profileResponse), { status: 200 })),
   }
 }
 
@@ -55,42 +61,135 @@ describe('Courier role landing', () => {
     expect(request).not.toHaveBeenCalled()
   })
 
-  it('renders an honest Courier entry without fake staff or parcel data', () => {
-    const request = vi.fn<typeof fetch>()
-    vi.stubGlobal('fetch', request)
-
-    renderCourier(authenticated())
+  it('renders authorized active Courier profile without fake assignments or parcel data', async () => {
+    const auth = authenticated()
+    renderCourier(auth)
 
     expect(screen.getByRole('heading', { name: /ready for your next route/i })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/staff details are not yet available/i)
-    expect(screen.getByText(/no account, assignment, parcel, or proof data is loaded/i)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 2, name: courierStaffFixture.displayName })).toBeInTheDocument()
+    expect(screen.getByText(courierStaffFixture.staffId)).toBeInTheDocument()
+    expect(screen.getByText(courierStaffFixture.email)).toBeInTheDocument()
+    expect(screen.getByText(`${courierStaffFixture.role} · ${courierStaffFixture.businessStatus}`)).toBeInTheDocument()
+    expect(screen.getByText(courierStaffFixture.assignedZone!)).toBeInTheDocument()
+
+    // Confirms no fake assignment or parcel data is loaded
     expect(screen.queryByText(/delivered/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/courier-test-subject/i)).not.toBeInTheDocument()
-    expect(request).not.toHaveBeenCalled()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(auth.profileFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/staff/me'),
+      expect.objectContaining({ method: 'GET' }),
+    )
+  })
+
+  it('handles missing staff profile (HTTP 404) truthfully with unprovisioned notice', async () => {
+    const auth: AuthContextValue = {
+      ...authenticated(),
+      profileFetch: vi.fn(async () => new Response(null, { status: 404 })),
+    }
+
+    renderCourier(auth)
+
+    expect(await screen.findByText(/staff profile not provisioned/i)).toBeInTheDocument()
+    expect(screen.getByText(/no staff business profile has been provisioned yet/i)).toBeInTheDocument()
+    expect(screen.queryByText(courierStaffFixture.displayName)).not.toBeInTheDocument()
+  })
+
+  it('does not present an inactive or suspended profile as an active staff identity', async () => {
+    const suspended = { ...courierStaffFixture, businessStatus: 'SUSPENDED' as const }
+    const auth: AuthContextValue = {
+      ...authenticated(),
+      profileFetch: vi.fn(async () => new Response(JSON.stringify(suspended), { status: 200 })),
+    }
+
+    renderCourier(auth)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/staff profile inactive/i)
+    expect(screen.getByText(/your staff profile is currently suspended \(non-operational\)/i)).toBeInTheDocument()
+    expect(screen.queryByText(courierStaffFixture.staffId)).not.toBeInTheDocument()
+  })
+
+  it('fails closed and denies access if backend returns a different Keycloak subject', async () => {
+    const mismatchedSubject = { ...courierStaffFixture, keycloakSub: 'someone-else-sub' }
+    const auth: AuthContextValue = {
+      ...authenticated(['COURIER'], 'courier-test-subject'),
+      profileFetch: vi.fn(async () => new Response(JSON.stringify(mismatchedSubject), { status: 200 })),
+    }
+
+    renderCourier(auth)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/staff profile access denied/i)
+    expect(screen.queryByText(courierStaffFixture.displayName)).not.toBeInTheDocument()
+  })
+
+  it('rejects a profile with wrong business role even if user has access to page', async () => {
+    const wrongRoleProfile = { ...courierStaffFixture, role: 'DISPATCHER' as const }
+    const auth: AuthContextValue = {
+      ...authenticated(['COURIER'], 'courier-test-subject'),
+      profileFetch: vi.fn(async () => new Response(JSON.stringify(wrongRoleProfile), { status: 200 })),
+    }
+
+    renderCourier(auth)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/staff role mismatch/i)
+    expect(screen.getByText(/access is restricted to authorized courier staff/i)).toBeInTheDocument()
+    expect(screen.queryByText(wrongRoleProfile.staffId)).not.toBeInTheDocument()
+  })
+
+  it('displays provider failure truthfully and offers working retry action', async () => {
+    const user = userEvent.setup()
+    let calls = 0
+    const profileFetch = vi.fn(async () => {
+      calls++
+      if (calls === 1) {
+        return new Response(null, { status: 503 })
+      }
+      return new Response(JSON.stringify(courierStaffFixture), { status: 200 })
+    })
+    const auth: AuthContextValue = {
+      ...authenticated(),
+      profileFetch,
+    }
+
+    renderCourier(auth)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/staff profile temporarily unavailable/i)
+    const retryButtons = screen.getAllByRole('button', { name: /retry profile/i })
+    expect(retryButtons.length).toBeGreaterThanOrEqual(1)
+
+    await user.click(retryButtons[0]!)
+
+    expect(await screen.findByRole('heading', { level: 2, name: courierStaffFixture.displayName })).toBeInTheDocument()
+    expect(profileFetch).toHaveBeenCalledTimes(2)
   })
 
   it.each<SwiftDropRole>(['CUSTOMER', 'MERCHANT', 'DISPATCHER', 'ADMIN'])(
     'denies the %s role without rendering Courier content or making a provider request',
     (role) => {
-      const request = vi.fn<typeof fetch>()
-      vi.stubGlobal('fetch', request)
+      const auth = authenticated([role])
 
-      renderCourier(authenticated([role]))
+      renderCourier(auth)
 
       expect(screen.getByRole('alert')).toHaveTextContent(/access unavailable/i)
       expect(screen.queryByRole('heading', { name: /ready for your next route/i })).not.toBeInTheDocument()
-      expect(screen.queryByText(/staff details are not yet available/i)).not.toBeInTheDocument()
-      expect(request).not.toHaveBeenCalled()
+      expect(auth.profileFetch).not.toHaveBeenCalled()
     },
   )
 
   it('shows Courier navigation only to an authenticated Courier', () => {
     const { unmount } = renderCourier(authenticated())
-    expect(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /courier space/i })).toHaveAttribute('href', '/courier')
+    expect(
+      within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', {
+        name: /courier space/i,
+      }),
+    ).toHaveAttribute('href', '/courier')
     unmount()
 
     renderCourier(authenticated(['CUSTOMER']))
-    expect(within(screen.getByRole('navigation', { name: /main navigation/i })).queryByRole('link', { name: /courier space/i })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('navigation', { name: /main navigation/i })).queryByRole('link', {
+        name: /courier space/i,
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('uses the shared logout action', async () => {
@@ -117,5 +216,107 @@ describe('Courier role landing', () => {
 
     expect(screen.queryByRole('heading', { name: /ready for your next route/i })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+  })
+
+  describe('Mobile assignment dashboard and parcel detail workflow', () => {
+    const sampleAssignment = {
+      assignmentId: 'assign-wf-1',
+      parcelId: 'parcel-wf-101',
+      courierSub: 'courier-test-subject',
+      active: true,
+      assignedAt: '2026-10-26T09:45:00Z',
+      assignedBy: 'dispatcher-1',
+    }
+
+    const sampleSummary = {
+      courierSub: 'courier-test-subject',
+      activeAssignedCount: 3,
+      todayDeliveredCount: 8,
+      todayFailedCount: 1,
+    }
+
+    const sampleParcel = {
+      parcelId: 'parcel-wf-101',
+      trackingNumber: 'SWD-20261026-WF12',
+      createdBySub: 'customer-1',
+      merchantId: null,
+      currentStatus: 'OUT_FOR_DELIVERY' as const,
+      version: 2,
+      weightKg: 2.1,
+      dimensions: '20 × 15 × 5 cm',
+      pickupAddress: 'Depot Central',
+      dropoffAddress: '12 Temple Lane, Colombo 04',
+      activeCourierSub: 'courier-test-subject',
+      createdAt: '2026-10-26T08:00:00Z',
+    }
+
+    it('navigates from paginated assignments into authorized parcel detail and back', async () => {
+      const user = userEvent.setup()
+      const auth = authenticated(['COURIER'], 'courier-test-subject')
+
+      // Mock fetch responses for GraphQL summary, assignments, parcel details, and proof lookup
+      const requestMock = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = url.toString()
+        if (urlStr.includes('/graphql')) {
+          return new Response(
+            JSON.stringify({
+              data: { courierDashboard: sampleSummary },
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.includes('/api/v1/assignments/my')) {
+          return new Response(
+            JSON.stringify({
+              items: [sampleAssignment],
+              currentPage: 0,
+              pageSize: 20,
+              totalElements: 1,
+              totalPages: 1,
+              hasNext: false,
+              hasPrevious: false,
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.includes('/api/v1/parcels/parcel-wf-101/proof')) {
+          return new Response(null, { status: 404 })
+        }
+        if (urlStr.includes('/api/v1/parcels/parcel-wf-101')) {
+          return new Response(JSON.stringify(sampleParcel), { status: 200 })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      vi.stubGlobal('fetch', requestMock)
+
+      renderCourier(auth)
+
+      // Confirms summary counts rendered
+      expect(await screen.findByText('3')).toBeInTheDocument()
+      expect(screen.getByText('8')).toBeInTheDocument()
+      expect(screen.getByText('1')).toBeInTheDocument()
+
+      // Confirms assignment card rendered
+      expect(await screen.findByText(/parcel-wf/i)).toBeInTheDocument()
+      const viewDetailsBtn = screen.getByRole('button', {
+        name: /view parcel details for parcel-w/i,
+      })
+      expect(viewDetailsBtn).toBeInTheDocument()
+
+      // Click to open parcel details
+      await user.click(viewDetailsBtn)
+
+      // Confirms parcel detail view opened
+      expect(await screen.findByRole('heading', { name: 'SWD-20261026-WF12' })).toBeInTheDocument()
+      expect(screen.getAllByText('12 Temple Lane, Colombo 04').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('button', { name: /back to assignments list/i })).toBeInTheDocument()
+
+      // Click back to assignments
+      await user.click(screen.getByRole('button', { name: /back to assignments list/i }))
+
+      // Confirms returned to assignment list
+      expect(await screen.findByRole('heading', { name: /assigned deliveries/i })).toBeInTheDocument()
+    })
   })
 })

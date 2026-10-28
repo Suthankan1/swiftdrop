@@ -1,0 +1,31 @@
+server:
+  port: ${GRAPHQL_SERVER_PORT:8085}
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  application:
+    name: graphql-query-service
+  graphql:
+    http:
+      path: /graphql
+    schema:
+      file-extensions: .graphql
+      introspection:
+        enabled: false
+    graphiql:
+      enabled: false
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+swiftdrop:
+  graphql:
+    dispatcher:
+      # DEC-ASG-04: Recommended operating capacity (advisory soft-cap). Defaults to 5 per runtime decision register.
+      courier-max-capacity: ${DISPATCHER_COURIER_MAX_CAPACITY:5}

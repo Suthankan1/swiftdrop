@@ -1,0 +1,128 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Pending Webhooks",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "swiftdrop_webhook_deliveries{status=\"pending\"}",
+          "legendFormat": "Pending",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "Exhausted Webhooks",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "swiftdrop_webhook_exhausted_total",
+          "legendFormat": "Terminal Exhausted",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Pending Notification Jobs",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "swiftdrop_notification_jobs{status=\"pending\"}",
+          "legendFormat": "Pending Jobs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "title": "Oldest Pending Notification",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "swiftdrop_notification_pending_age_seconds",
+          "legendFormat": "Age (s)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 120 }] }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "id": 5,
+      "title": "Webhook Attempt Rate by Outcome",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "rate(swiftdrop_webhook_attempts_total[1m])",
+          "legendFormat": "{{outcome}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ops" } }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "id": 6,
+      "title": "Kafka Consumer Event Processing Rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "swiftdrop-prometheus" },
+      "targets": [
+        {
+          "expr": "rate(swiftdrop_kafka_consumer_processed_total[1m])",
+          "legendFormat": "{{consumer_group}} - {{status}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "ops" } }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["swiftdrop", "communications", "webhooks"],
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
+  "timezone": "browser",
+  "title": "SwiftDrop - Communications & Webhooks Engine",
+  "uid": "swiftdrop-communications",
+  "version": 1
+}
+

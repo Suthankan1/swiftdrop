@@ -1,11 +1,8 @@
 name: SwiftDrop Security Quality Gates
 
 on:
-  pull_request:
-    branches: [test, main]
-  push:
-    branches: [test]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
@@ -68,45 +65,79 @@ jobs:
           ignore-unfixed: false
 
   container-security:
-    name: Container Security & Missing-Target Gate
+    name: Container Security / ${{ matrix.target.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        target:
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+            context: .
+            tag: swiftdrop/frontend:ci-scan
+            extra_trivy_args: ""
+          - name: api-gateway
+            dockerfile: services/api-gateway/Dockerfile
+            context: .
+            tag: swiftdrop/api-gateway:ci-scan
+            extra_trivy_args: ""
+          - name: accounts-service
+            dockerfile: services/accounts-service/Dockerfile
+            context: .
+            tag: swiftdrop/accounts:ci-scan
+            extra_trivy_args: ""
+          - name: pricing-service
+            dockerfile: services/pricing-service/Dockerfile
+            context: .
+            tag: swiftdrop/pricing:ci-scan
+            extra_trivy_args: ""
+          - name: delivery-service
+            dockerfile: services/delivery-service/Dockerfile
+            context: .
+            tag: swiftdrop/delivery:ci-scan
+            extra_trivy_args: ""
+          - name: communications-service
+            dockerfile: services/communications-service/Dockerfile
+            context: .
+            tag: swiftdrop/communications:ci-scan
+            extra_trivy_args: ""
+          - name: graphql-query-service
+            dockerfile: services/graphql-query-service/Dockerfile
+            context: .
+            tag: swiftdrop/graphql:ci-scan
+            extra_trivy_args: ""
+          - name: keycloak
+            dockerfile: platform/identity/Dockerfile
+            context: .
+            tag: swiftdrop/keycloak:ci-scan
+            extra_trivy_args: "--ignore-unfixed"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Discover and evaluate container targets
+      - name: Validate Dockerfile exists
         run: |
-          echo "================================================================================"
-          echo "                  SWIFTDROP CONTAINER SECURITY QUALITY GATE                    "
-          echo "================================================================================"
-          
-          DOCKERFILES=()
-          while IFS= read -r -d '' file; do
-            DOCKERFILES+=("$file")
-          done < <(find . -type f -name "Dockerfile*" -print0)
-          
-          if [ ${#DOCKERFILES[@]} -eq 0 ]; then
-            echo ""
-            echo "ℹ [CONTAINER TARGET STATUS] No service runtime Dockerfiles exist in the repository."
-            echo "  Repository Architecture Reference: docs/architecture/BASELINE.md"
-            echo "  Team Ownership Reference: docs/team/OWNERSHIP.md"
-            echo "  Per project rules, all container orchestration, Dockerfile creation, and"
-            echo "  Kubernetes deployment manifests belong exclusively to Platform Lead (@Suthankan1)."
-            echo "  No synthetic runtime Dockerfiles are manufactured merely to satisfy the scanner."
-            echo "  This gate is operational and will automatically build and scan future images"
-            echo "  as service Dockerfiles are introduced."
-            echo ""
-            echo "Gate status: MISSING_TARGET_DOCUMENTED_CLEAN"
-            exit 0
-          fi
-          
-          echo "Discovered ${#DOCKERFILES[@]} Dockerfile(s):"
-          for df in "${DOCKERFILES[@]}"; do
-            echo "  - $df"
-            img_tag="swiftdrop/$(basename "$(dirname "$df")"):ci-scan"
-            echo "  Building nonproduction image: $img_tag"
-            docker build -f "$df" -t "$img_tag" "$(dirname "$df")"
-          done
-          echo "Docker image builds completed. Triggering vulnerability scan..."
+          test -f "${{ matrix.target.dockerfile }}" || {
+            echo "ERROR: Dockerfile missing at ${{ matrix.target.dockerfile }}"
+            exit 1
+          }
+
+      - name: Build container image
+        run: |
+          echo "Building ${{ matrix.target.name }} (${{ matrix.target.tag }}) using ${{ matrix.target.dockerfile }}..."
+          docker build -f "${{ matrix.target.dockerfile }}" -t "${{ matrix.target.tag }}" "${{ matrix.target.context }}"
+
+      - name: Scan container image with Trivy
+        run: |
+          echo "Scanning ${{ matrix.target.tag }} for HIGH and CRITICAL vulnerabilities..."
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.59.1 image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            ${{ matrix.target.extra_trivy_args }} \
+            "${{ matrix.target.tag }}"
+          echo "✓ Image ${{ matrix.target.tag }} passed vulnerability scan gate."

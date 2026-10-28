@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SwiftDropReleaseCandidateManifest",
+  "description": "Deterministic, immutable release candidate manifest specifying approved commit SHA, provenance, and 8 runtime image digests.",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "source_commit_sha",
+    "approved_base_branch",
+    "workflow_run_id",
+    "workflow_run_attempt",
+    "artifact_generation_time",
+    "images",
+    "target_architecture",
+    "approval_reference"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "source_commit_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Git 40-character commit SHA of the release candidate"
+    },
+    "approved_base_branch": {
+      "type": "string",
+      "enum": ["test", "main"]
+    },
+    "workflow_run_id": {
+      "type": "string",
+      "description": "GitHub Actions workflow run ID or local build ID"
+    },
+    "workflow_run_attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "artifact_generation_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target_architecture": {
+      "type": "string",
+      "enum": ["linux/amd64", "linux/arm64", "multi-arch"]
+    },
+    "contract_artifact_digest": {
+      "type": ["string", "null"]
+    },
+    "approval_reference": {
+      "type": "string",
+      "description": "PR reference, ruleset ID, or operator signoff reference"
+    },
+    "images": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "image_name",
+          "image_repository",
+          "image_digest",
+          "tag_reference"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "image_name": {
+            "type": "string",
+            "enum": [
+              "frontend",
+              "api-gateway",
+              "accounts-service",
+              "pricing-service",
+              "delivery-service",
+              "communications-service",
+              "graphql-query-service",
+              "keycloak"
+            ]
+          },
+          "image_repository": {
+            "type": "string",
+            "pattern": "^ghcr\\.io/suthankan1/swiftdrop-[a-z0-9-]+$"
+          },
+          "image_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "tag_reference": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{7,40}$"
+          }
+        }
+      }
+    }
+  }
+}

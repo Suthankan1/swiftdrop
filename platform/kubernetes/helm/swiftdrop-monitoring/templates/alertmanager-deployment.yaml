@@ -1,0 +1,90 @@
+# ==============================================================================
+# SwiftDrop Platform — Alertmanager Deployment (Issue #160)
+# Minimal, secure, non-root deployment for alert grouping and local dispatch.
+# ==============================================================================
+
+{{- if .Values.alertmanager.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swiftdrop-alertmanager
+  namespace: {{ .Values.namespaces.monitoring }}
+  labels:
+    {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "alertmanager") | nindent 4 }}
+spec:
+  replicas: {{ .Values.alertmanager.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "swiftdrop-monitoring.selectorLabels" (dict "context" . "component" "alertmanager") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop-monitoring.componentLabels" (dict "context" . "component" "alertmanager") | nindent 8 }}
+    spec:
+      serviceAccountName: swiftdrop-alertmanager-sa
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.alertmanager.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.alertmanager.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.alertmanager.securityContext.fsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: alertmanager
+          image: {{ include "swiftdrop-monitoring.image" .Values.alertmanager.image }}
+          imagePullPolicy: {{ .Values.alertmanager.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.alertmanager.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.alertmanager.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
+          args:
+            - "--config.file=/etc/alertmanager/alertmanager.yml"
+            - "--storage.path=/alertmanager"
+            - "--data.retention={{ .Values.alertmanager.retention }}"
+            - "--web.listen-address=0.0.0.0:9093"
+          ports:
+            - name: http
+              containerPort: 9093
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.alertmanager.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9093
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9093
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/alertmanager
+              readOnly: true
+            - name: storage-volume
+              mountPath: /alertmanager
+      volumes:
+        - name: config-volume
+          configMap:
+            name: swiftdrop-alertmanager-config
+        - name: storage-volume
+          {{- if .Values.alertmanager.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: swiftdrop-alertmanager-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}
+

@@ -23,7 +23,7 @@ describe('shared application routes', () => {
     expect(entry.head.textContent).not.toMatch(/devarom/i)
   })
 
-  it.each(['/', '/login', '/customer', '/merchant', '/courier', '/dispatcher', '/admin', '/auth/callback', '/missing-page'])('uses current branding at %s', (path) => {
+  it.each(['/', '/login', '/customer', '/merchant', '/merchant/enroll', '/merchant/credentials', '/courier', '/dispatcher', '/admin', '/auth/callback', '/missing-page'])('uses current branding at %s', (path) => {
     const { container } = renderRoute(path)
 
     expect(screen.getByRole('link', { name: 'SwiftDrop home' })).toHaveAttribute('href', '/')
@@ -196,5 +196,38 @@ describe('shared application routes', () => {
       expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
       expect(toggle).toHaveAttribute('aria-expanded', 'false')
     }
+  })
+
+  it('protects /merchant/enroll for authenticated users and redirects unauthenticated to login', async () => {
+    const { unmount } = renderRoute('/merchant/enroll', anonymousAuth)
+    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    unmount()
+
+    const auth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: customerFixture.keycloakSub, roles: ['CUSTOMER'] },
+      getAccessToken: async () => 'test-token',
+      profileFetch: async () => new Response(JSON.stringify(customerFixture)),
+    }
+    renderRoute('/merchant/enroll', auth)
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/commercial logistics/i)
+  })
+
+  it('protects /merchant/credentials for MERCHANT role only', () => {
+    const customerAuth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'customer-sub', roles: ['CUSTOMER'] },
+    }
+    const { unmount } = renderRoute('/merchant/credentials', customerAuth)
+    expect(screen.getByRole('alert')).toHaveTextContent(/access unavailable/i)
+    unmount()
+
+    const merchantAuth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'merch-sub', roles: ['MERCHANT'] },
+      getAccessToken: async () => 'test-token',
+    }
+    renderRoute('/merchant/credentials', merchantAuth)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/machine credentials/i)
   })
 })
