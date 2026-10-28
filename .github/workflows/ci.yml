@@ -584,7 +584,7 @@ jobs:
             dockerfile: platform/identity/Dockerfile
             context: .
             tag: swiftdrop/keycloak:ci-scan
-            extra_trivy_args: "--ignore-unfixed --skip-files /opt/keycloak/lib/lib/main/com.google.guava.guava-33.6.0-jre.jar,**/com.google.guava.guava-33.6.0-jre.jar"
+            extra_trivy_args: "--ignore-unfixed"
 
     steps:
       - name: Checkout repository

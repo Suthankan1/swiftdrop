@@ -18,6 +18,15 @@ This directory contains the reproducible Keycloak identity foundation for the Sw
 | **Local Binding Port** | `8090` | Pinned per [Login Contract](../../docs/contracts/LOGIN_CONTRACT.md) to eliminate host port collisions with Spring Cloud Gateway (`8080`). |
 | **Local Storage Mode** | Embedded dev database (dev mode) | Development and smoke-testing use Keycloak's embedded storage. Production / shared stack will bind to dedicated logical PostgreSQL database `keycloak_db` (Issue #3). |
 
+The custom image replaces the base image's vulnerable Guava `33.6.0-jre` with
+`33.7.2-jre` for CVE-2026-102554. Its build verifies Maven Central's SHA-256
+checksum and rebuilds Quarkus metadata while preserving the original fast-jar
+classpath filename. Dependencies are never downloaded at startup. The official
+Keycloak version, realm configuration and runtime command remain unchanged.
+This patch applies to images built from this Dockerfile; using the upstream
+image directly does not include it. Remove the override when the pinned
+upstream image contains the fixed dependency.
+
 ---
 
 ## 2. Realm Architecture (`swiftdrop`)
