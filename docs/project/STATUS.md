@@ -1,5 +1,46 @@
 # Current project status — update only with evidence
 
+## Issue #177 $0 Operator Handover & November 10 Release Evidence Index (N10-ZC06) — 2026-10-29
+
+Owner Suthankan Balenthiran (@Suthankan1 — Platform / Kubernetes / Security / DevOps Lead); branch `docs/n10-zc06-zero-cost-operator-handover`, base `test`.
+Independent Reviewers: Eric Praveen (@EricPraveen), Sinthuha Nadesan (@Sinthuha-n), Vibhushan (@Vibhushan-2003).
+Milestone: Nov 10 2026 — Full SwiftDrop Release.
+Linked Issues: Milestone Nov 10 (#177, #170), Zero-Cost Foundation (#172, #173, #174, #175, #176), Observability (#160), Recovery Drills (#167, #168), Triage & Walkthrough (#169), Spending Gate (#178).
+
+Delivers the comprehensive $0 operational continuity package and release evidence register:
+- **Sanitized Operator Handover Runbook (`docs/deployment/N10_ZC06_ZERO_COST_OPERATOR_HANDOVER.md`):**
+  - Defines topology across 6 namespaces (`swiftdrop-system`, `swiftdrop-apps`, `swiftdrop-identity`, `swiftdrop-data`, `swiftdrop-messaging`, `swiftdrop-monitoring`).
+  - Pins exact toolchain versions: Docker 29.9.2, k3d v5.9.0, K3s v1.31.2-k3s1, kubectl v1.36.1, Helm v3.16.2/v4.3.1, Terraform 1.16.3, PostgreSQL 16-alpine, Kafka 4.2.1 KRaft, Keycloak 26.8, Prometheus v3.13.3, Grafana 11.2.2.
+  - Specifies explicit context selection (`k3d-swiftdrop-local`) and loopback API binding (`127.0.0.1:16443`) safeguards.
+  - Documents non-destructive lifecycle commands (`create.sh`, `verify.sh`, `start.sh`, `stop.sh`).
+  - Cryptographic promotion and rollback safeguards: immutable SHA-256 digests (`sha256:...`), manifest schema validation, and application-only rollback preserving database PVCs.
+  - Secret custody and rotation: exclusively owned by `@Suthankan1`; zero plaintext secrets in repo.
+  - Observability and troubleshooting: 6 Grafana dashboards, 12 alert rules, in-cluster Mailpit SMTP sink, secret-safe logging.
+- **Traceable Release Evidence Index (`docs/handoff/N10_ZC06_RELEASE_EVIDENCE_INDEX.md`):**
+  - Authoritative matrix indexing 11 governing issues (#172, #173, #174, #175, #176, #160, #167, #168, #169, #177, #170, #178) with canonical file locations, commit SHAs, and real validation results.
+  - Reused recovery evidence from #167 and #168: encrypted backup custody in `~/.swiftdrop/backups/`, AES-256-CBC PBKDF2 (100k iter), SHA-256 sidecars.
+  - Measured RPO (300s) and RTO (240s) explicitly preserved as **NOT APPROVED** pending team ADR budget approval.
+  - Issue #178 classified as optional future bonus and **NOT AUTHORIZED** (non-blocker for Nov 10).
+  - Open release blocker triage: catalogued 4 P1 blockers; release recommendation to #170 remains **HOLD / NOT READY FOR PRODUCTION MERGE**.
+  - Independent reviewer sign-off checklist established for @EricPraveen, @Sinthuha-n, and @Vibhushan-2003 with human review kept pending.
+- **Automated Handover Contract Tests (`tests/kubernetes/test_handover_contracts.py`):**
+  - 14 automated unit tests verifying required sections, zero-cost rules, tool versions, context safety, recovery budget status, link resolution, and secret sanitization.
+
+Actual local verification (Docker 29.9.2, k3d v5.9.0, Helm v4.3.1, Terraform 1.16.3, Python 3.14.7):
+- PASS `python3 -m unittest tests/kubernetes/test_handover_contracts.py -v`: **14/14 tests passed**.
+- PASS `python3 -m unittest discover -s tests/kubernetes -p "test_*.py" -v`: **98 tests passed (1 skipped)**.
+- PASS `python3 -m unittest discover -s tests/ci -p "test_*.py" -v`: **46 tests passed**.
+- PASS `python3 -m unittest discover -s tests/terraform-policy -p "test_*.py" -v`: **85/85 tests passed**.
+- PASS `python3 -m unittest discover -s tests/recovery -p "test_*.py" -v`: **32/32 tests passed**.
+- PASS `python3 -m unittest discover -s tests/hosting-feasibility -p "test_*.py" -v`: **30 tests passed (5 skipped)**.
+- PASS `python3 -m unittest discover -s tests/container-images -p "test_*.py" -v`: **13/13 tests passed**.
+- PASS `python3 -m unittest discover -s tests/platform-compose -p "test_*.py" -v`: **13/13 tests passed**.
+- PASS `actionlint .github/workflows/*.yml`: 0 errors.
+- PASS Shell script syntax check (`bash -n` on all lifecycle, release, recovery, and compose scripts): 0 errors.
+- PASS `terraform -chdir=platform/terraform fmt -check -recursive`: clean.
+- PASS `helm lint platform/kubernetes/helm/swiftdrop/ --values platform/kubernetes/helm/swiftdrop/values-staging.yaml`: 0 errors.
+- PASS Relative markdown link resolution check across all handover documents: 100% resolve.
+
 ## Issue #169 Release-Candidate Feature Acceptance & Blocker Triage (N10-P12A) — 2026-10-28
 
 Owner Eric Praveen (@EricPraveen — Senior Release Engineer & QA Lead); branch `chore/n10-p12a-release-candidate-acceptance-triage`, base `test`.
