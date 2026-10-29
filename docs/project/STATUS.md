@@ -996,3 +996,41 @@ Branch: `tests/google-oidc-e2e` (based on `test` branch commit `882c65e`).
 The Google interaction was completed by the user, not automated probing. The agent did not observe every sign-in/consent prompt or a continuous redirect trace. Combined user confirmation, real authenticated profile, Google federated identity and session checks support this local L03 PASS. Earlier automated PKCE/state/nonce, negative-control and regression results remain historical; those suites were not rerun for this documentation-only update. Screenshots, raw personal profile data, account/session IDs, secrets, tokens and OTPs are excluded.
 
 This run is not an independent review by a different teammate. Gajanthan's Customer UI review and Vibhushan's security QA remain pending, as do L10 clean-clone reproduction and other separately tracked milestone work. Detailed sanitized evidence is in [LOGIN_ACCEPTANCE.md](../milestones/LOGIN_ACCEPTANCE.md#current-l03-real-google-login-evidence--2026-10-20).
+
+## SwiftDrop Platform — Issue #170 Release Verification, Acceptance & Promotion Audit (2026-10-29)
+
+**Lead:** **Suthankan1** (Platform / Infrastructure / Security Lead) · **Reviewers:** **Eric Praveen (@EricPraveen), Vibhushan (@Vibhushan-2003), Sinthuha Nadesan (@Sinthuha-n), Harithkeshan (@Harithkeshan)**
+**Feature Branch:** `chore/n10-p12-release-verification` (base commit: `506a716f78973e744365324d75ad56507d26780e` on `test`)
+**Release Status:** **HOLD / PENDING (NOT READY FOR PRODUCTION PROMOTION)**
+
+### Audit Summary
+- **Historical PR #196 Merge Audit:** PR #196 (`test` -> `main`) was merged on `2026-10-28T18:09:22Z` (merge commit `b8eac5db0d8bfa3dfe66c78eb273e0dce8632e3e`, source SHA `ff1d204c4f0759be4125be6a726c746b947d1187`).
+  - Tree SHA `0ae219ee60133830d4a88f361801e138da7f1a8d` matches `ff1d204` identically with zero diff.
+  - Zero human approvals were recorded on PR #196 (`reviews: []`).
+  - Active GitHub ruleset `Protect main and test` (ID: 25813062) allowed the merge because `required_approving_review_count: 0` and `required_status_checks: []`.
+  - Immediate Git rollback of `main` is NOT warranted because no physical production deployment was executed, Git non-fast-forward protection applies, the merged tree passes CI, and subsequent promotion must occur via a separate reviewed PR once blockers clear.
+- **Artifact & Digest Verification:** All 8 runtime component images for both candidate `ff1d204` (CI run `40735163188`) and current integration head `506a716` (CI run `40810854668`) verified with immutable `sha256:` digests on GHCR.
+- **Strict $0 Cost Policy:** ADR-0011 compliance verified; `platform/security/azure-allowlist-policy.yaml` has `cost_ceiling_usd: 0.00`, `allowed_resources: []`, `deployment_authorized: false`. Local-only demo classification on `k3d-swiftdrop-local`.
+- **Automated Test Evidence:**
+  - 85/85 Terraform policy tests PASSED.
+  - 98/98 Kubernetes safety and handover tests PASSED (97 passed, 1 skipped).
+  - 32/32 Recovery consistency tests (Mode A) PASSED (17 subtests).
+  - 90/90 Contract compatibility tests PASSED.
+  - 46/46 CI pipeline regression tests PASSED.
+  - 49/49 Capacity benchmark tests PASSED.
+  - 113/113 Identity unit and config tests PASSED (49 subtests).
+  - 68/68 files (1,235 tests) Frontend Vitest tests PASSED. Frontend build and typecheck PASSED.
+  - 28/28 Proto contracts tests PASSED.
+  - 51/51 Security adapter tests PASSED.
+  - 87/87 API Gateway tests PASSED.
+  - 251/251 GraphQL Query Service tests PASSED.
+- **Release Blockers (P0/P1):**
+  1. Mode B live database restoration against physical PostgreSQL pods unverified (Operator action by @Suthankan1 required).
+  2. Measured RPO (300s) and RTO (240s) remain unapproved by team ADR.
+  3. Benchmark SLA thresholds in `capacity-budgets.v1.json` are `null` / `PENDING_APPROVAL`.
+  4. Mandatory independent domain-owner reviews pending on release promotion (@Harithkeshan, @Vibhushan-2003).
+  5. Ruleset `25813062` requires 0 reviews and 0 status checks (fail-closed human gate required).
+- **Deployment Status:** **NOT EXECUTED**. All actual deployment and tagging actions belong strictly to `@Suthankan1` and remain pending human authorization.
+- **Canonical Release Docs:**
+  - Audit and specification: [`docs/deployment/N10_P12_RELEASE_VERIFICATION.md`](../deployment/N10_P12_RELEASE_VERIFICATION.md)
+  - Acceptance checklist: [`docs/handoff/N10_P12_RELEASE_ACCEPTANCE_EVIDENCE.md`](../handoff/N10_P12_RELEASE_ACCEPTANCE_EVIDENCE.md)
