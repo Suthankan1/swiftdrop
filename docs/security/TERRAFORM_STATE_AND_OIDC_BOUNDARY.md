@@ -340,7 +340,7 @@ Issue #167 owns release promotion, rollback, and disaster recovery drills. This 
 | **[#175](https://github.com/Suthankan1/swiftdrop/issues/175)** | **Local k3d/K3s cluster bootstrap** | @Suthankan1 | Local cluster state (k3s SQLite/etcd) is completely independent of Terraform state; requires zero cloud credentials. |
 | **[#176](https://github.com/Suthankan1/swiftdrop/issues/176)** | **$0 HTTPS and public access feasibility** | @Suthankan1 | Zero-cost tunnels (Cloudflare) do not require cloud OIDC or remote state; local fallback remains default. |
 | **[#177](https://github.com/Suthankan1/swiftdrop/issues/177)** | **$0 operator handover and evidence index** | @Suthankan1 | Indexes state custody rules, backup procedures, and verified offline recovery test evidence. |
-| **[#178](https://github.com/Suthankan1/swiftdrop/issues/178)** | **Optional future Azure spending authorization** | @Suthankan1 | Gated strictly as an optional future task. Cloud identity and remote state remain blocked until #178 is authorized. |
+| **[#178](https://github.com/Suthankan1/swiftdrop/issues/178)** | **Optional future Azure spending authorization** | @Suthankan1 | Gated strictly as an optional future task documented in [`docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md`](../deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md). Cloud identity and remote state remain blocked until #178 is authorized. |
 
 ---
 
