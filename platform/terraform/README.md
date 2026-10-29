@@ -8,7 +8,8 @@ This directory contains the baseline Terraform configuration for the SwiftDrop p
 - **Machine-Readable Allowlist Contract:** [`platform/security/azure-allowlist-policy.yaml`](../security/azure-allowlist-policy.yaml)
 - **State Custody & OIDC Security Policy:** [`docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md`](../../docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md)
 - **Machine-Readable OIDC Trust Contract:** [`platform/security/github-oidc-trust-policy.yaml`](../security/github-oidc-trust-policy.yaml)
-- **Originating Delivery Tasks:** [Issue #173 (N10-ZC02)](https://github.com/Suthankan1/swiftdrop/issues/173) (Plan-only baseline) and [Issue #174 (N10-ZC03)](https://github.com/Suthankan1/swiftdrop/issues/174) (Safe state & OIDC boundary)
+- **Optional Future Azure Spending Gate:** [`docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md`](../../docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md) (Refs Issue [#178](https://github.com/Suthankan1/swiftdrop/issues/178))
+- **Originating Delivery Tasks:** [Issue #173 (N10-ZC02)](https://github.com/Suthankan1/swiftdrop/issues/173) (Plan-only baseline), [Issue #174 (N10-ZC03)](https://github.com/Suthankan1/swiftdrop/issues/174) (Safe state & OIDC boundary), and [Issue #178](https://github.com/Suthankan1/swiftdrop/issues/178) (Optional future spending authorization gate)
 
 ### Strict $0 Hosting Invariants
 1. **Deny-by-Default:** Per ADR-0011, the Azure allowlist (`azure.allowed_resources`) is intentionally **EMPTY (`[]`)** and `azure.deployment_authorized` is `false`.
@@ -83,3 +84,4 @@ python3 -m pytest tests/terraform-policy -v
 - **Local State Custody:** Managed exclusively by named custodian `@Suthankan1` under strict single-writer rules, FileVault encryption at rest, and offline encrypted backups (`docs/security/TERRAFORM_STATE_AND_OIDC_BOUNDARY.md`).
 - **OIDC Workload Identity:** Formally defined but DISABLED (`platform/security/github-oidc-trust-policy.yaml`). Zero live Azure credentials or federated identity credentials exist.
 - **Active CI Workflows:** Credential-free and read-only (`permissions: contents: read`). `id-token: write` is strictly prohibited in untrusted workflows.
+- **Optional Future Azure K3s Gate:** Gated strictly behind the 20-point spending authorization checklist in [`docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md`](../../docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md) (Refs Issue [#178](https://github.com/Suthankan1/swiftdrop/issues/178)). Remains strictly **NOT AUTHORIZED** and blocked pending explicit user financial approval.
