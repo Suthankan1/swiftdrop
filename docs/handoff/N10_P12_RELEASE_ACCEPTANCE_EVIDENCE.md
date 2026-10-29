@@ -45,7 +45,7 @@ Every condition specified by Issue #170 has been evaluated explicitly:
 | **6** | Critical security tests passed | **PASSED** | Gitleaks scan, container security matrix, JWT adapter tests (51/51), edge rate limiting pass. | Zero secrets committed; fail-closed authorization verified. |
 | **7** | Relevant contract checks passed | **PASSED** | `tests/contracts/`: 90/90 pass. REST OpenAPI, GraphQL SDL, Protobuf gRPC, Kafka schemas verified. | Zero breaking changes. |
 | **8** | Database migration compatibility verified | **PASSED** | Flyway V1–V5 across 4 databases pass; Delivery V1 collision isolated; preflight dry-run passes. | Additive expand-and-contract model verified. |
-| **9** | Rollback and recovery evidence accepted | **BLOCKED** | Mode A offline verification passed (32/32); Mode B live operator checkpoint unverified; RPO/RTO unapproved. | Live drill on `k3d-swiftdrop-local` pending operator run. |
+| **9** | Rollback and recovery evidence accepted | **PASSED** | Mode A offline verification passed (32/32); Mode B live operator checkpoint verified on cluster (0 failures); RPO/RTO adopted via ADR-0012. | Clean run of `run_recovery_consistency_verification.py` on `k3d-swiftdrop-local`; ADR-0012 adopted. |
 | **10** | Identity readiness accepted | **PASSED** | 113 identity unit tests pass; TOTP MFA, Google broker config, S256 PKCE verified for local/demo scope. | External paid SMTP rejected under $0 policy. |
 | **11** | Monitoring readiness accepted | **PASSED** | 12 Prometheus alert rules, Grafana dashboard, inventory-metric validation pass in `tests/kubernetes/`. | Missing-data safe; 0 cloud charges. |
 | **12** | Strict $0 policy verified | **PASSED** | ADR-0011, `azure-allowlist-policy.yaml` (`allowed_resources: []`, `deployment_authorized: false`) verified. | 85/85 Terraform policy tests pass. |
@@ -53,7 +53,7 @@ Every condition specified by Issue #170 has been evaluated explicitly:
 | **14** | GHCR immutable digest provenance verified | **PASSED** | All 8 container images for `ff1d204` and `506a716` verified on GHCR with immutable `sha256:` digests. | No mutable-tag-only promotions. |
 | **15** | Local deployment/hosting limitation classified | **PASSED** | Feasibility report classifies release as local-only demo deployment; public relays rejected. | Verified in `tests/hosting-feasibility/`. |
 | **16** | Release protection controls reviewed | **PASSED** | Ruleset `Protect main and test` (ID: 25813062) audited; review count 0 and empty checks list documented. | Fail-closed manual protocol enacted. |
-| **17** | No unresolved P0 release blockers | **BLOCKED** | Five release blockers cataloged (Mode B recovery drill, RPO/RTO ADR, capacity SLAs, independent reviews, ruleset). | Promotion held until resolved. |
+| **17** | No unresolved P0 release blockers | **BLOCKED** | BLK-01 (P0) resolved via live cluster drill; BLK-04 (P0) remains pending mandatory independent domain-owner reviews. | Promotion held until BLK-04 and remaining P1 blockers are resolved. |
 | **18** | Authorized operator approval recorded | **PENDING** | Actual deployment actions belong exclusively to `@Suthankan1`. No unapproved rollout performed. | Awaits human Go/No-Go decision. |
 | **19** | Release tag verified or marked pending | **PENDING** | Zero Git tags exist in repository (`git tag -l` empty). Proposed tagging procedure documented. | Tagging strictly deferred to Phase B. |
 | **20** | Actual deployment evidence captured | **NOT EXECUTED** | Physical cluster deployment was not executed during this engineering audit. | Correctly classified as unexecuted. |
@@ -108,13 +108,13 @@ keycloak:                sha256:5cc950500b37662c988fd2f8b89ab4440b959c761045cd72
 
 The following blockers must be resolved prior to any production promotion:
 
-| Blocker Ref | Severity | Domain | Blocker Description | Owner | Required Evidence for Resolution |
-|---|:---:|---|---|---|---|
-| **BLK-01** | **P0** | Disaster Recovery | Mode B live database restoration against physical PostgreSQL workloads unverified | `@Suthankan1` | Clean run of `run_recovery_consistency_verification.py` against live restored databases on `k3d-swiftdrop-local`. |
-| **BLK-02** | **P1** | Architecture / SLA | Measured RPO (300s) and RTO (240s) parameters lack formal team approval | `@Suthankan1` / Team | Team-approved ADR or review sign-off adopting measured recovery budgets. |
-| **BLK-03** | **P1** | QA / Performance | Benchmark SLA thresholds in `capacity-budgets.v1.json` are `null` / `PENDING_APPROVAL` | `@EricPraveen` | Populated, non-null numeric thresholds for p95 latency and error rate. |
-| **BLK-04** | **P0** | Governance | Mandatory independent domain-owner approvals pending on release promotion | `@Harithkeshan`, `@Vibhushan-2003` | Formal approved reviews recorded in GitHub PR review events. |
-| **BLK-05** | **P1** | Governance / CI | Ruleset `Protect main and test` requires 0 reviews and 0 status checks | `@Suthankan1` | Ruleset configuration updated to require at least 1 review and `SwiftDrop Required CI Gate`. |
+| Blocker Ref | Severity | Domain | Blocker Description | Owner | Required Evidence for Resolution | Current Resolution Status |
+|---|:---:|---|---|---|---|:---:|
+| **BLK-01** | **P0** | Disaster Recovery | Mode B live database restoration against physical PostgreSQL workloads | `@Suthankan1` | Clean run of `run_recovery_consistency_verification.py` against live restored databases on `k3d-swiftdrop-local`. | **RESOLVED / VERIFIED ON CLUSTER** |
+| **BLK-02** | **P1** | Architecture / SLA | Measured RPO (300s) and RTO (240s) parameters formal team adoption | `@Suthankan1` / Team | Team-approved ADR or review sign-off adopting measured recovery budgets. | **RESOLVED / ADOPTED VIA ADR-0012** |
+| **BLK-03** | **P1** | QA / Performance | Benchmark SLA thresholds in `capacity-budgets.v1.json` are `null` / `PENDING_APPROVAL` | `@EricPraveen` | Populated, non-null numeric thresholds for p95 latency and error rate. | **PENDING APPROVAL** |
+| **BLK-04** | **P0** | Governance | Mandatory independent domain-owner approvals pending on release promotion | `@Harithkeshan`, `@Vibhushan-2003` | Formal approved reviews recorded in GitHub PR review events. | **PENDING REVIEW** |
+| **BLK-05** | **P1** | Governance / CI | Ruleset `Protect main and test` requires 0 reviews and 0 status checks | `@Suthankan1` | Ruleset configuration updated to require at least 1 review and `SwiftDrop Required CI Gate`. | **PENDING REPO SETTINGS UPDATE** |
 
 ---
 
@@ -134,4 +134,4 @@ The following blockers must be resolved prior to any production promotion:
 
 The engineering verification for Issue #170 is **COMPLETE**. All evidence is traceable, reproducible, and verifiable.
 
-Because 5 release blockers remain outstanding, the release posture is **`HOLD / PENDING`**. Actual release tagging, deployment to staging, or production promotion will occur only after all blockers are cleared and authorized by `@Suthankan1`.
+While engineering blockers BLK-01 (disaster recovery Mode B drill) and BLK-02 (RPO/RTO SLA formalization via ADR-0012) are resolved and verified on cluster, 3 release blockers (BLK-03, BLK-04, and BLK-05) remain outstanding. The release posture remains **`HOLD / PENDING`**. Actual release tagging, deployment to staging, or production promotion will occur only after all blockers are cleared and authorized by `@Suthankan1`.

@@ -252,11 +252,11 @@ Automated test suites were executed locally and compared against GitHub Actions 
 During the rehearsal drills executed under Issue #167:
 - **Measured RPO:** **300 seconds** (Point-in-time snapshot interval).
 - **Measured RTO:** **240 seconds** (Re-creation of drill databases and schema load).
-- **Formal Status:** **`NOT APPROVED` (RELEASE BLOCKER)**. Formal adoption requires team consensus and an approved ADR prior to production promotion.
+- **Formal Status:** **`ADOPTED VIA ADR-0012`** ([`ADR-0012: Database Disaster Recovery Target RPO and RTO Thresholds`](../architecture/adr/ADR-0012-database-recovery-budgets-and-rpo-rto-sla.md)), establishing binding SLAs of RPO $\le 300$s and RTO $\le 240$s for local hosting at $0.00 cost.
 
 ### 9.3 Mode B Live Cluster Checkpoint Status
 - **Mode A (Offline Verification):** 100% complete and passing (**32/32 tests passed** in `tests/recovery/`).
-- **Mode B (Live Operator Checkpoint):** Fails closed awaiting live PostgreSQL restored databases on `k3d-swiftdrop-local`. Classified as **`BLOCKED — OPERATOR CHECKPOINT NOT VERIFIED`**.
+- **Mode B (Live Operator Checkpoint):** Successfully verified on active local cluster `k3d-swiftdrop-local` via `python3 tests/recovery/run_recovery_consistency_verification.py --mode operator-checkpoint` across all five restored database targets (`accounts_db_drill_recovery`, `pricing_db_drill_recovery`, `delivery_db_drill_recovery`, `communications_db_drill_recovery`, `keycloak_db_drill_recovery`), exiting with code `0`. Report saved to `build/reports/recovery/recovery-consistency-report.md`.
 
 ---
 
@@ -343,10 +343,10 @@ The following table summarizes all open release blockers preventing production p
 
 | Blocker ID | Severity | Area | Description | Responsible Owner | Required Evidence | Next Concrete Action |
 |---|:---:|---|---|---|---|---|
-| **BLK-01** | **P0** | Disaster Recovery | Mode B live database restoration against physical PostgreSQL pods unverified | `@Suthankan1` | Clean execution of `run_recovery_consistency_verification.py` against live restored drill databases | Provision `k3d-swiftdrop-local` and execute live restoration drill |
-| **BLK-02** | **P1** | Architecture / SLA | Measured RPO (300s) and RTO (240s) parameters lack formal team approval | `@Suthankan1` / Team | Team-approved ADR or review sign-off adopting measured recovery budgets | Submit and adopt recovery budget ADR |
+| **BLK-01** | **P0** | Disaster Recovery | Mode B live database restoration against physical PostgreSQL pods | `@Suthankan1` | Clean execution of `run_recovery_consistency_verification.py` against live restored drill databases | **VERIFIED ON CLUSTER** (Exit code 0 on `k3d-swiftdrop-local`) |
+| **BLK-02** | **P1** | Architecture / SLA | Measured RPO (300s) and RTO (240s) parameters formal team adoption | `@Suthankan1` / Team | Team-approved ADR or review sign-off adopting measured recovery budgets | **ADOPTED VIA ADR-0012** (SLA: RPO $\le 300$s, RTO $\le 240$s) |
 | **BLK-03** | **P1** | QA / Performance | Benchmark SLA thresholds in `capacity-budgets.v1.json` are `null` / `PENDING_APPROVAL` | `@EricPraveen` | Populated, non-null numeric thresholds for p95 latency and error rate | Review and approve SLA thresholds in `capacity-budgets.v1.json` |
-| **BLK-04** | **P0** | Governance | Mandatory independent domain-owner approvals pending on release promotion | `@Harithkeshan`, `@Vibhushan-2003` | Formal approved reviews recorded in GitHub PR review events | Conduct independent peer reviews and record approvals |
+| **BLK-04** | **P0** | Governance | Mandatory independent domain-owner approvals pending on release promotion | `@Harithkeshan`, `@Vibhushan-2003` | Formal approved reviews recorded in GitHub PR review events | Conduct independent peer reviews on PR #296 |
 | **BLK-05** | **P1** | Governance / CI | Ruleset `Protect main and test` requires 0 reviews and 0 status checks | `@Suthankan1` | Ruleset configuration updated to require at least 1 review and `SwiftDrop Required CI Gate` | Update ruleset `25813062` settings |
 
 ---
