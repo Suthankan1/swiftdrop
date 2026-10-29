@@ -12,6 +12,7 @@
 | SwiftDrop rebranding | [Phase 1 impact audit](branding/PHASE_1_AUDIT.md), [Phase 2 technical migration proposal](branding/PHASE_2_MIGRATION.md), [verification](branding/VALIDATION.md) |
 | Starter generation | [Spring Initializr + Vite planning only](development/STARTER_GENERATION_GUIDE.md) |
 | Hosting & $0 cloud policy | [Strict $0 hosting decision & Azure allowlist](architecture/adr/ADR-0011-strict-zero-cost-hosting-and-azure-allowlist.md), [Zero-cost handoff](handoff/ISSUE_172_TO_173_178_ZERO_COST_HOSTING.md), [Operator handover](deployment/N10_ZC06_ZERO_COST_OPERATOR_HANDOVER.md), [Evidence index](handoff/N10_ZC06_RELEASE_EVIDENCE_INDEX.md), [Optional Azure K3s spending gate](deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md) |
+| Release verification & audit | [Release verification & promotion audit](deployment/N10_P12_RELEASE_VERIFICATION.md), [Release acceptance evidence register](handoff/N10_P12_RELEASE_ACCEPTANCE_EVIDENCE.md) |
 | Delivery | [PR workflow](development/GIT_WORKFLOW.md), [definition of done](development/DEFINITION_OF_DONE.md) |
 | AI assistance | [Agent guardrails](../AGENTS.md), [task template](ai/TASK_TEMPLATE.md), [prompt playbook](ai/PROMPT_PLAYBOOK.md) |
 
