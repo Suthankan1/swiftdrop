@@ -1,6 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { useAuth } from '../../auth/context'
+import { Badge } from '../ui/Badge'
+import { AiDeliveryAssistant } from '../../features/ai/AiDeliveryAssistant'
 
 function MainNavigation() {
   const auth = useAuth()
@@ -40,6 +42,22 @@ function MainNavigation() {
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && (
             <NavLink to="/admin" className="nav-link" onClick={() => setMenuOpen(false)}>Admin space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
+          {auth.snapshot.status === 'authenticated' ? (
+            <span className="nav-auth-item">
+              {auth.snapshot.roles.length > 0 && (
+                <Badge variant="brand" className="header-role-badge">
+                  {auth.snapshot.roles[0]}
+                </Badge>
+              )}
+              <Link to="/logout" className="header-auth-link" onClick={() => setMenuOpen(false)}>
+                Sign out
+              </Link>
+            </span>
+          ) : (
+            <Link to="/login" className="header-auth-link" onClick={() => setMenuOpen(false)}>
+              Sign in
+            </Link>
+          )}
         </nav>
         <span className="header-note"><span aria-hidden="true" /> A new way forward</span>
       </div>
@@ -57,6 +75,7 @@ export function AppLayout() {
         <Link className="footer-brand" to="/">SwiftDrop.</Link><span>Moving things. Connecting people.</span>
         <span className="footer-location">Made for the journey ahead <span aria-hidden="true">↗</span></span>
       </div></footer>
+      <AiDeliveryAssistant />
     </div>
   )
 }
