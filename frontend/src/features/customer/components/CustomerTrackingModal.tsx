@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AuthContext } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import type { createDeliveryApi } from '../api/delivery'
 import { DeliveryError } from '../api/delivery'
 import type { ParcelDetailResponse } from '../api/deliveryContracts'
@@ -184,13 +185,12 @@ export function CustomerTrackingModal({
                     ? 'The requested parcel could not be found.'
                     : 'A temporary network or server error occurred. Please try again.'}
               </p>
-              <button
-                type="button"
-                className="button button-secondary"
+              <Button
+                variant="secondary"
                 onClick={() => void query.refetch()}
               >
                 Retry
-              </button>
+              </Button>
             </div>
           )}
 
@@ -207,14 +207,15 @@ export function CustomerTrackingModal({
                   )}
                   <p className="banner-description">{presentation.description}</p>
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   className="copy-tracking-btn"
                   onClick={handleCopyTracking}
                   aria-label="Copy tracking number to clipboard"
                 >
                   {copyFeedback ? '✓ Copied' : 'Copy Tracking #'}
-                </button>
+                </Button>
               </div>
 
               {/* Progress Milestones Tracker */}
@@ -346,14 +347,16 @@ export function CustomerTrackingModal({
                     )}
                   </p>
                   {streamState.status === 'error' && (
-                    <button
+                    <Button
                       type="button"
-                      className="button button-secondary button-small sse-retry-btn"
+                      variant="secondary"
+                      size="sm"
+                      className="sse-retry-btn"
                       onClick={retryStream}
                       aria-label="Retry live updates connection"
                     >
                       Retry Connection
-                    </button>
+                    </Button>
                   )}
                 </div>
               </aside>
@@ -362,9 +365,9 @@ export function CustomerTrackingModal({
         </div>
 
         <footer className="modal-footer">
-          <button type="button" className="button button-secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </footer>
       </div>
     </div>

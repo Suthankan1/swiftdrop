@@ -5,6 +5,7 @@ import { AccountsError, createAccountsApi } from '../api/accounts'
 import { CustomerProfile, type ProfileState } from '../components/CustomerProfile'
 import { CustomerNav } from '../components/CustomerNav'
 import { CustomerDashboardCards } from '../components/CustomerDashboardCards'
+import { Button } from '../../../components/ui/Button'
 import type { createCustomerDashboardApi } from '../api/customerDashboard'
 
 export interface CustomerPageProps {
@@ -58,8 +59,10 @@ export function CustomerPage({ dashboardApiOverride }: CustomerPageProps = {}) {
         ) : (
           <a href="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</a>
         )}
-        <button onClick={() => { void auth.logout() }}>Sign out</button>
-        {query.isError && <button onClick={() => { void query.refetch() }}>Retry profile</button>}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+          <Button variant="secondary" size="sm" onClick={() => { void auth.logout() }}>Sign out</Button>
+          {query.isError && <Button variant="primary" size="sm" onClick={() => { void query.refetch() }}>Retry profile</Button>}
+        </div>
       </aside></div>
   </div>
 }

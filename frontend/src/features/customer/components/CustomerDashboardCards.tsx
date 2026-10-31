@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useInRouterContext } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import {
   createCustomerDashboardApi,
   type CustomerDashboardApiOptions,
@@ -70,15 +71,14 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
           <p className="eyebrow">Real-time overview</p>
           <h2 id="customer-dashboard-heading" className="section-heading">Your Deliveries Summary</h2>
         </div>
-        <button
-          type="button"
-          className="button button-secondary"
+        <Button
+          variant="secondary"
           disabled={query.isFetching}
           onClick={() => { void query.refetch() }}
           aria-label="Refresh deliveries summary"
         >
           {query.isFetching ? 'Refreshing…' : 'Refresh summary'}
-        </button>
+        </Button>
       </div>
 
       {query.isFetching && !data && (
@@ -94,14 +94,13 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
               ? query.error.message
               : 'Unable to load deliveries summary.'}
           </p>
-          <button
-            type="button"
-            className="button button-secondary"
+          <Button
+            variant="secondary"
             onClick={() => { void query.refetch() }}
             style={{ marginTop: '8px' }}
           >
             Retry summary
-          </button>
+          </Button>
         </div>
       )}
 
