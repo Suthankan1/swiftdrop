@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import {
   createMerchantDashboardApi,
   MerchantDashboardError,
@@ -11,6 +12,7 @@ import { MerchantMachineApiBanner } from '../components/MerchantMachineApiBanner
 import { MerchantOrderSummaryCards } from '../components/MerchantOrderSummaryCards'
 import { MerchantOrderFilterBar } from '../components/MerchantOrderFilterBar'
 import { MerchantOrderTable } from '../components/MerchantOrderTable'
+import { BulkOrderUploadModal } from '../components/BulkOrderUploadModal'
 import { CustomerTrackingModal } from '../../customer/components/CustomerTrackingModal'
 import { ACTIVE_STATUSES } from '../components/merchantUiUtils'
 
@@ -32,6 +34,7 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
   // Tracking modal inspection state
   const [inspectTrackingNumber, setInspectTrackingNumber] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false)
 
   const dashboardApi = useMemo(
     () =>
@@ -153,13 +156,13 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
                 ? 'Your session has expired. Please sign in again.'
                 : 'A temporary service or network issue occurred while loading orders.'}
           </p>
-          <button
+          <Button
             type="button"
-            className="button button-secondary"
+            variant="secondary"
             onClick={() => void query.refetch()}
           >
             Retry Dashboard
-          </button>
+          </Button>
         </div>
       )}
 
@@ -175,6 +178,46 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
             activeFilter={statusFilter}
             onSelectFilter={handleStatusFilterChange}
           />
+
+          {/* Quick Actions Toolbar */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', margin: '8px 0' }}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={filteredOrders.length === 0}
+              onClick={() => {
+                const headers = ['Tracking Number', 'Parcel ID', 'Status', 'Weight (kg)', 'Fee (LKR)', 'Created At', 'Last Update']
+                const rows = filteredOrders.map(o => [
+                  o.trackingNumber,
+                  o.parcelId,
+                  o.currentStatus,
+                  o.weightKg,
+                  (o.feeMinorUnits / 100).toFixed(2),
+                  o.createdAt,
+                  o.lastStatusUpdate,
+                ])
+                const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+                const blob = new Blob([csvContent], { type: 'text/csv' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `swiftdrop-orders-${new Date().toISOString().slice(0, 10)}.csv`
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+            >
+              📊 Export Orders to CSV
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => setShowBulkUploadModal(true)}
+            >
+              📁 Bulk CSV Upload
+            </Button>
+          </div>
 
           {/* Filter Bar & Search */}
           <MerchantOrderFilterBar
@@ -202,6 +245,15 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
           />
         </div>
       )}
+
+      {/* Bulk CSV Upload Modal */}
+      <BulkOrderUploadModal
+        isOpen={showBulkUploadModal}
+        onClose={() => setShowBulkUploadModal(false)}
+        onImportComplete={() => {
+          void query.refetch()
+        }}
+      />
 
       {/* Safe Tracking Modal Dialog */}
       <CustomerTrackingModal

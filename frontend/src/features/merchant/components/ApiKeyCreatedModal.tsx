@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import type { ApiKeyCreatedResponse } from '../api/credentialsContracts'
 
 interface ApiKeyCreatedModalProps {
@@ -32,7 +34,7 @@ export function ApiKeyCreatedModal({ createdKey, onClose }: ApiKeyCreatedModalPr
       >
         <div className="modal-header">
           <div>
-            <span className="badge badge-pending">One-Time Secret Reveal</span>
+            <Badge variant="warning">One-Time Secret Reveal</Badge>
             <h2 id="created-key-modal-heading" className="modal-title">API Key Generated</h2>
           </div>
           <button
@@ -63,24 +65,25 @@ export function ApiKeyCreatedModal({ createdKey, onClose }: ApiKeyCreatedModalPr
           <code className="secret-value" data-testid="plaintext-api-key">
             {createdKey.plaintextKey}
           </code>
-          <button
+          <Button
             type="button"
-            className="button button-light secret-copy-btn"
+            variant="secondary"
+            size="sm"
             onClick={handleCopy}
             aria-label={copied ? 'API key copied to clipboard' : 'Copy API key to clipboard'}
           >
             {copied ? '✓ Copied!' : 'Copy Key'}
-          </button>
+          </Button>
         </div>
 
         <div className="modal-actions">
-          <button
+          <Button
             type="button"
-            className="button button-primary"
+            variant="primary"
             onClick={onClose}
           >
             I have securely saved my key (Close)
-          </button>
+          </Button>
         </div>
       </div>
     </div>

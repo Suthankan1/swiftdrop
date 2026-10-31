@@ -1,4 +1,6 @@
 import type { ApiKeySummaryItem } from '../api/credentialsContracts'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 
 interface ApiKeyRevokeConfirmModalProps {
   keyItem: ApiKeySummaryItem | null
@@ -26,7 +28,7 @@ export function ApiKeyRevokeConfirmModal({
       >
         <div className="modal-header">
           <div>
-            <span className="badge badge-rejected">Revoke Credential</span>
+            <Badge variant="danger">Revoke Credential</Badge>
             <h2 id="revoke-modal-title" className="modal-title">Revoke API Key?</h2>
           </div>
           <button
@@ -53,22 +55,24 @@ export function ApiKeyRevokeConfirmModal({
         </div>
 
         <div className="modal-actions">
-          <button
+          <Button
             type="button"
-            className="button button-secondary"
+            variant="secondary"
             onClick={onClose}
             disabled={isRevoking}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button button-danger"
+            variant="danger"
             onClick={() => onConfirm(keyItem.keyId)}
             disabled={isRevoking}
+            isLoading={isRevoking}
+            loadingText="Revoking..."
           >
-            {isRevoking ? 'Revoking...' : 'Revoke Key Permanently'}
-          </button>
+            Revoke Key Permanently
+          </Button>
         </div>
       </div>
     </div>

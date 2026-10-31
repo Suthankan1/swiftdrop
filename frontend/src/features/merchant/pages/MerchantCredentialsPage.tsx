@@ -18,6 +18,7 @@ import { ApiKeyCreateFormModal } from '../components/ApiKeyCreateFormModal'
 import { ApiKeyCreatedModal } from '../components/ApiKeyCreatedModal'
 import { ApiKeyRevokeConfirmModal } from '../components/ApiKeyRevokeConfirmModal'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
+import { Button } from '../../../components/ui/Button'
 
 export function MerchantCredentialsPage() {
   const auth = useAuth()
@@ -177,14 +178,13 @@ export function MerchantCredentialsPage() {
               : 'Merchant credentials are unavailable for this account standing.'}
           </p>
           <div className="locked-actions">
-            <button
-              type="button"
-              className="button button-primary"
+            <Button
+              variant="primary"
               disabled
               title="Disabled until merchant account is approved"
             >
               + Generate API Key (Disabled)
-            </button>
+            </Button>
           </div>
         </section>
       ) : (

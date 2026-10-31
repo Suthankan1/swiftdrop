@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { SUPPORTED_WEBHOOK_EVENTS, type CreateWebhookSubscriptionRequest } from '../api/webhookContracts'
 import { validateWebhookDestination } from '../api/webhooks'
+import { Button } from '../../../components/ui/Button'
 
 interface WebhookSubscriptionFormProps {
   onSubmit: (request: CreateWebhookSubscriptionRequest) => Promise<void>
@@ -134,21 +135,22 @@ export function WebhookSubscriptionForm({
         </fieldset>
 
         <div className="form-actions">
-          <button
+          <Button
             type="submit"
-            className="button button-primary"
+            variant="primary"
+            isLoading={isSubmitting}
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Registering destination...' : 'Register Destination'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button button-secondary"
+            variant="secondary"
             onClick={onCancel}
             disabled={isSubmitting}
           >
             Cancel
-          </button>
+          </Button>
         </div>
 
       </form>
