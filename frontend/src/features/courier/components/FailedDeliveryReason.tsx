@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import {
   STANDARD_FAILURE_REASONS,
   type FailureReasonCode,
@@ -42,7 +44,7 @@ export function FailedDeliveryReason({
           <p className="eyebrow">Delivery Exception</p>
           <h3 id="failure-reason-heading">Record Failed Delivery Reason</h3>
         </div>
-        <span className="badge badge-rejected">Exception Reporting</span>
+        <Badge variant="danger">Exception Reporting</Badge>
       </div>
 
       <div className="failure-boundary-notice" role="note">
@@ -101,14 +103,14 @@ export function FailedDeliveryReason({
         </div>
 
         <div className="failure-actions">
-          <button
+          <Button
             type="button"
-            className="button button-secondary"
+            variant="secondary"
             onClick={handleRecord}
             disabled={disabled}
           >
             Prepare Failure Metadata
-          </button>
+          </Button>
         </div>
 
         {isReady && (

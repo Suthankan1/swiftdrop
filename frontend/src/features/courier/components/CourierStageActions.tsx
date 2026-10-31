@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '../../../components/ui/Button'
 import type { createCourierProofApi } from '../api/proof'
 import { CourierProofError } from '../api/proof'
 import type {
@@ -333,18 +334,20 @@ export function CourierStageActions({
                   Completing delivery is terminal and requires a server-confirmed proof record.
                 </p>
               )}
-              <button
+              <Button
                 type="button"
-                className="button button-primary"
+                variant="primary"
                 disabled={
                   isSubmitting ||
                   isLocked ||
                   (nextStage === 'DELIVERED' && !deliveryProofReady)
                 }
+                isLoading={isSubmitting}
+                loadingText="Submitting..."
                 onClick={() => void submit(nextStage, note)}
               >
-                {isSubmitting ? 'Submitting...' : ACTION_LABEL[nextStage]}
-              </button>
+                {ACTION_LABEL[nextStage]}
+              </Button>
               {nextStage === 'DELIVERED' && !deliveryProofReady && (
                 <p className="field-error" role="status">
                   Delivery completion is locked until proof metadata is verified by the server.
@@ -371,14 +374,16 @@ export function CourierStageActions({
                   <p>
                     Review and confirm this terminal action. Preparing metadata did not change the parcel.
                   </p>
-                  <button
+                  <Button
                     type="button"
-                    className="button button-danger"
+                    variant="danger"
                     disabled={isSubmitting || isLocked}
+                    isLoading={isSubmitting}
+                    loadingText="Submitting..."
                     onClick={() => void submit('FAILED', preparedFailure.note, preparedFailure.reason)}
                   >
-                    {isSubmitting ? 'Submitting...' : 'Confirm Failed Status'}
-                  </button>
+                    Confirm Failed Status
+                  </Button>
                 </div>
               )}
             </div>
@@ -387,14 +392,15 @@ export function CourierStageActions({
       )}
 
       {(isLocked || messageKind !== 'success') && (
-        <button
+        <Button
           type="button"
-          className="button button-secondary button-small"
+          variant="secondary"
+          size="sm"
           disabled={isSubmitting}
           onClick={() => void handleExplicitRefresh()}
         >
           Refresh Parcel Status
-        </button>
+        </Button>
       )}
     </section>
   )

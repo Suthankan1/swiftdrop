@@ -11,6 +11,7 @@ import type {
 } from '../api/proofContracts'
 import { FailedDeliveryReason } from './FailedDeliveryReason'
 import { ProofCaptureForm } from './ProofCaptureForm'
+import { Button } from '../../../components/ui/Button'
 
 export type ProofLookupStatus =
   | 'idle'
@@ -260,13 +261,13 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
         {assignmentError && (
           <div className="feedback-banner is-error" role="alert">
             <span>{assignmentError}</span>
-            <button
-              type="button"
-              className="button button-secondary button-small"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleRetryAssignments}
             >
               Retry
-            </button>
+            </Button>
           </div>
         )}
 
@@ -326,15 +327,15 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
                     {proofLookupError ||
                       'Unable to verify existing proof records on server. Proof capture is locked to prevent duplicate or conflicting submissions.'}
                   </span>
-                  <button
-                    type="button"
-                    className="button button-secondary button-small"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => {
                       void handleRetryProofVerification()
                     }}
                   >
                     Retry Verification
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -375,14 +376,14 @@ export function CourierProofWorkspace({ apiOverride }: CourierProofWorkspaceProp
 
               {/* Collapsible Delivery Exception Section */}
               <div className="exception-toggle-wrap">
-                <button
-                  type="button"
-                  className="button button-secondary button-small"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setShowExceptionSection(!showExceptionSection)}
                   aria-expanded={showExceptionSection}
                 >
                   {showExceptionSection ? 'Hide Exception Form' : 'Unable to Deliver? Report Exception'}
-                </button>
+                </Button>
               </div>
 
               {showExceptionSection && (

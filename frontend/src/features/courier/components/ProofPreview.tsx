@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { Button } from '../../../components/ui/Button'
 import { formatBytes } from '../utils/proofValidation'
 
 export interface ProofPreviewProps {
@@ -43,14 +44,14 @@ export function ProofPreview({
       <div className="proof-preview-header">
         <h3 className="proof-preview-title">{title}</h3>
         {onClose && (
-          <button
-            type="button"
-            className="button button-secondary button-small"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onClose}
             aria-label="Close proof preview"
           >
             Close
-          </button>
+          </Button>
         )}
       </div>
 
@@ -85,14 +86,14 @@ export function ProofPreview({
 
       {onRemove && (
         <div className="proof-preview-actions">
-          <button
-            type="button"
-            className="button button-secondary button-small"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onRemove}
             aria-label="Remove selected proof image"
           >
             Remove & Select Different Photo
-          </button>
+          </Button>
         </div>
       )}
     </div>

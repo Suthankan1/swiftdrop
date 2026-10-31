@@ -5,6 +5,7 @@ import {
   CourierApiError,
 } from '../api/courierContracts'
 import { createCourierDashboardApi } from '../api/courierDashboard'
+import { Button } from '../../../components/ui/Button'
 
 export interface CourierDashboardSummaryProps {
   apiOverride?: ReturnType<typeof createCourierDashboardApi>
@@ -105,13 +106,13 @@ export function CourierDashboardSummary({ apiOverride }: CourierDashboardSummary
       {error && (
         <div className="feedback-banner is-error card" role="alert">
           <span>{error}</span>
-          <button
-            type="button"
-            className="button button-secondary button-small"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={handleRetry}
           >
             Retry Summary
-          </button>
+          </Button>
         </div>
       )}
 
