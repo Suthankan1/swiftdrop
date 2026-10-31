@@ -6,6 +6,7 @@ import { createDeliveryApi, DeliveryError } from '../api/delivery'
 import type { ParcelDetailResponse } from '../api/deliveryContracts'
 import { CustomerNav } from '../components/CustomerNav'
 import { formatCurrency, formatDateTime, getStatusPresentation } from '../components/customerUiUtils'
+import { Button } from '../../../components/ui/Button'
 
 export function CustomerBookingConfirmedPage() {
   const auth = useAuth()
@@ -86,13 +87,12 @@ export function CustomerBookingConfirmedPage() {
                 : 'A network or service failure prevented loading the booking confirmation.'}
           </p>
           <div className="action-button-group">
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               onClick={() => void parcelQuery.refetch()}
             >
               Retry
-            </button>
+            </Button>
             <Link to="/customer/history" className="button button-primary">
               View Delivery History
             </Link>
@@ -125,14 +125,14 @@ export function CustomerBookingConfirmedPage() {
               <span className="eyebrow">Canonical Tracking Number</span>
               <div className="tracking-number-display">
                 <code className="font-mono tracking-code">{parcel.trackingNumber}</code>
-                <button
-                  type="button"
-                  className="button button-secondary copy-tracking-btn"
+                <Button
+                  variant="secondary"
+                  className="copy-tracking-btn"
                   onClick={() => void handleCopyTracking(parcel.trackingNumber)}
                   aria-label={copied ? 'Tracking number copied to clipboard' : 'Copy tracking number to clipboard'}
                 >
                   {copied ? '✓ Copied' : 'Copy Tracking Number'}
-                </button>
+                </Button>
               </div>
               <p className="tracking-hero-hint muted text-xs">
                 Share this reference with the recipient for real-time tracking updates.

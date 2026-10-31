@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import { createDeliveryApi, DeliveryError, triggerBlobDownload } from '../api/delivery'
 import { CustomerNav } from '../components/CustomerNav'
 import { CustomerHistoryTable } from '../components/CustomerHistoryTable'
@@ -132,9 +133,9 @@ export function CustomerHistoryPage() {
             onChange={(e) => setSearchTrackingInput(e.target.value)}
             aria-label="Tracking number or parcel reference"
           />
-          <button type="submit" className="button button-primary lookup-submit">
+          <Button type="submit" variant="primary" className="lookup-submit">
             Track Shipment
-          </button>
+          </Button>
         </form>
       </section>
 
@@ -164,13 +165,12 @@ export function CustomerHistoryPage() {
                 ? 'You do not have permission to view these delivery records.'
                 : 'A temporary connection or backend error occurred while fetching delivery records.'}
             </p>
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               onClick={() => void historyQuery.refetch()}
             >
               Retry
-            </button>
+            </Button>
           </div>
         )}
 

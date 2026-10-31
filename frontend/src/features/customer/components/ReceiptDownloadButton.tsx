@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react'
+import { Button } from '../../../components/ui/Button'
 
 interface ReceiptDownloadButtonProps {
   parcelId: string
@@ -52,26 +53,18 @@ export function ReceiptDownloadButton({
     )
   }
 
-  const label = buttonText || (isDownloading ? 'Downloading...' : 'Download Receipt')
-  const baseClass =
-    variant === 'small'
-      ? 'button button-secondary receipt-btn-small'
-      : variant === 'primary'
-        ? 'button button-primary'
-        : 'button button-secondary'
-
   return (
-    <button
-      type="button"
-      className={`${baseClass}${isDownloading ? ' is-loading' : ''}`}
+    <Button
+      variant={variant === 'primary' ? 'primary' : 'secondary'}
+      size={variant === 'small' ? 'sm' : 'md'}
+      isLoading={isDownloading}
+      loadingText="Downloading..."
       onClick={handleClick}
       disabled={isDownloading}
       aria-label={`Download PDF receipt for delivery ${trackingNumber || parcelId}`}
       aria-busy={isDownloading}
-    >
-      {isDownloading ? (
-        <span className="btn-spinner" aria-hidden="true" />
-      ) : (
+      className={variant === 'small' ? 'receipt-btn-small' : ''}
+      leftIcon={
         <svg
           width="16"
           height="16"
@@ -82,8 +75,9 @@ export function ReceiptDownloadButton({
         >
           <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
         </svg>
-      )}
-      <span>{label}</span>
-    </button>
+      }
+    >
+      {buttonText || 'Download Receipt'}
+    </Button>
   )
 }

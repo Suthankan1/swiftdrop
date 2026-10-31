@@ -1,4 +1,5 @@
 import type { CustomerDeliverySummary } from '../api/deliveryContracts'
+import { Button } from '../../../components/ui/Button'
 import { formatCurrency, formatDateTime, getStatusPresentation } from './customerUiUtils'
 import { ReceiptDownloadButton } from './ReceiptDownloadButton'
 
@@ -91,14 +92,15 @@ export function CustomerHistoryTable({
                   </td>
                   <td className="text-right">
                     <div className="action-button-group">
-                      <button
+                      <Button
                         type="button"
-                        className="button button-secondary button-small"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => onSelectParcel(item.parcelId, item.trackingNumber)}
                         aria-label={`Track parcel ${item.trackingNumber}`}
                       >
                         Track
-                      </button>
+                      </Button>
                       <ReceiptDownloadButton
                         parcelId={item.parcelId}
                         trackingNumber={item.trackingNumber}
@@ -122,24 +124,26 @@ export function CustomerHistoryTable({
           Page <strong>{currentPage + 1}</strong> of <strong>{Math.max(1, totalPages)}</strong> ({totalElements} total deliveries)
         </span>
         <div className="pagination-buttons">
-          <button
+          <Button
             type="button"
-            className="button button-secondary button-small"
+            variant="secondary"
+            size="sm"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={!hasPrevious || isLoading}
             aria-label="Previous page of deliveries"
           >
             &larr; Previous
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button button-secondary button-small"
+            variant="secondary"
+            size="sm"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={!hasNext || isLoading}
             aria-label="Next page of deliveries"
           >
             Next &rarr;
-          </button>
+          </Button>
         </div>
       </nav>
     </div>
