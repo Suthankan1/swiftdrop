@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import {
   createAdminReportsApi,
   type AdminReportsApi,
@@ -232,14 +233,13 @@ function AdminReportsWorkspace({ api }: { api: AdminReportsApi }) {
           <h2 className="section-heading" id="report-filter-heading">
             Report parameters
           </h2>
-          <button
-            type="button"
-            className="button button-secondary"
+          <Button
+            variant="secondary"
             onClick={() => void handleRefreshAll()}
             disabled={isRefreshing}
           >
             {isRefreshing ? 'Refreshing...' : 'Refresh report'}
-          </button>
+          </Button>
         </div>
 
         <form onSubmit={handleFilterSubmit} className="report-filter-form">
@@ -304,16 +304,15 @@ function AdminReportsWorkspace({ api }: { api: AdminReportsApi }) {
           )}
 
           <div className="admin-management-toolbar">
-            <button type="submit" className="button button-primary">
+            <Button type="submit" variant="primary">
               Apply filters
-            </button>
-            <button
-              type="button"
-              className="button button-secondary"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={handleResetFilters}
             >
               Reset to today
-            </button>
+            </Button>
           </div>
         </form>
       </section>
@@ -355,13 +354,12 @@ function AdminReportsWorkspace({ api }: { api: AdminReportsApi }) {
                 ? deliveryStatsQuery.error.message
                 : 'Unable to load delivery statistics. Please check service connectivity and retry.'}
             </p>
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               onClick={() => void deliveryStatsQuery.refetch()}
             >
               Retry delivery statistics
-            </button>
+            </Button>
           </div>
         )}
 
@@ -490,13 +488,12 @@ function AdminReportsWorkspace({ api }: { api: AdminReportsApi }) {
                 ? adminDashboardQuery.error.message
                 : 'Unable to load merchant review summary. Please retry.'}
             </p>
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               onClick={() => void adminDashboardQuery.refetch()}
             >
               Retry merchant review
-            </button>
+            </Button>
           </div>
         )}
 

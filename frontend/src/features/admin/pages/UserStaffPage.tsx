@@ -6,6 +6,8 @@ import { adminFailure, canRecover, canSuspend, createAdminManagementApi, isProfi
   type AdminManagementApi, type AdminPage, type AdminStaff, type ProvisionStaff, type StaffCommand, type StaffFilters } from '../api/userStaff'
 import { useAdminCommand, useAdminQuery, type AdminScope } from '../hooks/useAdminManagement'
 import { StaffConfirmation } from '../components/StaffConfirmation'
+import { Button } from '../../../components/ui/Button'
+import { Badge as UiBadge } from '../../../components/ui/Badge'
 
 type Section = 'users' | 'staff' | 'detail'
 export function UserStaffPage({ section, api }: { section: Section; api?: AdminManagementApi }) {
@@ -41,22 +43,28 @@ function AdminWorkspace({ section, id, api }: { section: Section; id?: string; a
   </div>
 }
 function ReadError({ error, retry, busy }: { error: unknown; retry: () => void; busy: boolean }) {
-  return <div role="alert"><p>{adminFailure(error).message}</p><button className="button button-secondary" disabled={busy} onClick={retry}>Retry read</button></div>
+  return <div role="alert"><p>{adminFailure(error).message}</p><Button variant="secondary" size="sm" disabled={busy} onClick={retry}>Retry read</Button></div>
 }
 function Pagination({ data, busy, change }: { data: AdminPage<unknown>; busy: boolean; change: (page: number) => void }) {
   return <nav className="admin-management-toolbar" aria-label="Result pages">
-    <button className="button button-secondary" disabled={data.first || busy} onClick={() => change(data.page - 1)}>Previous page</button>
+    <Button variant="secondary" size="sm" disabled={data.first || busy} onClick={() => change(data.page - 1)}>Previous page</Button>
     <span>Page {data.page + 1} · {data.totalPages} available pages · {data.totalElements} records</span>
-    {data.page > 0 && data.page >= data.totalPages && <button className="button button-secondary" disabled={busy} onClick={() => change(0)}>Return to first page</button>}
-    <button className="button button-secondary" disabled={data.last || busy} onClick={() => change(data.page + 1)}>Next page</button>
+    {data.page > 0 && data.page >= data.totalPages && <Button variant="secondary" size="sm" disabled={busy} onClick={() => change(0)}>Return to first page</Button>}
+    <Button variant="secondary" size="sm" disabled={data.last || busy} onClick={() => change(data.page + 1)}>Next page</Button>
   </nav>
 }
-function Badge({ value }: { value: string }) { return <span className="badge">{value.replaceAll('_', ' ')}</span> }
+function Badge({ value }: { value: string }) {
+  const isGood = value === 'ACTIVE' || value === 'COMPLETED' || value === 'CONFIRMED' || value === 'SUCCESS'
+  const isWarn = value === 'PENDING_RETRY' || value === 'INACTIVE' || value === 'PENDING'
+  const isDanger = value === 'SUSPENDED' || value === 'FAILED' || value === 'DENIED'
+  const variant = isGood ? 'success' : isWarn ? 'warning' : isDanger ? 'danger' : 'neutral'
+  return <UiBadge variant={variant} size="sm" pulse={isGood}>{value.replaceAll('_', ' ')}</UiBadge>
+}
 function Users({ api, scope }: { api: AdminManagementApi; scope: AdminScope }) {
   const [page, setPage] = useState(0)
   const query = useAdminQuery(scope, ['users', page], signal => api.users(page, signal))
   return <section aria-label="Accounts users" aria-busy={query.isFetching}>
-    <div className="admin-management-toolbar"><h2>Accounts users</h2><button className="button button-secondary" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh users</button></div>
+    <div className="admin-management-toolbar"><h2>Accounts users</h2><Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh users</Button></div>
     <p className="muted">Accounts exposes paged summaries. User search, account status, roles and user detail are not available from this provider.</p>
     {query.isFetching && <p role="status">Loading users…</p>}
     {query.isError && <ReadError error={query.error} busy={query.isFetching} retry={() => { void query.refetch() }} />}
@@ -75,7 +83,7 @@ function Staff({ api, scope }: { api: AdminManagementApi; scope: AdminScope }) {
   const query = useAdminQuery(scope, ['staff', page, filters], signal => api.staff(page, filters, signal))
   return <>
     <section aria-label="Staff directory" aria-busy={query.isFetching}>
-      <div className="admin-management-toolbar"><h2>Staff directory</h2><button className="button button-secondary" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh staff</button></div>
+      <div className="admin-management-toolbar"><h2>Staff directory</h2><Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh staff</Button></div>
       <form className="admin-management-filters" onSubmit={event => {
         event.preventDefault(); setPage(0)
         setFilters({ staffRole: staffRoles.find(value => value === role), businessStatus: staffStatuses.find(value => value === status), assignedZone: zone.trim() || undefined })
@@ -83,7 +91,7 @@ function Staff({ api, scope }: { api: AdminManagementApi; scope: AdminScope }) {
         <label>Business role<select value={role} onChange={event => setRole(event.target.value)}><option value="">All roles</option>{staffRoles.map(value => <option key={value}>{value}</option>)}</select></label>
         <label>Business status<select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>{staffStatuses.map(value => <option key={value}>{value}</option>)}</select></label>
         <label>Assigned zone (exact match)<input value={zone} maxLength={100} onChange={event => setZone(event.target.value)} /></label>
-        <button className="button button-primary" type="submit" disabled={query.isFetching}>Apply filters</button>
+        <Button variant="primary" type="submit" disabled={query.isFetching}>Apply filters</Button>
       </form>
       <p className="muted">Staff summaries identify employees by staff ID. Names and identity synchronization state are not included; open details for recorded reconciliation outcomes.</p>
       {query.isFetching && <p role="status">Loading staff…</p>}
@@ -110,7 +118,7 @@ function ProvisionForm({ api, scope }: { api: AdminManagementApi; scope: AdminSc
       <fieldset disabled={command.pending || confirm !== null} className="admin-management-filters"><legend>Staff binding</legend>
         {([{ name: 'keycloakSub', label: 'Existing identity subject', max: 255 }, { name: 'staffId', label: 'Staff ID', max: 50 }, { name: 'department', label: 'Department', max: 100 }, { name: 'assignedZone', label: 'Assigned zone (optional)', max: 100 }, { name: 'accountProfileId', label: 'Account profile ID (optional UUID)', max: 36 }] as const).map(field => <label key={field.name}>{field.label}<input required={['keycloakSub', 'staffId', 'department'].includes(field.name)} maxLength={field.max} value={value[field.name] ?? ''} onChange={event => setValue({ ...value, [field.name]: ['assignedZone', 'accountProfileId'].includes(field.name) ? event.target.value || null : event.target.value })} /></label>)}
         <label>Approved role<select value={value.role} onChange={event => { const role = staffRoles.find(item => item === event.target.value); if (role) setValue({ ...value, role }) }}>{staffRoles.map(role => <option key={role}>{role}</option>)}</select></label>
-        <button className="button button-primary" type="submit">Review provisioning</button>
+        <Button variant="primary" type="submit" disabled={command.pending || confirm !== null}>Review provisioning</Button>
       </fieldset>
     </form>
     {problem && <p role="alert">{problem}</p>}
@@ -125,7 +133,7 @@ function StaffDetails({ id, api, scope }: { id: string; api: AdminManagementApi;
   const query = useAdminQuery(scope, ['detail', id], signal => api.detail(id, signal))
   return <section aria-label="Staff business details" aria-busy={query.isFetching}>
     <Link to="/admin/staff">Back to staff directory</Link>
-    <p><button className="button button-secondary" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh profile</button></p>
+    <p><Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh profile</Button></p>
     {query.isFetching && <p role="status">Loading staff details…</p>}
     {query.isError && <ReadError error={query.error} busy={query.isFetching} retry={() => { void query.refetch() }} />}
     {query.data && !query.isError && <StaffRecord staff={query.data} refreshing={query.isFetching} api={api} scope={scope} />}
@@ -141,10 +149,10 @@ function StaffRecord({ staff, refreshing, api, scope }: { staff: AdminStaff; ref
     <h2>{staff.staffId}</h2>
     <dl className="admin-management-fields"><dt>Staff profile ID</dt><dd>{staff.profileId}</dd><dt>Identity subject</dt><dd>{staff.keycloakSub}</dd><dt>Account profile</dt><dd>{staff.accountProfileId ?? 'Not linked'}</dd><dt>Role</dt><dd>{staff.role}</dd><dt>Department</dt><dd>{staff.department}</dd><dt>Assigned zone</dt><dd>{staff.assignedZone ?? 'Not assigned'}</dd><dt>Business status</dt><dd><Badge value={staff.businessStatus} /></dd><dt>Created</dt><dd>{staff.createdAt}</dd><dt>Updated</dt><dd>{staff.updatedAt}</dd></dl>
     <p>Business status and identity reconciliation are separate. A business profile alone does not confirm current identity synchronization.</p>
-    <div className="admin-management-toolbar"><button className="button button-secondary" disabled={!actionsAvailable || !canSuspend(staff)} onClick={() => setConfirm({ action: 'suspend', staff })}>Suspend staff</button><button className="button button-secondary" disabled={!actionsAvailable} onClick={() => setConfirm({ action: 'sync', staff })}>Synchronize identity role</button></div>
+    <div className="admin-management-toolbar"><Button variant="secondary" size="sm" disabled={!actionsAvailable || !canSuspend(staff)} onClick={() => setConfirm({ action: 'suspend', staff })}>Suspend staff</Button><Button variant="secondary" size="sm" disabled={!actionsAvailable} onClick={() => setConfirm({ action: 'sync', staff })}>Synchronize identity role</Button></div>
     <p className="muted">Activation and deactivation are awaiting contract-owner approval.</p>
     {command.feedback && <p role={command.feedback.error ? 'alert' : 'status'}>{command.feedback.text}</p>}
-    <div className="admin-management-toolbar"><h3>Identity reconciliation audit</h3><button className="button button-secondary" disabled={busy} onClick={() => { void audit.refetch() }}>Refresh audit</button></div>
+    <div className="admin-management-toolbar"><h3>Identity reconciliation audit</h3><Button variant="secondary" size="sm" disabled={busy} onClick={() => { void audit.refetch() }}>Refresh audit</Button></div>
     {audit.isFetching && <p role="status">Loading identity audit…</p>}
     {audit.isError && <ReadError error={audit.error} busy={busy} retry={() => { void audit.refetch() }} />}
     {audit.data && !audit.isError && <>
@@ -154,7 +162,7 @@ function StaffRecord({ staff, refreshing, api, scope }: { staff: AdminStaff; ref
           <p>{entry.action} · <Badge value={entry.outcome} /> · <time dateTime={entry.updatedAt}>{entry.updatedAt}</time></p><p>Audit ID: {entry.id} · Actor: {entry.initiatedBy} · Attempts: {entry.attemptCount}</p>
           {(entry.outcome === 'FAILED' || entry.outcome === 'DENIED') && <p>The identity operation did not complete successfully. Review the business profile before recovery.</p>}
           {entry.outcome === 'PENDING_RETRY' && <p>Identity reconciliation is pending. Business access must not be assumed active.</p>}
-          {canRecover(entry) && <button className="button button-secondary" disabled={!actionsAvailable} onClick={() => setConfirm({ action: 'retry', staff, auditId: entry.id })}>Recover audit {entry.id}</button>}
+          {canRecover(entry) && <Button variant="secondary" size="sm" disabled={!actionsAvailable} onClick={() => setConfirm({ action: 'retry', staff, auditId: entry.id })}>Recover audit {entry.id}</Button>}
         </li>)}</ol>
       </>}
     </>}

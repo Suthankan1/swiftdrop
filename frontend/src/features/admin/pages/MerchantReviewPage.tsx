@@ -2,6 +2,8 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import {
   createMerchantReviewApi, isAmbiguousCommandFailure, merchantReasonProblem, merchantReviewFailure, MerchantReviewError,
   type MerchantReviewApi, type MerchantReviewAction, type MerchantReviewDetail, type MerchantReviewFilter,
@@ -15,7 +17,9 @@ const filters: readonly { value: MerchantReviewFilter; label: string }[] = [
 ]
 
 function Status({ status }: { status: string }) {
-  return <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>
+  const norm = status.toUpperCase()
+  const variant = norm === 'APPROVED' ? 'success' : norm === 'REJECTED' ? 'danger' : norm === 'SUSPENDED' ? 'warning' : 'primary'
+  return <Badge variant={variant} size="sm">{status}</Badge>
 }
 
 function Timestamp({ value }: { value: string }) {
@@ -43,8 +47,8 @@ export function MerchantReviewPage({ api }: { api?: MerchantReviewApi | null } =
         <h2 id="review-unavailable-title">Merchant review unavailable</h2>
         <p role="status">Merchant review is awaiting the Accounts review service. Applications and audit history cannot be loaded yet.</p>
         <div className="merchant-review-toolbar">
-          <button className="button button-primary" disabled aria-describedby="review-action-unavailable">Approve merchant</button>
-          <button className="button button-secondary" disabled aria-describedby="review-action-unavailable">Suspend merchant</button>
+          <Button variant="primary" disabled aria-describedby="review-action-unavailable">Approve merchant</Button>
+          <Button variant="secondary" disabled aria-describedby="review-action-unavailable">Suspend merchant</Button>
         </div>
         <p id="review-action-unavailable">Approval and suspension are unavailable until the review service is connected.</p>
       </section> : <p role="alert">Access to merchant review requires an authenticated ADMIN session.</p>}
@@ -88,11 +92,11 @@ function MerchantReviewWorkspace({ api }: { api: MerchantReviewApi }) {
         onChange={event => { setSelectedId(null); setPage(0); setFilter(event.target.value as MerchantReviewFilter) }}>
         {filters.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
       </select>
-      <button className="button button-secondary" disabled={query.isFetching} onClick={() => { setSelectedId(null); void query.refetch() }}>Refresh list</button>
+      <Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { setSelectedId(null); void query.refetch() }}>Refresh list</Button>
     </div>
     {query.isFetching && <p role="status">Loading merchant applications…</p>}
     {query.isError && <div role="alert"><p>{merchantReviewFailure(query.error).message}</p>
-      <button className="button button-secondary" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Retry list</button>
+      <Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Retry list</Button>
     </div>}
     {query.data && !query.isError && <>
       {query.data.items.length === 0 ? <p role="status">No merchant applications on this page.</p> :
@@ -103,15 +107,15 @@ function MerchantReviewWorkspace({ api }: { api: MerchantReviewApi }) {
             <th scope="row">{item.businessName}<small className="merchant-review-id">{item.id}</small></th>
             <td>{item.registrationNumber ?? 'Not provided'}</td><td><Status status={item.status} /></td>
             <td>{item.submittedAt ? <Timestamp value={item.submittedAt} /> : 'Not provided'}</td>
-            <td><button className="button button-secondary" disabled={query.isFetching}
+            <td><Button variant="secondary" size="sm" disabled={query.isFetching}
               aria-expanded={selectedId === item.id} aria-controls={selectedId === item.id ? 'merchant-review-details' : undefined}
-              onClick={event => { detailTrigger.current = event.currentTarget; setSelectedId(item.id) }}>Review {item.businessName}</button></td>
+              onClick={event => { detailTrigger.current = event.currentTarget; setSelectedId(item.id) }}>Review {item.businessName}</Button></td>
           </tr>)}</tbody>
         </table></div>}
       <nav className="merchant-review-toolbar" aria-label="Merchant review pages">
-        <button className="button button-secondary" disabled={page === 0 || query.isFetching} onClick={() => { setSelectedId(null); setPage(value => value - 1) }}>Previous page</button>
+        <Button variant="secondary" size="sm" disabled={page === 0 || query.isFetching} onClick={() => { setSelectedId(null); setPage(value => value - 1) }}>Previous page</Button>
         <span>Page {page + 1}</span>
-        <button className="button button-secondary" disabled={!query.data.hasNext || query.isFetching} onClick={() => { setSelectedId(null); setPage(value => value + 1) }}>Next page</button>
+        <Button variant="secondary" size="sm" disabled={!query.data.hasNext || query.isFetching} onClick={() => { setSelectedId(null); setPage(value => value + 1) }}>Next page</Button>
       </nav>
     </>}
     {selectedId && <MerchantDetails key={selectedId} id={selectedId} api={api} prefix={prefix}
@@ -177,13 +181,13 @@ function MerchantDetails({ id, api, prefix, onClose }: {
   }
   return <section id="merchant-review-details" className="card merchant-review-detail" aria-labelledby="merchant-detail-heading" aria-busy={query.isFetching || pending}>
     <div className="merchant-review-toolbar"><h2 ref={heading} tabIndex={-1} id="merchant-detail-heading">Merchant details</h2>
-      <button className="button button-secondary" disabled={pending} onClick={onClose}>Close details</button>
-      <button className="button button-secondary" disabled={pending || query.isFetching} onClick={() => { setConfirm(null); void query.refetch() }}>Refresh details</button>
+      <Button variant="secondary" disabled={pending} onClick={onClose}>Close details</Button>
+      <Button variant="secondary" disabled={pending || query.isFetching} onClick={() => { setConfirm(null); void query.refetch() }}>Refresh details</Button>
     </div>
     {feedback && <p role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
     {query.isFetching && <p role="status">Loading merchant details…</p>}
     {query.isError && <div role="alert"><p>{merchantReviewFailure(query.error).message}</p>
-      <button className="button button-secondary" disabled={pending || query.isFetching} onClick={() => { void query.refetch() }}>Retry details</button>
+      <Button variant="secondary" disabled={pending || query.isFetching} onClick={() => { void query.refetch() }}>Retry details</Button>
     </div>}
     {detail && !query.isError && <>
       <h3>{detail.businessName}</h3>
@@ -192,10 +196,10 @@ function MerchantDetails({ id, api, prefix, onClose }: {
         <dt>Status</dt><dd><Status status={detail.status} /></dd>
         {detail.submittedAt && <><dt>Submitted</dt><dd><Timestamp value={detail.submittedAt} /></dd></>}
       </dl>
-      <div className="merchant-review-toolbar">{(['approve', 'suspend'] as const).map(action => <button key={action}
-        className="button button-secondary" disabled={pending || query.isFetching || !canChange(action)}
+      <div className="merchant-review-toolbar">{(['approve', 'suspend'] as const).map(action => <Button key={action}
+        variant="secondary" size="sm" disabled={pending || query.isFetching || !canChange(action)}
         aria-describedby={!canChange(action) ? `merchant-${action}-unavailable` : undefined}
-        onClick={() => setConfirm(action)}>{action === 'approve' ? 'Approve merchant' : 'Suspend merchant'}</button>)}</div>
+        onClick={() => setConfirm(action)}>{action === 'approve' ? 'Approve merchant' : 'Suspend merchant'}</Button>)}</div>
       {!canChange('approve') && <p id="merchant-approve-unavailable">Approval is unavailable for this merchant or is not supported by the review service.</p>}
       {!canChange('suspend') && <p id="merchant-suspend-unavailable">Suspension is unavailable for this merchant or is not supported by the review service.</p>}
       <h3>Audit history</h3>

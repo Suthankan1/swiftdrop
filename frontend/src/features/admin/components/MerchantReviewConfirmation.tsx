@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Button } from '../../../components/ui/Button'
 import { merchantReasonProblem, type MerchantReviewAction, type MerchantReviewDetail } from '../api/merchantReview'
 
 export function MerchantReviewConfirmation({ merchant, action, pending, onCancel, onConfirm }: {
@@ -57,11 +58,13 @@ export function MerchantReviewConfirmation({ merchant, action, pending, onCancel
             {' '}{reason.trim().length}/{policy.maxLength} characters. Recorded in the merchant audit history.</p>
         </div>}
         <div className="modal-actions">
-          <button className="button button-secondary" type="button" disabled={pending} onClick={onCancel}>Cancel</button>
-          <button className="button button-primary" type="submit"
-            disabled={pending || Boolean(problem)}>
-            {pending ? 'Submitting…' : `Confirm ${action}`}
-          </button>
+          <Button variant="secondary" type="button" disabled={pending} onClick={onCancel}>Cancel</Button>
+          <Button variant="primary" type="submit"
+            disabled={pending || Boolean(problem)}
+            isLoading={pending}
+            loadingText="Submitting…">
+            Confirm {action}
+          </Button>
         </div>
       </form>
       {pending && <p role="status">Waiting for the server. This command will not be retried automatically.</p>}
