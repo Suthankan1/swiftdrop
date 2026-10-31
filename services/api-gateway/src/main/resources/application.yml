@@ -67,7 +67,7 @@ spring:
               metadata:
                 response-timeout: -1
             - id: graphql-query-service
-              uri: ${GRAPHQL_SERVICE_URL:http://localhost:8084}
+              uri: ${GRAPHQL_SERVICE_URL:http://localhost:8085}
               predicates:
                 - Path=/graphql
               order: 10
@@ -127,7 +127,7 @@ spring:
           metadata:
             response-timeout: -1
         - id: graphql-query-service
-          uri: ${GRAPHQL_SERVICE_URL:http://localhost:8084}
+          uri: ${GRAPHQL_SERVICE_URL:http://localhost:8085}
           predicates:
             - Path=/graphql
           order: 10
