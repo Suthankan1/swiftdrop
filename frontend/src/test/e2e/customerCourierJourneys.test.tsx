@@ -881,8 +881,32 @@ describe('SWIFTDROP N10-QA-02: Customer Booking, Courier Completion and Live Tra
 
     vi.stubGlobal('fetch', mockFetch)
 
+    const mockXhrFactory = (): XMLHttpRequest => {
+      let onload: (() => void) | null = null
+      const xhr = {
+        open: vi.fn(),
+        setRequestHeader: vi.fn(),
+        status: 403,
+        responseText: JSON.stringify(forbiddenProblem),
+        send: vi.fn(() => {
+          setTimeout(() => {
+            if (onload) onload()
+          }, 0)
+        }),
+        get onload() {
+          return onload
+        },
+        set onload(fn) {
+          onload = fn
+        },
+        upload: {},
+      }
+      return xhr as unknown as XMLHttpRequest
+    }
+
     const proofApi = (await import('../../features/courier/api/proof')).createCourierProofApi({
       getAccessToken: async () => 'token-courier-b',
+      xhrFactory: mockXhrFactory,
     })
 
     const wrongCourierAuth = createAuth(['COURIER'], SYNTHETIC_COURIER_B.keycloakSub, SYNTHETIC_COURIER_B)

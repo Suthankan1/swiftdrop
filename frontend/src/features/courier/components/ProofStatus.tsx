@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button } from '../../../components/ui/Button'
 import type { ProofDetailResponse, ProofResponse } from '../api/proofContracts'
 import { formatBytes } from '../utils/proofValidation'
 import { ProofPreview } from './ProofPreview'
@@ -106,14 +107,13 @@ export function ProofStatus({
 
       <div className="proof-status-actions">
         {onLoadContent && !evidenceBlob && (
-          <button
-            type="button"
-            className="button button-secondary"
+          <Button
+            variant="secondary"
             onClick={handleInspectEvidence}
             disabled={isLoadingContent}
           >
             {isLoadingContent ? 'Streaming Private Evidence...' : 'Inspect Stored Evidence'}
-          </button>
+          </Button>
         )}
       </div>
 

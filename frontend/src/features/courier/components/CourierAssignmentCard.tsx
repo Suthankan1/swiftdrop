@@ -1,4 +1,5 @@
 import type { AssignmentResponse } from '../api/courierContracts'
+import { Button } from '../../../components/ui/Button'
 
 export interface CourierAssignmentCardProps {
   assignment: AssignmentResponse
@@ -53,14 +54,14 @@ export function CourierAssignmentCard({
       </div>
 
       <div className="assignment-card-actions">
-        <button
-          type="button"
-          className={`button ${isSelected ? 'button-primary' : 'button-secondary'} button-small`}
+        <Button
+          variant={isSelected ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => onSelect(assignment.parcelId)}
           aria-label={`View parcel details for ${assignment.parcelId.slice(0, 8)}`}
         >
           {isSelected ? 'Viewing Details' : 'View Details & Handover'}
-        </button>
+        </Button>
       </div>
     </article>
   )

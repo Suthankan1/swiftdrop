@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { Button } from '../../../components/ui/Button'
 import {
   CourierProofError,
   type createCourierProofApi,
@@ -389,14 +390,15 @@ export function ProofCaptureForm({
                 <strong>Tap to capture with camera</strong> or choose a photo
               </p>
               <p id={`proof-file-hint-${parcel.parcelId}`} className="dropzone-hint muted">JPEG, PNG, or WebP up to 5 MiB</p>
-              <button
+              <Button
                 type="button"
-                className="button button-secondary button-small"
+                variant="secondary"
+                size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!isEligibleStage || isUploading || (proofLookupStatus !== undefined && proofLookupStatus !== 'verified-none')}
               >
                 Select Photo
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -473,14 +475,16 @@ export function ProofCaptureForm({
             The server may have received and persisted the proof despite the connection interruption.
             Verify server state to avoid creating duplicate evidence.
           </p>
-          <button
+          <Button
             type="button"
-            className="button button-secondary"
+            variant="secondary"
             onClick={handleReconcileServerState}
             disabled={isReconciling}
+            isLoading={isReconciling}
+            loadingText="Checking Server State..."
           >
-            {isReconciling ? 'Checking Server State...' : 'Check Server Status & Reconcile'}
-          </button>
+            Check Server Status & Reconcile
+          </Button>
         </div>
       )}
 
@@ -511,13 +515,14 @@ export function ProofCaptureForm({
             />
           </div>
           <div className="progress-actions">
-            <button
+            <Button
               type="button"
-              className="button button-secondary button-small"
+              variant="secondary"
+              size="sm"
               onClick={handleCancelUpload}
             >
               Cancel Upload
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -573,20 +578,20 @@ export function ProofCaptureForm({
             )}
           </ul>
           <div className="confirmation-actions">
-            <button
+            <Button
               type="button"
-              className="button button-primary"
+              variant="primary"
               onClick={handleConfirmUpload}
             >
               Yes, Upload Proof
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="button button-secondary"
+              variant="secondary"
               onClick={() => setShowConfirmation(false)}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -594,9 +599,9 @@ export function ProofCaptureForm({
       {/* Form Submission Action */}
       {!showConfirmation && !isUploading && (
         <div className="form-submit-row">
-          <button
+          <Button
             type="button"
-            className="button button-primary"
+            variant="primary"
             ref={submitTriggerRef}
             onClick={handleStartSubmit}
             disabled={
@@ -608,7 +613,7 @@ export function ProofCaptureForm({
             }
           >
             Submit Proof of Delivery
-          </button>
+          </Button>
         </div>
       )}
     </section>

@@ -6,6 +6,7 @@ import {
 } from '../api/courierContracts'
 import { createCourierAssignmentsApi } from '../api/courierAssignments'
 import { CourierAssignmentCard } from './CourierAssignmentCard'
+import { Button } from '../../../components/ui/Button'
 
 export interface CourierAssignmentListProps {
   selectedParcelId: string | null
@@ -134,13 +135,13 @@ export function CourierAssignmentList({
       {error && (
         <div className="feedback-banner is-error" role="alert">
           <span>{error}</span>
-          <button
-            type="button"
-            className="button button-secondary button-small"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={handleRetry}
           >
             Retry Assignments
-          </button>
+          </Button>
         </div>
       )}
 
@@ -170,27 +171,27 @@ export function CourierAssignmentList({
             className="pagination-controls-row"
             aria-label="Assignment list pagination"
           >
-            <button
-              type="button"
-              className="button button-secondary button-small"
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={!hasPrevious || isLoading}
               onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
               aria-label="Go to previous page of assignments"
             >
               Previous
-            </button>
+            </Button>
             <span className="pagination-info muted">
               Page {currentPage + 1} of {totalPages}
             </span>
-            <button
-              type="button"
-              className="button button-secondary button-small"
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={!hasNext || isLoading}
               onClick={() => setCurrentPage((p) => p + 1)}
               aria-label="Go to next page of assignments"
             >
               Next
-            </button>
+            </Button>
           </nav>
         </>
       )}
