@@ -2,7 +2,9 @@ import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useQueries, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
+import { ReportCharts } from '../components/ReportCharts'
 import { useAdminQuery, type AdminScope } from '../hooks/useAdminManagement'
 import { createReportsApi, formatCount, formatRate, outcomeRates, reportFailure, ZONE_PATTERN,
   type AdminDashboardSummary, type DeliveryStatsSummary, type ReportFilter, type ReportsApi } from '../api/reports'
@@ -68,7 +70,7 @@ function AdminOverview({ api, scope, today, stats }: { api: ReportsApi; scope: A
     {partial && <p className="report-partial" role="status">Partial report: some sections could not be retrieved. Only figures returned by a responding provider are shown; nothing is estimated.</p>}
     <div className="admin-management-toolbar">
       <h2 id="overview-heading">Today's operations overview</h2>
-      <button className="button button-secondary" type="button" disabled={dashboard.isFetching} onClick={() => { void dashboard.refetch() }}>Refresh overview</button>
+      <Button variant="secondary" size="sm" type="button" disabled={dashboard.isFetching} onClick={() => { void dashboard.refetch() }}>Refresh overview</Button>
     </div>
     <p className="muted">Reporting day {formatReportingDate(today)} ({REPORTING_TIME_ZONE_LABEL}), day to date. This overview always covers today and is not changed by the filters below.</p>
     {dashboard.isPending && <FeedbackState title="Loading operations overview" tone="loading">Requesting today's administrative summary.</FeedbackState>}
@@ -143,12 +145,12 @@ function ReportFilters({ admin, today, applied, onApply }: { admin: boolean; tod
       {admin && <label>Zone code (optional)
         <input type="text" value={zone} maxLength={32} placeholder="All zones" autoComplete="off" spellCheck={false} onChange={event => setZone(event.target.value)} />
       </label>}
-      <button className="button" type="submit">Apply filters</button>
+      <Button variant="primary" size="sm" type="submit">Apply filters</Button>
     </form>
     <div className="admin-management-toolbar" role="group" aria-label="Quick reporting periods">
-      <button className="button button-secondary" type="button" onClick={() => preset(1)}>Today</button>
-      <button className="button button-secondary" type="button" onClick={() => preset(7)}>Last 7 days</button>
-      <button className="button button-secondary" type="button" onClick={() => preset(30)}>Last 30 days</button>
+      <Button variant="secondary" size="sm" type="button" onClick={() => preset(1)}>Today</Button>
+      <Button variant="secondary" size="sm" type="button" onClick={() => preset(7)}>Last 7 days</Button>
+      <Button variant="secondary" size="sm" type="button" onClick={() => preset(30)}>Last 30 days</Button>
     </div>
     {problem && <p id={errorId} role="alert">{problem}</p>}
     <p className="muted">Up to {MAX_REPORT_DAYS} days ending today. {admin ? 'Leave the zone blank for platform-wide figures.' : 'Figures are limited by the server to your assigned operational zones.'}</p>
@@ -162,7 +164,7 @@ function DailyOutcomes({ api, scope, filter, today, stats }: {
   return <section className="report-section" aria-labelledby="outcomes-heading" aria-busy={stats.isFetching}>
     <div className="admin-management-toolbar">
       <h2 id="outcomes-heading">Delivery outcomes</h2>
-      <button className="button button-secondary" type="button" disabled={stats.isFetching} onClick={() => { void stats.refetch() }}>Refresh outcomes</button>
+      <Button variant="secondary" size="sm" type="button" disabled={stats.isFetching} onClick={() => { void stats.refetch() }}>Refresh outcomes</Button>
     </div>
     <p className="report-period">
       <strong>Reporting period:</strong> {formatReportingDate(filter.startDate)}{dayCount > 1 && <> to {formatReportingDate(filter.endDate)}</>} ({dayCount} {dayCount === 1 ? 'day' : 'days'}) · {REPORTING_TIME_ZONE_LABEL} · {filter.zone ? `Zone ${filter.zone}` : 'All authorized zones'}
@@ -197,6 +199,7 @@ function OutcomeContent({ data }: { data: DeliveryStatsSummary }) {
       <Metric label="Average delivery time" value={data.averageDeliveryHours === null ? 'Not available' : `${data.averageDeliveryHours.toFixed(2)} h`}
         caption="Booking to delivery, delivered parcels only" />
     </div>
+    <ReportCharts data={data} />
     <div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Scrollable status distribution table">
       <table>
         <caption>Status distribution for the period</caption>
@@ -231,7 +234,7 @@ function DailyBreakdown({ api, scope, filter }: { api: ReportsApi; scope: AdminS
     {failed.length > 0 && failed.length < results.length && <p className="report-partial" role="status">
       Partial breakdown: {failed.length} of {results.length} days could not be retrieved. Their figures are not shown or estimated.
     </p>}
-    {failed.length > 0 && <button className="button button-secondary" type="button" disabled={busy} onClick={() => { failed.forEach(result => { void result.refetch() }) }}>Retry unavailable days</button>}
+    {failed.length > 0 && <Button variant="secondary" size="sm" type="button" disabled={busy} onClick={() => { failed.forEach(result => { void result.refetch() }) }}>Retry unavailable days</Button>}
     <div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Scrollable daily outcomes table">
       <table>
         <caption>Daily outcomes ({REPORTING_TIME_ZONE_LABEL})</caption>
@@ -265,7 +268,7 @@ function Freshness({ updatedAt, refreshing }: { updatedAt: number; refreshing: b
 }
 function ReportReadError({ title, error, busy, retry }: { title: string; error: unknown; busy: boolean; retry: () => void }) {
   return <FeedbackState title={title} tone="error"
-    action={<button className="button button-secondary" type="button" disabled={busy} onClick={retry}>Retry</button>}>
+    action={<Button variant="secondary" disabled={busy} onClick={retry}>Retry</Button>}>
     {reportFailure(error).message}
   </FeedbackState>
 }

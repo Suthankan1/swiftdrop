@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { Button } from '../../../components/ui/Button'
 
 export function StaffConfirmation({ title, children, pending, onCancel, onConfirm, providerNote, confirmDisabled = false }: {
   title: string; children: ReactNode; pending: boolean; onCancel: () => void; onConfirm: () => void; providerNote?: string; confirmDisabled?: boolean
@@ -34,8 +35,8 @@ export function StaffConfirmation({ title, children, pending, onCancel, onConfir
       <div id={descriptionId}>{children}</div>
       <p>{providerNote ?? 'Accounts will verify the request. Identity changes may require recovery before they are complete.'}</p>
       <div className="modal-actions">
-        <button type="button" className="button button-secondary" disabled={pending} onClick={onCancel}>Cancel</button>
-        <button type="button" className="button button-primary" disabled={pending || confirmDisabled} onClick={onConfirm}>{pending ? 'Submitting…' : 'Confirm action'}</button>
+        <Button variant="secondary" disabled={pending} onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" disabled={pending || confirmDisabled} isLoading={pending} loadingText="Submitting…" onClick={onConfirm}>Confirm action</Button>
       </div>
       {pending && <p role="status">Waiting for the server. This command will not be replayed automatically.</p>}
     </div>

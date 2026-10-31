@@ -1,5 +1,6 @@
 import { useAuth } from '../../../auth/context'
 import { Link } from 'react-router'
+import { Button } from '../../../components/ui/Button'
 import { StaffProfile } from '../../staff/components/StaffProfile'
 import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 
@@ -24,27 +25,27 @@ export function AdminPage() {
             Staff access is provisioned by an authorized administrator. Signing in does not grant unrestricted access to business records.
           </p>
           <h3>Merchant review</h3>
-          <p><Link to="/admin/merchants">Review merchant applications</Link></p>
+          <p><Link to="/admin/merchants" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Review merchant applications</span> <span aria-hidden="true">→</span></Link></p>
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && <>
             <h3>User and staff management</h3>
-            <p><Link to="/admin/users">Browse account users</Link></p>
-            <p><Link to="/admin/staff">Manage staff profiles</Link></p>
+            <p><Link to="/admin/users" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Browse account users</span> <span aria-hidden="true">→</span></Link></p>
+            <p><Link to="/admin/staff" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Manage staff profiles</span> <span aria-hidden="true">→</span></Link></p>
             <h3>Zones and pricing</h3>
-            <p><Link to="/admin/pricing">Manage zones and pricing</Link></p>
+            <p><Link to="/admin/pricing" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Manage zones and pricing</span> <span aria-hidden="true">→</span></Link></p>
             <h3>Reports</h3>
-            <p><Link to="/admin/reports">View daily outcomes and admin reports</Link></p>
+            <p><Link to="/admin/reports" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>View daily outcomes and admin reports</span> <span aria-hidden="true">→</span></Link></p>
           </>}
-          <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
+          <Button variant="secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out
-          </button>
+          </Button>
           {query.isError && (
-            <button
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               type="button"
               onClick={() => { void refetch() }}
             >
               Retry profile
-            </button>
+            </Button>
           )}
         </aside>
       </div>

@@ -1,4 +1,6 @@
 import { FeedbackState } from '../../../components/ui/FeedbackState'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import type { StaffProfile as StaffProfileData, StaffRole } from '../api/contracts'
 
 export type StaffProfileState =
@@ -74,13 +76,13 @@ export function StaffProfile({ state, onRetry }: StaffProfileProps) {
         tone="error"
         action={
           onRetry ? (
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onRetry}
             >
               Retry profile
-            </button>
+            </Button>
           ) : undefined
         }
       >
@@ -106,9 +108,9 @@ export function StaffProfile({ state, onRetry }: StaffProfileProps) {
           <p className="eyebrow">{profile.department || 'Operations'}</p>
           <h2 id="staff-profile-heading">{profile.displayName}</h2>
         </div>
-        <span className="badge badge-approved">
+        <Badge variant={profile.businessStatus === 'ACTIVE' ? 'success' : 'neutral'} pulse={profile.businessStatus === 'ACTIVE'}>
           {profile.role} · {profile.businessStatus}
-        </span>
+        </Badge>
       </div>
       <dl className="profile-details">
         <div className="field">
