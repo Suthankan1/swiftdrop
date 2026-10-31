@@ -5,6 +5,7 @@ import type {
   WebhookDeliveryStatus,
   WebhookSubscription,
 } from '../api/webhookContracts'
+import { Button } from '../../../components/ui/Button'
 
 interface WebhookDeliveryLogsModalProps {
   subscription: WebhookSubscription
@@ -114,9 +115,8 @@ export function WebhookDeliveryLogsModal({
         {error && (
           <div className="form-error-banner" role="alert">
             <p><strong>Failed to load delivery logs:</strong> {error}</p>
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               onClick={() => {
                 setLoading(true)
                 setError(null)
@@ -127,7 +127,7 @@ export function WebhookDeliveryLogsModal({
               }}
             >
               Retry Loading
-            </button>
+            </Button>
           </div>
         )}
 
@@ -200,9 +200,9 @@ export function WebhookDeliveryLogsModal({
           <p className="muted">
             <em>Privacy Note:</em> Third-party response bodies are intentionally omitted per architectural security decision DEC-COM-04 to prevent sensitive customer data leakage and payload injection.
           </p>
-          <button type="button" className="button button-secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

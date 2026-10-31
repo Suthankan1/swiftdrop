@@ -1,4 +1,6 @@
 import type { ApiKeySummaryItem } from '../api/credentialsContracts'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
 
 interface ApiKeyListTableProps {
@@ -37,9 +39,9 @@ export function ApiKeyListTable({
         tone="error"
         action={
           onRetry ? (
-            <button type="button" className="button button-secondary" onClick={onRetry}>
+            <Button variant="secondary" onClick={onRetry}>
               Retry connection
-            </button>
+            </Button>
           ) : null
         }
       >
@@ -61,9 +63,8 @@ export function ApiKeyListTable({
           <p className="eyebrow">Machine credentials</p>
           <h2 id="credentials-heading">API Keys ({activeKeysCount}/3 active)</h2>
         </div>
-        <button
-          type="button"
-          className="button button-primary"
+        <Button
+          variant="primary"
           onClick={onOpenGenerateModal}
           disabled={!canGenerate || limitReached}
           title={
@@ -75,7 +76,7 @@ export function ApiKeyListTable({
           }
         >
           + Generate API Key
-        </button>
+        </Button>
       </div>
 
       <p className="muted">
@@ -96,13 +97,12 @@ export function ApiKeyListTable({
             You do not have any machine API keys configured. Generate an API key to connect external ERP systems, store management software, or warehouse fulfillment tools.
           </p>
           {canGenerate && (
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               onClick={onOpenGenerateModal}
             >
               Generate First API Key
-            </button>
+            </Button>
           )}
         </div>
       ) : (
@@ -126,11 +126,11 @@ export function ApiKeyListTable({
                 const isExpired = expiresDate.getTime() <= now.getTime()
                 const isInactive = item.isRevoked || isExpired
 
-                let statusBadge = <span className="badge badge-approved">Active</span>
+                let statusBadge = <Badge variant="success">Active</Badge>
                 if (item.isRevoked) {
-                  statusBadge = <span className="badge badge-rejected">Revoked</span>
+                  statusBadge = <Badge variant="danger">Revoked</Badge>
                 } else if (isExpired) {
-                  statusBadge = <span className="badge badge-suspended">Expired</span>
+                  statusBadge = <Badge variant="warning">Expired</Badge>
                 }
 
                 return (
@@ -163,14 +163,14 @@ export function ApiKeyListTable({
                     <td>{statusBadge}</td>
                     <td>
                       {!item.isRevoked && !isExpired ? (
-                        <button
-                          type="button"
-                          className="button button-danger-ghost button-small"
+                        <Button
+                          variant="danger-ghost"
+                          size="sm"
                           onClick={() => onInitiateRevoke(item)}
                           aria-label={`Revoke API key ${item.name}`}
                         >
                           Revoke
-                        </button>
+                        </Button>
                       ) : (
                         <span className="muted-text">—</span>
                       )}

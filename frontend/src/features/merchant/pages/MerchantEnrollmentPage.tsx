@@ -15,6 +15,7 @@ import type {
 import { MerchantEnrollmentForm } from '../components/MerchantEnrollmentForm'
 import { MerchantPendingCard } from '../components/MerchantPendingCard'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
+import { Button } from '../../../components/ui/Button'
 
 export function MerchantEnrollmentPage() {
   const auth = useAuth()
@@ -182,22 +183,20 @@ export function MerchantEnrollmentPage() {
           </dl>
 
           <div className="sidebar-actions">
-            <button
-              type="button"
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               onClick={() => { void auth.logout() }}
             >
               Sign out
-            </button>
+            </Button>
             {merchantData && (
-              <button
-                type="button"
-                className="button button-secondary"
+              <Button
+                variant="secondary"
                 onClick={() => { void handleRefreshStatus() }}
                 disabled={userProfileQuery.isFetching || merchantQuery.isFetching}
               >
                 Refresh status
-              </button>
+              </Button>
             )}
           </div>
         </aside>

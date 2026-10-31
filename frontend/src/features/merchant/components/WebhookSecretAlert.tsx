@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button } from '../../../components/ui/Button'
 
 interface WebhookSecretAlertProps {
   secret: string
@@ -43,24 +44,23 @@ export function WebhookSecretAlert({ secret, endpointUrl, onDismiss }: WebhookSe
 
       <div className="secret-display-box">
         <code className="secret-value" data-testid="webhook-signing-secret">{secret}</code>
-        <button
-          type="button"
-          className="button button-light secret-copy-btn"
+        <Button
+          variant="light"
+          className="secret-copy-btn"
           onClick={handleCopy}
           aria-label={copied ? 'Signing secret copied to clipboard' : 'Copy signing secret to clipboard'}
         >
           {copied ? '✓ Copied!' : 'Copy Secret'}
-        </button>
+        </Button>
       </div>
 
       <div className="secret-actions">
-        <button
-          type="button"
-          className="button button-primary"
+        <Button
+          variant="primary"
           onClick={onDismiss}
         >
           I have saved my secret (Dismiss)
-        </button>
+        </Button>
       </div>
     </aside>
   )

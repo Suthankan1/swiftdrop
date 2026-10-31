@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { WebhookSubscription } from '../api/webhookContracts'
+import { Button } from '../../../components/ui/Button'
 
 interface WebhookDeleteConfirmModalProps {
   subscription: WebhookSubscription
@@ -60,22 +61,23 @@ export function WebhookDeleteConfirmModal({
         </p>
 
         <div className="modal-actions">
-          <button
+          <Button
             type="button"
-            className="button button-secondary button-danger"
+            variant="danger"
             onClick={() => { void onConfirm() }}
+            isLoading={isDeleting}
             disabled={isDeleting}
           >
             {isDeleting ? 'Deactivating...' : 'Confirm Deactivation'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button button-secondary"
+            variant="secondary"
             onClick={onCancel}
             disabled={isDeleting}
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>

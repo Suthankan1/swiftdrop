@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { MerchantRegistrationRequest } from '../api/enrollmentContracts'
+import { Button } from '../../../components/ui/Button'
 
 interface MerchantEnrollmentFormProps {
   isSubmitting: boolean
@@ -173,13 +174,14 @@ export function MerchantEnrollmentForm({
         </div>
 
         <div className="form-actions">
-          <button
+          <Button
             type="submit"
-            className="button button-primary"
+            variant="primary"
+            isLoading={isSubmitting}
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Submitting Application...' : 'Submit Merchant Application'}
-          </button>
+          </Button>
         </div>
       </form>
     </section>
