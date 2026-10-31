@@ -76,8 +76,8 @@ grafana:
       cpu: 30m
       memory: 64Mi
     limits:
-      cpu: 150m
-      memory: 128Mi
+      cpu: 300m
+      memory: 256Mi
   persistence:
     enabled: true
     storageClass: local-path
