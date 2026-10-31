@@ -411,6 +411,9 @@ graphql:
     serverPort: 8085
     accountsGrpcTarget: accounts-service.swiftdrop-apps.svc.cluster.local:9081
     deliveryGrpcTarget: delivery-service.swiftdrop-apps.svc.cluster.local:9082
+    keycloakIssuerUri: http://localhost:8090/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    jwtAudience: swiftdrop-api
     javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
 
 # ------------------------------------------------------------------------------
