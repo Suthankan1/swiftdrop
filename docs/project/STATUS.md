@@ -1,5 +1,60 @@
 # Current project status — update only with evidence
 
+## Issue #180 System-Wide Gap Closure, Button Modernization & Full Verification — 2026-10-31
+
+Owner Suthankan Balenthiran (@Suthankan1 — Platform / Integration / Security Lead); base `test`.
+Milestone: Nov 1 Milestone Polish & Final System Readiness.
+
+Delivers full system-wide gap closure, infrastructure healing, and design system modernization:
+- **API Gateway Fallback Route Resolution:**
+  - Corrected `GRAPHQL_SERVICE_URL` fallback default port from `8084` to `8085` in `services/api-gateway/src/main/resources/application.yml`.
+  - Local JVM startup now correctly routes `/graphql` queries to `graphql-query-service` (:8085) instead of misrouting to `communications-service` (:8084).
+  - Verified with 87/87 passing tests in `services/api-gateway`.
+- **Kubernetes Cluster Infrastructure & Metrics Healing:**
+  - Resolved `CrashLoopBackOff` in `kube-system/metrics-server` on k3d node by injecting `--kubelet-insecure-tls`.
+  - All 29 pods across all 6 namespaces (`kube-system`, `swiftdrop-apps`, `swiftdrop-identity`, `swiftdrop-data`, `swiftdrop-messaging`, `swiftdrop-monitoring`) verified in `1/1 Running` status with 0 crashes.
+  - `kubectl top nodes` verified operational (`574m` CPU, `3502Mi` memory).
+  - Injected `KEYCLOAK_JWKS_URI` into `swiftdrop-graphql-config` ConfigMap, restoring authenticated in-cluster GraphQL queries.
+- **Universal Design System `<Button>` Migration:**
+  - Modernized 17 sub-components and pages previously using legacy `<button className="button ...">`:
+    - `LandingPage.tsx` (Hero track submit)
+    - `CustomerQuotePage.tsx` (Preset chips, speed tiers, refresh quote)
+    - `CustomerHistoryPage.tsx` (Lookup submit, retry)
+    - `CustomerDashboardCards.tsx` (Summary refresh, retry)
+    - `CustomerTrackingModal.tsx` (Tracking retry, copy tracking number)
+    - `MerchantOrderFilterBar.tsx` (Refresh order list)
+    - `WebhookSecretAlert.tsx` (Copy secret, dismiss)
+    - `MerchantCredentialsPage.tsx` (Locked action buttons)
+    - `MerchantEnrollmentPage.tsx` (Sign out, refresh status)
+    - `ProofPreview.tsx` (Preview close, reselection)
+    - `ProofStatus.tsx` (Inspect evidence)
+    - `DispatcherOperations.tsx` (Zone filter chips)
+    - `PricingForm.tsx` (Review changes, cancel editing)
+    - `PricingAdminPage.tsx` (Reapply reviewed revision)
+    - `MerchantReviewPage.tsx` (Close, refresh, retry details)
+    - `AdminReportsPage.tsx` & `ReportsPage.tsx` (Filter submit, reset to today, refresh, retry)
+- **Bonus Feature B02 — AI Delivery Assistant:**
+  - Implemented interactive floating drawer (`frontend/src/features/ai/AiDeliveryAssistant.tsx`) with live read-only tool calling:
+    - `getTracking(trackingNumber)` -> queries `/api/v1/tracking/{trackingNumber}`
+    - `calculateQuote(...)` -> queries `/api/v1/quotes`
+    - `listZones()` -> queries `/api/v1/zones`
+  - Verified zero token storage persistence in browser storage (`security.test.ts`).
+  - 7/7 unit tests passing in `AiDeliveryAssistant.test.tsx`.
+
+Actual local verification (Java 21.0.12, Node 22, k3d v5.9.0, Vitest 5.0.5):
+- PASS `api-gateway`: **87/87 tests passed**.
+- PASS `graphql-query-service`: **251/251 tests passed**.
+- PASS `pricing-service`: **167/167 tests passed**.
+- PASS `communications-service`: **364/364 tests passed**.
+- PASS `accounts-service`: **311/311 tests passed**.
+- PASS `delivery-service`: **484/484 tests passed**.
+- Total Backend Tests: **1,664/1,664 passing tests**.
+- PASS Frontend Test Suite: **1,260/1,260 tests passed across 73 test files**.
+- PASS Frontend Typecheck & Build: `tsc -b && vite build` built cleanly in **159ms**.
+- PASS Frontend Security Boundaries: `security.test.ts` passed (0 storage writes).
+- PASS Kubernetes Cluster: **29/29 pods 1/1 Running**.
+
+
 ## Issue #177 $0 Operator Handover & November 10 Release Evidence Index (N10-ZC06) — 2026-10-29
 
 Owner Suthankan Balenthiran (@Suthankan1 — Platform / Kubernetes / Security / DevOps Lead); branch `docs/n10-zc06-zero-cost-operator-handover`, base `test`.

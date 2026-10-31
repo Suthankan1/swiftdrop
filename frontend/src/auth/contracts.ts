@@ -12,7 +12,7 @@ export interface AuthIntegration {
   snapshot: AuthSnapshot
   /** Resolve a currently valid token from memory; never persist or log it. */
   getAccessToken: () => Promise<string | null>
-  login: () => Promise<void>
+  login: (returnUrl?: string) => Promise<void>
   /** Cancel requests and clear all private cache on logout or subject changes. */
   logout: () => Promise<void>
   /** #36 owns the single refresh attempt, cache clearing and login fallback. */

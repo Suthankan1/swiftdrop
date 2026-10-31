@@ -138,5 +138,44 @@ describe('in-memory Keycloak session', () => {
     const { session } = fixture(true)
     await session.initialize(); await session.getAccessToken(); await session.logout()
     expect(persist).not.toHaveBeenCalled()
+    session.destroy()
+  })
+  it('synchronizes login across tabs via BroadcastChannel without persisting tokens', async () => {
+    const { session: tab1 } = fixture(false)
+    const { session: tab2 } = fixture(true)
+    await tab1.initialize()
+    expect(tab1.getState().snapshot.status).toBe('unauthenticated')
+
+    await tab2.initialize()
+    // Wait a brief tick for message dispatch
+    await new Promise((r) => setTimeout(r, 20))
+
+    expect(tab1.getState().snapshot).toEqual({
+      status: 'authenticated',
+      subject: 'subject-a',
+      roles: ['CUSTOMER'],
+    })
+    expect(await tab1.getAccessToken()).toBe('test-access')
+
+    tab1.destroy()
+    tab2.destroy()
+  })
+  it('synchronizes logout across tabs via BroadcastChannel', async () => {
+    const { session: tab1 } = fixture(true)
+    const { session: tab2 } = fixture(true)
+    await tab1.initialize()
+    await tab2.initialize()
+    expect(tab1.getState().snapshot.status).toBe('authenticated')
+    expect(tab2.getState().snapshot.status).toBe('authenticated')
+
+    await tab1.logout()
+    await new Promise((r) => setTimeout(r, 20))
+
+    expect(tab1.getState().snapshot.status).toBe('unauthenticated')
+    expect(tab2.getState().snapshot.status).toBe('unauthenticated')
+    expect(await tab2.getAccessToken()).toBeNull()
+
+    tab1.destroy()
+    tab2.destroy()
   })
 })

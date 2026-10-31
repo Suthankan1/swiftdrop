@@ -6,6 +6,23 @@ const roles: readonly SwiftDropRole[] = ['CUSTOMER', 'MERCHANT', 'COURIER', 'DIS
 const anonymous: AuthSnapshot = { status: 'unauthenticated', subject: null, roles: [] }
 export type SessionState = { snapshot: AuthSnapshot; problem: AuthProblem }
 
+export type AuthSyncMessage =
+  | {
+      type: 'AUTH_SYNC_LOGIN'
+      subject: string
+      roles: SwiftDropRole[]
+      token?: string
+      idToken?: string
+      refreshToken?: string
+      tokenParsed?: Keycloak['tokenParsed']
+    }
+  | {
+      type: 'AUTH_SYNC_LOGOUT'
+    }
+  | {
+      type: 'AUTH_SYNC_REQUEST'
+    }
+
 export interface AuthSessionOptions {
   redirectUri?: string
   postLogoutRedirectUri?: string
@@ -32,6 +49,7 @@ export class AuthSession {
   private readonly client: Keycloak
   private readonly redirectUri: string
   private readonly postLogoutRedirectUri: string
+  private channel?: BroadcastChannel
   constructor(
     client: Keycloak,
     origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173',
@@ -42,12 +60,56 @@ export class AuthSession {
     this.postLogoutRedirectUri = options?.postLogoutRedirectUri || `${origin}/`
     client.onAuthLogout = () => { if (!this.signingOut) this.expire() }
     client.onTokenExpired = () => { void this.getAccessToken() }
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        this.channel = new BroadcastChannel('swiftdrop_auth_channel')
+        this.channel.onmessage = (event: MessageEvent<AuthSyncMessage>) => {
+          this.handleChannelMessage(event.data)
+        }
+      } catch {
+        // Fall back gracefully if BroadcastChannel is restricted
+      }
+    }
   }
   getState = () => this.state
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private publish(snapshot: AuthSnapshot, problem: AuthProblem = null) {
     this.state = { snapshot, problem }
     this.listeners.forEach((listener) => listener())
+  }
+  private handleChannelMessage(data: AuthSyncMessage) {
+    if (!data || typeof data !== 'object') return
+    if (data.type === 'AUTH_SYNC_LOGIN') {
+      if (this.signingOut) return
+      this.client.token = data.token
+      this.client.idToken = data.idToken
+      this.client.refreshToken = data.refreshToken
+      this.client.tokenParsed = data.tokenParsed
+      this.client.authenticated = true
+      this.publish({ status: 'authenticated', subject: data.subject, roles: data.roles })
+    } else if (data.type === 'AUTH_SYNC_LOGOUT') {
+      this.clearCredentials()
+      this.publish(anonymous)
+    } else if (data.type === 'AUTH_SYNC_REQUEST') {
+      if (this.state.snapshot.status === 'authenticated' && this.client.token && this.state.snapshot.subject) {
+        this.broadcast({
+          type: 'AUTH_SYNC_LOGIN',
+          subject: this.state.snapshot.subject,
+          roles: [...this.state.snapshot.roles],
+          token: this.client.token,
+          idToken: this.client.idToken,
+          refreshToken: this.client.refreshToken,
+          tokenParsed: this.client.tokenParsed,
+        })
+      }
+    }
+  }
+  private broadcast(msg: AuthSyncMessage) {
+    try {
+      this.channel?.postMessage(msg)
+    } catch {
+      // Ignore broadcast errors
+    }
   }
   private clearCredentials() {
     this.client.clearToken()
@@ -60,7 +122,17 @@ export class AuthSession {
   private accept(): boolean {
     const claims = this.client.tokenParsed
     if (!this.client.authenticated || !this.client.token || !claims?.sub || !claims.exp || this.client.isTokenExpired(0)) return false
-    this.publish({ status: 'authenticated', subject: claims.sub, roles: roles.filter((role) => this.client.hasRealmRole(role)) })
+    const activeRoles = roles.filter((role) => this.client.hasRealmRole(role))
+    this.publish({ status: 'authenticated', subject: claims.sub, roles: activeRoles })
+    this.broadcast({
+      type: 'AUTH_SYNC_LOGIN',
+      subject: claims.sub,
+      roles: activeRoles,
+      token: this.client.token,
+      idToken: this.client.idToken,
+      refreshToken: this.client.refreshToken,
+      tokenParsed: this.client.tokenParsed,
+    })
     return true
   }
   initialize = () => {
@@ -74,6 +146,28 @@ export class AuthSession {
     const generation = this.generation
     const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173'
     const isTestEnv = typeof navigator !== 'undefined' && navigator.userAgent.includes('jsdom')
+
+    // In a multi-tab browser context, ask open tabs if an active session exists
+    if (!isTestEnv && !callback && this.channel) {
+      this.broadcast({ type: 'AUTH_SYNC_REQUEST' })
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 100)
+        const check = () => {
+          if (this.state.snapshot.status === 'authenticated') {
+            clearTimeout(timeout)
+            resolve()
+          }
+        }
+        const unsub = this.subscribe(() => {
+          check()
+          unsub()
+        })
+      })
+      if (this.state.snapshot.status === 'authenticated') {
+        return
+      }
+    }
+
     try {
       const initOptions: Record<string, unknown> = {
         flow: 'standard', pkceMethod: 'S256', responseMode: 'query', useNonce: true,
@@ -102,6 +196,7 @@ export class AuthSession {
   }
   expire = () => {
     this.generation++
+    this.broadcast({ type: 'AUTH_SYNC_LOGOUT' })
     this.publish(anonymous, 'session-expired')
     this.clearCredentials()
   }
@@ -118,10 +213,17 @@ export class AuthSession {
   }
   getAccessToken: AuthIntegration['getAccessToken'] = async () => (await this.renew(false)) ? this.client.token ?? null : null
   handleSessionExpiry = async () => { this.expire() }
-  login = async () => { await this.enter('login') }
-  register = async () => { await this.enter('register') }
-  googleLogin = async () => { await this.enter('google') }
-  private enter(kind: 'login' | 'register' | 'google') {
+  login = async (returnUrl?: string) => { await this.enter('login', returnUrl) }
+  register = async (returnUrl?: string) => { await this.enter('register', returnUrl) }
+  googleLogin = async (returnUrl?: string) => { await this.enter('google', returnUrl) }
+  private enter(kind: 'login' | 'register' | 'google', returnUrl?: string) {
+    if (typeof window !== 'undefined' && returnUrl) {
+      try {
+        window.name = JSON.stringify({ swiftdrop_auth_target: returnUrl })
+      } catch {
+        // ignore window.name access issues
+      }
+    }
     this.entry ??= this.enterOnce(kind).finally(() => { this.entry = undefined })
     return this.entry
   }
@@ -147,14 +249,21 @@ export class AuthSession {
   private async endSession() {
     this.signingOut = true
     this.generation++
+    this.broadcast({ type: 'AUTH_SYNC_LOGOUT' })
     this.publish(anonymous)
     try {
-      // Adapter builds/submits POST synchronously using the in-memory ID token hint.
+      // Keep ID token hint intact so Keycloak automatically proceeds with RP-Initiated logout
       const pending = this.client.logout({ redirectUri: this.postLogoutRedirectUri, logoutMethod: 'POST' })
-      this.clearCredentials()
       await pending
     } catch { this.publish(anonymous, 'provider-unavailable') }
     finally { this.clearCredentials() }
+  }
+  destroy = () => {
+    try {
+      this.channel?.close()
+    } catch {
+      // ignore
+    }
   }
   /** Restricted to approved idempotent profile reads; never replay arbitrary commands. */
   profileFetch: typeof fetch = async (input, init) => {
@@ -213,5 +322,6 @@ export function browserSession(config?: OidcConfig): AuthSession {
 }
 
 export function resetBrowserSessionForTesting(): void {
+  session?.destroy()
   session = undefined
 }
