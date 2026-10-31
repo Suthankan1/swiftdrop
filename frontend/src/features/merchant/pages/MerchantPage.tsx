@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import { AccountsError, createAccountsApi } from '../api/merchant'
 import { MerchantProfile, type MerchantProfileState } from '../components/MerchantProfile'
 import { MerchantNav } from '../components/MerchantNav'
@@ -82,21 +83,21 @@ export function MerchantPage() {
           >
             Webhook Subscriptions ↗
           </Link>
-          <button
-            className="button button-secondary"
+          <Button
+            variant="secondary"
             type="button"
             onClick={() => { void auth.logout() }}
           >
             Sign out
-          </button>
+          </Button>
           {query.isError && (
-            <button
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               type="button"
               onClick={() => { void query.refetch() }}
             >
               Retry profile
-            </button>
+            </Button>
           )}
         </aside>
       </div>

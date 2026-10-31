@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Button } from '../../../components/ui/Button'
 import type { ApiKeyScope, CreateApiKeyRequest } from '../api/credentialsContracts'
 import { PERMITTED_API_KEY_SCOPES } from '../api/credentials'
 
@@ -165,21 +166,23 @@ export function ApiKeyCreateFormModal({
           </div>
 
           <div className="modal-actions">
-            <button
+            <Button
               type="button"
-              className="button button-secondary"
+              variant="secondary"
               onClick={onClose}
               disabled={isSubmitting}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="button button-primary"
+              variant="primary"
               disabled={isSubmitting}
+              isLoading={isSubmitting}
+              loadingText="Generating..."
             >
-              {isSubmitting ? 'Generating...' : 'Generate Key'}
-            </button>
+              Generate Key
+            </Button>
           </div>
         </form>
       </div>

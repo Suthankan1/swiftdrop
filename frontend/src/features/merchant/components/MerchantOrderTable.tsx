@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { Button } from '../../../components/ui/Button'
 import type { MerchantOrderSummaryItem } from '../api/merchantDashboardContracts'
 import { formatCurrency, formatDateTime, getStatusPresentation } from './merchantUiUtils'
 
@@ -55,13 +56,14 @@ export function MerchantOrderTable({
               No orders matched your current status filter or search query.
             </p>
             {onResetFilters && (
-              <button
+              <Button
                 type="button"
-                className="button button-secondary button-small"
+                variant="secondary"
+                size="sm"
                 onClick={onResetFilters}
               >
                 Reset Filters
-              </button>
+              </Button>
             )}
           </>
         ) : (
@@ -194,27 +196,29 @@ export function MerchantOrderTable({
           </span>
 
           <div className="pagination-buttons">
-            <button
+            <Button
               type="button"
-              className="button button-secondary button-small"
+              variant="secondary"
+              size="sm"
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 0 || isLoading}
               aria-label="Previous page"
             >
               ← Previous
-            </button>
+            </Button>
             <span className="pagination-current-page" aria-current="page">
               Page {currentPage + 1} of {totalPages}
             </span>
-            <button
+            <Button
               type="button"
-              className="button button-secondary button-small"
+              variant="secondary"
+              size="sm"
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage >= totalPages - 1 || isLoading}
               aria-label="Next page"
             >
               Next →
-            </button>
+            </Button>
           </div>
         </nav>
       )}

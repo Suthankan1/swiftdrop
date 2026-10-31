@@ -1,3 +1,4 @@
+import { Button } from '../../../components/ui/Button'
 import { CANONICAL_PARCEL_STATUSES } from './merchantUiUtils'
 
 interface MerchantOrderFilterBarProps {
@@ -114,15 +115,16 @@ export function MerchantOrderFilterBar({
 
         {/* Refresh Action */}
         {onRefresh && (
-          <button
-            type="button"
-            className="button button-secondary button-small refresh-orders-btn"
+          <Button
+            variant="secondary"
+            size="sm"
+            className="refresh-orders-btn"
             onClick={onRefresh}
             disabled={isRefreshing}
             aria-label="Refresh orders list"
           >
             {isRefreshing ? 'Refreshing...' : '↻ Refresh'}
-          </button>
+          </Button>
         )}
       </div>
 

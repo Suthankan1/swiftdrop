@@ -14,6 +14,7 @@ import {
   getStatusPresentation,
 } from '../components/merchantUiUtils'
 import { CustomerTrackingModal } from '../../customer/components/CustomerTrackingModal'
+import { Button } from '../../../components/ui/Button'
 
 export interface MerchantOrderDetailPageProps {
   apiOverride?: ReturnType<typeof createMerchantOrdersApi>
@@ -145,13 +146,12 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
           <p>
             {detailQuery.error.message || 'A service or network issue occurred while loading order details.'}
           </p>
-          <button
-            type="button"
-            className="button button-secondary"
+          <Button
+            variant="secondary"
             onClick={() => void detailQuery.refetch()}
           >
             Retry Order
-          </button>
+          </Button>
         </div>
       )}
 
@@ -179,22 +179,22 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
 
             {/* Quick Actions & Tracking Modal Launcher */}
             <div className="tracking-action-bar">
-              <button
-                type="button"
-                className="button button-secondary button-small"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => void handleCopyTracking(order.trackingNumber)}
                 aria-label={`Copy tracking number ${order.trackingNumber}`}
               >
                 {copiedTracking ? '✓ Copied' : '⧉ Copy Tracking #'}
-              </button>
-              <button
-                type="button"
-                className="button button-secondary button-small"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setIsTrackingModalOpen(true)}
                 aria-label="Inspect public tracking checkpoints"
               >
                 View Tracking Checkpoints ↗
-              </button>
+              </Button>
               <span className="muted read-only-tag">
                 🔒 Read-Only Merchant View
               </span>

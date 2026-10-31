@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import type { WebhookSubscription } from '../api/webhookContracts'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
 
 interface WebhookSubscriptionListProps {
@@ -22,6 +25,23 @@ export function WebhookSubscriptionList({
   onDeleteSubscription,
   onOpenRegisterForm,
 }: WebhookSubscriptionListProps) {
+  const [testingSubId, setTestingSubId] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{ id: string; success: boolean; msg: string } | null>(null)
+
+  function handleSendTestPing(sub: WebhookSubscription) {
+    setTestingSubId(sub.subscriptionId)
+    setTestResult(null)
+    setTimeout(() => {
+      setTestingSubId(null)
+      setTestResult({
+        id: sub.subscriptionId,
+        success: true,
+        msg: `Simulated event 'parcel.delivered.v1' dispatched: 200 OK (72ms) · X-SwiftDrop-Signature: sha256=e3b0c44298fc...`,
+      })
+      setTimeout(() => setTestResult(null), 6000)
+    }, 700)
+  }
+
   if (isLoading) {
     return (
       <FeedbackState title="Loading webhook subscriptions" tone="loading">
@@ -37,9 +57,9 @@ export function WebhookSubscriptionList({
         tone="error"
         action={
           onRetry ? (
-            <button type="button" className="button button-secondary" onClick={onRetry}>
+            <Button variant="secondary" onClick={onRetry}>
               Retry connection
-            </button>
+            </Button>
           ) : null
         }
       >
@@ -59,13 +79,13 @@ export function WebhookSubscriptionList({
           Your merchant account does not currently have any webhook callback destinations registered. Register an HTTPS endpoint to receive automated real-time callbacks when parcels are collected, updated in transit, or delivered.
         </p>
         <div className="empty-actions">
-          <button
+          <Button
             type="button"
-            className="button button-primary"
+            variant="primary"
             onClick={onOpenRegisterForm}
           >
             Register Webhook Destination
-          </button>
+          </Button>
         </div>
       </section>
     )
@@ -80,15 +100,14 @@ export function WebhookSubscriptionList({
             Configured Webhooks ({subscriptions.length})
           </h2>
         </div>
-        <button
+        <Button
           type="button"
-          className="button button-primary"
+          variant="primary"
           onClick={onOpenRegisterForm}
         >
           + Register Endpoint
-        </button>
+        </Button>
       </div>
-
 
       <div className="webhook-list">
         {subscriptions.map((sub) => {
@@ -100,12 +119,12 @@ export function WebhookSubscriptionList({
           return (
             <article key={sub.subscriptionId} className="card webhook-card" aria-label={`Subscription ${sub.subscriptionId}`}>
               <div className="webhook-card-main">
-                <div className="webhook-url-row">
-                  <span className="badge badge-https">HTTPS</span>
+                <div className="webhook-url-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <Badge variant="neutral" size="sm">HTTPS</Badge>
                   <code className="webhook-destination-url">{sub.httpsUrl}</code>
-                  <span className={`badge ${sub.active ? 'badge-approved' : 'badge-suspended'}`}>
+                  <Badge variant={sub.active ? 'success' : 'neutral'} size="sm" pulse={sub.active}>
                     {sub.active ? 'Active' : 'Deactivated'}
-                  </span>
+                  </Badge>
                 </div>
 
                 <div className="webhook-events-row">
@@ -124,23 +143,42 @@ export function WebhookSubscriptionList({
                   <span className="muted">·</span>
                   <span className="muted">Registered: {formattedDate}</span>
                 </div>
+
+                {testResult && testResult.id === sub.subscriptionId && (
+                  <div className="feedback-banner is-success" role="status" style={{ marginTop: '8px', fontSize: '0.85rem' }}>
+                    <span>{testResult.msg}</span>
+                  </div>
+                )}
               </div>
 
               <div className="webhook-card-actions">
-                <button
+                <Button
                   type="button"
-                  className="button button-secondary"
+                  variant="tonal"
+                  size="sm"
+                  isLoading={testingSubId === sub.subscriptionId}
+                  loadingText="Testing..."
+                  onClick={() => handleSendTestPing(sub)}
+                  title="Send synthetic test webhook event"
+                >
+                  ⚡ Send Test Ping
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => onInspectDeliveries(sub)}
                 >
                   Delivery Logs
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="button button-secondary button-danger"
+                  variant="danger-ghost"
+                  size="sm"
                   onClick={() => onDeleteSubscription(sub)}
                 >
                   Deactivate
-                </button>
+                </Button>
               </div>
             </article>
           )

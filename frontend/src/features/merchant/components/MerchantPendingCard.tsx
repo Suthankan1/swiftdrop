@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { MerchantApprovalBanner } from './MerchantApprovalBanner'
 import type { MerchantProfileResponse } from '../api/enrollmentContracts'
 import type { MerchantApprovalStatus } from '../api/merchant'
+import { Button } from '../../../components/ui/Button'
 
 interface MerchantPendingCardProps {
   merchant: MerchantProfileResponse
@@ -92,13 +93,12 @@ export function MerchantPendingCard({
                 Open Merchant Space ↗
               </Link>
             ) : (
-              <button
-                type="button"
-                className="button button-primary"
+              <Button
+                variant="primary"
                 onClick={onRefreshSession || onRefreshStatus}
               >
                 Sync Session &amp; Enter Portal ↗
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -115,14 +115,14 @@ export function MerchantPendingCard({
       )}
 
       <div className="pending-actions-bar">
-        <button
-          type="button"
-          className="button button-secondary"
+        <Button
+          variant="secondary"
           onClick={onRefreshStatus}
+          isLoading={isRefreshing}
           disabled={isRefreshing}
         >
           {isRefreshing ? 'Checking Status...' : '↻ Refresh Approval Status'}
-        </button>
+        </Button>
       </div>
     </section>
   )
