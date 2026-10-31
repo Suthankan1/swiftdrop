@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import { StaffProfile } from '../../staff/components/StaffProfile'
 import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 import { DispatcherOperations } from '../components/DispatcherOperations'
@@ -26,17 +27,17 @@ export function DispatcherPage() {
           </p>
           <p className="muted">Assigning a courier does not change the parcel lifecycle status.</p>
           <p><Link to="/dispatcher/reports">View daily outcomes for your zones</Link></p>
-          <button className="button button-secondary" type="button" onClick={() => { void auth.logout() }}>
+          <Button variant="secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out
-          </button>
+          </Button>
           {query.isError && (
-            <button
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               type="button"
               onClick={() => { void refetch() }}
             >
               Retry profile
-            </button>
+            </Button>
           )}
         </aside>
       </div>

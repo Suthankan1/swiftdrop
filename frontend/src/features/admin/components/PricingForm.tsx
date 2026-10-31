@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { Button } from '../../../components/ui/Button'
 import { categories, validMoney, type Card, type Category, type PricingCommand, type Rule, type Zone } from '../api/pricingAdmin'
 
 export type Editor = { kind: 'zone'; zone?: Zone } | { kind: 'draft' } | { kind: 'rule'; card: Card; rule?: Rule }
@@ -64,6 +65,9 @@ export function PricingForm({ editor, busy, blocked, onCancel, onReview }: { edi
         <small id={`${key}-help`}>{field.help}</small>{problem && <p role="alert" id={`${key}-error`}>{problem}</p>}
       </div> })}
     </div></fieldset>
-    <div className="admin-management-toolbar"><button className="button button-primary" disabled={busy || blocked}>Review changes</button><button className="button button-secondary" type="button" disabled={busy} onClick={onCancel}>Cancel editing</button></div>
+    <div className="admin-management-toolbar">
+      <Button type="submit" variant="primary" disabled={busy || blocked}>Review changes</Button>
+      <Button variant="secondary" disabled={busy} onClick={onCancel}>Cancel editing</Button>
+    </div>
   </form>
 }
