@@ -207,16 +207,16 @@ data:
           # Redaction pipeline: Ensure zero tokens, passwords, secrets, or keys are ingested
           - replace:
               expression: '(Bearer\s+)[A-Za-z0-9\-\._~\+\/]+=*'
-              replace: '${1}[REDACTED_JWT]'
+              replace: '$1[REDACTED_JWT]'
           - replace:
               expression: '(password[\"\']?\s*[:=]\s*[\"\']?)[^\"\'\s]+'
-              replace: '${1}[REDACTED_PASSWORD]'
+              replace: '$1[REDACTED_PASSWORD]'
           - replace:
               expression: '(secret[\"\']?\s*[:=]\s*[\"\']?)[^\"\'\s]+'
-              replace: '${1}[REDACTED_SECRET]'
+              replace: '$1[REDACTED_SECRET]'
           - replace:
               expression: '(Authorization:\s*)[^\r\n]+'
-              replace: '${1}[REDACTED_AUTH]'
+              replace: '$1[REDACTED_AUTH]'
 
 ---
 apiVersion: apps/v1

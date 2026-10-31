@@ -47,6 +47,7 @@ local-data/
 backups/
 *.mv.db
 *.trace.db
+start-port-forwards.sh
 
 # Terraform state, cache, plan, and local var files (.terraform.lock.hcl is explicitly tracked)
 **/.terraform/

@@ -123,6 +123,9 @@ metadata:
     {{- include "swiftdrop.componentLabels" (dict "context" . "component" "graphql-query-service") | nindent 4 }}
 data:
   GRAPHQL_SERVER_PORT: {{ .Values.graphql.config.serverPort | quote }}
+  KEYCLOAK_ISSUER_URI: {{ .Values.graphql.config.keycloakIssuerUri | quote }}
+  KEYCLOAK_JWKS_URI: {{ .Values.graphql.config.keycloakJwksUri | quote }}
+  JWT_AUDIENCE: {{ .Values.graphql.config.jwtAudience | quote }}
   {{- if .Values.graphql.config.accountsGrpcTarget }}
   SWIFTDROP_GRPC_ACCOUNTS_TARGET: {{ .Values.graphql.config.accountsGrpcTarget | quote }}
   {{- end }}
