@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router'
+import { Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '../../components/layout/AppLayout'
 import { AdminPage } from '../../features/admin/pages/AdminPage'
 import { PricingAdminPage } from '../../features/admin/pages/PricingAdminPage'
@@ -29,6 +29,8 @@ export function AppRoutes() {
         <Route index element={<LandingPage />} />
         <Route path="tracking" element={<PublicTrackingPage />} />
         <Route path="tracking/:trackingNumber" element={<PublicTrackingPage />} />
+        <Route path="track" element={<Navigate to="/tracking" replace />} />
+        <Route path="track/:trackingNumber" element={<PublicTrackingPage />} />
         <Route element={<ProtectedRoute role="CUSTOMER" />}>
           <Route path="customer" element={<CustomerPage />} />
           <Route path="customer/quote" element={<CustomerQuotePage />} />
