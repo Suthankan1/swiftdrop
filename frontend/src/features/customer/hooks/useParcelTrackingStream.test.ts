@@ -436,6 +436,7 @@ describe('useParcelTrackingStream', () => {
           backoffMultiplier: 2,
           maxRetries: 2,
         },
+        randomFn: () => 0.5,
         fetch: mockFetch,
       }),
     )

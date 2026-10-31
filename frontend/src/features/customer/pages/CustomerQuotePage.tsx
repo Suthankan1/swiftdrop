@@ -2,6 +2,8 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import { createPricingApi, PricingError } from '../api/pricing'
 import { createDeliveryApi, DeliveryError } from '../api/delivery'
 import type { QuoteRequest, QuoteResponse, ZoneItem } from '../api/pricingContracts'
@@ -87,6 +89,7 @@ export function CustomerQuotePage() {
   const [lengthCm, setLengthCm] = useState('30')
   const [widthCm, setWidthCm] = useState('20')
   const [heightCm, setHeightCm] = useState('15')
+  const [serviceTier, setServiceTier] = useState<'STANDARD' | 'EXPRESS'>('STANDARD')
 
   // Validation feedback
   const [formValidationErrors, setFormValidationErrors] = useState<Record<string, string>>({})
@@ -460,6 +463,40 @@ export function CustomerQuotePage() {
               </div>
             </div>
 
+            {/* Package Size Quick Presets */}
+            <div className="size-presets-bar" style={{ marginBottom: '16px' }}>
+              <label className="field-label" style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                Quick Package Size Presets:
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[
+                  { label: '✉️ Document (0.3kg)', weight: '0.3', l: '30', w: '21', h: '2' },
+                  { label: '📦 Small Box (1.5kg)', weight: '1.5', l: '30', w: '20', h: '15' },
+                  { label: '📦 Medium Carton (5.0kg)', weight: '5.0', l: '40', w: '30', h: '25' },
+                  { label: '📦 Freight (15.0kg)', weight: '15.0', l: '60', w: '50', h: '40' },
+                ].map((preset) => (
+                  <Button
+                    key={preset.label}
+                    variant="tonal"
+                    size="sm"
+                    style={{ minHeight: '32px', padding: '4px 10px', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setWeightKg(preset.weight)
+                      setLengthCm(preset.l)
+                      setWidthCm(preset.w)
+                      setHeightCm(preset.h)
+                      clearQuoteFieldError('weight')
+                      clearQuoteFieldError('length')
+                      clearQuoteFieldError('width')
+                      clearQuoteFieldError('height')
+                    }}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <div className="form-group">
               <label htmlFor={weightId}>Physical Weight (kg)</label>
               <input
@@ -572,21 +609,44 @@ export function CustomerQuotePage() {
               <small className="muted">(L × W × H / 5000)</small>
             </div>
 
+            {/* Service Tier Comparison Selection */}
+            <div className="service-tier-selection" style={{ margin: '14px 0', padding: '12px', background: 'var(--sd-surface-card, #f8fafc)', borderRadius: '8px', border: '1px solid var(--sd-border, #e2e8f0)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Delivery Speed Tier:</span>
+                <Badge variant={serviceTier === 'EXPRESS' ? 'accent' : 'primary'} size="sm">
+                  {serviceTier === 'EXPRESS' ? '⚡ Express Same Day' : '🚚 Standard Next Day'}
+                </Badge>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button
+                  size="sm"
+                  variant={serviceTier === 'STANDARD' ? 'primary' : 'tonal'}
+                  style={{ flex: 1, minHeight: '34px', fontSize: '0.8rem' }}
+                  onClick={() => setServiceTier('STANDARD')}
+                >
+                  Standard (24-48h)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={serviceTier === 'EXPRESS' ? 'accent' : 'tonal'}
+                  style={{ flex: 1, minHeight: '34px', fontSize: '0.8rem' }}
+                  onClick={() => setServiceTier('EXPRESS')}
+                >
+                  Priority Express (Same Day)
+                </Button>
+              </div>
+            </div>
+
             <div className="form-actions-row">
-              <button
+              <Button
                 type="submit"
-                className="button button-primary"
+                variant="primary"
                 disabled={isCalculating || isBooking}
+                isLoading={isCalculating}
+                loadingText="Calculating Rate..."
               >
-                {isCalculating ? (
-                  <>
-                    <span className="btn-spinner" aria-hidden="true" />
-                    <span>Calculating Rate...</span>
-                  </>
-                ) : (
-                  <span>{quote ? 'Recalculate Rate' : 'Calculate Delivery Quote'}</span>
-                )}
-              </button>
+                {quote ? 'Recalculate Rate' : 'Calculate Delivery Quote'}
+              </Button>
             </div>
           </form>
         </div>
@@ -668,14 +728,13 @@ export function CustomerQuotePage() {
                     <p>
                       Pricing quotes are valid for 15 minutes to guarantee network delivery capacity. Please click recalculate to refresh the rate.
                     </p>
-                    <button
-                      type="button"
-                      className="button button-secondary"
+                    <Button
+                      variant="secondary"
                       onClick={() => handleCalculateQuote()}
                       disabled={isCalculating}
                     >
                       Refresh Quote Rate
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -861,22 +920,17 @@ export function CustomerQuotePage() {
                     </div>
 
                     <div className="booking-submit-wrap">
-                      <button
+                      <Button
                         type="submit"
-                        className="button button-primary button-large"
+                        variant="primary"
+                        size="lg"
+                        fullWidth
                         disabled={isBooking || isQuoteExpired}
+                        isLoading={isBooking}
+                        loadingText="Booking Dispatch In Progress..."
                       >
-                        {isBooking ? (
-                          <>
-                            <span className="btn-spinner" aria-hidden="true" />
-                            <span>Booking Dispatch In Progress...</span>
-                          </>
-                        ) : (
-                          <span>
-                            Confirm &amp; Book Delivery — {formatCurrency(quote.totalAmountMinorUnits, quote.currency)}
-                          </span>
-                        )}
-                      </button>
+                        Confirm &amp; Book Delivery — {formatCurrency(quote.totalAmountMinorUnits, quote.currency)}
+                      </Button>
                       <p className="muted text-xs secure-notice">
                         🔒 Secured by Keycloak customer authentication and transactional idempotency.
                       </p>
