@@ -348,6 +348,70 @@ describe('AuthPages - Browser Recovery & In-Memory Routing', () => {
 
       expect(screen.getByText('Login Home Page')).toBeInTheDocument()
     })
+
+    it('prioritizes ADMIN role over default CUSTOMER composite role', () => {
+      const authAdmin = createMockAuthContext({
+        snapshot: { status: 'authenticated', subject: 'sub-admin', roles: ['CUSTOMER', 'ADMIN'] },
+      })
+
+      render(
+        <AuthContext.Provider value={authAdmin}>
+          <MemoryRouter initialEntries={['/auth/callback']}>
+            <Routes>
+              <Route path="/auth/callback" element={<CallbackPage />} />
+              <Route path="/admin" element={<div>Admin Console Home</div>} />
+              <Route path="/customer" element={<div>Customer Space Home</div>} />
+            </Routes>
+          </MemoryRouter>
+        </AuthContext.Provider>
+      )
+
+      expect(screen.getByText('Admin Console Home')).toBeInTheDocument()
+      expect(screen.queryByText('Customer Space Home')).not.toBeInTheDocument()
+    })
+
+    it('prioritizes DISPATCHER role over default CUSTOMER composite role', () => {
+      const authDispatcher = createMockAuthContext({
+        snapshot: { status: 'authenticated', subject: 'sub-disp', roles: ['CUSTOMER', 'DISPATCHER'] },
+      })
+
+      render(
+        <AuthContext.Provider value={authDispatcher}>
+          <MemoryRouter initialEntries={['/auth/callback']}>
+            <Routes>
+              <Route path="/auth/callback" element={<CallbackPage />} />
+              <Route path="/dispatcher" element={<div>Dispatcher Console Home</div>} />
+              <Route path="/customer" element={<div>Customer Space Home</div>} />
+            </Routes>
+          </MemoryRouter>
+        </AuthContext.Provider>
+      )
+
+      expect(screen.getByText('Dispatcher Console Home')).toBeInTheDocument()
+      expect(screen.queryByText('Customer Space Home')).not.toBeInTheDocument()
+    })
+
+    it('recovers intended destination from window.name state and purges it', () => {
+      window.name = JSON.stringify({ swiftdrop_auth_target: '/admin/pricing' })
+      const auth = createMockAuthContext({
+        snapshot: { status: 'authenticated', subject: 'sub-admin', roles: ['ADMIN'] },
+      })
+
+      render(
+        <AuthContext.Provider value={auth}>
+          <MemoryRouter initialEntries={['/auth/callback']}>
+            <Routes>
+              <Route path="/auth/callback" element={<CallbackPage />} />
+              <Route path="/admin/pricing" element={<div>Admin Pricing Page</div>} />
+              <Route path="/admin" element={<div>Admin Home</div>} />
+            </Routes>
+          </MemoryRouter>
+        </AuthContext.Provider>
+      )
+
+      expect(screen.getByText('Admin Pricing Page')).toBeInTheDocument()
+      expect(window.name).toBe('')
+    })
   })
 
   // =========================================================================
