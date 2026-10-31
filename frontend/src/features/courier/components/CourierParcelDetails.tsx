@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import {
   CourierProofError,
   createCourierProofApi,
@@ -195,14 +197,16 @@ export function CourierParcelDetails({
   return (
     <div className="courier-parcel-detail-view" aria-label="Courier Parcel Detail View">
       <div className="detail-navigation-bar">
-        <button
+        <Button
           type="button"
-          className="button button-secondary button-small back-button"
+          variant="secondary"
+          size="sm"
+          className="back-button"
           onClick={onClose}
           aria-label="Back to assignments list"
         >
           ← Back to Assignments
-        </button>
+        </Button>
       </div>
 
       {isLoading && (
@@ -215,13 +219,14 @@ export function CourierParcelDetails({
       {error && (
         <div className="feedback-banner is-error card" role="alert">
           <span>{error}</span>
-          <button
+          <Button
             type="button"
-            className="button button-secondary button-small"
+            variant="secondary"
+            size="sm"
             onClick={onClose}
           >
             Return to Route Queue
-          </button>
+          </Button>
         </div>
       )}
 
@@ -237,12 +242,23 @@ export function CourierParcelDetails({
                 </h2>
               </div>
               <div className="status-badges-group">
-                <span className="badge badge-approved">
+                <Badge
+                  variant={
+                    parcel.currentStatus === 'DELIVERED'
+                      ? 'success'
+                      : parcel.currentStatus === 'FAILED'
+                        ? 'danger'
+                        : parcel.currentStatus === 'IN_TRANSIT' || parcel.currentStatus === 'OUT_FOR_DELIVERY'
+                          ? 'primary'
+                          : 'neutral'
+                  }
+                  pulse={parcel.currentStatus === 'IN_TRANSIT' || parcel.currentStatus === 'OUT_FOR_DELIVERY'}
+                >
                   {parcel.currentStatus}
-                </span>
-                <span className="badge badge-version">
+                </Badge>
+                <Badge variant="neutral">
                   v{parcel.version}
-                </span>
+                </Badge>
               </div>
             </div>
 
@@ -285,6 +301,18 @@ export function CourierParcelDetails({
                 <p className="address-text">
                   {parcel.pickupAddress?.trim() || 'Not available'}
                 </p>
+                {parcel.pickupAddress?.trim() && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parcel.pickupAddress.trim())}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="button button-tonal button-sm"
+                    style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                  >
+                    <span>📍 View Pickup on Map</span>
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                )}
               </div>
               <div className="route-arrow-down" aria-hidden="true">↓</div>
               <div className="address-block">
@@ -292,6 +320,18 @@ export function CourierParcelDetails({
                 <p className="address-text">
                   {parcel.dropoffAddress?.trim() || 'Not available'}
                 </p>
+                {parcel.dropoffAddress?.trim() && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parcel.dropoffAddress.trim())}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="button button-accent button-sm"
+                    style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                  >
+                    <span>🧭 Navigate to Drop-off</span>
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                )}
               </div>
             </div>
           </article>
@@ -327,15 +367,16 @@ export function CourierParcelDetails({
                   {proofLookupError ||
                     'Unable to verify existing proof records on server. Proof capture is locked to prevent duplicate or conflicting submissions.'}
                 </span>
-                <button
+                <Button
                   type="button"
-                  className="button button-secondary button-small"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => {
                     void handleRetryProofVerification()
                   }}
                 >
                   Retry Verification
-                </button>
+                </Button>
               </div>
             )}
 

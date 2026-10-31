@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../../auth/context'
+import { Button } from '../../../components/ui/Button'
 import { StaffProfile } from '../../staff/components/StaffProfile'
 import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 import { CourierDashboardSummary } from '../components/CourierDashboardSummary'
@@ -68,25 +69,25 @@ export function CourierPage({
           <p className="muted">
             Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
           </p>
-          <button
-            className="button button-secondary"
+          <Button
+            variant="secondary"
             type="button"
             onClick={() => {
               void auth.logout()
             }}
           >
             Sign out
-          </button>
+          </Button>
           {query.isError && (
-            <button
-              className="button button-secondary"
+            <Button
+              variant="secondary"
               type="button"
               onClick={() => {
                 void refetch()
               }}
             >
               Retry profile
-            </button>
+            </Button>
           )}
         </aside>
       </div>
@@ -96,13 +97,14 @@ export function CourierPage({
           {assignmentNotice && (
             <div className="feedback-banner is-error" role="alert">
               <span>{assignmentNotice}</span>
-              <button
+              <Button
                 type="button"
-                className="button button-secondary button-small"
+                variant="secondary"
+                size="sm"
                 onClick={() => setAssignmentNotice(null)}
               >
                 Dismiss
-              </button>
+              </Button>
             </div>
           )}
           <CourierDashboardSummary
