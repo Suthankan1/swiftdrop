@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
 import { createDeliveryApi, DeliveryError, isValidTrackingNumber } from '../customer/api/delivery'
 import type { PublicTrackingResponse } from '../customer/api/deliveryContracts'
 import { formatDateTime, getStatusPresentation } from '../customer/components/customerUiUtils'
@@ -159,13 +161,16 @@ export function PublicTrackingPage() {
               </p>
             )}
           </div>
-          <button
+          <Button
             type="submit"
-            className="button button-primary lookup-submit"
+            variant="primary"
+            className="lookup-submit"
             disabled={trackingQuery.isFetching}
+            isLoading={trackingQuery.isFetching}
+            loadingText="Locating..."
           >
-            {trackingQuery.isFetching ? 'Locating...' : 'Track Parcel'}
-          </button>
+            Track Parcel
+          </Button>
         </form>
       </section>
 
@@ -199,13 +204,15 @@ export function PublicTrackingPage() {
             trackingQuery.error.statusCode !== 404 &&
             trackingQuery.error.statusCode !== 429 &&
             trackingQuery.error.kind !== 'validation-error' && (
-              <button
+              <Button
                 type="button"
-                className="button button-secondary retry-btn"
+                variant="secondary"
+                size="sm"
+                className="retry-btn"
                 onClick={() => trackingQuery.refetch()}
               >
                 Retry
-              </button>
+              </Button>
             )}
         </div>
       )}
@@ -217,7 +224,20 @@ export function PublicTrackingPage() {
           <div className="tracking-status-banner">
             <div className="status-summary-group">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span className={presentation.pillClass}>{presentation.label}</span>
+                <Badge
+                  variant={
+                    tracking.currentStatus === 'DELIVERED'
+                      ? 'success'
+                      : tracking.currentStatus === 'FAILED'
+                      ? 'danger'
+                      : tracking.currentStatus === 'IN_TRANSIT' || tracking.currentStatus === 'OUT_FOR_DELIVERY'
+                      ? 'primary'
+                      : 'neutral'
+                  }
+                  pulse={streamState.status === 'connected'}
+                >
+                  {presentation.label}
+                </Badge>
                 {streamState.status === 'connected' && (
                   <span className="live-stream-chip" title="Live stream active" aria-label="Live updates active">
                     ● Live
@@ -241,23 +261,27 @@ export function PublicTrackingPage() {
             </div>
 
             <div className="tracking-status-banner-actions">
-              <button
+              <Button
                 type="button"
-                className="button button-secondary copy-tracking-btn"
+                variant="secondary"
+                size="sm"
+                className="copy-tracking-btn"
                 onClick={() => handleCopy(tracking.trackingNumber)}
                 aria-label={copied ? 'Reference copied' : 'Copy tracking reference'}
               >
                 {copied ? '✓ Copied' : 'Copy reference'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="button button-secondary refresh-tracking-btn"
+                variant="secondary"
+                size="sm"
+                className="refresh-tracking-btn"
                 onClick={() => trackingQuery.refetch()}
                 disabled={trackingQuery.isFetching}
                 aria-label="Refresh tracking details"
               >
                 {trackingQuery.isFetching ? 'Refreshing...' : '↻ Refresh'}
-              </button>
+              </Button>
             </div>
           </div>
 
