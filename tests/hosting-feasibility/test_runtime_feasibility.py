@@ -17,21 +17,20 @@ import ssl
 import subprocess
 import unittest
 
-CA_CERT_PATH = os.path.expanduser("~/.swiftdrop/certs/swiftdrop-root-ca.crt")
-INGRESS_HOST = "swiftdrop.local"
-INGRESS_PORT = 18443
-LOOPBACK_IP = "127.0.0.1"
+CA_CERT_PATH = os.environ.get("SWIFTDROP_CA_CERT_PATH", os.path.expanduser("~/.swiftdrop/certs/swiftdrop-root-ca.crt"))
+INGRESS_HOST = os.environ.get("SWIFTDROP_INGRESS_HOST", "swiftdrop.local")
+INGRESS_PORT = int(os.environ.get("SWIFTDROP_INGRESS_PORT", "18443"))
+LOOPBACK_IP = os.environ.get("SWIFTDROP_LOOPBACK_IP", "127.0.0.1")
 
 
 def is_cluster_ingress_reachable():
-    """Checks if the local k3d ingress port 18443 is currently accepting connections."""
+    """Checks if the local k3d ingress port is currently accepting connections."""
     import socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1.0)
     try:
-        s.connect((LOOPBACK_IP, INGRESS_PORT))
-        s.close()
-        return True
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1.0)
+            s.connect((LOOPBACK_IP, INGRESS_PORT))
+            return True
     except (socket.error, OSError):
         return False
 
