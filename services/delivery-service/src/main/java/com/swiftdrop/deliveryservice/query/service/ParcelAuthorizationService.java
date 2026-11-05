@@ -24,9 +24,17 @@ import java.util.List;
 public class ParcelAuthorizationService {
 
     private final DeliveryAssignmentRepository assignmentRepository;
+    private final com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver;
 
     public ParcelAuthorizationService(DeliveryAssignmentRepository assignmentRepository) {
+        this(assignmentRepository, null);
+    }
+
+    public ParcelAuthorizationService(
+            DeliveryAssignmentRepository assignmentRepository,
+            com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver) {
         this.assignmentRepository = assignmentRepository;
+        this.merchantTenantResolver = merchantTenantResolver;
     }
 
     public boolean isAuthorizedToRead(Jwt jwt, Parcel parcel) {
@@ -60,6 +68,11 @@ public class ParcelAuthorizationService {
                     return false;
                 }
                 return true;
+            } else if (merchantTenantResolver != null) {
+                var resolvedTenant = merchantTenantResolver.resolveMerchantTenant(callerSub);
+                if (resolvedTenant.isPresent() && resolvedTenant.get().equals(parcel.getMerchantId())) {
+                    return true;
+                }
             }
         }
 

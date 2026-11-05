@@ -17,6 +17,16 @@ spring:
               predicates:
                 - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
               order: 5
+            - id: accounts-service-staff
+              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/staff, /api/v1/staff/**
+              order: 5
+            - id: pricing-service-admin
+              uri: ${PRICING_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/admin/pricing, /api/v1/admin/pricing/**
+              order: 5
             - id: accounts-service-users-me
               uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
               predicates:
@@ -76,6 +86,16 @@ spring:
           uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
+          order: 5
+        - id: accounts-service-staff
+          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/staff, /api/v1/staff/**
+          order: 5
+        - id: pricing-service-admin
+          uri: ${PRICING_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/admin/pricing, /api/v1/admin/pricing/**
           order: 5
         - id: accounts-service-users-me
           uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}

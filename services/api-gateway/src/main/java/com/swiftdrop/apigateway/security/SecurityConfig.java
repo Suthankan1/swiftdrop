@@ -95,6 +95,9 @@ public class SecurityConfig {
                         // Merchant management endpoints (portal, API keys, webhooks)
                         .pathMatchers("/api/v1/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
 
+                        // Authenticated staff self-read operations (COURIER, DISPATCHER, ADMIN)
+                        .pathMatchers("/api/v1/staff/**").hasAnyRole("COURIER", "DISPATCHER", "ADMIN")
+
                         // Read-only composite GraphQL Query API
                         .pathMatchers(HttpMethod.POST, "/graphql").authenticated()
 

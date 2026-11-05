@@ -36,9 +36,16 @@ public class MerchantParcelBookingController {
     private static final Logger log = LoggerFactory.getLogger(MerchantParcelBookingController.class);
 
     private final BookingService bookingService;
+    private final com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver;
 
     public MerchantParcelBookingController(BookingService bookingService) {
+        this(bookingService, null);
+    }
+
+    public MerchantParcelBookingController(BookingService bookingService,
+                                          com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver) {
         this.bookingService = bookingService;
+        this.merchantTenantResolver = merchantTenantResolver;
     }
 
     @PostMapping
@@ -76,17 +83,20 @@ public class MerchantParcelBookingController {
                 throw new BookingFailure(403, "FORBIDDEN", "MERCHANT role required for merchant parcel booking.");
             }
 
+            callerSub = jwtAuth.getToken().getSubject();
             Object merchantClaim = jwtAuth.getToken().getClaim("merchant_id");
-            if (merchantClaim == null || merchantClaim.toString().isBlank()) {
+            if (merchantClaim != null && !merchantClaim.toString().isBlank()) {
+                try {
+                    merchantId = UUID.fromString(merchantClaim.toString().trim());
+                } catch (IllegalArgumentException ex) {
+                    throw new BookingFailure(403, "FORBIDDEN", "Malformed merchant_id tenant claim format.");
+                }
+            } else if (merchantTenantResolver != null) {
+                merchantId = merchantTenantResolver.resolveMerchantTenant(callerSub)
+                        .orElseThrow(() -> new BookingFailure(403, "FORBIDDEN", "Merchant account is not active, not approved, or does not exist."));
+            } else {
                 throw new BookingFailure(403, "FORBIDDEN", "Verified token does not contain a merchant_id tenant claim.");
             }
-
-            try {
-                merchantId = UUID.fromString(merchantClaim.toString().trim());
-            } catch (IllegalArgumentException ex) {
-                throw new BookingFailure(403, "FORBIDDEN", "Malformed merchant_id tenant claim format.");
-            }
-            callerSub = jwtAuth.getToken().getSubject();
         } else {
             throw new BookingFailure(401, "UNAUTHENTICATED", "Unsupported or unverified authentication principal.");
         }
