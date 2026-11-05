@@ -49,6 +49,19 @@ public class MerchantBookingConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver.class)
+    public com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver(
+            @Value("${ACCOUNTS_GRPC_HOST:localhost}") String host,
+            @Value("${ACCOUNTS_GRPC_PORT:9081}") int port) {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext()
+                .build();
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                AccountsInternalServiceGrpc.newBlockingStub(channel);
+        return new com.swiftdrop.deliveryservice.security.merchant.GrpcAccountsMerchantTenantResolver(stub);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(BookingQuoteProvider.class)
     public BookingQuoteProvider bookingQuoteProvider(
             @Value("${PRICING_GRPC_HOST:localhost}") String host,

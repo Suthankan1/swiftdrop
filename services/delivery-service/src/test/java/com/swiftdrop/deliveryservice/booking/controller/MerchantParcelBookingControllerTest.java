@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MerchantParcelBookingControllerTest {
 
     private BookingService bookingService;
+    private com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver tenantResolver;
     private MockMvc mvc;
     private final JsonMapper json = JsonMapper.builder().build();
 
@@ -50,7 +51,8 @@ class MerchantParcelBookingControllerTest {
     @BeforeEach
     void setUp() {
         bookingService = mock(BookingService.class);
-        MerchantParcelBookingController controller = new MerchantParcelBookingController(bookingService);
+        tenantResolver = mock(com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver.class);
+        MerchantParcelBookingController controller = new MerchantParcelBookingController(bookingService, tenantResolver);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new MerchantBookingProblemHandler())
                 .build();
@@ -214,8 +216,8 @@ class MerchantParcelBookingControllerTest {
     }
 
     @Test
-    @DisplayName("JWT without merchant_id claim returns 403 Forbidden")
-    void jwtWithoutMerchantIdClaimReturns403() throws Exception {
+    @DisplayName("JWT without merchant_id claim where tenant resolution fails returns 403 Forbidden")
+    void jwtWithoutMerchantIdClaim_ResolutionFails_Returns403() throws Exception {
         Jwt jwt = Jwt.withTokenValue("mock-token")
                 .header("alg", "RS256")
                 .subject("merchant-sub")
@@ -226,13 +228,44 @@ class MerchantParcelBookingControllerTest {
         );
         SecurityContextHolder.getContext().setAuthentication(jwtAuth);
 
+        when(tenantResolver.resolveMerchantTenant("merchant-sub"))
+                .thenReturn(java.util.Optional.empty());
+
         mvc.perform(post("/api/v1/merchant/parcels")
                         .header("Idempotency-Key", idempotencyKey.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(validRequest())))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.title", equalTo("FORBIDDEN")))
-                .andExpect(jsonPath("$.detail", containsString("merchant_id tenant claim")));
+                .andExpect(jsonPath("$.detail", containsString("Merchant account is not active, not approved, or does not exist.")));
+    }
+
+    @Test
+    @DisplayName("Valid booking request with Bearer JWT auth resolving tenant via Accounts succeeds with 201 Created")
+    void validBookingWithJwtAuth_ResolvesTenantViaAccounts_ReturnsCreated() throws Exception {
+        Jwt jwt = Jwt.withTokenValue("mock-token")
+                .header("alg", "RS256")
+                .subject("merchant-sub-456")
+                .claim("realm_access", Map.of("roles", List.of("MERCHANT")))
+                .build();
+        JwtAuthenticationToken jwtAuth = new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("ROLE_MERCHANT"))
+        );
+        SecurityContextHolder.getContext().setAuthentication(jwtAuth);
+
+        when(tenantResolver.resolveMerchantTenant("merchant-sub-456"))
+                .thenReturn(java.util.Optional.of(merchantId));
+
+        UUID parcelId = UUID.randomUUID();
+        when(bookingService.bookMerchant(eq(merchantId), eq("merchant-sub-456"), eq(idempotencyKey), any(MerchantBookParcelRequest.class)))
+                .thenReturn(sampleResponse(parcelId));
+
+        mvc.perform(post("/api/v1/merchant/parcels")
+                        .header("Idempotency-Key", idempotencyKey.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(validRequest())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.parcelId", equalTo(parcelId.toString())));
     }
 
     @Test
