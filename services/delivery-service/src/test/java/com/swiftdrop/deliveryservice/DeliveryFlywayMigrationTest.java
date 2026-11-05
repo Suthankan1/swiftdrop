@@ -127,4 +127,28 @@ class DeliveryFlywayMigrationTest {
         assertThat(sql).doesNotContain("REFERENCES staff_profiles");
         assertThat(sql).doesNotContain("REFERENCES quotes");
     }
+
+    @Test
+    @DisplayName("Verify V8 Flyway migration script contains composite merchant index and zero cross-service references (DB-001)")
+    void verifyV8FlywayMigrationScript() throws Exception {
+        ClassPathResource resource = new ClassPathResource("db/migration/V8__add_parcels_merchant_created_idx.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            sql = reader.lines().collect(Collectors.joining("\n"));
+        }
+
+        assertThat(sql).contains("CREATE INDEX IF NOT EXISTS idx_parcels_merchant_created ON parcels (merchant_id, created_at DESC)");
+        assertThat(sql).contains("WHERE merchant_id IS NOT NULL");
+
+        // Strict cross-service boundary verification
+        assertThat(sql).doesNotContain("accounts_db");
+        assertThat(sql).doesNotContain("communications_db");
+        assertThat(sql).doesNotContain("pricing_db");
+        assertThat(sql).doesNotContain("REFERENCES merchants");
+        assertThat(sql).doesNotContain("REFERENCES account_profiles");
+        assertThat(sql).doesNotContain("REFERENCES staff_profiles");
+        assertThat(sql).doesNotContain("REFERENCES quotes");
+    }
 }

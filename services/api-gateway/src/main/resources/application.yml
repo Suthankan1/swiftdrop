@@ -6,6 +6,8 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
       server:
         webflux:
           httpclient:
@@ -135,7 +137,7 @@ spring:
         cors-configurations:
           '[/**]':
             allowed-origins:
-              - "http://localhost:5173"
+              - "${CORS_ALLOWED_ORIGIN:http://localhost:5173}"
             allowed-methods:
               - GET
               - POST
