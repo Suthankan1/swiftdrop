@@ -312,7 +312,7 @@ export function PublicTrackingPage() {
                   const itemPresentation = getStatusPresentation(item.status)
                   const hasValidTime = !Number.isNaN(Date.parse(item.occurredAt))
                   return (
-                    <li key={`${item.status}-${item.occurredAt}-${idx}`} className="timeline-item">
+                    <li key={`${item.status}-${item.occurredAt}-${idx}`} className="timeline-item" tabIndex={0}>
                       <div className="timeline-marker" aria-hidden="true" />
                       <div className="timeline-content">
                         <div className="timeline-header">
