@@ -232,7 +232,7 @@ export function CustomerTrackingModal({
                   if (isStepFailed) stepClass += ' is-failed'
 
                   return (
-                    <div key={step} className={stepClass}>
+                    <div key={step} className={stepClass} tabIndex={0} aria-label={`${stepInfo.label} status step`}>
                       <div className="stepper-dot" aria-hidden="true">
                         {isPast ? '✓' : isStepFailed ? '✕' : idx + 1}
                       </div>
