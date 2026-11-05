@@ -70,7 +70,7 @@ class DeliveryPersistencePostgresIT {
     @DisplayName("Verify clean Flyway V1 migration execution on real PostgreSQL")
     void testFlywayMigrationExecution() {
         var info = flyway.info();
-        assertThat(info.applied()).hasSize(7);
+        assertThat(info.applied()).hasSize(8);
         assertThat(info.applied()[0].getDescription()).isEqualTo("create delivery schema");
         assertThat(info.applied()[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(info.applied()[1].getDescription()).isEqualTo("create delivery assignments schema");
@@ -85,6 +85,8 @@ class DeliveryPersistencePostgresIT {
         assertThat(info.applied()[5].getVersion().getVersion()).isEqualTo("6");
         assertThat(info.applied()[6].getDescription()).isEqualTo("create assignment audit schema");
         assertThat(info.applied()[6].getVersion().getVersion()).isEqualTo("7");
+        assertThat(info.applied()[7].getDescription()).isEqualTo("add parcels merchant created idx");
+        assertThat(info.applied()[7].getVersion().getVersion()).isEqualTo("8");
 
         // Verify tables exist in public schema
         List<String> tables = jdbc.queryForList(
