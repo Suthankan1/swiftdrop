@@ -30,6 +30,7 @@ public class ParcelAuthorizationService {
         this(assignmentRepository, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ParcelAuthorizationService(
             DeliveryAssignmentRepository assignmentRepository,
             com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver) {

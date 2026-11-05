@@ -42,6 +42,7 @@ public class MerchantParcelBookingController {
         this(bookingService, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public MerchantParcelBookingController(BookingService bookingService,
                                           com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver) {
         this.bookingService = bookingService;

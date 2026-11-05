@@ -53,6 +53,7 @@ public class DefaultParcelQueryService implements ParcelQueryService {
         this(parcelRepository, assignmentRepository, historyRepository, authorizationService, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public DefaultParcelQueryService(
             ParcelRepository parcelRepository,
             DeliveryAssignmentRepository assignmentRepository,
