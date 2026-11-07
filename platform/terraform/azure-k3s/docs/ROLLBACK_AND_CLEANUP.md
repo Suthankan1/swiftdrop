@@ -65,7 +65,13 @@ helm uninstall swiftdrop-data -n swiftdrop-data || true
 ```bash
 cd platform/terraform/azure-k3s
 
-# Execute Terraform destroy with approved variables
+# NOTE: azurerm_managed_disk.data enforces lifecycle { prevent_destroy = true } to prevent accidental data loss.
+# If preserving data: destroy compute/networking while leaving the disk intact:
+# terraform destroy -target=azurerm_linux_virtual_machine.k3s ...
+# If completely decommissioning:
+# 1. Take a final snapshot: az snapshot create --resource-group "rg-swiftdrop-demo" --source "disk-swiftdrop-data-demo" --name "final-snapshot"
+# 2. Set prevent_destroy = false in storage.tf (reviewed PR)
+# 3. Execute Terraform destroy:
 terraform destroy -input=false
 ```
 

@@ -87,3 +87,24 @@ The following critical ports are explicitly denied public ingress by NSG Rule Pr
    ```bash
    kubectl port-forward -n swiftdrop-identity svc/keycloak 8080:8080
    ```
+
+---
+
+## 5. Private Kubernetes Administration Access Architecture
+
+1. **Zero Public Exposure for Port 6443:**  
+   The Kubernetes API server (port 6443) is never exposed to the public internet. Port 6443 is blocked by Azure NSG Rule 4000.
+2. **Encrypted Operator Access Pattern:**  
+   Authorized operators access the cluster via authenticated SSH local port-forwarding over port 22 (which is restricted to approved operator CIDRs):
+   ```bash
+   ./scripts/setup-kube-access.sh connect --key ~/.ssh/swiftdrop-azure-k3s
+   ```
+3. **Kubeconfig File Custody:**  
+   The downloaded kubeconfig is immediately locked with `chmod 600` permissions (owner read/write only).
+4. **Certificate Validation Integrity:**  
+   The K3s server certificate contains TLS Subject Alternative Names (SANs) for `127.0.0.1` and `localhost`. Tunneling to `127.0.0.1` allows standard `kubectl` certificate validation without insecure flags (`--insecure-skip-tls-verify` is prohibited).
+5. **Connection Lifecycle:**  
+   When administrative tasks conclude, the operator terminates the tunnel cleanly:
+   ```bash
+   ./scripts/setup-kube-access.sh stop
+   ```

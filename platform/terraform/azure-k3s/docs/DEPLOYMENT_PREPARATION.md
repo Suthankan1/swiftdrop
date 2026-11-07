@@ -66,30 +66,95 @@ Before executing any deployment actions, the designated operator (`@Suthankan1`)
 Terraform prepares cloud infrastructure (VM, VNet, Managed Disk, NSG). Application-level secrets (database passwords, Keycloak admin credentials, MinIO access keys, TLS private keys) must **NEVER** be declared as Terraform variables or stored in `.tfstate`.
 
 ### Secret Injection Protocol (Post-Infrastructure Bootstrapping)
-Once K3s is healthy, secrets are injected directly into the cluster via authenticated SSH or encrypted kubectl session:
+Once K3s is healthy and the secure administration SSH tunnel is active, secrets are injected directly into the cluster via authenticated kubectl session:
 
 ```bash
-# 1. Database Credentials Secret
+# 1. Namespace: swiftdrop-data (Stateful PostgreSQL credentials)
 kubectl create secret generic accounts-db-credentials \
   --namespace swiftdrop-data \
-  --from-literal=username=accounts_user \
-  --from-literal=password='<cryptographically-random-password>'
+  --from-literal=POSTGRES_USER=accounts_user \
+  --from-literal=POSTGRES_PASSWORD='<accounts-db-password>'
 
-# 2. Keycloak Admin Secret
-kubectl create secret generic keycloak-admin-secret \
-  --namespace swiftdrop-identity \
-  --from-literal=admin-username=admin \
-  --from-literal=admin-password='<cryptographically-random-password>'
+kubectl create secret generic business-db-credentials \
+  --namespace swiftdrop-data \
+  --from-literal=POSTGRES_USER=postgres \
+  --from-literal=POSTGRES_PASSWORD='<postgres-super-password>' \
+  --from-literal=PRICING_DB_PASSWORD='<pricing-db-password>' \
+  --from-literal=DELIVERY_DB_PASSWORD='<delivery-db-password>' \
+  --from-literal=COMMUNICATIONS_DB_PASSWORD='<communications-db-password>'
 
-# 3. MinIO S3 Credentials
+kubectl create secret generic keycloak-db-credentials \
+  --namespace swiftdrop-data \
+  --from-literal=POSTGRES_USER=keycloak_user \
+  --from-literal=POSTGRES_PASSWORD='<keycloak-db-password>'
+
+# 2. Namespace: swiftdrop-messaging (MinIO private S3 root credentials)
 kubectl create secret generic swiftdrop-minio-secret \
   --namespace swiftdrop-messaging \
   --from-literal=accesskey=swiftdrop-minio-admin \
-  --from-literal=secretkey='<cryptographically-random-password>'
+  --from-literal=secretkey='<minio-secret-key>'
 
-# 4. Ingress TLS Secret
+# 3. Namespace: swiftdrop-apps (Service-level DB, S3, and TLS secrets)
+kubectl create secret generic accounts-db-secret \
+  --namespace swiftdrop-apps \
+  --from-literal=username=accounts_user \
+  --from-literal=password='<accounts-db-password>'
+
+kubectl create secret generic pricing-db-secret \
+  --namespace swiftdrop-apps \
+  --from-literal=username=pricing_user \
+  --from-literal=password='<pricing-db-password>'
+
+kubectl create secret generic delivery-db-secret \
+  --namespace swiftdrop-apps \
+  --from-literal=username=delivery_user \
+  --from-literal=password='<delivery-db-password>'
+
+kubectl create secret generic communications-db-secret \
+  --namespace swiftdrop-apps \
+  --from-literal=username=communications_user \
+  --from-literal=password='<communications-db-password>'
+
+kubectl create secret generic swiftdrop-minio-secret \
+  --namespace swiftdrop-apps \
+  --from-literal=accesskey=swiftdrop-minio-admin \
+  --from-literal=secretkey='<minio-secret-key>'
+
 kubectl create secret tls swiftdrop-tls-cert \
   --namespace swiftdrop-apps \
   --cert=/path/to/fullchain.pem \
   --key=/path/to/privkey.pem
+
+# 4. Namespace: swiftdrop-identity (Keycloak bootstrap admin, DB, and TLS secrets)
+kubectl create secret generic keycloak-admin-secret \
+  --namespace swiftdrop-identity \
+  --from-literal=admin-username=admin \
+  --from-literal=admin-password='<keycloak-admin-password>'
+
+kubectl create secret generic keycloak-db-secret \
+  --namespace swiftdrop-identity \
+  --from-literal=username=keycloak_user \
+  --from-literal=password='<keycloak-db-password>'
+
+kubectl create secret tls swiftdrop-tls-cert \
+  --namespace swiftdrop-identity \
+  --cert=/path/to/fullchain.pem \
+  --key=/path/to/privkey.pem
 ```
+
+---
+
+## 3. Terraform State Custody & Security
+
+1. **State Sensitivity:**  
+   Terraform `.tfstate` files contain full resource identifiers, public/private IP addresses, subnet CIDRs, and NIC configurations.
+2. **Repository Exclusion:**  
+   Both `.tfstate`, `*.tfstate.backup`, and binary execution plan files (`tfplan`) are strictly excluded from version control via `.gitignore`. Never commit or push state files to Git.
+3. **Local Encryption at Rest:**  
+   When conducting single-operator evaluation, ensure local operator machine has FileVault / LUKS full-disk encryption enabled.
+4. **Remote State Custody:**  
+   In multi-operator production workflows, migrate from local state to an Azure Blob Storage backend utilizing:
+   - Private storage account endpoint with firewall restriction.
+   - Azure AD (Microsoft Entra ID) authentication without shared storage account access keys.
+   - Customer-Managed Keys (CMK) encryption via Azure Key Vault.
+   - Immutable blob versioning and soft-delete protections.
