@@ -30,6 +30,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 15
       serviceAccountName: swiftdrop-frontend-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -116,6 +117,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 30
       serviceAccountName: swiftdrop-gateway-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -197,6 +199,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 30
       serviceAccountName: swiftdrop-accounts-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -292,6 +295,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 30
       serviceAccountName: swiftdrop-pricing-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -387,6 +391,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 45
       serviceAccountName: swiftdrop-delivery-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -492,6 +497,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 30
       serviceAccountName: swiftdrop-communications-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -584,6 +590,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 30
       serviceAccountName: swiftdrop-graphql-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -665,6 +672,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 60
       serviceAccountName: swiftdrop-keycloak-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:

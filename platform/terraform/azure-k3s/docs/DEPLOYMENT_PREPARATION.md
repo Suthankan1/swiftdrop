@@ -48,15 +48,15 @@ Before executing any deployment actions, the designated operator (`@Suthankan1`)
 - [ ] DNS zone access verified to create an `A` record pointing to the allocated Azure Public IP.
 
 ### 1.5 Container Image Architectures & GHCR Verification
-- [ ] All 8 SwiftDrop container images verified for `linux/amd64` architecture:
-  - `ghcr.io/suthankan1/swiftdrop-frontend`
-  - `ghcr.io/suthankan1/swiftdrop-api-gateway`
-  - `ghcr.io/suthankan1/swiftdrop-accounts`
-  - `ghcr.io/suthankan1/swiftdrop-pricing`
-  - `ghcr.io/suthankan1/swiftdrop-delivery`
-  - `ghcr.io/suthankan1/swiftdrop-communications`
-  - `ghcr.io/suthankan1/swiftdrop-graphql`
-  - `ghcr.io/suthankan1/swiftdrop-keycloak`
+- [x] All 8 SwiftDrop container images verified for `linux/amd64` architecture (CI Run #42387115452):
+  - `ghcr.io/suthankan1/swiftdrop-frontend` (`sha256:5ed569ffac2ec50001c4c3b3f1cf1ac466cc7a30de5ee81f4cbf4361f9a6d76a`)
+  - `ghcr.io/suthankan1/swiftdrop-api-gateway` (`sha256:62e0a3e7c2a54d9c0b63be2bb1306ceba5d4b8242009c666d595de816bcf1993`)
+  - `ghcr.io/suthankan1/swiftdrop-accounts` (`sha256:96e9b5fba3d12774c8d710ce920a08ea2ca8e299b26657ad782e5039ef4ff60b`)
+  - `ghcr.io/suthankan1/swiftdrop-pricing` (`sha256:ba3d2931c67f261bb7cc4433b70615452ff7fecf105a2ec29f87a4632c1cb6f4`)
+  - `ghcr.io/suthankan1/swiftdrop-delivery` (`sha256:d97ce899cfd5283201031b04851b91b38e5d31b507f2af8b4ed5ca33891268be`)
+  - `ghcr.io/suthankan1/swiftdrop-communications` (`sha256:af6645f62fe7ecc908a7bd80832b6369a802e9b4fd2d86dbc61b7ce6b8e2a370`)
+  - `ghcr.io/suthankan1/swiftdrop-graphql` (`sha256:cd21baf610531dce93470cab5e34c59c658cb84076529262399cc83add4521a8`)
+  - `ghcr.io/suthankan1/swiftdrop-keycloak` (`sha256:04f3e86b749f9d7b0d5b14e6124272ce76b1d48dc87f053572894af3ca434516`)
 
 ---
 

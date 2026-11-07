@@ -2,10 +2,14 @@
 # SwiftDrop Platform — Azure K3s Application Helm Values
 # Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
 # Invariant: External HTTPS on port 443; Keycloak admin disabled; persistent DBs.
+# Verified immutable linux/amd64 runtime images from GitHub Actions run #42387115452.
 # ==============================================================================
 
 global:
   clusterDomain: cluster.local
+  # GHCR packages (ghcr.io/suthankan1/swiftdrop-*) are public; anonymous pull is supported.
+  # Kubernetes imagePullSecrets is supported if private registries or credentials are used:
+  imagePullSecrets: []
 
 namespaces:
   apps: swiftdrop-apps
@@ -40,6 +44,11 @@ networkPolicies:
 frontend:
   enabled: true
   replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-frontend
+    tag: 95c4b0f
+    digest: sha256:5ed569ffac2ec50001c4c3b3f1cf1ac466cc7a30de5ee81f4cbf4361f9a6d76a
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 50m
@@ -51,6 +60,11 @@ frontend:
 apiGateway:
   enabled: true
   replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-api-gateway
+    tag: 95c4b0f
+    digest: sha256:62e0a3e7c2a54d9c0b63be2bb1306ceba5d4b8242009c666d595de816bcf1993
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 100m
@@ -67,6 +81,11 @@ apiGateway:
 accounts:
   enabled: true
   replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-accounts
+    tag: 95c4b0f
+    digest: sha256:96e9b5fba3d12774c8d710ce920a08ea2ca8e299b26657ad782e5039ef4ff60b
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 100m
@@ -82,6 +101,11 @@ accounts:
 pricing:
   enabled: true
   replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-pricing
+    tag: 95c4b0f
+    digest: sha256:ba3d2931c67f261bb7cc4433b70615452ff7fecf105a2ec29f87a4632c1cb6f4
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 100m
@@ -97,6 +121,11 @@ pricing:
 delivery:
   enabled: true
   replicaCount: 2 # Resilient multi-replica delivery service for Kafka partition consumption
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-delivery
+    tag: 95c4b0f
+    digest: sha256:d97ce899cfd5283201031b04851b91b38e5d31b507f2af8b4ed5ca33891268be
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 100m
@@ -112,6 +141,11 @@ delivery:
 communications:
   enabled: true
   replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-communications
+    tag: 95c4b0f
+    digest: sha256:af6645f62fe7ecc908a7bd80832b6369a802e9b4fd2d86dbc61b7ce6b8e2a370
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 100m
@@ -125,6 +159,11 @@ communications:
 graphql:
   enabled: true
   replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-graphql
+    tag: 95c4b0f
+    digest: sha256:cd21baf610531dce93470cab5e34c59c658cb84076529262399cc83add4521a8
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 100m
@@ -140,6 +179,11 @@ graphql:
 keycloak:
   enabled: true
   replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-keycloak
+    tag: 95c4b0f
+    digest: sha256:04f3e86b749f9d7b0d5b14e6124272ce76b1d48dc87f053572894af3ca434516
+    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 150m
