@@ -1,0 +1,20 @@
+# ==============================================================================
+# SwiftDrop Azure K3s — Server Configuration File
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Invariant: Loopback & private SANs; dedicated local-path storage root on data disk.
+# ==============================================================================
+write-kubeconfig-mode: "0640"
+write-kubeconfig-group: "${admin_username}"
+node-name: "swiftdrop-azure-01"
+flannel-backend: "vxlan"
+default-local-storage-path: "${k3s_storage_path}"
+
+disable:
+  - "servicelb"
+
+tls-san:
+  - "127.0.0.1"
+  - "localhost"
+%{ if public_domain != "" ~}
+  - "${public_domain}"
+%{ endif ~}

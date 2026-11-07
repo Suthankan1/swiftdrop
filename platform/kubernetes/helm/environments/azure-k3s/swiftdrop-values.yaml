@@ -1,0 +1,157 @@
+# ==============================================================================
+# SwiftDrop Platform — Azure K3s Application Helm Values
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Invariant: External HTTPS on port 443; Keycloak admin disabled; persistent DBs.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+
+namespaces:
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+# Ingress Configuration terminating TLS on K3s embedded Traefik
+ingress:
+  enabled: true
+  className: traefik
+  host: demo.swiftdrop.net
+  subdomains:
+    enabled: true
+    app: app.demo.swiftdrop.net
+    api: api.demo.swiftdrop.net
+    auth: auth.demo.swiftdrop.net
+  tls:
+    enabled: true
+    secretName: swiftdrop-tls-cert
+  keycloak:
+    exposeAdmin: false # Keycloak admin interface is strictly denied external access
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+frontend:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+apiGateway:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  config:
+    keycloakIssuerUri: https://auth.demo.swiftdrop.net/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    corsAllowedOrigin: "https://demo.swiftdrop.net,https://app.demo.swiftdrop.net"
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+accounts:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  config:
+    keycloakIssuerUri: https://auth.demo.swiftdrop.net/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+pricing:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  config:
+    keycloakIssuerUri: https://auth.demo.swiftdrop.net/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+delivery:
+  enabled: true
+  replicaCount: 2 # Resilient multi-replica delivery service for Kafka partition consumption
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  config:
+    keycloakIssuerUri: https://auth.demo.swiftdrop.net/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+communications:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  config:
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+graphql:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  config:
+    keycloakIssuerUri: https://auth.demo.swiftdrop.net/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k -XX:+ExitOnOutOfMemoryError"
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 150m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 768Mi
+  config:
+    hostname: https://auth.demo.swiftdrop.net
+    proxyHeaders: xforwarded
+    httpEnabled: "true"
+    javaOptsAppend: "-Dkeycloak.migration.replace-placeholders=true -Xms192m -Xmx384m"
+
+statefulInterfaces:
+  createPlaceholderServices: false
