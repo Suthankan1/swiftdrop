@@ -69,3 +69,29 @@ Usage: {{ include "swiftdrop.image" .Values.accounts.image }}
 {{- .repository -}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Render imagePullSecrets list for workloads.
+Supports global.imagePullSecrets as either list of dicts (e.g. - name: my-secret)
+or list of strings (e.g. - my-secret).
+Usage: {{ include "swiftdrop.imagePullSecrets" . }}
+*/}}
+{{- define "swiftdrop.imagePullSecrets" -}}
+{{- $raw := list }}
+{{- if and .Values.global .Values.global.imagePullSecrets }}
+  {{- $raw = .Values.global.imagePullSecrets }}
+{{- end }}
+{{- $pullSecrets := list }}
+{{- range $raw }}
+  {{- if kindIs "map" . }}
+    {{- $pullSecrets = append $pullSecrets . }}
+  {{- else }}
+    {{- $pullSecrets = append $pullSecrets (dict "name" .) }}
+  {{- end }}
+{{- end }}
+{{- if (not (empty $pullSecrets)) }}
+imagePullSecrets:
+  {{- toYaml $pullSecrets | nindent 2 }}
+{{- end }}
+{{- end }}
+
