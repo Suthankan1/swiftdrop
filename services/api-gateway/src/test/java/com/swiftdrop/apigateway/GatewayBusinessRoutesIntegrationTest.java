@@ -284,6 +284,83 @@ public class GatewayBusinessRoutesIntegrationTest {
         assertThat(req.getPath()).isEqualTo("/api/v1/admin/reconciliation/staff/provision");
     }
 
+    @Test
+    @DisplayName("Routes GET /api/v1/staff/me with COURIER role to Accounts & Partners Service")
+    void routesStaffProfileMeToAccountsService_Courier() throws Exception {
+        String token = createToken("courier-123", List.of("COURIER"));
+        accountsServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"staffId\":\"st-101\",\"role\":\"COURIER\",\"assignedZone\":\"ZONE-A\"}"));
+
+        webTestClient.get()
+                .uri("/api/v1/staff/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.staffId").isEqualTo("st-101")
+                .jsonPath("$.role").isEqualTo("COURIER");
+
+        RecordedRequest req = accountsServer.takeRequest(3, TimeUnit.SECONDS);
+        assertThat(req).isNotNull();
+        assertThat(req.getMethod()).isEqualTo("GET");
+        assertThat(req.getPath()).isEqualTo("/api/v1/staff/me");
+        assertThat(req.getHeader("Authorization")).isEqualTo("Bearer " + token);
+    }
+
+    @Test
+    @DisplayName("Routes GET /api/v1/staff/profile with DISPATCHER role to Accounts & Partners Service")
+    void routesStaffProfileAliasToAccountsService_Dispatcher() throws Exception {
+        String token = createToken("dispatcher-123", List.of("DISPATCHER"));
+        accountsServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"staffId\":\"st-102\",\"role\":\"DISPATCHER\"}"));
+
+        webTestClient.get()
+                .uri("/api/v1/staff/profile")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.staffId").isEqualTo("st-102");
+
+        RecordedRequest req = accountsServer.takeRequest(3, TimeUnit.SECONDS);
+        assertThat(req).isNotNull();
+        assertThat(req.getMethod()).isEqualTo("GET");
+        assertThat(req.getPath()).isEqualTo("/api/v1/staff/profile");
+    }
+
+    @Test
+    @DisplayName("Unauthenticated request to /api/v1/staff/me returns 401 Problem Detail without reaching upstream")
+    void unauthenticatedStaffMe_Returns401() throws Exception {
+        webTestClient.get()
+                .uri("/api/v1/staff/me")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectHeader().contentType(MediaType.valueOf("application/problem+json"))
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(401);
+
+        assertThat(accountsServer.takeRequest(100, TimeUnit.MILLISECONDS)).isNull();
+    }
+
+    @Test
+    @DisplayName("Non-staff role (CUSTOMER) requesting /api/v1/staff/me returns 403 Problem Detail without reaching upstream")
+    void nonStaffRole_Returns403_DoesNotReachUpstream() throws Exception {
+        String customerToken = createToken("cust-1", List.of("CUSTOMER"));
+
+        webTestClient.get()
+                .uri("/api/v1/staff/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectHeader().contentType(MediaType.valueOf("application/problem+json"))
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(403);
+
+        assertThat(accountsServer.takeRequest(100, TimeUnit.MILLISECONDS)).isNull();
+    }
+
     // =========================================================================
     // 2. PRICING & ZONES ROUTES
     // =========================================================================

@@ -43,16 +43,28 @@ public class DefaultParcelQueryService implements ParcelQueryService {
     private final DeliveryAssignmentRepository assignmentRepository;
     private final StatusHistoryRepository historyRepository;
     private final ParcelAuthorizationService authorizationService;
+    private final com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver;
 
     public DefaultParcelQueryService(
             ParcelRepository parcelRepository,
             DeliveryAssignmentRepository assignmentRepository,
             StatusHistoryRepository historyRepository,
             ParcelAuthorizationService authorizationService) {
+        this(parcelRepository, assignmentRepository, historyRepository, authorizationService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DefaultParcelQueryService(
+            ParcelRepository parcelRepository,
+            DeliveryAssignmentRepository assignmentRepository,
+            StatusHistoryRepository historyRepository,
+            ParcelAuthorizationService authorizationService,
+            com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver) {
         this.parcelRepository = parcelRepository;
         this.assignmentRepository = assignmentRepository;
         this.historyRepository = historyRepository;
         this.authorizationService = authorizationService;
+        this.merchantTenantResolver = merchantTenantResolver;
     }
 
     // --- ParcelQueryService Interface Implementation (gRPC & GraphQL Projections) ---
@@ -143,13 +155,18 @@ public class DefaultParcelQueryService implements ParcelQueryService {
             parcels = parcelRepository.findBySenderSubOrderByCreatedAtDesc(callerSub, safePageable);
         } else if (roles.contains("MERCHANT")) {
             Object merchantClaim = jwt.getClaim("merchant_id");
-            if (merchantClaim != null) {
+            UUID merchantId = null;
+            if (merchantClaim != null && !merchantClaim.toString().isBlank()) {
                 try {
-                    UUID merchantId = UUID.fromString(merchantClaim.toString());
-                    parcels = parcelRepository.findByMerchantIdOrderByCreatedAtDesc(merchantId, safePageable);
-                } catch (IllegalArgumentException e) {
-                    parcels = Page.empty(safePageable);
+                    merchantId = UUID.fromString(merchantClaim.toString());
+                } catch (IllegalArgumentException ignored) {
                 }
+            } else if (callerSub != null && merchantTenantResolver != null) {
+                merchantId = merchantTenantResolver.resolveMerchantTenant(callerSub).orElse(null);
+            }
+
+            if (merchantId != null) {
+                parcels = parcelRepository.findByMerchantIdOrderByCreatedAtDesc(merchantId, safePageable);
             } else {
                 parcels = Page.empty(safePageable);
             }

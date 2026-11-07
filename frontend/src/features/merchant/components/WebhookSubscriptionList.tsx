@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { WebhookSubscription } from '../api/webhookContracts'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
@@ -25,23 +24,6 @@ export function WebhookSubscriptionList({
   onDeleteSubscription,
   onOpenRegisterForm,
 }: WebhookSubscriptionListProps) {
-  const [testingSubId, setTestingSubId] = useState<string | null>(null)
-  const [testResult, setTestResult] = useState<{ id: string; success: boolean; msg: string } | null>(null)
-
-  function handleSendTestPing(sub: WebhookSubscription) {
-    setTestingSubId(sub.subscriptionId)
-    setTestResult(null)
-    setTimeout(() => {
-      setTestingSubId(null)
-      setTestResult({
-        id: sub.subscriptionId,
-        success: true,
-        msg: `Simulated event 'parcel.delivered.v1' dispatched: 200 OK (72ms) · X-SwiftDrop-Signature: sha256=e3b0c44298fc...`,
-      })
-      setTimeout(() => setTestResult(null), 6000)
-    }, 700)
-  }
-
   if (isLoading) {
     return (
       <FeedbackState title="Loading webhook subscriptions" tone="loading">
@@ -143,26 +125,9 @@ export function WebhookSubscriptionList({
                   <span className="muted">·</span>
                   <span className="muted">Registered: {formattedDate}</span>
                 </div>
-
-                {testResult && testResult.id === sub.subscriptionId && (
-                  <div className="feedback-banner is-success" role="status" style={{ marginTop: '8px', fontSize: '0.85rem' }}>
-                    <span>{testResult.msg}</span>
-                  </div>
-                )}
               </div>
 
               <div className="webhook-card-actions">
-                <Button
-                  type="button"
-                  variant="tonal"
-                  size="sm"
-                  isLoading={testingSubId === sub.subscriptionId}
-                  loadingText="Testing..."
-                  onClick={() => handleSendTestPing(sub)}
-                  title="Send synthetic test webhook event"
-                >
-                  ⚡ Send Test Ping
-                </Button>
                 <Button
                   type="button"
                   variant="secondary"

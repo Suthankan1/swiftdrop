@@ -38,13 +38,32 @@ export function LoginPage() {
                 </Link>
               </p>
             )}
-            <div className="role-links" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', margin: '1.2rem 0' }}>
-              {auth.snapshot.roles.includes('CUSTOMER') && <Link to="/customer" className="button button-tonal button-sm">Customer space <span aria-hidden="true">↗</span></Link>}
-              {auth.snapshot.roles.includes('MERCHANT') && <Link to="/merchant" className="button button-tonal button-sm">Merchant portal <span aria-hidden="true">↗</span></Link>}
-              {auth.snapshot.roles.includes('COURIER') && <Link to="/courier" className="button button-tonal button-sm">Courier workspace <span aria-hidden="true">↗</span></Link>}
-              {auth.snapshot.roles.includes('DISPATCHER') && <Link to="/dispatcher" className="button button-tonal button-sm">Dispatcher console <span aria-hidden="true">↗</span></Link>}
-              {auth.snapshot.roles.includes('ADMIN') && <Link to="/admin" className="button button-tonal button-sm">Admin console <span aria-hidden="true">↗</span></Link>}
-            </div>
+            {auth.snapshot.roles.length === 0 ? (
+              <div
+                role="status"
+                className="notice notice-warning"
+                style={{
+                  margin: '16px 0',
+                  padding: '14px',
+                  borderRadius: '6px',
+                  background: 'var(--color-bg-warning, #fff8e1)',
+                  border: '1px solid var(--color-border-warning, #ffe082)',
+                }}
+              >
+                <p style={{ fontWeight: 600, marginBottom: '6px', color: '#b78103' }}>Role Assignment Pending</p>
+                <p className="muted" style={{ fontSize: '14px', margin: 0 }}>
+                  Your account is authenticated, but no workspace roles (Customer, Merchant, Courier, Dispatcher, or Admin) have been assigned to your profile yet. Please contact your system administrator or sign out below.
+                </p>
+              </div>
+            ) : (
+              <div className="role-links" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', margin: '1.2rem 0' }}>
+                {auth.snapshot.roles.includes('CUSTOMER') && <Link to="/customer" className="button button-tonal button-sm">Customer space <span aria-hidden="true">↗</span></Link>}
+                {auth.snapshot.roles.includes('MERCHANT') && <Link to="/merchant" className="button button-tonal button-sm">Merchant portal <span aria-hidden="true">↗</span></Link>}
+                {auth.snapshot.roles.includes('COURIER') && <Link to="/courier" className="button button-tonal button-sm">Courier workspace <span aria-hidden="true">↗</span></Link>}
+                {auth.snapshot.roles.includes('DISPATCHER') && <Link to="/dispatcher" className="button button-tonal button-sm">Dispatcher console <span aria-hidden="true">↗</span></Link>}
+                {auth.snapshot.roles.includes('ADMIN') && <Link to="/admin" className="button button-tonal button-sm">Admin console <span aria-hidden="true">↗</span></Link>}
+              </div>
+            )}
             <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
               <Button variant="secondary" size="sm" onClick={() => { void auth.logout() }}>Sign out</Button>
             </div>

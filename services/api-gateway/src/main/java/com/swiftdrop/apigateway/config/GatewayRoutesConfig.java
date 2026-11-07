@@ -28,7 +28,7 @@ public class GatewayRoutesConfig {
             @Value("${PRICING_SERVICE_URL:http://localhost:8082}") String pricingServiceUrl,
             @Value("${DELIVERY_SERVICE_URL:http://localhost:8083}") String deliveryServiceUrl,
             @Value("${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}") String communicationsServiceUrl,
-            @Value("${GRAPHQL_SERVICE_URL:http://localhost:8084}") String graphqlServiceUrl) {
+            @Value("${GRAPHQL_SERVICE_URL:http://localhost:8085}") String graphqlServiceUrl) {
 
         return builder.routes()
                 // Specific webhook route to Communications service (evaluates before generic /api/v1/merchants/**)
@@ -38,6 +38,10 @@ public class GatewayRoutesConfig {
                         .uri(communicationsServiceUrl))
 
                 // Accounts & Partners service routes
+                .route("accounts-service-staff", r -> r
+                        .order(SPECIFIC_ROUTE_ORDER)
+                        .path("/api/v1/staff", "/api/v1/staff/**")
+                        .uri(accountsServiceUrl))
                 .route("accounts-service-users-me", r -> r
                         .order(ROUTE_ORDER)
                         .path("/api/v1/users/me")

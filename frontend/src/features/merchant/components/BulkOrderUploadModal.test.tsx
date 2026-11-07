@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { BulkOrderUploadModal } from './BulkOrderUploadModal'
@@ -29,6 +29,19 @@ describe('BulkOrderUploadModal', () => {
     await user.click(downloadBtn)
 
     expect(window.URL.createObjectURL).toHaveBeenCalled()
+  })
+
+  it('displays accessible alert when non-csv file is selected', () => {
+    render(<BulkOrderUploadModal isOpen={true} onClose={vi.fn()} />)
+
+    const file = new File(['binary content'], 'document.pdf', { type: 'application/pdf' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+
+    fireEvent.change(input, { target: { files: [file] } })
+
+    const alertBanner = screen.getByRole('alert')
+    expect(alertBanner).toBeInTheDocument()
+    expect(alertBanner).toHaveTextContent('Please upload a valid .csv file.')
   })
 })
 

@@ -254,6 +254,29 @@ describe('AuthPages - Browser Recovery & In-Memory Routing', () => {
       expect(screen.getByRole('link', { name: 'Admin console' })).toHaveAttribute('href', '/admin')
       expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     })
+
+    it('displays role assignment pending banner when authenticated user has no roles (UX-001)', () => {
+      const auth = createMockAuthContext({
+        snapshot: {
+          status: 'authenticated',
+          subject: 'unassigned-user',
+          roles: [],
+        },
+      })
+
+      render(
+        <AuthContext.Provider value={auth}>
+          <MemoryRouter initialEntries={['/login']}>
+            <LoginPage />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      )
+
+      expect(screen.getByRole('status')).toHaveTextContent(/Role Assignment Pending/)
+      expect(screen.getByText(/no workspace roles/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /space|portal|workspace|console/i })).not.toBeInTheDocument()
+    })
   })
 
   // =========================================================================

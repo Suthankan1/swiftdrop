@@ -22,11 +22,10 @@ const SAMPLE_CSV = `Pickup Address,Dropoff Address,Weight (kg),Dimensions (cm)
 Warehouse 4 Colombo 01,88 Galle Rd Kalutara,1.2,15x10x5
 `
 
-export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete }: BulkOrderUploadModalProps) {
+export function BulkOrderUploadModal({ isOpen, onClose }: BulkOrderUploadModalProps) {
   const [file, setFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -37,9 +36,10 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete }: Bulk
 
   function handleFileSelected(selectedFile: File) {
     if (!selectedFile.name.endsWith('.csv')) {
-      alert('Please upload a .csv file.')
+      setFileError('Please upload a valid .csv file.')
       return
     }
+    setFileError(null)
     setFile(selectedFile)
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -91,21 +91,6 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete }: Bulk
     URL.revokeObjectURL(url)
   }
 
-  function handleConfirmImport() {
-    setIsProcessing(true)
-    setTimeout(() => {
-      setIsProcessing(false)
-      setIsSuccess(true)
-      onImportComplete?.(validRows.length)
-      setTimeout(() => {
-        setIsSuccess(false)
-        setFile(null)
-        setRows([])
-        onClose()
-      }, 1500)
-    }, 1000)
-  }
-
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <div
@@ -128,15 +113,20 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete }: Bulk
             className="modal-close-btn"
             aria-label="Close bulk upload modal"
             onClick={onClose}
-            disabled={isProcessing}
           >
             ×
           </button>
         </div>
 
         <p className="muted" style={{ margin: '8px 0 16px 0', fontSize: '0.9rem' }}>
-          Upload a structured CSV file to book multiple parcels at once. Each valid row will be validated against active zone tariffs.
+          Upload a structured CSV file to review consignment manifests. Each valid row is verified against active zone tariffs and weight constraints.
         </p>
+
+        {fileError && (
+          <div className="feedback-banner is-error" role="alert" style={{ marginBottom: '16px' }}>
+            <span>⚠️ {fileError}</span>
+          </div>
+        )}
 
         {!file && (
           <div
@@ -243,11 +233,9 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete }: Bulk
           </div>
         )}
 
-        {isSuccess && (
-          <div className="feedback-banner is-success" role="status" style={{ marginTop: '16px' }}>
-            <span>✓ Successfully imported and scheduled {validRows.length} parcels!</span>
-          </div>
-        )}
+        <div className="feedback-banner is-info" role="status" style={{ marginTop: '16px', fontSize: '0.85rem' }}>
+          <span>ℹ️ Automated consignment CSV batch booking is currently in private preview. To schedule consignments, please use the single parcel booking form or integrate directly via the Merchant REST API.</span>
+        </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
           <Button type="button" variant="ghost" size="sm" onClick={handleDownloadSample}>
@@ -255,18 +243,16 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete }: Bulk
           </Button>
 
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={isProcessing}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
             <Button
               type="button"
               variant="primary"
-              disabled={!file || validRows.length === 0 || isProcessing || isSuccess}
-              isLoading={isProcessing}
-              loadingText="Importing..."
-              onClick={handleConfirmImport}
+              disabled={true}
+              title="Automated batch consignment booking is currently in private preview"
             >
-              Import {validRows.length > 0 ? `${validRows.length} Orders` : 'Orders'}
+              Import (Preview)
             </Button>
           </div>
         </div>

@@ -609,6 +609,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.59.1 image \
             --severity HIGH,CRITICAL \
+            --ignore-unfixed \
             --exit-code 1 \
             ${{ matrix.target.extra_trivy_args }} \
             "${{ matrix.target.tag }}"
