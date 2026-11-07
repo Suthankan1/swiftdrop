@@ -35,8 +35,8 @@ resource "azurerm_linux_virtual_machine" "k3s" {
 
   lifecycle {
     precondition {
-      condition     = var.spending_authorization_confirmed == false || (var.spending_authorization_confirmed == true && var.operator_ssh_public_key != "")
-      error_message = "AZURE DEPLOYMENT BLOCKED: Operator SSH public key must be provided when deployment is authorized."
+      condition     = var.spending_authorization_confirmed == false || (var.spending_authorization_confirmed == true && var.operator_ssh_public_key != "" && !can(regex("PlaceholderKeyForTerraformValidationOnlyDummyKey00", var.operator_ssh_public_key)))
+      error_message = "AZURE DEPLOYMENT BLOCKED: A genuine operator SSH public key must be provided when deployment is authorized."
     }
   }
 }

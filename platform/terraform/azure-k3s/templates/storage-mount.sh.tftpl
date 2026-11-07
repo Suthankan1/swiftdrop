@@ -2,14 +2,19 @@
 # ==============================================================================
 # SwiftDrop Azure K3s — Persistent Storage Initialization Script
 # Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
-# Invariant: Idempotent mounting; preserves existing data; never formats populated disks.
+# Invariant: Idempotent mounting; preserves existing data; never formats populated disks;
+# enforces systemd dependencies preventing stateful workloads on OS root disk.
 # ==============================================================================
 set -euo pipefail
 
 MOUNT_POINT="${mount_point}"
 STORAGE_PATH="${k3s_storage_path}"
 LOG_FILE="/var/log/swiftdrop-storage-mount.log"
+TIMEOUT_SECONDS=300
+POLL_INTERVAL=5
 
+# Ensure parent directory of log file exists
+mkdir -p "$(dirname "$LOG_FILE")"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "================================================================================"
@@ -19,80 +24,215 @@ echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "Target Mount Point: $MOUNT_POINT"
 echo "K3s Local Storage Path: $STORAGE_PATH"
 
-# 1. Identify Azure data disk device (LUN 0)
-DEVICE_PATH=""
-for candidate in /dev/disk/azure/scsi1/lun0 /dev/disk/by-id/azure-disk-*-lun-0 /dev/sdc /dev/sdd; do
-  if [ -b "$candidate" ]; then
-    DEVICE_PATH=$(readlink -f "$candidate")
-    echo "✓ Found data disk block device at: $candidate -> $DEVICE_PATH"
-    break
+# 1. Identify and protect the OS root block device and temp disk
+ROOT_DEV=""
+if [ -b "/dev/disk/azure/root" ]; then
+  ROOT_DEV=$(readlink -f /dev/disk/azure/root)
+elif [ -b "/dev/root" ]; then
+  ROOT_DEV=$(readlink -f /dev/root)
+else
+  ROOT_PART=$(findmnt -n -o SOURCE / 2>/dev/null || echo "")
+  if [ -n "$ROOT_PART" ]; then
+    ROOT_DEV=$(lsblk -no PKNAME "$ROOT_PART" 2>/dev/null || echo "$ROOT_PART" | sed -E 's/p?[0-9]+$//')
+    if [[ "$ROOT_DEV" != /* ]]; then
+      ROOT_DEV="/dev/$ROOT_DEV"
+    fi
   fi
+fi
+
+TEMP_DEV=""
+if [ -b "/dev/disk/azure/resource" ]; then
+  TEMP_DEV=$(readlink -f /dev/disk/azure/resource)
+fi
+
+echo "Detected OS Root Block Device: $ROOT_DEV"
+if [ -n "$TEMP_DEV" ]; then
+  echo "Detected Azure Ephemeral Resource Device: $TEMP_DEV"
+fi
+
+# 2. Check if already mounted at MOUNT_POINT
+if mountpoint -q "$MOUNT_POINT"; then
+  CURRENT_DEV=$(findmnt -n -o SOURCE "$MOUNT_POINT")
+  CURRENT_UUID=$(blkid -o value -s UUID "$CURRENT_DEV" 2>/dev/null || echo "")
+  echo "✓ Storage mount point $MOUNT_POINT is already actively mounted (device: $CURRENT_DEV, UUID: $CURRENT_UUID)."
+  
+  # Ensure storage directories exist with correct permissions
+  mkdir -p "$STORAGE_PATH"
+  chmod 755 "$STORAGE_PATH"
+  mkdir -p /var/lib/rancher/k3s
+  if [ ! -e /var/lib/rancher/k3s/storage ]; then
+    ln -sfn "$STORAGE_PATH" /var/lib/rancher/k3s/storage
+  fi
+  touch "$MOUNT_POINT/.swiftdrop-data-disk-active"
+  echo "✓ Persistent data disk verification succeeded (already mounted)."
+  exit 0
+fi
+
+# 3. Wait for Azure Managed Data Disk (SCSI controller 1, LUN 0) attachment
+echo "Waiting for Azure managed data disk attachment at SCSI LUN 0 (timeout: $${TIMEOUT_SECONDS}s)..."
+START_TIME=$(date +%s)
+DEVICE_PATH=""
+
+find_data_disk() {
+  # Trigger kernel SCSI rescan to detect newly attached Azure managed disk
+  for h in /sys/class/scsi_host/host*/scan; do
+    if [ -w "$h" ]; then
+      echo "- - -" > "$h" 2>/dev/null || true
+    fi
+  done
+  udevadm settle --timeout=5 2>/dev/null || true
+
+  # Primary Azure udev symlink for LUN 0 on SCSI controller 1
+  if [ -b "/dev/disk/azure/scsi1/lun0" ]; then
+    echo "/dev/disk/azure/scsi1/lun0"
+    return 0
+  fi
+
+  # Secondary check: /dev/disk/by-id symlinks
+  for id_link in /dev/disk/by-id/azure-disk-*-lun-0 /dev/disk/by-id/azure-*-lun0*; do
+    if [ -b "$id_link" ]; then
+      echo "$id_link"
+      return 0
+    fi
+  done
+
+  # Tertiary check: /dev/disk/by-path with LUN 0 on controller 1
+  for path_link in /dev/disk/by-path/*scsi*-0:1:0:0* /dev/disk/by-path/*-lun-0; do
+    if [ -b "$path_link" ]; then
+      echo "$path_link"
+      return 0
+    fi
+  done
+
+  # Quaternary check: sysfs scsi block devices with LUN 0
+  for scsi_dev in /sys/bus/scsi/devices/*:1:0:0/block/*; do
+    if [ -d "$scsi_dev" ]; then
+      local bname
+      bname=$(basename "$scsi_dev")
+      if [ -b "/dev/$bname" ]; then
+        echo "/dev/$bname"
+        return 0
+      fi
+    fi
+  done
+
+  echo ""
+  return 1
+}
+
+while true; do
+  CANDIDATE=$(find_data_disk || echo "")
+  if [ -n "$CANDIDATE" ] && [ -b "$CANDIDATE" ]; then
+    RESOLVED=$(readlink -f "$CANDIDATE")
+    
+    # Strict validation: Device must NOT be OS root or ephemeral temp disk
+    if [ -n "$ROOT_DEV" ] && [ "$RESOLVED" = "$ROOT_DEV" ]; then
+      echo "SECURITY ALERT: Candidate $RESOLVED matches OS root disk $ROOT_DEV! Rejecting." >&2
+    elif [ -n "$TEMP_DEV" ] && [ "$RESOLVED" = "$TEMP_DEV" ]; then
+      echo "SECURITY ALERT: Candidate $RESOLVED matches Azure ephemeral disk $TEMP_DEV! Rejecting." >&2
+    elif findmnt -n "$RESOLVED" | grep -E ' (/|/boot|/mnt)$' >/dev/null 2>&1; then
+      echo "SECURITY ALERT: Candidate $RESOLVED is mounted as root/boot/mnt! Rejecting." >&2
+    else
+      DEVICE_PATH="$RESOLVED"
+      echo "✓ Verified Azure data disk block device: $CANDIDATE -> $DEVICE_PATH"
+      break
+    fi
+  fi
+
+  ELAPSED=$(( $(date +%s) - START_TIME ))
+  if [ "$ELAPSED" -ge "$TIMEOUT_SECONDS" ]; then
+    echo "ERROR: Timed out after $${TIMEOUT_SECONDS}s waiting for Azure data disk (LUN 0) attachment!" >&2
+    echo "Ensure azurerm_virtual_machine_data_disk_attachment has completed in Terraform." >&2
+    exit 1
+  fi
+
+  echo "Data disk not yet attached ($${ELAPSED}s elapsed). Retrying in $${POLL_INTERVAL}s..."
+  sleep "$POLL_INTERVAL"
 done
 
-if [ -z "$DEVICE_PATH" ]; then
-  # Fallback: scan lsblk for unmounted disk of expected size
-  echo "Scanning lsblk for SCSI LUN 0 data disk..."
-  DEVICE_PATH=$(lsblk -dpno NAME,TYPE | awk '$2=="disk" && $1!~"/dev/sda" && $1!~"/dev/sdb" {print $1}' | head -n 1 || echo "")
-fi
-
 if [ -z "$DEVICE_PATH" ] || [ ! -b "$DEVICE_PATH" ]; then
-  echo "ERROR: Could not locate attached Azure data disk block device!" >&2
+  echo "FATAL: Could not locate a verified Azure managed data disk block device!" >&2
   exit 1
 fi
 
-echo "Selected block device: $DEVICE_PATH"
+echo "Target verified block device: $DEVICE_PATH"
 
-# 2. Check for existing filesystem
+# 4. Check for existing filesystem (Preserve data / Avoid arbitrary formatting)
 FSTYPE=$(blkid -o value -s TYPE "$DEVICE_PATH" || echo "")
+EXISTING_UUID=$(blkid -o value -s UUID "$DEVICE_PATH" || echo "")
 
-if [ -z "$FSTYPE" ]; then
-  echo "No existing filesystem detected on $DEVICE_PATH. Formatting as ext4..."
-  mkfs.ext4 -m 1 -L swiftdrop-data "$DEVICE_PATH"
-  echo "✓ Format complete."
+if [ -n "$FSTYPE" ]; then
+  echo "✓ Existing filesystem detected: $FSTYPE (UUID: $EXISTING_UUID). Preserving existing data."
 else
-  echo "✓ Existing filesystem detected: $FSTYPE. Preserving existing data."
+  # Verify disk is completely empty before formatting
+  echo "No filesystem detected on $DEVICE_PATH. Verifying disk is unpartitioned..."
+  PART_COUNT=$(lsblk -no TYPE "$DEVICE_PATH" 2>/dev/null | grep -c "part" || true)
+  if [ "$PART_COUNT" -gt 0 ]; then
+    echo "ERROR: Disk $DEVICE_PATH contains existing partitions but unformatted signature! Aborting to prevent data loss." >&2
+    exit 1
+  fi
+
+  echo "Formatting $DEVICE_PATH as ext4 with label 'swiftdrop-data'..."
+  mkfs.ext4 -m 1 -L swiftdrop-data -E lazy_itable_init=0,lazy_journal_init=0 "$DEVICE_PATH"
+  echo "✓ Formatting completed."
+  EXISTING_UUID=$(blkid -o value -s UUID "$DEVICE_PATH")
 fi
 
-# 3. Retrieve UUID for stable /etc/fstab entry
-UUID=$(blkid -o value -s UUID "$DEVICE_PATH")
-if [ -z "$UUID" ]; then
-  echo "ERROR: Failed to retrieve UUID for $DEVICE_PATH" >&2
+if [ -z "$EXISTING_UUID" ]; then
+  echo "FATAL: Failed to determine filesystem UUID for $DEVICE_PATH!" >&2
   exit 1
 fi
-echo "Device UUID: $UUID"
+echo "Filesystem UUID: $EXISTING_UUID"
 
-# 4. Prepare mount directory
+# 5. Prepare mount point directory
 mkdir -p "$MOUNT_POINT"
 
-# 5. Configure /etc/fstab idempotently
-FSTAB_LINE="UUID=$UUID $MOUNT_POINT ext4 defaults,nofail,discard 0 2"
-if ! grep -q "$UUID" /etc/fstab; then
-  echo "Appending mount to /etc/fstab: $FSTAB_LINE"
-  echo "$FSTAB_LINE" >> /etc/fstab
+# 6. Configure /etc/fstab idempotently using UUID
+FSTAB_ENTRY="UUID=$EXISTING_UUID $MOUNT_POINT ext4 defaults,nofail,_netdev,discard 0 2"
+if ! grep -q "$EXISTING_UUID" /etc/fstab; then
+  echo "Adding entry to /etc/fstab: $FSTAB_ENTRY"
+  echo "$FSTAB_ENTRY" >> /etc/fstab
 else
-  echo "✓ Mount entry for UUID=$UUID already present in /etc/fstab."
+  echo "✓ Mount entry for UUID=$EXISTING_UUID already present in /etc/fstab."
 fi
 
-# 6. Mount filesystem
+# 7. Mount filesystem
 if ! mountpoint -q "$MOUNT_POINT"; then
   echo "Mounting $MOUNT_POINT..."
   mount "$MOUNT_POINT"
-  echo "✓ Mounted successfully."
-else
-  echo "✓ $MOUNT_POINT is already mounted."
+  if ! mountpoint -q "$MOUNT_POINT"; then
+    echo "FATAL: Failed to mount $MOUNT_POINT from device $DEVICE_PATH (UUID=$EXISTING_UUID)!" >&2
+    exit 1
+  fi
+  echo "✓ Mounted $MOUNT_POINT successfully."
 fi
 
-# 7. Initialize K3s storage directories
+# Write mount canary
+touch "$MOUNT_POINT/.swiftdrop-data-disk-active"
+
+# 8. Initialize K3s storage directory structure
 mkdir -p "$STORAGE_PATH"
 chmod 755 "$STORAGE_PATH"
 
-# Ensure K3s storage symlink or bind path
 mkdir -p /var/lib/rancher/k3s
-if [ ! -d /var/lib/rancher/k3s/storage ] && [ ! -L /var/lib/rancher/k3s/storage ]; then
+if [ ! -e /var/lib/rancher/k3s/storage ]; then
   echo "Linking /var/lib/rancher/k3s/storage -> $STORAGE_PATH"
-  ln -s "$STORAGE_PATH" /var/lib/rancher/k3s/storage
+  ln -sfn "$STORAGE_PATH" /var/lib/rancher/k3s/storage
 fi
 
+# 9. Configure systemd unit drop-in for k3s.service
+# CRITICAL: Ensures K3s refuses to start if /mnt/swiftdrop-data is not mounted,
+# preventing stateful workloads (PostgreSQL, Kafka, MinIO) from writing to OS root disk.
+mkdir -p /etc/systemd/system/k3s.service.d
+cat << 'EOF_DROPIN' > /etc/systemd/system/k3s.service.d/storage-dependency.conf
+[Unit]
+RequiresMountsFor=${mount_point}
+ConditionPathIsMountPoint=${mount_point}
+EOF_DROPIN
+
+systemctl daemon-reload 2>/dev/null || true
+
 echo "================================================================================"
-echo "✓ Persistent data disk initialized and ready for K3s local-path workloads."
+echo "✓ Persistent data disk successfully verified, mounted, and protected."
+echo "  K3s service storage dependency configured at /etc/systemd/system/k3s.service.d/storage-dependency.conf"
 echo "================================================================================"

@@ -73,8 +73,8 @@ All pricing reflects official Microsoft Azure retail pay-as-you-go rates in the 
 
 1. **Azure for Students Balance Disqualified:**  
    Per ADR-0011, having a $100 student promotional balance does **NOT** classify cloud resources as $0 or free. Real monetary charges accrue against the subscription quota.
-2. **Hard Spending Cap (`approved_budget_usd`):**  
-   The spending authorization gate enforces a maximum financial limit (e.g. $25.00 for Scenario B). If the cost estimate exceeds the approved budget, Terraform execution is blocked.
+2. **Pre-Provisioning Budget Validation vs Runtime Enforcement:**  
+   The Terraform spending authorization gate validates input variables and execution plans against the maximum authorized budget ($25.00 for Scenario B) in `azure-spending-gate-policy.yaml` prior to plan and apply. However, **Terraform does NOT continuously poll billing or enforce hard spend cutoffs at runtime**. Once resources are active in Azure, runtime expenditure containment relies strictly on automated Azure Cost Management budget alerts (item 3) and immediate operator deallocation (item 4).
 3. **Budget Alerts in Azure Cost Management:**  
    An automated budget alert must be created at 50% ($12.50) and 80% ($20.00) of the approved spending ceiling, notifying `@Suthankan1`.
 4. **Mandatory Immediate Deallocation:**  

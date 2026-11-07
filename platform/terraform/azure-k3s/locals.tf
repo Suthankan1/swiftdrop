@@ -33,4 +33,21 @@ locals {
   }
 
   tags = merge(local.default_tags, var.common_tags)
+
+  # Machine-Readable Spending Gate Policy Parsing (Fail-Closed Enforcement)
+  spending_gate_policy       = yamldecode(file("${path.module}/azure-spending-gate-policy.yaml"))
+  policy_spending_authorized = try(local.spending_gate_policy.spending_authorized, false)
+  policy_status              = try(local.spending_gate_policy.status, "")
+  policy_approved_budget     = try(local.spending_gate_policy.financial_controls.approved_budget_usd, 0.0)
+  policy_cost_ceiling        = try(local.spending_gate_policy.financial_controls.cost_ceiling_usd, 0.0)
+  policy_subscription_id     = try(local.spending_gate_policy.approved_parameters.subscription_id, "")
+  policy_approved_regions    = try(local.spending_gate_policy.approved_parameters.approved_regions, [])
+  policy_approved_vm_skus    = try(local.spending_gate_policy.approved_parameters.approved_vm_skus, [])
+  policy_approved_disk_skus  = try(local.spending_gate_policy.approved_parameters.approved_disk_skus, [])
+  policy_allowed_resources   = try(local.spending_gate_policy.approved_parameters.allowed_resources, [])
+  policy_reviewers           = try(local.spending_gate_policy.governance.required_reviewers, [])
+  policy_unsigned_reviewers  = [for r in local.policy_reviewers : r.github_handle if try(r.signed, false) != true]
+  policy_approval_reference  = try(local.spending_gate_policy.governance.approval_reference, "")
+  policy_billing_owner       = try(local.spending_gate_policy.governance.billing_owner, "")
+  policy_infra_operator      = try(local.spending_gate_policy.governance.infrastructure_operator, "")
 }

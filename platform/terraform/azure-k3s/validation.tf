@@ -2,12 +2,15 @@
 # SwiftDrop Azure K3s Terraform — Spending & Security Invariants Gate
 # Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
 # Invariant: Fail-closed evaluation. Prevents accidental cloud provisioning.
+# Note: Terraform 1.5+ check blocks produce informative warnings during plan/apply.
+# Strictly blocking enforcement halting terraform plan and terraform apply is
+# implemented via lifecycle preconditions on azurerm_resource_group.k3s in resource-group.tf.
 # ==============================================================================
 
 check "spending_authorization_gate" {
   assert {
-    condition     = var.spending_authorization_confirmed == true && var.approved_budget_usd > 0.0 && var.approval_reference != "" && var.billing_owner != "" && var.infrastructure_operator != ""
-    error_message = "FAIL-CLOSED: Azure cloud deployment is NOT authorized. Set spending_authorization_confirmed=true, approved_budget_usd>0, approval_reference, billing_owner, and infrastructure_operator per docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md."
+    condition     = local.policy_spending_authorized == true && var.spending_authorization_confirmed == true && var.approved_budget_usd > 0.0 && var.approval_reference != "" && var.billing_owner != "" && var.infrastructure_operator != ""
+    error_message = "FAIL-CLOSED: Azure cloud deployment is NOT authorized in azure-spending-gate-policy.yaml. Multi-signature governance sign-off is required before setting spending_authorization_confirmed=true per docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md."
   }
 }
 
