@@ -103,7 +103,8 @@ platform/terraform/azure-k3s/
 ├── scripts/
 │   ├── validate.sh                     # Safe offline static validation suite
 │   ├── preflight.sh                    # Pre-plan operator preflight verification
-│   ├── check-cost-authorization.py     # 20-point spending authorization checker
+│   ├── check-cost-authorization.py     # Spending authorization and plan checker
+│   ├── setup-kube-access.sh            # Secure SSH tunnel for private K8s API (port 6443)
 │   ├── verify-azure-readiness.sh       # Post-provisioning Azure resource inspection
 │   ├── verify-k3s-readiness.sh         # Post-provisioning K3s cluster & mount inspection
 │   └── verify-deployment-contracts.sh  # Image digests, contracts, and Helm render tests

@@ -106,12 +106,16 @@ echo "✓ Logical database backups completed to: $BACKUP_DIR"
 
 ---
 
-## 4. Host Replacement & Disk Re-Attachment Protocol
+## 4. Host Replacement, Protection, & Disk Re-Attachment Protocol
 
 If the host VM is corrupted, deallocated, or deleted, persistent state is preserved on the independent Azure managed data disk:
 
-1. The data disk (`disk-swiftdrop-data-demo`) has `prevent_destroy = false` (or guarded by lifecycle).
-2. Terraform or the operator creates a replacement VM.
-3. The data disk is attached to the new VM at SCSI LUN 0.
-4. During boot, `storage-mount.sh` detects the existing `ext4` filesystem UUID, mounts `/mnt/swiftdrop-data` without formatting, and preserves all database records.
-5. K3s starts, reads `/mnt/swiftdrop-data/k3s-storage`, and rebinds persistent volume claims to their existing data directories seamlessly.
+1. **Terraform Lifecycle Protection:** The data disk (`disk-swiftdrop-data-demo`) enforces `lifecycle { prevent_destroy = true }` in `storage.tf`. Any accidental `terraform destroy` or plan that would replace the managed disk is rejected by Terraform.
+2. **Systemd Mount Failure Guard:** K3s configuration includes `/etc/systemd/system/k3s.service.d/storage-dependency.conf` with `RequiresMountsFor=/mnt/swiftdrop-data` and `ConditionPathIsMountPoint=/mnt/swiftdrop-data`. If the data disk fails to mount or is detached, systemd refuses to start K3s, preventing stateful workloads from writing to the OS root filesystem.
+3. **Safe LUN 0 Discovery & Non-Root Assurance:** The storage initialization script polls for SCSI controller 1, LUN 0 attachment (up to 300 seconds), explicitly rejects OS root and ephemeral resource devices, verifies that existing filesystems are never reformatted, and preserves stable UUID mounts.
+4. **Replacement & Reattachment:** If a replacement VM is created, the existing managed disk is reattached at SCSI LUN 0. On boot, `storage-mount.sh` verifies the existing ext4 UUID, mounts `/mnt/swiftdrop-data`, and K3s seamlessly rebinds existing PVCs.
+5. **Operator-Controlled Decommissioning Procedure:** If deliberate disk destruction is required:
+   - Capture a disk snapshot (`az snapshot create ...`).
+   - Create logical database dumps via `pg_dump`.
+   - Explicitly update `storage.tf` to set `prevent_destroy = false` with documented peer review approval.
+   - Execute targeted deletion: `terraform destroy -target=azurerm_managed_disk.data`.

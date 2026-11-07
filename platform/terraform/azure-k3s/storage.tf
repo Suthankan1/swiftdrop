@@ -15,7 +15,7 @@ resource "azurerm_managed_disk" "data" {
 
   lifecycle {
     # Protects persistent stateful application data from accidental destruction.
-    prevent_destroy = false
+    prevent_destroy = true
     ignore_changes = [
       create_option
     ]

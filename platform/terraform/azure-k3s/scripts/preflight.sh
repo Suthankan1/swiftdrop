@@ -23,11 +23,11 @@ if [ ! -f "$VARS_FILE" ]; then
 fi
 echo "✓ Found operator terraform.tfvars."
 
-# 2. Verify Spending Authorization Contract
+# 2. Verify Spending Authorization Contract & Variables
 echo ""
-echo "--- CHECKING SPENDING AUTHORIZATION GATE ---"
-if ! python3 "${SCRIPT_DIR}/check-cost-authorization.py"; then
-  echo "ERROR: Spending authorization gate has NOT been satisfied!" >&2
+echo "--- CHECKING SPENDING AUTHORIZATION GATE & OPERATOR VARIABLES ---"
+if ! python3 "${SCRIPT_DIR}/check-cost-authorization.py" --verify-vars "$VARS_FILE"; then
+  echo "ERROR: Spending authorization gate or terraform.tfvars validation has NOT been satisfied!" >&2
   echo "Complete the 20-point spending checklist in docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md." >&2
   exit 1
 fi
@@ -80,6 +80,11 @@ if az vm list-usage --location "$TARGET_LOCATION" -o table 2>/dev/null | grep -i
 else
   echo "NOTE: Could not inspect regional quota automatically; verify quota manually in Azure Portal."
 fi
+
+echo ""
+echo "NOTE: Terraform IaC checks input parameters at plan/apply time against signed policy."
+echo "      Terraform does NOT continuously poll billing or halt running VMs when spending accrues."
+echo "      Runtime spend containment requires Azure Cost Management budget alerts and prompt deallocation."
 
 echo ""
 echo "================================================================================"

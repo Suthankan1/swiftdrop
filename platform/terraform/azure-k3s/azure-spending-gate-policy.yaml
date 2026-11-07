@@ -19,10 +19,26 @@ financial_controls:
 approved_parameters:
   subscription_id: ""
   subscription_offer: "MS-AZR-0170P"
-  approved_regions: []
-  approved_vm_skus: []
-  approved_disk_skus: []
-  allowed_resources: []
+  approved_regions:
+    - "westeurope"
+    - "northeurope"
+  approved_vm_skus:
+    - "Standard_B4ms"
+    - "Standard_D4s_v5"
+  approved_disk_skus:
+    - "StandardSSD_LRS"
+    - "Premium_LRS"
+  allowed_resources:
+    - "azurerm_resource_group"
+    - "azurerm_virtual_network"
+    - "azurerm_subnet"
+    - "azurerm_public_ip"
+    - "azurerm_network_security_group"
+    - "azurerm_network_interface"
+    - "azurerm_network_interface_security_group_association"
+    - "azurerm_managed_disk"
+    - "azurerm_linux_virtual_machine"
+    - "azurerm_virtual_machine_data_disk_attachment"
 
 governance:
   billing_owner: ""
