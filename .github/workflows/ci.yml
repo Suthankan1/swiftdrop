@@ -169,12 +169,41 @@ jobs:
       - name: Verify unittest discovery parity
         run: python3 -m unittest discover -s tests/terraform-policy -p "test_*.py" -v
 
+      - name: Verify mandatory Azure K3s Terraform preparation files
+        run: |
+          echo "================================================================================"
+          echo "      SWIFTDROP AZURE K3S TERRAFORM FOUNDATION INTEGRITY CHECK                  "
+          echo "================================================================================"
+          test -d platform/terraform/azure-k3s || { echo "ERROR: platform/terraform/azure-k3s directory missing!"; exit 1; }
+          test -f platform/terraform/azure-k3s/versions.tf || { echo "ERROR: platform/terraform/azure-k3s/versions.tf missing!"; exit 1; }
+          test -f platform/terraform/azure-k3s/.terraform.lock.hcl || { echo "ERROR: platform/terraform/azure-k3s/.terraform.lock.hcl missing!"; exit 1; }
+          test -f platform/terraform/azure-k3s/azure-spending-gate-policy.yaml || { echo "ERROR: azure-spending-gate-policy.yaml missing!"; exit 1; }
+          test -d platform/kubernetes/helm/environments/azure-k3s || { echo "ERROR: helm environments/azure-k3s missing!"; exit 1; }
+          echo "✓ All mandatory Azure K3s Terraform preparation and policy files present."
+
+      - name: Initialize Azure K3s Terraform with backend disabled and readonly lockfile
+        run: terraform -chdir=platform/terraform/azure-k3s init -backend=false -input=false -lockfile=readonly
+
+      - name: Run Azure K3s Terraform static validation
+        run: terraform -chdir=platform/terraform/azure-k3s validate -no-color
+
+      - name: Verify Azure K3s spending authorization gate is locked
+        run: python3 platform/terraform/azure-k3s/scripts/check-cost-authorization.py --verify-gate-locked
+
+      - name: Run Azure K3s test suite
+        run: python3 -m pytest tests/azure-k3s -v --junitxml=azure-k3s-results.xml
+
+      - name: Verify Azure K3s unittest discovery parity
+        run: python3 -m unittest discover -s tests/azure-k3s -p "test_*.py" -v
+
       - name: Upload Terraform policy test results
         if: always()
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: terraform-policy-results
-          path: terraform-policy-results.xml
+          path: |
+            terraform-policy-results.xml
+            azure-k3s-results.xml
           retention-days: 7
 
   kubernetes-cluster-policy:

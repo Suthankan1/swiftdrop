@@ -1,0 +1,51 @@
+# ==============================================================================
+# SwiftDrop Platform — Azure K3s Messaging & Object Storage Helm Values
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Invariant: Persistent Kafka KRaft logs and MinIO private S3 storage on Azure disk.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+  storageClass: local-path
+
+namespaces:
+  messaging: swiftdrop-messaging
+
+kafka:
+  enabled: true
+  replicaCount: 1
+  storage:
+    size: 3Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 1024Mi
+
+minio:
+  enabled: true
+  replicaCount: 1
+  storage:
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+mailpit:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi

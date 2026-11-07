@@ -1,0 +1,88 @@
+# ==============================================================================
+# SwiftDrop Platform — Azure K3s Observability & Monitoring Helm Values
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Invariant: In-cluster monitoring running on host VM backed by local-path storage.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+
+namespaces:
+  monitoring: swiftdrop-monitoring
+  apps: swiftdrop-apps
+  identity: swiftdrop-identity
+  data: swiftdrop-data
+  messaging: swiftdrop-messaging
+  system: swiftdrop-system
+
+networkPolicies:
+  enabled: true
+  defaultDeny: true
+
+prometheus:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+alertmanager:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 500Mi
+  resources:
+    requests:
+      cpu: 20m
+      memory: 48Mi
+    limits:
+      cpu: 100m
+      memory: 96Mi
+
+grafana:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 250m
+      memory: 192Mi
+
+logging:
+  enabled: true
+  loki:
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 30m
+        memory: 64Mi
+      limits:
+        cpu: 150m
+        memory: 128Mi
+  promtail:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi

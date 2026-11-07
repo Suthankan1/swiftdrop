@@ -1,0 +1,62 @@
+#cloud-config
+# ==============================================================================
+# SwiftDrop Azure Linux VM — Cloud-Init Bootstrapping Specification
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Invariant: Pinned K3s engine; host firewall defense-in-depth; storage mount preparation.
+# ==============================================================================
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - curl
+  - ca-certificates
+  - gnupg
+  - jq
+  - e2fsprogs
+  - ufw
+  - iptables
+
+write_files:
+  - path: /usr/local/bin/swiftdrop-storage-mount.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+${indent(6, storage_mount_script)}
+
+  - path: /etc/rancher/k3s/config.yaml
+    permissions: "0640"
+    owner: root:root
+    content: |
+${indent(6, k3s_config)}
+
+runcmd:
+  - echo "Starting SwiftDrop Azure host bootstrap..." > /var/log/swiftdrop-bootstrap.log
+  - /usr/local/bin/swiftdrop-storage-mount.sh
+  - |
+    PRIVATE_IP=$(hostname -I | awk '{print $1}')
+    if [ -n "$PRIVATE_IP" ]; then
+      echo "  - \"$PRIVATE_IP\"" >> /etc/rancher/k3s/config.yaml
+    fi
+    PUBLIC_IP=$(curl -s -m 5 -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/publicIpAddress?api-version=2021-02-01&format=text" 2>/dev/null || echo "")
+    if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "null" ]; then
+      echo "  - \"$PUBLIC_IP\"" >> /etc/rancher/k3s/config.yaml
+    fi
+  - ufw --force reset
+  - ufw default deny incoming
+  - ufw default allow outgoing
+%{ for cidr in allowed_ssh_cidrs ~}
+  - ufw allow from ${cidr} to any port 22 proto tcp comment 'Restricted SSH'
+%{ endfor ~}
+  - ufw allow 443/tcp comment 'HTTPS Ingress'
+%{ if enable_http ~}
+  - ufw allow 80/tcp comment 'HTTP Ingress'
+%{ endif ~}
+  - ufw --force enable
+  - echo "Installing K3s version ${k3s_version}..." >> /var/log/swiftdrop-bootstrap.log
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" sh - >> /var/log/swiftdrop-bootstrap.log 2>&1
+  - systemctl enable k3s
+  - systemctl start k3s
+  - echo "Waiting for K3s node readiness..." >> /var/log/swiftdrop-bootstrap.log
+  - timeout 180 bash -c 'until k3s kubectl get node | grep -q "Ready"; do sleep 5; done' || echo "WARNING: Node readiness timeout." >> /var/log/swiftdrop-bootstrap.log
+  - echo "SwiftDrop K3s bootstrap completed successfully at $(date -u)" >> /var/log/swiftdrop-bootstrap.log
