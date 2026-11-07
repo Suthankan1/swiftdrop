@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# SwiftDrop Azure K3s — Persistent Storage Initialization Script
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Invariant: Idempotent mounting; preserves existing data; never formats populated disks.
+# ==============================================================================
+set -euo pipefail
+
+MOUNT_POINT="${mount_point}"
+STORAGE_PATH="${k3s_storage_path}"
+LOG_FILE="/var/log/swiftdrop-storage-mount.log"
+
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "================================================================================"
+echo "          SWIFTDROP AZURE PERSISTENT DATA DISK MOUNT INITIALIZATION             "
+echo "================================================================================"
+echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+echo "Target Mount Point: $MOUNT_POINT"
+echo "K3s Local Storage Path: $STORAGE_PATH"
+
+# 1. Identify Azure data disk device (LUN 0)
+DEVICE_PATH=""
+for candidate in /dev/disk/azure/scsi1/lun0 /dev/disk/by-id/azure-disk-*-lun-0 /dev/sdc /dev/sdd; do
+  if [ -b "$candidate" ]; then
+    DEVICE_PATH=$(readlink -f "$candidate")
+    echo "✓ Found data disk block device at: $candidate -> $DEVICE_PATH"
+    break
+  fi
+done
+
+if [ -z "$DEVICE_PATH" ]; then
+  # Fallback: scan lsblk for unmounted disk of expected size
+  echo "Scanning lsblk for SCSI LUN 0 data disk..."
+  DEVICE_PATH=$(lsblk -dpno NAME,TYPE | awk '$2=="disk" && $1!~"/dev/sda" && $1!~"/dev/sdb" {print $1}' | head -n 1 || echo "")
+fi
+
+if [ -z "$DEVICE_PATH" ] || [ ! -b "$DEVICE_PATH" ]; then
+  echo "ERROR: Could not locate attached Azure data disk block device!" >&2
+  exit 1
+fi
+
+echo "Selected block device: $DEVICE_PATH"
+
+# 2. Check for existing filesystem
+FSTYPE=$(blkid -o value -s TYPE "$DEVICE_PATH" || echo "")
+
+if [ -z "$FSTYPE" ]; then
+  echo "No existing filesystem detected on $DEVICE_PATH. Formatting as ext4..."
+  mkfs.ext4 -m 1 -L swiftdrop-data "$DEVICE_PATH"
+  echo "✓ Format complete."
+else
+  echo "✓ Existing filesystem detected: $FSTYPE. Preserving existing data."
+fi
+
+# 3. Retrieve UUID for stable /etc/fstab entry
+UUID=$(blkid -o value -s UUID "$DEVICE_PATH")
+if [ -z "$UUID" ]; then
+  echo "ERROR: Failed to retrieve UUID for $DEVICE_PATH" >&2
+  exit 1
+fi
+echo "Device UUID: $UUID"
+
+# 4. Prepare mount directory
+mkdir -p "$MOUNT_POINT"
+
+# 5. Configure /etc/fstab idempotently
+FSTAB_LINE="UUID=$UUID $MOUNT_POINT ext4 defaults,nofail,discard 0 2"
+if ! grep -q "$UUID" /etc/fstab; then
+  echo "Appending mount to /etc/fstab: $FSTAB_LINE"
+  echo "$FSTAB_LINE" >> /etc/fstab
+else
+  echo "✓ Mount entry for UUID=$UUID already present in /etc/fstab."
+fi
+
+# 6. Mount filesystem
+if ! mountpoint -q "$MOUNT_POINT"; then
+  echo "Mounting $MOUNT_POINT..."
+  mount "$MOUNT_POINT"
+  echo "✓ Mounted successfully."
+else
+  echo "✓ $MOUNT_POINT is already mounted."
+fi
+
+# 7. Initialize K3s storage directories
+mkdir -p "$STORAGE_PATH"
+chmod 755 "$STORAGE_PATH"
+
+# Ensure K3s storage symlink or bind path
+mkdir -p /var/lib/rancher/k3s
+if [ ! -d /var/lib/rancher/k3s/storage ] && [ ! -L /var/lib/rancher/k3s/storage ]; then
+  echo "Linking /var/lib/rancher/k3s/storage -> $STORAGE_PATH"
+  ln -s "$STORAGE_PATH" /var/lib/rancher/k3s/storage
+fi
+
+echo "================================================================================"
+echo "✓ Persistent data disk initialized and ready for K3s local-path workloads."
+echo "================================================================================"

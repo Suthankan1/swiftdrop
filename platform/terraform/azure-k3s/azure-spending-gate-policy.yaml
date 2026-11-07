@@ -1,0 +1,41 @@
+# SwiftDrop Azure K3s Machine-Readable Spending Authorization Gate Contract
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Consumed by: platform/terraform/azure-k3s/scripts/check-cost-authorization.py
+# Invariant: FAIL-CLOSED. Azure cloud deployment is strictly prohibited until authorized.
+
+version: "1.0"
+gate_name: "azure-k3s-spending-authorization"
+status: "BLOCKED_PENDING_SEPARATE_HUMAN_AUTHORIZATION"
+spending_authorized: false
+
+financial_controls:
+  cost_ceiling_usd: 0.00
+  approved_budget_usd: 0.00
+  max_recurring_monthly_usd: 0.00
+  max_deployment_duration_hours: 0
+  promotional_credit_permitted: false
+  billing_overage_permitted: false
+
+approved_parameters:
+  subscription_id: ""
+  subscription_offer: "MS-AZR-0170P"
+  approved_regions: []
+  approved_vm_skus: []
+  approved_disk_skus: []
+  allowed_resources: []
+
+governance:
+  billing_owner: ""
+  infrastructure_operator: ""
+  approval_reference: ""
+  approval_date: ""
+  required_reviewers:
+    - role: "Platform Lead / Cloud Architect"
+      github_handle: "@Suthankan1"
+      signed: false
+    - role: "Platform Architecture"
+      github_handle: "@Harithkeshan"
+      signed: false
+    - role: "Security & FinOps"
+      github_handle: "@Vibhushan-2003"
+      signed: false

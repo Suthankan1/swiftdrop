@@ -1,0 +1,54 @@
+# ==============================================================================
+# SwiftDrop Platform — Azure K3s Persistent Data Layer Helm Values
+# Canonical Reference: docs/deployment/OPTIONAL_AZURE_K3S_SPENDING_AUTHORIZATION.md
+# Invariant: Persistent PostgreSQL workloads backed by Azure Data Disk via local-path.
+# ==============================================================================
+
+global:
+  clusterDomain: cluster.local
+  storageClass: local-path
+
+namespaces:
+  data: swiftdrop-data
+
+accountsPostgres:
+  enabled: true
+  replicaCount: 1
+  storage:
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+businessPostgres:
+  enabled: true
+  replicaCount: 1
+  storage:
+    size: 3Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 80m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+keycloakPostgres:
+  enabled: true
+  replicaCount: 1
+  storage:
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

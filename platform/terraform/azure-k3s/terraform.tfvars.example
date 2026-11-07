@@ -1,0 +1,49 @@
+# ==============================================================================
+# SwiftDrop Azure K3s — Example Operator Variables File
+# Copy to terraform.tfvars ONLY after receiving formal multi-signature approval.
+# DO NOT COMMIT terraform.tfvars TO VERSION CONTROL.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Financial Authorization & Governance Gate
+# ------------------------------------------------------------------------------
+spending_authorization_confirmed = false # Set to true ONLY upon formal human authorization
+approval_reference               = "ISSUE-178-AUTH-20261110"
+approved_budget_usd              = 25.00
+max_deployment_hours             = 72
+billing_owner                    = "Suthankan1"
+infrastructure_operator          = "Suthankan1"
+
+# ------------------------------------------------------------------------------
+# 2. Azure Target Environment
+# ------------------------------------------------------------------------------
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+resource_group_name = "rg-swiftdrop-demo"
+location            = "westeurope"
+environment         = "demo"
+
+# ------------------------------------------------------------------------------
+# 3. Network & Access Security
+# ------------------------------------------------------------------------------
+vnet_address_space       = ["10.10.0.0/16"]
+subnet_address_prefix    = ["10.10.1.0/24"]
+enable_public_ip         = true
+allowed_ssh_source_cidrs = ["203.0.113.50/32"] # MUST be operator's specific IP/CIDR. NEVER 0.0.0.0/0
+enable_http_port_80      = false
+
+# ------------------------------------------------------------------------------
+# 4. Compute & Persistent Storage
+# ------------------------------------------------------------------------------
+vm_size                 = "Standard_B4ms"
+admin_username          = "swiftdropadmin"
+operator_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... operator@example"
+os_disk_type            = "StandardSSD_LRS"
+os_disk_size_gb         = 30
+data_disk_type          = "StandardSSD_LRS"
+data_disk_size_gb       = 32
+
+# ------------------------------------------------------------------------------
+# 5. K3s Engine & Application Ingress
+# ------------------------------------------------------------------------------
+k3s_version        = "v1.31.2+k3s1"
+public_domain_name = "demo.swiftdrop.net"
