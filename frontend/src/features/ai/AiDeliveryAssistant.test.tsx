@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AiDeliveryAssistant } from './AiDeliveryAssistant'
+import { AssistantApiError, keywordOnlyAssistantApi, type AssistantApi } from './assistantApi'
 
 describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
   let mockFetch: ReturnType<typeof vi.fn<typeof fetch>>
@@ -19,7 +20,7 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
   function renderAssistant() {
     return render(
       <MemoryRouter>
-        <AiDeliveryAssistant />
+        <AiDeliveryAssistant assistantApi={keywordOnlyAssistantApi} />
       </MemoryRouter>,
     )
   }
@@ -190,6 +191,67 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/commercial merchants can enroll for self-service verification/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('AI mode (server-side Gemini)', () => {
+    function renderWith(api: AssistantApi) {
+      return render(
+        <MemoryRouter>
+          <AiDeliveryAssistant assistantApi={api} />
+        </MemoryRouter>,
+      )
+    }
+
+    it('answers through the AI service with the conversation so far', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>().mockResolvedValue({ reply: 'Your parcel is in transit to Kandy.', toolsUsed: ['track_parcel'] })
+      renderWith({ status: async () => ({ enabled: true }), chat })
+
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      expect(await screen.findByRole('heading', { name: 'SwiftDrop AI Assistant' })).toBeInTheDocument()
+      await user.type(screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i }), 'Where is SWD-20261108-ABCD1234?')
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(await screen.findByText('Your parcel is in transit to Kandy.')).toBeInTheDocument()
+      expect(chat).toHaveBeenCalledWith([{ role: 'user', text: 'Where is SWD-20261108-ABCD1234?' }])
+      expect(mockFetch).not.toHaveBeenCalled() // no direct backend calls from the browser in AI mode
+    })
+
+    it('falls back to keyword mode when the AI service is not configured', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>().mockRejectedValue(new AssistantApiError('not-configured', 'x'))
+      renderWith({ status: async () => ({ enabled: true }), chat })
+
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      await screen.findByRole('heading', { name: 'SwiftDrop AI Assistant' })
+      await user.type(screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i }), 'How do I register as a Merchant?')
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(await screen.findByText(/AI unavailable, using keyword mode/)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'SwiftDrop Help Assistant' })).toBeInTheDocument()
+    })
+
+    it('shows the busy message instead of falling back when rate limited', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>().mockRejectedValue(new AssistantApiError('busy', 'The assistant is busy. Please wait a moment and try again.'))
+      renderWith({ status: async () => ({ enabled: true }), chat })
+
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      await screen.findByRole('heading', { name: 'SwiftDrop AI Assistant' })
+      await user.type(screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i }), 'hello')
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(await screen.findByText(/assistant is busy/i)).toBeInTheDocument()
+    })
+
+    it('stays in keyword mode when the server reports the AI disabled', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>()
+      renderWith({ status: async () => ({ enabled: false }), chat })
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      await waitFor(() => expect(screen.getByText(/Not a generative AI/)).toBeInTheDocument())
+      expect(chat).not.toHaveBeenCalled()
     })
   })
 })
