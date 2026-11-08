@@ -116,8 +116,8 @@ public class WebhookSubscriptionService {
         );
 
         WebhookSubscription saved = subscriptionRepository.save(subscription);
-        log.info("Registered webhook subscription [subscriptionId={}, merchantId={}, url={}]",
-                saved.getSubscriptionId(), tenant.merchantId(), validatedUrl);
+        log.info("Registered webhook subscription [subscriptionId={}, merchantId={}, host={}]",
+                saved.getSubscriptionId(), tenant.merchantId(), hostOf(validatedUrl));
 
         return new WebhookSubscriptionCreatedResponse(
                 saved.getSubscriptionId(),
@@ -424,5 +424,15 @@ public class WebhookSubscriptionService {
                 lastResponseTimeMs,
                 errorSummary
         );
+    }
+
+    /** Logs carry only the host: paths and query strings can hold merchant tokens. */
+    public static String hostOf(Object url) {
+        try {
+            String host = java.net.URI.create(String.valueOf(url)).getHost();
+            return host != null ? host : "invalid";
+        } catch (IllegalArgumentException ex) {
+            return "invalid";
+        }
     }
 }
