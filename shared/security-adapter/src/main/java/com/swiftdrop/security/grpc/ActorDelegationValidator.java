@@ -28,6 +28,9 @@ public class ActorDelegationValidator {
         }
     }
 
+    /** Actor subject prefix for a machine merchant authenticated by API key. */
+    public static final String MACHINE_MERCHANT_PREFIX = "merchant:";
+
     private final JwtDecoder actorJwtDecoder;
 
     public ActorDelegationValidator(JwtDecoder actorJwtDecoder) {
@@ -137,7 +140,21 @@ public class ActorDelegationValidator {
             }
         }
 
-        // Case C: Raw forwarding headers without cryptographic proof -> FAIL CLOSED
+        // Case C: A machine merchant has no user token. Delivery Operations alone may vouch for a tenant whose
+        // API key it verified against Accounts; the caller is proven by its verified service token.
+        if (verifiedServiceJwt != null && callingService == SwiftDropServiceIdentity.DELIVERY_SERVICE
+                && sanitizedSub.startsWith(MACHINE_MERCHANT_PREFIX)
+                && claimedRoles.equals(Set.of(SwiftDropRoles.ROLE_MERCHANT))) {
+            String tenant = sanitizedSub.substring(MACHINE_MERCHANT_PREFIX.length());
+            try {
+                java.util.UUID.fromString(tenant);
+            } catch (IllegalArgumentException ex) {
+                return Result.failure("Malformed machine merchant actor subject");
+            }
+            return Result.success(new DelegatedActorContext(sanitizedSub, claimedRoles, callingService, tenant));
+        }
+
+        // Case D: Raw forwarding headers without cryptographic proof -> FAIL CLOSED
         return Result.failure("Unverified actor delegation: caller-controlled actor metadata lacks cryptographic proof");
     }
 
