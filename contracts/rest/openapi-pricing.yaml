@@ -746,6 +746,11 @@ components:
           maximum: 150
           example: 15
           description: Height in centimeters.
+        serviceTier:
+          type: string
+          enum: [STANDARD, EXPRESS]
+          default: STANDARD
+          description: EXPRESS (Same Day) adds a configured surcharge to the standard price.
 
     QuoteResponse:
       type: object
@@ -797,6 +802,13 @@ components:
           type: string
           enum: [SMALL, MEDIUM, LARGE, OVERSIZED]
           example: "MEDIUM"
+        serviceTier:
+          type: string
+          enum: [STANDARD, EXPRESS]
+        expressSurchargeMinorUnits:
+          type: integer
+          format: int64
+          description: Same Day surcharge in minor units; 0 for STANDARD.
         baseFeeMinorUnits:
           type: integer
           example: 35000
