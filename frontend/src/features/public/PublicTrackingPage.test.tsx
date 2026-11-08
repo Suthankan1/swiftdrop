@@ -1098,7 +1098,7 @@ describe('Public Redacted Parcel Tracking (Issue #133 / N10-WF06)', () => {
       const encoder = new TextEncoder()
       const sseBody = [
         ':keepalive\n\n',
-        'event: tracking.status.changed\n',
+        'event: parcel.status.changed\n',
         `data: ${JSON.stringify(sseEvent)}\n\n`,
       ].join('')
 

@@ -603,4 +603,45 @@ describe('useParcelTrackingStream', () => {
     unmount()
     expect(wasAborted).toBe(true)
   })
+
+  it('never loops when the server keeps opening and immediately closing the stream', async () => {
+    const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([], { close: true })))
+
+    const { result } = renderHook(() =>
+      useParcelTrackingStream({
+        parcelId,
+        subject,
+        initialParcel: testParcel,
+        getAccessToken: async () => 'valid-jwt-token',
+        reconcileRest: vi.fn().mockResolvedValue(null),
+        fetch: mockFetch,
+        reconnectConfig: fastReconnectConfig,
+        randomFn: () => 0,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.streamState.status).toBe('error'))
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(mockFetch).toHaveBeenCalledTimes(fastReconnectConfig.maxRetries + 1)
+  })
+
+  it('does not reopen the stream for a parcel that has reached a final status', async () => {
+    const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([], { close: true })))
+
+    const { result } = renderHook(() =>
+      useParcelTrackingStream({
+        parcelId,
+        subject,
+        initialParcel: { ...testParcel, currentStatus: 'DELIVERED', version: 6 },
+        getAccessToken: async () => 'valid-jwt-token',
+        reconcileRest: vi.fn(),
+        fetch: mockFetch,
+        reconnectConfig: fastReconnectConfig,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.streamState.status).toBe('idle'))
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
 })

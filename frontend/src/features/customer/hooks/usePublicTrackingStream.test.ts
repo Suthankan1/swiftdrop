@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { usePublicTrackingStream } from './usePublicTrackingStream'
+import { HIDDEN_STREAM_GRACE_MS, usePublicTrackingStream } from './usePublicTrackingStream'
 import type { PublicTrackingResponse } from '../api/deliveryContracts'
 import type { PublicTrackingSseEvent } from '../api/trackingStreamContracts'
 
@@ -21,7 +21,7 @@ const testTracking: PublicTrackingResponse = {
 function makePublicSseChunk(event: PublicTrackingSseEvent): string {
   return [
     `id: ${event.eventId}\n`,
-    'event: tracking.status.changed\n',
+    'event: parcel.status.changed\n',
     `data: ${JSON.stringify(event)}\n\n`,
   ].join('')
 }
@@ -295,5 +295,87 @@ describe('usePublicTrackingStream', () => {
     const refreshed: PublicTrackingResponse = { ...testTracking, currentStatus: 'DELIVERED' }
     rerender({ initial: refreshed })
     await waitFor(() => expect(result.current.tracking?.currentStatus).toBe('DELIVERED'))
+  })
+
+  it('never loops when the server keeps opening and immediately closing the stream', async () => {
+    const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([], { close: true })))
+    const config = { initialDelayMs: 10, maxDelayMs: 20, backoffMultiplier: 1.5, maxRetries: 2 }
+
+    const { result } = renderHook(() =>
+      usePublicTrackingStream({
+        trackingNumber, initialTracking: testTracking, reconcileRest: vi.fn().mockResolvedValue(null),
+        fetch: mockFetch, reconnectConfig: config, randomFn: () => 0,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.streamState.status).toBe('error'))
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(mockFetch).toHaveBeenCalledTimes(config.maxRetries + 1)
+  })
+
+  it('does not reopen the stream once the parcel is delivered', async () => {
+    const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([], { close: true })))
+    const delivered: PublicTrackingResponse = { ...testTracking, currentStatus: 'DELIVERED' } // stable, like React Query data
+
+    const { result } = renderHook(() =>
+      usePublicTrackingStream({
+        trackingNumber, initialTracking: delivered, reconcileRest: vi.fn(),
+        fetch: mockFetch, reconnectConfig: { initialDelayMs: 10, maxDelayMs: 20, backoffMultiplier: 1.5, maxRetries: 2 },
+      }),
+    )
+
+    await waitFor(() => expect(result.current.streamState.status).toBe('idle'))
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  describe('tab visibility', () => {
+    const setHidden = (hidden: boolean) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+
+    it('keeps the stream through short hide/show flips without new requests', async () => {
+      const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([])))
+      const { result, unmount } = renderHook(() =>
+        usePublicTrackingStream({ trackingNumber, initialTracking: testTracking, reconcileRest: vi.fn(), fetch: mockFetch }),
+      )
+      await waitFor(() => expect(result.current.streamState.status).toBe('connected'))
+
+      for (let i = 0; i < 5; i++) {
+        setHidden(true)
+        setHidden(false)
+      }
+
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      expect(result.current.streamState.status).toBe('connected')
+      unmount()
+      setHidden(false)
+    })
+
+    it('releases the stream after a long hide and reconnects once when shown again', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([])))
+        const reconcileRest = vi.fn().mockResolvedValue(testTracking)
+        const { result, unmount } = renderHook(() =>
+          usePublicTrackingStream({ trackingNumber, initialTracking: testTracking, reconcileRest, fetch: mockFetch }),
+        )
+        await waitFor(() => expect(result.current.streamState.status).toBe('connected'))
+
+        setHidden(true)
+        await vi.advanceTimersByTimeAsync(HIDDEN_STREAM_GRACE_MS + 1)
+        await waitFor(() => expect(result.current.streamState.status).toBe('idle'))
+
+        setHidden(false)
+        await waitFor(() => expect(result.current.streamState.status).toBe('connected'))
+        expect(mockFetch).toHaveBeenCalledTimes(2)
+        expect(reconcileRest).toHaveBeenCalled() // missed events while away are re-read
+        unmount()
+      } finally {
+        setHidden(false)
+        vi.useRealTimers()
+      }
+    })
   })
 })

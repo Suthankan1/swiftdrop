@@ -3,6 +3,8 @@ import type { ParcelDetailResponse, ParcelStatus } from '../api/deliveryContract
 import {
   calculateBackoffWithJitter,
   DEFAULT_RECONNECT_CONFIG,
+  isTerminalParcelStatus,
+  STABLE_STREAM_MS,
   type ReconnectConfig,
   type TrackingStreamState,
 } from '../api/trackingStreamContracts'
@@ -110,6 +112,11 @@ export function useParcelTrackingStream({
     return initialParcel
   }, [initialParcel, liveOverride, subject])
 
+  const currentStatusRef = useRef<ParcelStatus | null>(null)
+  useEffect(() => {
+    currentStatusRef.current = parcel?.currentStatus ?? null
+  }, [parcel])
+
   const activeAbortControllerRef = useRef<AbortController | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
@@ -206,7 +213,7 @@ export function useParcelTrackingStream({
       isConnectingRef.current = true
 
       const attemptNum = isRetryAttempt ? currentAttempt + 1 : 0
-      let reachedConnected = false
+      let connectedAt: number | null = null
 
       if (isMountedRef.current) {
         setStreamState(prev => ({
@@ -227,7 +234,7 @@ export function useParcelTrackingStream({
           onConnected: () => {
             if (!isMountedRef.current || controller.signal.aborted) return
             isConnectedRef.current = true
-            reachedConnected = true
+            connectedAt = Date.now()
             authRetriedRef.current = false
             setStreamState(prev => ({
               ...prev,
@@ -350,10 +357,16 @@ export function useParcelTrackingStream({
           return
         }
 
-        // 5. Temporary network disconnection or recoverable failure
+        // 5a. A finished parcel emits nothing more: do not reopen a stream the server ended.
+        if (err instanceof StreamClosedError && isTerminalParcelStatus(currentStatusRef.current)) {
+          setStreamState(prev => ({ ...prev, status: 'idle', retryAttempt: 0, errorMessage: undefined }))
+          return
+        }
+
+        // 5b. Temporary network disconnection or recoverable failure
         const currentReconnectConfig = reconnectConfigRef.current
-        // A stream that was up before it dropped starts a fresh retry budget.
-        const retryBase = reachedConnected ? 0 : attemptNum
+        // Only a stream that stayed up starts a fresh retry budget; open-then-close counts as a failure.
+        const retryBase = connectedAt !== null && Date.now() - connectedAt >= STABLE_STREAM_MS ? 0 : attemptNum
         if (retryBase < currentReconnectConfig.maxRetries) {
           const delay = calculateBackoffWithJitter(
             retryBase,

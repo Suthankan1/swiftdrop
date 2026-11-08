@@ -228,7 +228,8 @@ export async function connectPublicTrackingStream({
       try {
         const parsed = JSON.parse(rawData)
         if (isPublicTrackingSseEvent(parsed)) {
-          if (!currentEventName || currentEventName === 'tracking.status.changed') {
+          // openapi-delivery.yaml: the public stream emits 'parcel.status.changed' (older name kept for compatibility)
+          if (!currentEventName || currentEventName === 'parcel.status.changed' || currentEventName === 'tracking.status.changed') {
             onEvent(parsed)
           }
         }
