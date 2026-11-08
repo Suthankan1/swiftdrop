@@ -81,8 +81,18 @@ export function usePublicTrackingStream({
       prevTrackingNumberRef.current = trackingNumber
       setLiveState(null)
       lastDeliveredVersionRef.current = 0
+      hasConnectedRef.current = false
     }
   }, [trackingNumber])
+
+  // A fresh REST snapshot (e.g. the Refresh button) is authoritative and replaces live overrides.
+  const lastSnapshotRef = useRef(initialTracking)
+  useEffect(() => {
+    if (initialTracking && initialTracking !== lastSnapshotRef.current) {
+      lastSnapshotRef.current = initialTracking
+      setLiveState(null)
+    }
+  }, [initialTracking])
 
   // Merge initial REST data with live SSE milestones and status updates
   const tracking: PublicTrackingResponse | null = useMemo(() => {
@@ -103,6 +113,7 @@ export function usePublicTrackingStream({
   const isReconcilingRef = useRef(false)
   const isConnectedRef = useRef(false)
   const lastDeliveredVersionRef = useRef<number>(0)
+  const hasConnectedRef = useRef(false)
 
   const connectStreamRef = useRef<(isRetry?: boolean, attempt?: number) => Promise<void>>(
     () => Promise.resolve(),
@@ -207,6 +218,7 @@ export function usePublicTrackingStream({
       const controller = new AbortController()
       activeAbortControllerRef.current = controller
       isConnectingRef.current = true
+      let streamWasUp = false
 
       setStreamState((prev) => ({
         ...prev,
@@ -225,6 +237,10 @@ export function usePublicTrackingStream({
             if (!isMountedRef.current) return
             isConnectedRef.current = true
             isConnectingRef.current = false
+            // Any connection after the first may have missed events: re-read the canonical state.
+            if (hasConnectedRef.current || isRetry) void triggerReconciliation()
+            hasConnectedRef.current = true
+            streamWasUp = true
             setStreamState((prev) => ({
               ...prev,
               status: 'connected',
@@ -240,6 +256,8 @@ export function usePublicTrackingStream({
             // Heartbeat received
           },
         })
+        // 74: a clean server close is an interruption, not a healthy "Live" stream.
+        if (!controller.signal.aborted) throw new Error('Live stream closed by the server.')
       } catch (err) {
         if (!isMountedRef.current || controller.signal.aborted) return
 
@@ -269,7 +287,8 @@ export function usePublicTrackingStream({
           return
         }
 
-        // Bounded exponential backoff with full jitter
+        // Bounded exponential backoff with full jitter (a stream that was up starts a fresh budget)
+        if (streamWasUp) attempt = 0
         const nextAttempt = attempt + 1
         const cfg = reconnectConfigRef.current
         if (nextAttempt <= cfg.maxRetries) {
@@ -296,7 +315,7 @@ export function usePublicTrackingStream({
         }
       }
     },
-    [enabled, gatewayUrl, handleIncomingEvent, trackingNumber],
+    [enabled, gatewayUrl, handleIncomingEvent, trackingNumber, triggerReconciliation],
   )
 
   connectStreamRef.current = connectStream
