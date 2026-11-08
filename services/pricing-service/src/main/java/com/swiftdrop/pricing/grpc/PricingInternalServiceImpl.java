@@ -135,7 +135,7 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
 
             // 6. Enforce resource ownership and tenant isolation
             // Rule A: Anonymous quotes cannot be used for authenticated booking without approved binding
-            if (quote.isAnonymous()) {
+            if (quote.isAnonymous() && !actor.isMerchant()) {
                 responseObserver.onError(Status.PERMISSION_DENIED
                         .withDescription("Anonymous quote cannot be used for authenticated parcel booking without approved binding")
                         .asRuntimeException());
@@ -154,7 +154,12 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
 
             // Rule C: Merchant actor can only use quotes bound to their merchant tenant
             if (actor.isMerchant() && !actor.isAdmin()) {
-                if (quote.getTenantId() == null || !quote.getTenantId().equals(actor.tenantId())) {
+                // Quotes carry no tenant unless the token has a tenant claim, which Keycloak does not issue. A
+                // verified merchant may therefore claim an unbound quote that is anonymous or its own.
+                boolean sameTenant = quote.getTenantId() != null && quote.getTenantId().equals(actor.tenantId());
+                boolean claimableUnbound = quote.getTenantId() == null && actor.tenantId() != null
+                        && (quote.isAnonymous() || actor.actorSub().equals(quote.getSubjectSub()));
+                if (!sameTenant && !claimableUnbound) {
                     responseObserver.onError(Status.PERMISSION_DENIED
                             .withDescription("Merchant tenant is not authorized to use this quote")
                             .asRuntimeException());
@@ -188,7 +193,7 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
 
             // 7. Verify quote expiry using injected Clock
             if (quote.isExpired(clock)) {
-                ValidateQuoteResponse expiredResponse = buildResponse(false, "QUOTE_EXPIRED", quote);
+                ValidateQuoteResponse expiredResponse = buildResponse(false, "QUOTE_EXPIRED", quote, zoneNames(quote));
                 responseObserver.onNext(expiredResponse);
                 responseObserver.onCompleted();
                 return;
@@ -198,7 +203,7 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
             String expectedRateVersion = request.getExpectedRateVersion();
             if (expectedRateVersion != null && !expectedRateVersion.isBlank()) {
                 if (!quote.getRateVersion().equals(expectedRateVersion.trim())) {
-                    ValidateQuoteResponse supersededResponse = buildResponse(false, "RATE_SUPERSEDED", quote);
+                    ValidateQuoteResponse supersededResponse = buildResponse(false, "RATE_SUPERSEDED", quote, zoneNames(quote));
                     responseObserver.onNext(supersededResponse);
                     responseObserver.onCompleted();
                     return;
@@ -208,7 +213,7 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
             // 9. Currency assertion check (if supplied by caller)
             if (expectedCurrency != null && !expectedCurrency.isBlank()) {
                 if (!quote.getCurrency().equalsIgnoreCase(expectedCurrency.trim())) {
-                    ValidateQuoteResponse mismatchResponse = buildResponse(false, "AMOUNT_MISMATCH", quote);
+                    ValidateQuoteResponse mismatchResponse = buildResponse(false, "AMOUNT_MISMATCH", quote, zoneNames(quote));
                     responseObserver.onNext(mismatchResponse);
                     responseObserver.onCompleted();
                     return;
@@ -219,7 +224,7 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
             long expectedAmount = request.getExpectedAmountMinorUnits();
             if (expectedAmount > 0) {
                 if (quote.getTotalAmountMinorUnits() != expectedAmount) {
-                    ValidateQuoteResponse mismatchResponse = buildResponse(false, "AMOUNT_MISMATCH", quote);
+                    ValidateQuoteResponse mismatchResponse = buildResponse(false, "AMOUNT_MISMATCH", quote, zoneNames(quote));
                     responseObserver.onNext(mismatchResponse);
                     responseObserver.onCompleted();
                     return;
@@ -227,7 +232,7 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
             }
 
             // 11. Authoritative validation success: return original snapshot without recalculation
-            ValidateQuoteResponse validResponse = buildResponse(true, "VALID", quote);
+            ValidateQuoteResponse validResponse = buildResponse(true, "VALID", quote, zoneNames(quote));
             responseObserver.onNext(validResponse);
             responseObserver.onCompleted();
 
@@ -348,7 +353,15 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
         }
     }
 
-    private static ValidateQuoteResponse buildResponse(boolean isValid, String validationCode, QuoteSnapshot quote) {
+    private String[] zoneNames(QuoteSnapshot quote) {
+        return new String[] {
+                zoneRepository.findByZoneCode(quote.getPickupZone()).map(z -> z.getName()).orElse(""),
+                zoneRepository.findByZoneCode(quote.getDropoffZone()).map(z -> z.getName()).orElse("")
+        };
+    }
+
+    private static ValidateQuoteResponse buildResponse(boolean isValid, String validationCode, QuoteSnapshot quote,
+                                                       String[] zoneNames) {
         ValidateQuoteResponse.Builder builder = ValidateQuoteResponse.newBuilder()
                 .setIsValid(isValid)
                 .setQuoteId(quote.getQuoteId().toString())
@@ -364,7 +377,14 @@ public class PricingInternalServiceImpl extends PricingInternalServiceGrpc.Prici
                 .setTenantId(quote.getTenantId() != null ? quote.getTenantId() : "")
                 .setIsAnonymous(quote.isAnonymous())
                 .setBaseFeeMinorUnits(quote.getBaseFeeMinorUnits())
-                .setWeightSurchargeMinorUnits(quote.getWeightSurchargeMinorUnits());
+                .setWeightSurchargeMinorUnits(quote.getWeightSurchargeMinorUnits())
+                .setPhysicalWeightKg(quote.getPhysicalWeightKg().toPlainString())
+                .setSizeCategory(quote.getSizeCategory() != null ? quote.getSizeCategory().name() : "")
+                .setLengthCm(quote.getLengthCm())
+                .setWidthCm(quote.getWidthCm())
+                .setHeightCm(quote.getHeightCm())
+                .setPickupZoneName(zoneNames[0])
+                .setDropoffZoneName(zoneNames[1]);
 
         return builder.build();
     }
