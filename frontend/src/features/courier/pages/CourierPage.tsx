@@ -34,6 +34,7 @@ export function CourierPage({
 
   const [selectedParcelId, setSelectedParcelId] = useState<string | null>(null)
   const [assignmentNotice, setAssignmentNotice] = useState<string | null>(null)
+  const [summaryRefresh, setSummaryRefresh] = useState(0)
 
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
   const [prevSubject, setPrevSubject] = useState(subject)
@@ -110,6 +111,7 @@ export function CourierPage({
           <CourierDashboardSummary
             key={`summary-${subject}`}
             apiOverride={summaryApiOverride}
+            refreshToken={summaryRefresh}
           />
 
           {selectedParcelId ? (
@@ -117,6 +119,7 @@ export function CourierPage({
               key={`parcel-${subject}-${selectedParcelId}`}
               parcelId={selectedParcelId}
               onClose={() => setSelectedParcelId(null)}
+              onParcelChanged={() => setSummaryRefresh((value) => value + 1)}
               apiOverride={proofApiOverride}
               statusApiOverride={statusApiOverride}
               onAssignmentLost={(message) => {

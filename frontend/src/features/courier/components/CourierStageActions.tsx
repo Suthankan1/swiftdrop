@@ -30,6 +30,8 @@ const ACTION_LABEL: Record<CourierTransitionStatus, string> = {
 }
 
 const COURIER_FAILURE_REASONS: Partial<Record<ParcelStatus, readonly FailureReasonCode[]>> = {
+  // A courier at the pickup address can record that the sender was absent or cancelled.
+  CREATED: ['PICKUP_FAILED_SENDER_ABSENT', 'CANCELLED_BY_SENDER'],
   PICKED_UP: ['PARCEL_DAMAGED', 'FORCE_MAJEURE'],
   IN_TRANSIT: ['PARCEL_DAMAGED', 'FORCE_MAJEURE'],
   OUT_FOR_DELIVERY: [

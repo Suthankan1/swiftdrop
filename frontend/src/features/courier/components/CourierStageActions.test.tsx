@@ -121,7 +121,8 @@ describe('CourierStageActions', () => {
     const current = parcel('CREATED', 5)
     const result = setup(current, { reconciled: [current, parcel('PICKED_UP', 6)] })
 
-    await user.type(screen.getByRole('textbox', { name: /operational notes/i }), '  Collected from sender desk.  ')
+    // At CREATED the pickup-failure form also has a notes box; the first one is the stage note.
+    await user.type(screen.getAllByRole('textbox', { name: /operational notes/i })[0]!, '  Collected from sender desk.  ')
     await user.click(screen.getByRole('button', { name: 'Confirm Pickup' }))
 
     expect(result.updateStatus).toHaveBeenCalledOnce()
@@ -165,11 +166,12 @@ describe('CourierStageActions', () => {
     )
   })
 
-  it('does not expose courier-owned failure actions at CREATED', () => {
+  it('offers only pickup failure reasons at CREATED', () => {
     setup(parcel('CREATED'))
 
-    expect(screen.queryByRole('heading', { name: /record failed delivery reason/i })).not.toBeInTheDocument()
-    expect(screen.queryByText(/cancelled by sender/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /pickup failed - sender absent/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /cancelled by sender/i })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /recipient unavailable/i })).not.toBeInTheDocument()
   })
 
   it.each([

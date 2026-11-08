@@ -7,7 +7,9 @@ import { DispatcherOperations } from '../components/DispatcherOperations'
 
 export function DispatcherPage() {
   const auth = useAuth()
-  const { state, query, refetch } = useStaffProfile('DISPATCHER')
+  const actsAsAdmin = auth.snapshot.status === 'authenticated' &&
+    !auth.snapshot.roles.includes('DISPATCHER') && auth.snapshot.roles.includes('ADMIN')
+  const { state, query, refetch } = useStaffProfile(actsAsAdmin ? 'ADMIN' : 'DISPATCHER')
 
   return (
     <div className="page-container staff-page dispatcher-page">
