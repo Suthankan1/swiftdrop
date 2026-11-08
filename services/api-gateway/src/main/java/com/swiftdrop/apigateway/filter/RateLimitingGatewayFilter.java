@@ -103,7 +103,8 @@ public class RateLimitingGatewayFilter implements GlobalFilter, Ordered {
         // 2. Public endpoints (tracking, quotes)
         if (path.startsWith("/api/v1/tracking") || path.startsWith("/api/v1/quotes")) {
             String clientIp = resolveClientIp(exchange);
-            String key = "pub:" + clientIp;
+            // Separate buckets so heavy quoting cannot block parcel tracking (and vice versa).
+            String key = (path.startsWith("/api/v1/tracking") ? "pub:tracking:" : "pub:quotes:") + clientIp;
             InMemoryRateLimiter.ConsumptionResult result = rateLimiter.tryConsume(key, 1, publicBurstCapacity, publicLimitPerMinute);
             if (!result.allowed()) {
                 return reject(exchange, path, result.retryAfterSeconds());
