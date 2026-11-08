@@ -5,7 +5,7 @@
  */
 export type MerchantReviewStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJECTED' | 'UNKNOWN'
 export type MerchantReviewFilter = Exclude<MerchantReviewStatus, 'UNKNOWN'> | 'ALL'
-export type MerchantReviewAction = 'approve' | 'suspend'
+export type MerchantReviewAction = 'approve' | 'reject' | 'suspend'
 
 export interface MerchantReviewSummary {
   id: string
@@ -119,7 +119,7 @@ export function merchantReasonProblem(reason: string, policy?: MerchantReasonPol
 }
 
 const knownStatuses: readonly MerchantReviewStatus[] = ['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED']
-const commandResult: Record<MerchantReviewAction, MerchantReviewStatus> = { approve: 'APPROVED', suspend: 'SUSPENDED' }
+const commandResult: Record<MerchantReviewAction, MerchantReviewStatus> = { approve: 'APPROVED', reject: 'REJECTED', suspend: 'SUSPENDED' }
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
@@ -147,7 +147,7 @@ function toActions(value: unknown): MerchantReviewDetail['actions'] {
   return value.flatMap(entry => {
     const item = record(entry)
     const action = item?.action
-    if (action !== 'approve' && action !== 'suspend') return []
+    if (action !== 'approve' && action !== 'reject' && action !== 'suspend') return []
     if (item?.reason === null || item?.reason === undefined) return [{ action }]
     const reason = record(item.reason)
     const maxLength = reason?.maxLength
@@ -230,7 +230,7 @@ export function createMerchantReviewApi({
   }
 
   return {
-    supportedActions: ['approve', 'suspend'],
+    supportedActions: ['approve', 'reject', 'suspend'],
 
     async list(page, size, signal, filter = 'PENDING') {
       const status = filter === 'ALL' ? '' : `&status=${encodeURIComponent(filter)}`

@@ -110,7 +110,7 @@ describe('User and staff reads', () => {
     await user.click(screen.getByRole('button', { name: 'Refresh users' }))
     await screen.findByText('No users on this page.')
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Search by name or email' })).toBeInTheDocument()
   })
   it('uses server pages, disables pagination while pending and supports previous', async () => {
     const api = provider(), pending = deferred<AdminPage<AdminUser>>()

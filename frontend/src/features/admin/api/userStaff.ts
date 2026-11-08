@@ -5,7 +5,7 @@ export const reconciliationOutcomes = ['SUCCESS', 'NO_OP', 'FAILED', 'PENDING_RE
 export type StaffRole = typeof staffRoles[number]
 export type StaffStatus = typeof staffStatuses[number]
 export type ReconciliationOutcome = typeof reconciliationOutcomes[number]
-export interface AdminUser { profileId: string; keycloakSub: string; email: string | null; fullName: string | null; createdAt: string }
+export interface AdminUser { profileId: string; keycloakSub: string; email: string | null; fullName: string | null; createdAt: string; /** absent when Keycloak could not be read */ enabled?: boolean }
 export interface AdminStaff {
   profileId: string; accountProfileId: string | null; staffId: string; keycloakSub: string
   role: StaffRole; department: string; assignedZone: string | null; businessStatus: StaffStatus
@@ -64,7 +64,7 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T { ret
 function integer(value: unknown): number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : invalid() }
 export function parseAdminUser(value: unknown): AdminUser {
   const v = record(value)
-  return { profileId: uuid(v.profileId), keycloakSub: string(v.keycloakSub), email: nullable(v.email, 320), fullName: nullable(v.fullName), createdAt: date(v.createdAt) }
+  return { profileId: uuid(v.profileId), keycloakSub: string(v.keycloakSub), email: nullable(v.email, 320), fullName: nullable(v.fullName), createdAt: date(v.createdAt), ...(typeof v.enabled === 'boolean' ? { enabled: v.enabled } : {}) }
 }
 export function parseAdminStaff(value: unknown): AdminStaff {
   const v = record(value)
@@ -105,7 +105,9 @@ export function provisionProblem(value: ProvisionStaff): string | null {
 export function canSuspend(staff: AdminStaff): boolean { return staff.businessStatus === 'ACTIVE' }
 export function canRecover(audit: StaffAudit): boolean { return audit.outcome === 'PENDING_RETRY' || audit.outcome === 'FAILED' }
 export interface AdminManagementApi {
-  users: (page: number, signal: AbortSignal) => Promise<AdminPage<AdminUser>>
+  users: (page: number, signal: AbortSignal, search?: string) => Promise<AdminPage<AdminUser>>
+  /** Enables or disables sign-in for an account; disabling ends its sessions. */
+  setUserEnabled?: (profileId: string, enabled: boolean, signal: AbortSignal) => Promise<void>
   staff: (page: number, filters: StaffFilters, signal: AbortSignal) => Promise<AdminPage<AdminStaff>>
   detail: (id: string, signal: AbortSignal) => Promise<AdminStaff>
   audit: (staff: AdminStaff, signal: AbortSignal) => Promise<StaffAudit[]>
@@ -138,7 +140,19 @@ export function createAdminManagementApi({ getAccessToken, gatewayUrl = import.m
     return `page=${page}&size=20`
   }
   return {
-    users: async (page, signal) => parseAdminPage(await request(`/users?${pagePath(page)}`, signal), page, 20, parseAdminUser),
+    users: async (page, signal, search) => {
+      const term = search?.trim() ?? ''
+      if (term.length > 100 || hasControls(term)) throw new AdminManagementError('validation')
+      return parseAdminPage(await request(`/users?${pagePath(page)}${term ? `&q=${encodeURIComponent(term)}` : ''}`, signal), page, 20, parseAdminUser)
+    },
+    setUserEnabled: async (profileId, enabled, signal) => {
+      if (!isProfileId(profileId)) throw new AdminManagementError('validation')
+      const raw = await request(`/users/${profileId}/${enabled ? 'enable' : 'disable'}`, signal, 'POST')
+      try {
+        const v = record(raw)
+        if (v.profileId !== profileId || v.enabled !== enabled) invalid()
+      } catch { throw new AdminManagementError('unconfirmed') }
+    },
     staff: async (page, filters, signal) => {
       if ((filters.staffRole && !staffRoles.includes(filters.staffRole)) || (filters.businessStatus && !staffStatuses.includes(filters.businessStatus)) || (filters.assignedZone && (filters.assignedZone.length > 100 || hasControls(filters.assignedZone)))) throw new AdminManagementError('validation')
       const params = new URLSearchParams({ ...(filters.staffRole ? { staffRole: filters.staffRole } : {}), ...(filters.businessStatus ? { businessStatus: filters.businessStatus } : {}), ...(filters.assignedZone?.trim() ? { assignedZone: filters.assignedZone.trim() } : {}) })

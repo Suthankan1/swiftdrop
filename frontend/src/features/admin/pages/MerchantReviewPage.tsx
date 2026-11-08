@@ -152,7 +152,7 @@ function MerchantDetails({ id, api, prefix, onClose }: {
   const detail = query.data
   const canChange = (action: MerchantReviewAction, value: MerchantReviewDetail | undefined = detail) =>
     Boolean(value?.reviewToken && api.change && api.supportedActions.includes(action) &&
-      value.actions.some(item => item.action === action) && (action !== 'approve' || value.status === 'PENDING'))
+      value.actions.some(item => item.action === action) && ((action !== 'approve' && action !== 'reject') || value.status === 'PENDING'))
 
   const submit = async (reason?: string) => {
     if (!confirm || !detail || !canChange(confirm) || query.isFetching || query.isError || command.current) return
@@ -196,11 +196,12 @@ function MerchantDetails({ id, api, prefix, onClose }: {
         <dt>Status</dt><dd><Status status={detail.status} /></dd>
         {detail.submittedAt && <><dt>Submitted</dt><dd><Timestamp value={detail.submittedAt} /></dd></>}
       </dl>
-      <div className="merchant-review-toolbar">{(['approve', 'suspend'] as const).map(action => <Button key={action}
+      <div className="merchant-review-toolbar">{(['approve', 'reject', 'suspend'] as const).map(action => <Button key={action}
         variant="secondary" size="sm" disabled={pending || query.isFetching || !canChange(action)}
         aria-describedby={!canChange(action) ? `merchant-${action}-unavailable` : undefined}
-        onClick={() => setConfirm(action)}>{action === 'approve' ? 'Approve merchant' : 'Suspend merchant'}</Button>)}</div>
+        onClick={() => setConfirm(action)}>{action === 'approve' ? 'Approve merchant' : action === 'reject' ? 'Reject merchant' : 'Suspend merchant'}</Button>)}</div>
       {!canChange('approve') && <p id="merchant-approve-unavailable">Approval is unavailable for this merchant or is not supported by the review service.</p>}
+      {!canChange('reject') && <p id="merchant-reject-unavailable">Rejection is only available for merchants awaiting review.</p>}
       {!canChange('suspend') && <p id="merchant-suspend-unavailable">Suspension is unavailable for this merchant or is not supported by the review service.</p>}
       <h3>Audit history</h3>
       {detail.audit === undefined ? <p>Audit history is unavailable from the review service.</p> : detail.audit.length === 0 ?
