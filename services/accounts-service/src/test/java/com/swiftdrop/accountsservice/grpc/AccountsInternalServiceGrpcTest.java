@@ -683,9 +683,9 @@ class AccountsInternalServiceGrpcTest {
     @Test
     @DisplayName("Unauthorized caller service fails with PERMISSION_DENIED")
     void testUnauthorizedCallerService_PermissionDenied() {
-        // Only DELIVERY_SERVICE and GRAPHQL_QUERY_SERVICE are allowed for CheckAccountEligibility
+        // Delivery, GraphQL and Communications are allowed for CheckAccountEligibility; Pricing is not
         AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
-                createStub(SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE.getServiceName(), customerSub, "CUSTOMER");
+                createStub(SwiftDropServiceIdentity.PRICING_SERVICE.getServiceName(), customerSub, "CUSTOMER");
 
         assertThatThrownBy(() -> stub.checkAccountEligibility(
                 AccountEligibilityRequest.newBuilder()

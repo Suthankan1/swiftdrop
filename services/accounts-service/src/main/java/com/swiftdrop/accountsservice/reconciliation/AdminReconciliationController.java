@@ -155,7 +155,9 @@ public class AdminReconciliationController {
      */
     @GetMapping("/audit/{sub}")
     public ResponseEntity<List<IdentityReconciliationAudit>> getAuditHistory(@PathVariable("sub") String sub) {
-        List<IdentityReconciliationAudit> history = auditService.findByTargetSub(sub);
+        List<IdentityReconciliationAudit> history = auditService.findByTargetSub(sub).stream()
+                .limit(200) // bounded response; newest entries first
+                .toList();
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(history);

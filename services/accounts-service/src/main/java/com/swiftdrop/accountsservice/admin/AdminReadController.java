@@ -46,7 +46,7 @@ public class AdminReadController {
 
     @GetMapping("/merchants/{merchantId}/audit")
     public ResponseEntity<java.util.List<AdminMerchantAuditResponse>> merchantAudit(@PathVariable UUID merchantId) {
-        return noStore(service.merchantAudit(merchantId));
+        return noStore(service.merchantAudit(merchantId).stream().limit(200).toList());
     }
 
     @GetMapping("/staff")
