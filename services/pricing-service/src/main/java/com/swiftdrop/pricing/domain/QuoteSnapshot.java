@@ -33,6 +33,8 @@ public final class QuoteSnapshot {
     private final long baseFeeMinorUnits;
     private final long weightSurchargeMinorUnits;
     private final long totalAmountMinorUnits;
+    private final String serviceTier;
+    private final long expressSurchargeMinorUnits;
     private final String currency;
     private final String subjectSub;
     private final String tenantId;
@@ -62,6 +64,33 @@ public final class QuoteSnapshot {
                          boolean isAnonymous,
                          Instant createdAt,
                          Instant expiresAt) {
+        this(quoteId, rateVersion, rateVersionId, rateRuleId, pickupZone, dropoffZone, lengthCm, widthCm, heightCm, physicalWeightKg, volumetricWeightKg, chargeableWeightKg, sizeCategory, baseFeeMinorUnits, weightSurchargeMinorUnits, totalAmountMinorUnits, currency, subjectSub, tenantId, isAnonymous, createdAt, expiresAt, "STANDARD", 0L);
+    }
+
+    public QuoteSnapshot(UUID quoteId,
+                         String rateVersion,
+                         UUID rateVersionId,
+                         UUID rateRuleId,
+                         String pickupZone,
+                         String dropoffZone,
+                         int lengthCm,
+                         int widthCm,
+                         int heightCm,
+                         BigDecimal physicalWeightKg,
+                         BigDecimal volumetricWeightKg,
+                         BigDecimal chargeableWeightKg,
+                         SizeCategory sizeCategory,
+                         long baseFeeMinorUnits,
+                         long weightSurchargeMinorUnits,
+                         long totalAmountMinorUnits,
+                         String currency,
+                         String subjectSub,
+                         String tenantId,
+                         boolean isAnonymous,
+                         Instant createdAt,
+                         Instant expiresAt,
+                         String serviceTier,
+                         long expressSurchargeMinorUnits) {
         this.quoteId = Objects.requireNonNull(quoteId, "quoteId cannot be null");
         this.rateVersion = Objects.requireNonNull(rateVersion, "rateVersion cannot be null");
         this.rateVersionId = Objects.requireNonNull(rateVersionId, "rateVersionId cannot be null");
@@ -81,6 +110,14 @@ public final class QuoteSnapshot {
         this.baseFeeMinorUnits = baseFeeMinorUnits;
         this.weightSurchargeMinorUnits = weightSurchargeMinorUnits;
         this.totalAmountMinorUnits = totalAmountMinorUnits;
+        this.serviceTier = serviceTier == null ? "STANDARD" : serviceTier;
+        if (!"STANDARD".equals(this.serviceTier) && !"EXPRESS".equals(this.serviceTier)) {
+            throw new IllegalArgumentException("serviceTier must be STANDARD or EXPRESS");
+        }
+        if (expressSurchargeMinorUnits < 0) {
+            throw new IllegalArgumentException("expressSurchargeMinorUnits cannot be negative");
+        }
+        this.expressSurchargeMinorUnits = expressSurchargeMinorUnits;
         this.currency = Objects.requireNonNull(currency, "currency cannot be null");
         this.isAnonymous = isAnonymous;
         if (isAnonymous) {
@@ -160,6 +197,14 @@ public final class QuoteSnapshot {
 
     public long getWeightSurchargeMinorUnits() {
         return weightSurchargeMinorUnits;
+    }
+
+    public String getServiceTier() {
+        return serviceTier;
+    }
+
+    public long getExpressSurchargeMinorUnits() {
+        return expressSurchargeMinorUnits;
     }
 
     public long getTotalAmountMinorUnits() {

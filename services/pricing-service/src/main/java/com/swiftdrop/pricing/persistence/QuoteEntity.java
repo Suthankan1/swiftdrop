@@ -70,6 +70,12 @@ public class QuoteEntity {
     @Column(name = "weight_surcharge_minor_units", nullable = false, updatable = false)
     private long weightSurchargeMinorUnits;
 
+    @Column(name = "service_tier", nullable = false, updatable = false, length = 16)
+    private String serviceTier = "STANDARD";
+
+    @Column(name = "express_surcharge_minor_units", nullable = false, updatable = false)
+    private long expressSurchargeMinorUnits;
+
     @Column(name = "total_amount_minor_units", nullable = false, updatable = false)
     private long totalAmountMinorUnits;
 
@@ -141,7 +147,7 @@ public class QuoteEntity {
     }
 
     public static QuoteEntity fromDomain(QuoteSnapshot snapshot) {
-        return new QuoteEntity(
+        QuoteEntity entity = new QuoteEntity(
                 snapshot.getQuoteId(),
                 snapshot.getRateVersionId(),
                 snapshot.getRateVersion(),
@@ -165,6 +171,9 @@ public class QuoteEntity {
                 snapshot.getCreatedAt(),
                 snapshot.getExpiresAt()
         );
+        entity.serviceTier = snapshot.getServiceTier();
+        entity.expressSurchargeMinorUnits = snapshot.getExpressSurchargeMinorUnits();
+        return entity;
     }
 
     public QuoteSnapshot toDomain() {
@@ -190,7 +199,9 @@ public class QuoteEntity {
                 tenantId,
                 isAnonymous,
                 createdAt,
-                expiresAt
+                expiresAt,
+                serviceTier,
+                expressSurchargeMinorUnits
         );
     }
 

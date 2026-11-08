@@ -35,6 +35,17 @@ public class QuoteApplicationService {
     private final Clock clock;
     private final com.swiftdrop.pricing.persistence.PricingConfigurationLock configurationLock;
     private final Duration quoteValidityDuration;
+    private int expressSurchargePercent = 50;
+
+    /** Same Day surcharge as a percentage of the standard price (base fee plus weight surcharge). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setExpressSurchargePercent(
+            @Value("${swiftdrop.pricing.express-surcharge-percent:50}") int expressSurchargePercent) {
+        if (expressSurchargePercent < 0 || expressSurchargePercent > 500) {
+            throw new IllegalArgumentException("express-surcharge-percent must be between 0 and 500");
+        }
+        this.expressSurchargePercent = expressSurchargePercent;
+    }
 
     public QuoteApplicationService(
             PricingCalculationService calculationService,
@@ -86,7 +97,17 @@ public class QuoteApplicationService {
         }
         Instant expiresAt = createdAt.plus(quoteValidityDuration);
 
-        // 4. Generate opaque quote UUID
+        // 4. Same Day (EXPRESS) adds a configured percentage of the standard price.
+        String serviceTier = "EXPRESS".equals(request.serviceTier()) ? "EXPRESS" : "STANDARD";
+        long standardPrice = calculation.getBaseFeeMinorUnits() + calculation.getWeightSurchargeMinorUnits();
+        long expressSurcharge = "EXPRESS".equals(serviceTier)
+                ? java.math.BigDecimal.valueOf(standardPrice)
+                        .multiply(java.math.BigDecimal.valueOf(expressSurchargePercent))
+                        .divide(java.math.BigDecimal.valueOf(100), 0, java.math.RoundingMode.HALF_UP)
+                        .longValueExact()
+                : 0L;
+
+        // 4b. Generate opaque quote UUID
         UUID quoteId = UUID.randomUUID();
 
         // 5. Construct immutable QuoteSnapshot
@@ -106,13 +127,15 @@ public class QuoteApplicationService {
                 calculation.getSizeCategory(),
                 calculation.getBaseFeeMinorUnits(),
                 calculation.getWeightSurchargeMinorUnits(),
-                calculation.getTotalAmountMinorUnits(),
+                calculation.getTotalAmountMinorUnits() + expressSurcharge,
                 calculation.getCurrency(),
                 caller.isAnonymous() ? null : caller.subject(),
                 caller.isAnonymous() ? null : caller.tenantId(),
                 caller.isAnonymous(),
                 createdAt,
-                expiresAt
+                expiresAt,
+                serviceTier,
+                expressSurcharge
         );
 
         // 6. Persist transactionally
