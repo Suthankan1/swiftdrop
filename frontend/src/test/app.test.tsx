@@ -166,7 +166,9 @@ describe('shared application routes', () => {
     for (const [role, label, path] of [
       ['DISPATCHER', 'Dispatcher space', '/dispatcher'], ['ADMIN', 'Admin space', '/admin'],
     ] as const) {
-      if (roles.includes(role)) expect(nav.getByRole('link', { name: new RegExp(label) })).toHaveAttribute('href', path)
+      // Admins may also run dispatch, so ADMIN alone shows the Dispatcher entry.
+      const visible = roles.includes(role) || (role === 'DISPATCHER' && roles.includes('ADMIN'))
+      if (visible) expect(nav.getByRole('link', { name: new RegExp(label) })).toHaveAttribute('href', path)
       else expect(nav.queryByRole('link', { name: new RegExp(label) })).not.toBeInTheDocument()
     }
   })

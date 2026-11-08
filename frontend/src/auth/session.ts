@@ -136,7 +136,8 @@ export class AuthSession {
         initOptions.silentCheckSsoRedirectUri = `${origin}/silent-check-sso.html`
       }
       const initPromise = this.client.init(initOptions as Parameters<Keycloak['init']>[0])
-      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))
+      // A real callback exchanges the code with Keycloak and may be slow; only the silent check gets 3 s.
+      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), callback ? 30_000 : 3000))
       const authenticated = await Promise.race([initPromise, timeoutPromise])
       if (generation !== this.generation) { this.clearCredentials(); return }
       if (!authenticated || !this.accept()) {
@@ -174,9 +175,10 @@ export class AuthSession {
   register = async (returnUrl?: string) => { await this.enter('register', returnUrl) }
   googleLogin = async (returnUrl?: string) => { await this.enter('google', returnUrl) }
   private enter(kind: 'login' | 'register' | 'google', returnUrl?: string) {
-    if (typeof window !== 'undefined' && returnUrl) {
+    if (typeof window !== 'undefined') {
       try {
-        window.name = JSON.stringify({ swiftdrop_auth_target: returnUrl })
+        // Each attempt replaces any target left by an abandoned login, so it cannot leak into a later sign-in.
+        window.name = returnUrl ? JSON.stringify({ swiftdrop_auth_target: returnUrl, swiftdrop_auth_at: Date.now() }) : ''
       } catch {
         // ignore window.name access issues
       }
@@ -212,7 +214,12 @@ export class AuthSession {
       // Keep ID token hint intact so Keycloak automatically proceeds with RP-Initiated logout
       const pending = this.client.logout({ redirectUri: this.postLogoutRedirectUri, logoutMethod: 'POST' })
       await pending
-    } catch { this.publish(anonymous, 'provider-unavailable') }
+    } catch {
+      // Logout did not reach Keycloak: stay signed out locally, but let the user sign in again without a reload.
+      this.signingOut = false
+      this.logoutPromise = undefined
+      this.publish(anonymous, 'provider-unavailable')
+    }
     finally { this.clearCredentials() }
   }
   destroy = () => {

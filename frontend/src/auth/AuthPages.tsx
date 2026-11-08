@@ -120,8 +120,9 @@ export function CallbackPage() {
   const [target] = useState<string | null>(() => {
     try {
       if (typeof window !== 'undefined' && window.name) {
-        const parsed = JSON.parse(window.name) as { swiftdrop_auth_target?: string }
-        if (parsed.swiftdrop_auth_target) {
+        const parsed = JSON.parse(window.name) as { swiftdrop_auth_target?: string; swiftdrop_auth_at?: number }
+        const fresh = typeof parsed.swiftdrop_auth_at !== 'number' || Date.now() - parsed.swiftdrop_auth_at < 15 * 60_000
+        if (parsed.swiftdrop_auth_target && fresh) {
           return sanitizeRedirectUrl(parsed.swiftdrop_auth_target)
         }
       }
@@ -132,7 +133,7 @@ export function CallbackPage() {
   })
 
   useEffect(() => {
-    if (snapshot.status === 'authenticated' && typeof window !== 'undefined' && window.name) {
+    if ((snapshot.status === 'authenticated' || problem) && typeof window !== 'undefined' && window.name) {
       try {
         const parsed = JSON.parse(window.name) as { swiftdrop_auth_target?: string }
         if (parsed.swiftdrop_auth_target) {
@@ -142,7 +143,7 @@ export function CallbackPage() {
         // Ignore
       }
     }
-  }, [snapshot.status])
+  }, [snapshot.status, problem])
 
   if (snapshot.status === 'loading') {
     return <FeedbackState title="Completing sign-in" tone="loading">Please wait.</FeedbackState>
@@ -186,7 +187,7 @@ export function LogoutPage() {
 }
 
 /** UX boundary only. Every backend must independently authorize the actor. */
-export function ProtectedRoute({ role }: { role?: SwiftDropRole }) {
+export function ProtectedRoute({ role, anyOf }: { role?: SwiftDropRole; anyOf?: readonly SwiftDropRole[] }) {
   const { snapshot } = useAuth()
   const location = useLocation()
 
@@ -196,7 +197,7 @@ export function ProtectedRoute({ role }: { role?: SwiftDropRole }) {
   if (snapshot.status !== 'authenticated') {
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
   }
-  if (role && !snapshot.roles.includes(role)) {
+  if ((role && !snapshot.roles.includes(role)) || (anyOf && !anyOf.some(item => snapshot.roles.includes(item)))) {
     return <FeedbackState title="Access unavailable" tone="error">This entry is unavailable for your current role.</FeedbackState>
   }
   return <Outlet />

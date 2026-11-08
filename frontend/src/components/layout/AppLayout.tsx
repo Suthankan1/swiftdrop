@@ -36,7 +36,7 @@ function MainNavigation() {
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('COURIER') && (
             <NavLink to="/courier" className="nav-link" onClick={() => setMenuOpen(false)}>Courier space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
-          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('DISPATCHER') && (
+          {auth.snapshot.status === 'authenticated' && (auth.snapshot.roles.includes('DISPATCHER') || auth.snapshot.roles.includes('ADMIN')) && (
             <NavLink to="/dispatcher" className="nav-link" onClick={() => setMenuOpen(false)}>Dispatcher space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && (
