@@ -226,6 +226,20 @@ Do not use `down`, `rm`, `--force-recreate`, or `down -v` against an existing
 embedded identity database. Persistent identity PostgreSQL remains a separate
 platform slice; this task does not migrate storage.
 
+### Optional demo accounts (opt-in)
+
+With the local stack running, this creates one demo account per role
+(`demo.customer`, `demo.merchant`, `demo.courier`, `demo.dispatcher`, `demo.admin`, all `@swiftdrop.test`).
+It provisions the staff profiles and registers and approves a "Demo Store" merchant:
+
+```bash
+python3 platform/identity/seed-demo-accounts.py --yes
+```
+
+Passwords are generated on every run. They are written only to `platform/identity/.local/demo-accounts.json`
+(mode 0600, git-ignored) and are never printed. The script accepts loopback URLs only. It switches on the
+password grant for `swiftdrop-frontend` while it runs and restores the previous setting afterwards.
+
 ---
 
 ## 7. Evidence & Acceptance Register (Refs #2)

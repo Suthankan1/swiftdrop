@@ -26,14 +26,14 @@ function makePublicSseChunk(event: PublicTrackingSseEvent): string {
   ].join('')
 }
 
-function createMockStream(chunks: string[] = []): Response {
+function createMockStream(chunks: string[] = [], { close = false }: { close?: boolean } = {}): Response {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const chunk of chunks) {
         controller.enqueue(encoder.encode(chunk))
       }
-      controller.close()
+      if (close) controller.close()
     },
   })
   return new Response(stream, {
@@ -253,5 +253,47 @@ describe('usePublicTrackingStream', () => {
 
     unmount()
     expect(capturedSignal?.aborted).toBe(true)
+  })
+
+  it('reconnects after a clean server close and re-reads the canonical tracking state', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(createMockStream([], { close: true }))
+      .mockResolvedValue(createMockStream([]))
+    const refreshed: PublicTrackingResponse = { ...testTracking, currentStatus: 'IN_TRANSIT' }
+    const reconcileRest = vi.fn().mockResolvedValue(refreshed)
+
+    const { result } = renderHook(() =>
+      usePublicTrackingStream({
+        trackingNumber,
+        initialTracking: testTracking,
+        reconcileRest,
+        fetch: mockFetch,
+        reconnectConfig: { initialDelayMs: 10, maxDelayMs: 20, backoffMultiplier: 1.5, maxRetries: 2 },
+        randomFn: () => 0,
+      }),
+    )
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(result.current.tracking?.currentStatus).toBe('IN_TRANSIT'))
+    expect(result.current.streamState.status).toBe('connected')
+  })
+
+  it('lets a fresh REST snapshot (Refresh) replace a stale live status', async () => {
+    const event: PublicTrackingSseEvent = {
+      eventId: 'evt-1', trackingNumber, aggregateVersion: 2, oldStatus: 'CREATED', newStatus: 'PICKED_UP',
+      occurredAt: '2026-10-23T09:00:00Z', cityOrZone: null,
+    }
+    const mockFetch = vi.fn().mockResolvedValue(createMockStream([makePublicSseChunk(event)]))
+
+    const { result, rerender } = renderHook(
+      ({ initial }) =>
+        usePublicTrackingStream({ trackingNumber, initialTracking: initial, reconcileRest: vi.fn(), fetch: mockFetch }),
+      { initialProps: { initial: testTracking } },
+    )
+
+    await waitFor(() => expect(result.current.tracking?.currentStatus).toBe('PICKED_UP'))
+    const refreshed: PublicTrackingResponse = { ...testTracking, currentStatus: 'DELIVERED' }
+    rerender({ initial: refreshed })
+    await waitFor(() => expect(result.current.tracking?.currentStatus).toBe('DELIVERED'))
   })
 })

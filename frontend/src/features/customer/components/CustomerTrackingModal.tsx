@@ -70,6 +70,16 @@ export function CustomerTrackingModal({
     staleTime: 10_000,
   })
 
+  const historyQuery = useQuery({
+    queryKey: ['private', 'parcel-history', parcelId, query.data?.version],
+    enabled: isOpen && !!parcelId && !!query.data && typeof deliveryApi.getParcelHistory === 'function',
+    queryFn: async ({ signal }) => {
+      if (!parcelId) throw new DeliveryError('not-found', 'No parcel identifier provided.')
+      return deliveryApi.getParcelHistory(parcelId, { page: 0, size: 50 }, signal)
+    },
+    staleTime: 10_000,
+  })
+
   const {
     parcel: liveParcel,
     streamState,
@@ -241,6 +251,26 @@ export function CustomerTrackingModal({
                   )
                 })}
               </div>
+
+              {/* Event history with notes and failure reasons */}
+              {historyQuery.isError && <p className="muted" role="status">The event history is unavailable right now.</p>}
+              {historyQuery.data && historyQuery.data.items.length > 0 && (
+                <section className="tracking-card" aria-labelledby="parcel-history-heading">
+                  <h3 id="parcel-history-heading" className="card-subtitle">Event history</h3>
+                  <ol className="parcel-history-list">
+                    {[...historyQuery.data.items]
+                      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+                      .map(item => (
+                        <li key={item.historyId}>
+                          <strong>{getStatusPresentation(item.newStatus).label}</strong>
+                          {' · '}<time dateTime={item.occurredAt}>{formatDateTime(item.occurredAt)}</time>
+                          {item.reason && <p>Reason: {item.reason.replaceAll('_', ' ').toLowerCase()}</p>}
+                          {item.note && <p>Note: {item.note}</p>}
+                        </li>
+                      ))}
+                  </ol>
+                </section>
+              )}
 
               {/* Address Route Card */}
               <div className="tracking-grid">

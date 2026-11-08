@@ -29,7 +29,7 @@ export function DispatcherOperations() {
       }
     },
     retry: false, gcTime: 0, staleTime: 0,
-    enabled: auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('DISPATCHER'),
+    enabled: auth.snapshot.status === 'authenticated' && (auth.snapshot.roles.includes('DISPATCHER') || auth.snapshot.roles.includes('ADMIN')),
     refetchOnWindowFocus: false,
   })
   useEffect(() => () => { command.current?.abort() }, [])
@@ -66,6 +66,11 @@ export function DispatcherOperations() {
   const available = data?.availableCouriers.filter(c => c.eligible) ?? []
   const chosenCourier = available.find(c => c.courierSub === courierSub)
 
+  // Zone choices come from the parcels actually in the queue, so any configured zone appears.
+  const zoneCodes = Array.from(new Set(
+    (data?.unassignedParcels ?? []).flatMap(p => [p.pickupZone, p.dropoffZone]).filter(Boolean),
+  )).sort()
+
   const displayedParcels = data?.unassignedParcels.filter(p => {
     if (zoneFilter === 'ALL') return true
     return p.pickupZone === zoneFilter || p.dropoffZone === zoneFilter
@@ -81,10 +86,10 @@ export function DispatcherOperations() {
     {query.isError && <div role="alert"><p>{query.error instanceof DispatcherError ? query.error.message : 'Operations provider unavailable.'}</p><p>Refresh operations to try again.</p></div>}
     {data && !query.isError && <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} parcels</p>
+        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} parcels{zoneFilter !== 'ALL' && ` · zone filter applies to this page (${displayedParcels.length} of ${data.unassignedParcels.length})`}</p>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} aria-label="Filter unassigned parcels by zone">
           <span className="muted" style={{ fontSize: '0.85rem' }}>Zone:</span>
-          {['ALL', 'ZONE_1', 'ZONE_2', 'ZONE_3'].map(z => (
+          {['ALL', ...zoneCodes].map(z => (
             <Button
               key={z}
               size="sm"

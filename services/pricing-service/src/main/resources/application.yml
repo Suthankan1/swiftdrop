@@ -52,6 +52,8 @@ swiftdrop:
     audience: ${JWT_AUDIENCE:swiftdrop-api}
   pricing:
     quote-validity-seconds: ${QUOTE_VALIDITY_SECONDS:900}
+    # Same Day (EXPRESS) surcharge as a percentage of the standard price.
+    express-surcharge-percent: ${EXPRESS_SURCHARGE_PERCENT:50}
 
 management:
   endpoints:

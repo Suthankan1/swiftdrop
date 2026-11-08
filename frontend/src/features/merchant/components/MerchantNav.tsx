@@ -12,6 +12,9 @@ export function MerchantNav() {
         <a href="/merchant/orders" className="merchant-nav-tab">
           Orders Dashboard
         </a>
+        <a href="/merchant/orders/new" className="merchant-nav-tab">
+          New Order
+        </a>
         <a href="/merchant/credentials" className="merchant-nav-tab">
           API Credentials
         </a>
@@ -32,10 +35,17 @@ export function MerchantNav() {
         Account Overview
       </NavLink>
       <NavLink
+        end
         to="/merchant/orders"
         className={({ isActive }) => `merchant-nav-tab${isActive ? ' is-active' : ''}`}
       >
         Orders Dashboard
+      </NavLink>
+      <NavLink
+        to="/merchant/orders/new"
+        className={({ isActive }) => `merchant-nav-tab${isActive ? ' is-active' : ''}`}
+      >
+        New Order
       </NavLink>
       <NavLink
         to="/merchant/credentials"

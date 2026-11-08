@@ -118,6 +118,40 @@ class QuoteApplicationServiceTest {
         assertThat(saved.getTenantId()).isEqualTo("merchant-200");
         assertThat(saved.isAnonymous()).isFalse();
         assertThat(saved.getTotalAmountMinorUnits()).isEqualTo(50000L);
+        assertThat(response.serviceTier()).isEqualTo("STANDARD");
+        assertThat(response.expressSurchargeMinorUnits()).isZero();
+    }
+
+    @Test
+    @DisplayName("Same Day (EXPRESS) adds the configured surcharge to the standard price")
+    void shouldPriceExpressTier() {
+        QuoteRequest request = new QuoteRequest(
+                "ZONE_1", "ZONE_2", new BigDecimal("2.50"), 30, 20, 15, "EXPRESS"
+        );
+        CallerContext caller = CallerContext.authenticated("user-100", null, Set.of("CUSTOMER"));
+        PricingCalculation calculation = new PricingCalculation(
+                "RATE-2026-V1", "LKR", "ZONE_1", "ZONE_2",
+                new BigDecimal("2.50"), new BigDecimal("1.80"), new BigDecimal("2.50"),
+                SizeCategory.MEDIUM,
+                Money.ofMinorUnits(35000L, "LKR"),
+                Money.ofMinorUnits(15000L, "LKR"),
+                Money.ofMinorUnits(50000L, "LKR"),
+                UUID.randomUUID()
+        );
+        when(calculationService.calculatePrice(any())).thenReturn(calculation);
+        when(rateVersionRepository.findByVersionCode("RATE-2026-V1")).thenReturn(Optional.of(new RateVersionEntity(
+                UUID.randomUUID(), "RATE-2026-V1", "LKR", RateVersionStatus.ACTIVE, FIXED_NOW, "Active version")));
+        quoteService.setExpressSurchargePercent(50);
+
+        QuoteResponse response = quoteService.createQuote(request, caller);
+
+        assertThat(response.serviceTier()).isEqualTo("EXPRESS");
+        assertThat(response.expressSurchargeMinorUnits()).isEqualTo(25000L);
+        assertThat(response.totalAmountMinorUnits()).isEqualTo(75000L);
+        ArgumentCaptor<QuoteEntity> captor = ArgumentCaptor.forClass(QuoteEntity.class);
+        verify(quoteRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().toDomain().getServiceTier()).isEqualTo("EXPRESS");
+        assertThat(captor.getValue().getTotalAmountMinorUnits()).isEqualTo(75000L);
     }
 
     @Test

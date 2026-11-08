@@ -14,7 +14,7 @@ export function LandingPage() {
     e.preventDefault()
     const trimmed = trackingNumber.trim()
     if (trimmed) {
-      navigate(`/tracking?trackingNumber=${encodeURIComponent(trimmed)}`)
+      navigate(`/tracking/${encodeURIComponent(trimmed)}`)
     } else {
       navigate('/tracking')
     }

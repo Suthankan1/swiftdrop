@@ -28,6 +28,8 @@ export interface CourierParcelDetailsProps {
   apiOverride?: ReturnType<typeof createCourierProofApi>
   statusApiOverride?: ReturnType<typeof createCourierStatusApi>
   onAssignmentLost?: (message: string) => void
+  /** Called after the courier changes the parcel's status. */
+  onParcelChanged?: () => void
 }
 
 export function CourierParcelDetails({
@@ -36,6 +38,7 @@ export function CourierParcelDetails({
   apiOverride,
   statusApiOverride,
   onAssignmentLost,
+  onParcelChanged,
 }: CourierParcelDetailsProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -345,7 +348,10 @@ export function CourierParcelDetails({
             proofLookupStatus={proofLookupStatus}
             proofApi={api}
             statusApi={statusApi}
-            onParcelRefresh={setParcel}
+            onParcelRefresh={(next) => {
+              setParcel(next)
+              onParcelChanged?.()
+            }}
             onProofRefresh={(proof, status) => {
               setExistingProof(proof)
               setProofLookupStatus(status)

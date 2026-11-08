@@ -160,6 +160,30 @@ public class MerchantController {
                 .body(MerchantProfileResponse.fromEntity(updated));
     }
 
+    /**
+     * Rejects a pending merchant registration. Requires ADMIN and a non-empty reason.
+     */
+    @PostMapping("/api/v1/merchants/{id}/reject")
+    public ResponseEntity<MerchantProfileResponse> rejectMerchant(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AdminMerchantDecisionRequest request) {
+        var identity = identityProvider.currentIdentity();
+        validateAdminCaller(identity);
+        if (merchantReconciliationService == null || merchantRepository == null) {
+            throw new IllegalStateException("Merchant reconciliation service is not configured");
+        }
+        if (request == null || request.reason() == null || request.reason().trim().isEmpty()) {
+            throw new MerchantDecisionValidationException("Rejection requires a non-empty reason.");
+        }
+        merchantReconciliationService.rejectMerchant(identity, id, request.reason(),
+                request.resolveExpectedVersion(), request.reviewToken());
+        var updated = merchantRepository.findById(id)
+                .orElseThrow(() -> new MerchantNotFoundException("Merchant not found"));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(MerchantProfileResponse.fromEntity(updated));
+    }
+
     private void validateAdminCaller(TrustedIdentity identity) {
         if (identity == null || identity.subject() == null || identity.subject().isBlank()) {
             throw new com.swiftdrop.accountsservice.staff.StaffAccessDeniedException("Authenticated identity is required");

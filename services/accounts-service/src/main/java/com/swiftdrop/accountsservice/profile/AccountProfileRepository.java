@@ -14,6 +14,9 @@ public interface AccountProfileRepository extends Repository<AccountProfile, UUI
 
     Page<AccountProfile> findAll(Pageable pageable);
 
+    Page<AccountProfile> findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
+            String email, String fullName, Pageable pageable);
+
     Optional<AccountProfile> findById(UUID id);
     Optional<AccountProfile> findByKeycloakSub(String keycloakSub);
 

@@ -47,6 +47,7 @@ public record AdminMerchantDetailResponse(
         List<AdminActionOption> actions = new ArrayList<>();
         if (entity.getStatus() == MerchantStatus.PENDING) {
             actions.add(new AdminActionOption("approve", null));
+            actions.add(new AdminActionOption("reject", new AdminReasonConfig(true, 500)));
         } else if (entity.getStatus() == MerchantStatus.APPROVED) {
             actions.add(new AdminActionOption("suspend", new AdminReasonConfig(true, 500)));
         }

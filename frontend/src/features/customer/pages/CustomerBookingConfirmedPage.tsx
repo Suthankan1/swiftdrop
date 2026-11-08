@@ -58,10 +58,18 @@ export function CustomerBookingConfirmedPage() {
     <div className="page-container customer-page customer-confirmed-page">
       <header className="page-heading">
         <p className="eyebrow">Customer space</p>
-        <h1>Booking Confirmed &amp; <br />Scheduled for Dispatch.</h1>
-        <p className="muted">
-          Your delivery booking has been successfully committed to Delivery Operations.
-        </p>
+        {parcel ? (
+          <>
+            <h1>Booking Confirmed &amp; <br />Scheduled for Dispatch.</h1>
+            <p className="muted">
+              Your delivery booking has been successfully committed to Delivery Operations.
+            </p>
+          </>
+        ) : parcelQuery.isError ? (
+          <h1>Booking details unavailable.</h1>
+        ) : (
+          <h1>Checking your booking…</h1>
+        )}
       </header>
 
       <CustomerNav />

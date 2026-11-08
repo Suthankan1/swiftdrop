@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../../auth/context'
 import {
   type PagedAssignmentsResponse,
+  type ParcelDetailResponse,
   CourierApiError,
 } from '../api/courierContracts'
 import { createCourierAssignmentsApi } from '../api/courierAssignments'
@@ -37,6 +38,8 @@ export function CourierAssignmentList({
   const [pagedData, setPagedData] = useState<PagedAssignmentsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [todayOnly, setTodayOnly] = useState(false)
+  const [parcels, setParcels] = useState<Record<string, ParcelDetailResponse>>({})
 
   // Subject change: clear assignments and reset pagination
   const [prevSubject, setPrevSubject] = useState(subject)
@@ -65,6 +68,21 @@ export function CourierAssignmentList({
         })
         if (active) {
           setPagedData(response)
+        }
+        // Enrich cards with tracking number, status and route (best effort; cards still work without it).
+        if (typeof api.getParcel === 'function') {
+          const details = await Promise.allSettled(
+            response.items.map((item) => Promise.resolve().then(() => api.getParcel(item.parcelId, controller.signal))),
+          )
+          if (active) {
+            const next: Record<string, ParcelDetailResponse> = {}
+            details.forEach((result) => {
+              if (result.status === 'fulfilled' && result.value?.parcelId && result.value.trackingNumber) {
+                next[result.value.parcelId] = result.value
+              }
+            })
+            setParcels(next)
+          }
         }
       } catch (err) {
         if (!active || controller.signal.aborted) return
@@ -113,6 +131,10 @@ export function CourierAssignmentList({
   const hasPrevious = Boolean(pagedData?.hasPrevious && currentPage > 0)
   const hasNext = Boolean(pagedData?.hasNext && currentPage < totalPages - 1)
 
+  const visibleItems = todayOnly
+    ? items.filter((item) => new Date(item.assignedAt).toDateString() === new Date().toDateString())
+    : items
+
   return (
     <section className="card assignment-list-section" aria-labelledby="assignment-list-heading">
       <div className="section-heading-row">
@@ -155,12 +177,24 @@ export function CourierAssignmentList({
       )}
 
       {!isLoading && !error && items.length > 0 && (
+        <label className="assignment-today-filter">
+          <input type="checkbox" checked={todayOnly} onChange={(event) => setTodayOnly(event.target.checked)} />
+          {' '}Assigned today only
+        </label>
+      )}
+
+      {!isLoading && !error && items.length > 0 && todayOnly && visibleItems.length === 0 && (
+        <p className="muted" role="status">No parcels on this page were assigned today.</p>
+      )}
+
+      {!isLoading && !error && items.length > 0 && (
         <>
           <div className="assignment-cards-grid" role="list" aria-label="Assigned parcels list">
-            {items.map((assignment) => (
+            {visibleItems.map((assignment) => (
               <CourierAssignmentCard
                 key={assignment.assignmentId}
                 assignment={assignment}
+                parcel={parcels[assignment.parcelId]}
                 isSelected={assignment.parcelId === selectedParcelId}
                 onSelect={onSelectParcel}
               />

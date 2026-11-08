@@ -43,6 +43,12 @@ public record QuoteResponse(
         @JsonProperty("weightSurchargeMinorUnits")
         long weightSurchargeMinorUnits,
 
+        @JsonProperty("serviceTier")
+        String serviceTier,
+
+        @JsonProperty("expressSurchargeMinorUnits")
+        long expressSurchargeMinorUnits,
+
         @JsonProperty("totalAmountMinorUnits")
         long totalAmountMinorUnits,
 
@@ -70,6 +76,8 @@ public record QuoteResponse(
                 snapshot.getSizeCategory(),
                 snapshot.getBaseFeeMinorUnits(),
                 snapshot.getWeightSurchargeMinorUnits(),
+                snapshot.getServiceTier(),
+                snapshot.getExpressSurchargeMinorUnits(),
                 snapshot.getTotalAmountMinorUnits(),
                 snapshot.getCurrency(),
                 snapshot.getCreatedAt(),

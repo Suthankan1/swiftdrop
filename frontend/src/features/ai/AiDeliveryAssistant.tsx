@@ -268,11 +268,11 @@ export function AiDeliveryAssistant() {
         type="button"
         className="ai-assistant-launcher"
         onClick={() => setIsOpen((prev) => !prev)}
-        aria-label={isOpen ? 'Close AI Assistant' : 'Open AI Logistics Assistant'}
+        aria-label={isOpen ? 'Close Help Assistant' : 'Open Help Assistant'}
         aria-expanded={isOpen}
       >
         <span className="ai-launcher-icon" aria-hidden="true">✨</span>
-        <span className="ai-launcher-text">AI Assistant</span>
+        <span className="ai-launcher-text">Help Assistant</span>
       </button>
 
       {/* Slide-over Drawer */}
@@ -282,22 +282,22 @@ export function AiDeliveryAssistant() {
           className="ai-assistant-drawer"
           role="dialog"
           aria-modal="false"
-          aria-label="SwiftDrop AI Logistics Assistant"
+          aria-label="SwiftDrop Help Assistant"
         >
           {/* Header */}
           <div className="ai-drawer-header">
             <div className="ai-header-title-group">
               <span className="ai-status-indicator" aria-hidden="true" />
               <div>
-                <h2 className="ai-drawer-title">SwiftDrop AI Assistant</h2>
-                <p className="ai-drawer-subtitle">Authoritative tools · Live cluster data</p>
+                <h2 className="ai-drawer-title">SwiftDrop Help Assistant</h2>
+                <p className="ai-drawer-subtitle">Keyword commands: "track SWD-…", "quote", "help" · Not a generative AI</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsOpen(false)}
-              aria-label="Dismiss AI Assistant"
+              aria-label="Dismiss Help Assistant"
             >
               ✕
             </Button>
@@ -330,7 +330,7 @@ export function AiDeliveryAssistant() {
                         </div>
                       )}
                       <Link
-                        to={`/tracking?trackingNumber=${encodeURIComponent(msg.trackingData.trackingNumber)}`}
+                        to={`/tracking/${encodeURIComponent(msg.trackingData.trackingNumber)}`}
                         className="button button-tonal button-sm ai-card-action"
                         onClick={() => setIsOpen(false)}
                       >
@@ -433,7 +433,7 @@ export function AiDeliveryAssistant() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isProcessing}
-              aria-label="Ask SwiftDrop AI Assistant"
+              aria-label="Ask SwiftDrop Help Assistant"
             />
             <Button
               type="submit"

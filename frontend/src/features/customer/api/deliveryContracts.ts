@@ -126,4 +126,6 @@ export interface BookParcelRequest {
   recipientName: string
   recipientPhone: string
   deliveryNotes?: string
+  /** Merchant bookings only: the merchant's own order reference. */
+  merchantReference?: string
 }

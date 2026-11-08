@@ -6,7 +6,8 @@ import {
   createMerchantDashboardApi,
   MerchantDashboardError,
 } from '../api/merchantDashboard'
-import { createDeliveryApi } from '../../customer/api/delivery'
+import { createDeliveryApi, triggerBlobDownload } from '../../customer/api/delivery'
+import type { MerchantOrderSummaryItem } from '../api/merchantDashboardContracts'
 import { MerchantNav } from '../components/MerchantNav'
 import { MerchantMachineApiBanner } from '../components/MerchantMachineApiBanner'
 import { MerchantOrderSummaryCards } from '../components/MerchantOrderSummaryCards'
@@ -14,7 +15,9 @@ import { MerchantOrderFilterBar } from '../components/MerchantOrderFilterBar'
 import { MerchantOrderTable } from '../components/MerchantOrderTable'
 import { BulkOrderUploadModal } from '../components/BulkOrderUploadModal'
 import { CustomerTrackingModal } from '../../customer/components/CustomerTrackingModal'
-import { ACTIVE_STATUSES } from '../components/merchantUiUtils'
+import { ACTIVE_STATUSES, csvField } from '../components/merchantUiUtils'
+
+const MAX_ORDER_PAGES = 50
 
 export interface MerchantOrdersDashboardPageProps {
   apiOverride?: ReturnType<typeof createMerchantDashboardApi>
@@ -32,7 +35,10 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
   const pageSize = 10
 
   // Tracking modal inspection state
-  const [inspectTrackingNumber, setInspectTrackingNumber] = useState<string | null>(null)
+  const [inspect, setInspect] = useState<{ parcelId: string; trackingNumber: string } | null>(null)
+  const [allOrders, setAllOrders] = useState<MerchantOrderSummaryItem[] | null>(null)
+  const [allOrdersState, setAllOrdersState] = useState<{ loading: boolean; error: string | null; truncated: boolean }>({ loading: false, error: null, truncated: false })
+  const [receiptState, setReceiptState] = useState<{ parcelId: string | null; error: string | null }>({ parcelId: null, error: null })
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false)
 
@@ -60,6 +66,7 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
     setStatusFilter('ALL')
     setSearchQuery('')
     setCurrentPage(0)
+    setAllOrders(null)
   }
 
   const query = useQuery({
@@ -72,7 +79,50 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
     staleTime: 15_000,
   })
 
-  const recentOrders = query.data?.recentOrders
+  const recentOrders = allOrders ?? query.data?.recentOrders
+
+  /** Pages through every order this merchant can see (GET /parcels), replacing the recent-orders sample. */
+  async function loadAllOrders() {
+    setAllOrdersState({ loading: true, error: null, truncated: false })
+    try {
+      const collected: MerchantOrderSummaryItem[] = []
+      let page = 0
+      let hasNext = true
+      while (hasNext && page < MAX_ORDER_PAGES) {
+        const result = await deliveryApi.getCustomerDeliveries({ page, size: 100 })
+        for (const item of result.items) {
+          collected.push({
+            parcelId: item.parcelId,
+            trackingNumber: item.trackingNumber,
+            currentStatus: item.currentStatus as MerchantOrderSummaryItem['currentStatus'],
+            weightKg: Number.NaN,
+            feeMinorUnits: item.amountMinorUnits,
+            currency: item.currency,
+            createdAt: item.createdAt,
+            lastStatusUpdate: item.updatedAt ?? item.createdAt,
+          })
+        }
+        hasNext = result.hasNext
+        page += 1
+      }
+      setAllOrders(collected)
+      setCurrentPage(0)
+      setAllOrdersState({ loading: false, error: null, truncated: hasNext })
+    } catch {
+      setAllOrdersState({ loading: false, error: 'All orders could not be loaded. The recent orders are still shown.', truncated: false })
+    }
+  }
+
+  async function handleDownloadReceipt(parcelId: string) {
+    setReceiptState({ parcelId, error: null })
+    try {
+      const { blob, filename } = await deliveryApi.downloadReceipt(parcelId)
+      triggerBlobDownload(blob, filename)
+      setReceiptState({ parcelId: null, error: null })
+    } catch {
+      setReceiptState({ parcelId: null, error: 'The receipt could not be downloaded. Please try again.' })
+    }
+  }
 
   // Filter orders according to active criteria
   const filteredOrders = useMemo(() => {
@@ -114,8 +164,8 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
     setCurrentPage(0)
   }
 
-  const handleOpenTrackingModal = (trackingNumber: string) => {
-    setInspectTrackingNumber(trackingNumber)
+  const handleOpenTrackingModal = (trackingNumber: string, parcelId: string) => {
+    setInspect({ parcelId, trackingNumber })
     setIsModalOpen(true)
   }
 
@@ -180,7 +230,20 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
           />
 
           {/* Quick Actions Toolbar */}
+          <p className="muted" role="status">
+            {allOrders
+              ? `Showing all ${allOrders.length} orders${allOrdersState.truncated ? ' (first 5,000 only)' : ''}. Search and export cover all of them.`
+              : `Showing the ${query.data.recentOrders.length} most recent orders. Load all orders to search or export the full history.`}
+          </p>
+          {allOrdersState.error && <p role="alert">{allOrdersState.error}</p>}
+          {receiptState.error && <p role="alert">{receiptState.error}</p>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', margin: '8px 0' }}>
+            {!allOrders && (
+              <Button type="button" variant="secondary" size="sm" isLoading={allOrdersState.loading}
+                disabled={allOrdersState.loading} onClick={() => void loadAllOrders()}>
+                Load all orders
+              </Button>
+            )}
             <Button
               type="button"
               variant="secondary"
@@ -192,12 +255,12 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
                   o.trackingNumber,
                   o.parcelId,
                   o.currentStatus,
-                  o.weightKg,
+                  Number.isFinite(o.weightKg) ? o.weightKg : '',
                   (o.feeMinorUnits / 100).toFixed(2),
                   o.createdAt,
                   o.lastStatusUpdate,
                 ])
-                const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+                const csvContent = [headers.map(csvField).join(','), ...rows.map(r => r.map(csvField).join(','))].join('\r\n')
                 const blob = new Blob([csvContent], { type: 'text/csv' })
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a')
@@ -225,9 +288,9 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
             onStatusFilterChange={handleStatusFilterChange}
             searchQuery={searchQuery}
             onSearchQueryChange={handleSearchQueryChange}
-            totalCount={query.data.recentOrders.length}
+            totalCount={recentOrders?.length ?? 0}
             filteredCount={filteredOrders.length}
-            onRefresh={() => void query.refetch()}
+            onRefresh={() => { if (allOrders) void loadAllOrders(); void query.refetch() }}
             isRefreshing={query.isFetching}
           />
 
@@ -257,13 +320,13 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
 
       {/* Safe Tracking Modal Dialog */}
       <CustomerTrackingModal
-        parcelId={inspectTrackingNumber}
-        trackingNumber={inspectTrackingNumber ?? undefined}
+        parcelId={inspect?.parcelId ?? null}
+        trackingNumber={inspect?.trackingNumber}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         deliveryApi={deliveryApi}
-        onDownloadReceipt={async () => {}}
-        isDownloadingReceipt={false}
+        onDownloadReceipt={handleDownloadReceipt}
+        isDownloadingReceipt={receiptState.parcelId !== null}
       />
     </div>
   )

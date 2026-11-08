@@ -15,7 +15,7 @@ export function MerchantReviewConfirmation({ merchant, action, pending, onCancel
   const [reason, setReason] = useState('')
   const policy = merchant.actions.find(item => item.action === action)?.reason
   const problem = merchantReasonProblem(reason, policy)
-  const label = action === 'approve' ? 'Approve' : 'Suspend'
+  const label = action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Suspend'
   useEffect(() => {
     const previous = document.activeElement
     const siblings = Array.from(document.body.children).filter((item): item is HTMLElement =>

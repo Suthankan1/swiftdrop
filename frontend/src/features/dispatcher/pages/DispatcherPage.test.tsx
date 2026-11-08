@@ -148,7 +148,7 @@ describe('Dispatcher role landing', () => {
     expect(profileFetch).toHaveBeenCalledTimes(2)
   })
 
-  it.each<SwiftDropRole>(['CUSTOMER', 'MERCHANT', 'COURIER', 'ADMIN'])(
+  it.each<SwiftDropRole>(['CUSTOMER', 'MERCHANT', 'COURIER'])(
     'denies a direct visit by %s without exposing staff data or calling providers',
     (role) => {
       const auth = authenticated([role])
@@ -195,9 +195,15 @@ describe('Dispatcher role landing', () => {
 
   it('rechecks permission when the role is revoked without changing subject', () => {
     const view = render(entry(authenticated()))
-    view.rerender(entry(authenticated(['ADMIN'])))
+    view.rerender(entry(authenticated(['COURIER'])))
     expect(screen.getByRole('alert')).toHaveTextContent('Access unavailable')
     expect(screen.queryByRole('heading', { name: 'Dispatcher workspace' })).not.toBeInTheDocument()
+  })
+
+  it('lets an ADMIN open dispatch using the admin staff profile', () => {
+    render(entry(authenticated(['ADMIN'])))
+    expect(screen.getByRole('heading', { name: 'Dispatcher workspace' })).toBeInTheDocument()
+    expect(screen.queryByText('Access unavailable')).not.toBeInTheDocument()
   })
 
   it('ignores a role supplied in the URL', () => {

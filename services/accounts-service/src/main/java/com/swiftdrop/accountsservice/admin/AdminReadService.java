@@ -47,8 +47,23 @@ public class AdminReadService {
         this.merchantAudits = merchantAudits;
     }
 
+    private com.swiftdrop.accountsservice.identity.keycloak.KeycloakIdentityAdapter identityAdapter;
+
+    @Autowired(required = false)
+    public void setIdentityAdapter(com.swiftdrop.accountsservice.identity.keycloak.KeycloakIdentityAdapter identityAdapter) {
+        this.identityAdapter = identityAdapter;
+    }
+
     public AdminPageResponse<AdminUserSummaryResponse> users(int page, int size) {
-        Page<AccountProfile> result = accounts.findAll(pageable(page, size));
+        return users(page, size, null);
+    }
+
+    /** Lists users, optionally matching {@code query} against email or full name (case-insensitive). */
+    public AdminPageResponse<AdminUserSummaryResponse> users(int page, int size, String query) {
+        String term = query == null ? "" : query.trim();
+        Page<AccountProfile> result = term.isEmpty()
+                ? accounts.findAll(pageable(page, size))
+                : accounts.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(term, term, pageable(page, size));
         return new AdminPageResponse<>(result.map(this::toUser).getContent(), page, size,
                 result.getTotalElements(), result.getTotalPages(), result.isFirst(), result.isLast());
     }
@@ -118,8 +133,18 @@ public class AdminReadService {
     }
 
     private AdminUserSummaryResponse toUser(AccountProfile profile) {
+        Boolean enabled = null;
+        if (identityAdapter != null) {
+            try {
+                enabled = identityAdapter.getUserIdentity(profile.getKeycloakSub())
+                        .map(com.swiftdrop.accountsservice.identity.keycloak.KeycloakUserIdentity::enabled)
+                        .orElse(null);
+            } catch (RuntimeException ignored) {
+                // The listing still works when Keycloak is unreachable; the state shows as unknown.
+            }
+        }
         return new AdminUserSummaryResponse(profile.getId(), profile.getKeycloakSub(), profile.getEmail(),
-                profile.getFullName(), profile.getCreatedAt());
+                profile.getFullName(), profile.getCreatedAt(), enabled);
     }
 
     private AdminStaffSummaryResponse toStaff(StaffProfile profile) {

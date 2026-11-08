@@ -10,7 +10,7 @@ interface MerchantOrderTableProps {
   pageSize: number
   totalItems: number
   onPageChange: (newPage: number) => void
-  onSelectTracking?: (trackingNumber: string) => void
+  onSelectTracking?: (trackingNumber: string, parcelId: string) => void
   isLoading?: boolean
   hasFiltersApplied?: boolean
   onResetFilters?: () => void
@@ -117,7 +117,7 @@ export function MerchantOrderTable({
                         <button
                           type="button"
                           className="safe-track-link-btn"
-                          onClick={() => onSelectTracking(order.trackingNumber)}
+                          onClick={() => onSelectTracking(order.trackingNumber, order.parcelId)}
                           aria-label={`Inspect tracking checkpoint for ${order.trackingNumber}`}
                         >
                           Track ↗
@@ -150,7 +150,7 @@ export function MerchantOrderTable({
 
                   {/* Weight */}
                   <td className="monospace">
-                    {order.weightKg.toFixed(2)} kg
+                    {Number.isFinite(order.weightKg) ? `${order.weightKg.toFixed(2)} kg` : '—'}
                   </td>
 
                   {/* Delivery Fee */}

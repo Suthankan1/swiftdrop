@@ -19,6 +19,11 @@ spring:
               predicates:
                 - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
               order: 5
+            - id: communications-service-internal
+              uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/internal/**
+              order: 10
             - id: accounts-service-staff
               uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
               predicates:
@@ -89,6 +94,11 @@ spring:
           predicates:
             - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
           order: 5
+        - id: communications-service-internal
+          uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/internal/**
+          order: 10
         - id: accounts-service-staff
           uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
           predicates:

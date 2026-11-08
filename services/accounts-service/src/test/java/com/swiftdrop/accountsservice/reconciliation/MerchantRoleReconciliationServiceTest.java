@@ -316,4 +316,43 @@ class MerchantRoleReconciliationServiceTest {
         MerchantBusinessAudit audit = auditCaptor.getValue();
         assertThat(audit.getReconciliationOutcome()).isEqualTo("PENDING_RETRY");
     }
+
+    @Test
+    @DisplayName("rejectMerchant moves PENDING to REJECTED, audits the reason and revokes any MERCHANT role")
+    void rejectMerchant_pendingBecomesRejected() {
+        Merchant merchant = new Merchant(
+                merchantId, accountProfileId, merchantSub, "Apex Logistics Ltd",
+                "REG-2026-001", MerchantStatus.PENDING, Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+        when(identityAdapter.reconcileRole(merchantSub, "MERCHANT", false))
+                .thenReturn(ReconciliationResult.noOp(merchantSub, "MERCHANT", "Already absent"));
+
+        service.rejectMerchant(adminIdentity, merchantId, "  Registration number not verifiable  ", null, null);
+
+        assertThat(merchant.getStatus()).isEqualTo(MerchantStatus.REJECTED);
+        ArgumentCaptor<MerchantBusinessAudit> audit = ArgumentCaptor.forClass(MerchantBusinessAudit.class);
+        verify(businessAuditRepository, atLeastOnce()).save(audit.capture());
+        assertThat(audit.getValue().getAction()).isEqualTo("REJECT");
+        assertThat(audit.getValue().getReason()).isEqualTo("Registration number not verifiable");
+        verify(auditService).recordAudit(eq(merchantSub), eq("MERCHANT"), eq("REJECT_MERCHANT"), eq("PENDING"),
+                eq("REJECTED"), eq(ReconciliationOutcome.NO_OP), eq(adminSub), any(), any());
+    }
+
+    @Test
+    @DisplayName("rejectMerchant requires a reason and a PENDING merchant")
+    void rejectMerchant_validatesReasonAndState() {
+        assertThatThrownBy(() -> service.rejectMerchant(adminIdentity, merchantId, "  ", null, null))
+                .isInstanceOf(MerchantDecisionValidationException.class);
+        Merchant approved = new Merchant(
+                merchantId, accountProfileId, merchantSub, "Apex Logistics Ltd",
+                "REG-2026-001", MerchantStatus.APPROVED, Instant.now(), Instant.now()
+        );
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(approved));
+        assertThatThrownBy(() -> service.rejectMerchant(adminIdentity, merchantId, "No", null, null))
+                .isInstanceOf(MerchantIllegalStateTransitionException.class);
+        assertThat(approved.getStatus()).isEqualTo(MerchantStatus.APPROVED);
+        assertThatThrownBy(() -> service.rejectMerchant(customerIdentity, merchantId, "No", null, null))
+                .isInstanceOf(StaffAccessDeniedException.class);
+    }
 }

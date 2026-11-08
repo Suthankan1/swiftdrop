@@ -37,6 +37,12 @@ public class GatewayRoutesConfig {
                         .path("/api/v1/merchants/webhooks", "/api/v1/merchants/webhooks/**")
                         .uri(communicationsServiceUrl))
 
+                // Communications operator endpoints (notification replay, quarantine)
+                .route("communications-service-internal", r -> r
+                        .order(ROUTE_ORDER)
+                        .path("/api/v1/internal/**")
+                        .uri(communicationsServiceUrl))
+
                 // Accounts & Partners service routes
                 .route("accounts-service-staff", r -> r
                         .order(SPECIFIC_ROUTE_ORDER)
