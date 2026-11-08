@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,9 @@ public interface IdempotencyRecordRepository extends JpaRepository<IdempotencyRe
             @Param("principalOrTenant") String principalOrTenant,
             @Param("idempotencyKey") String idempotencyKey
     );
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM IdempotencyRecord r WHERE r.expiresAt < :cutoff")
+    int deleteExpired(@Param("cutoff") Instant cutoff);
 }

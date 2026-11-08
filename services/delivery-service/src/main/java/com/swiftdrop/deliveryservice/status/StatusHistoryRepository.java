@@ -22,6 +22,14 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, UU
 
     @org.springframework.data.jpa.repository.Query("""
         SELECT COUNT(DISTINCT s.parcelId) FROM StatusHistory s
+        WHERE s.occurredAt >= :startTime AND s.occurredAt < :endTime
+    """)
+    long countDistinctParcelsWithActivityBetween(
+            @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
+            @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT COUNT(DISTINCT s.parcelId) FROM StatusHistory s
         WHERE s.newStatus = com.swiftdrop.deliveryservice.core.ParcelStatus.DELIVERED
         AND s.occurredAt >= :startTime AND s.occurredAt < :endTime
     """)
