@@ -37,6 +37,11 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
             WHERE (status = 'PENDING' AND next_attempt_at <= :now)
                OR (status = 'IN_FLIGHT' AND claim_expires_at <= :now)
                OR (status = 'FAILED' AND next_attempt_at <= :now AND attempt_count < :maxAttempts)
+              AND NOT EXISTS (
+                  SELECT 1 FROM outbox_events earlier
+                  WHERE earlier.aggregate_id = outbox_events.aggregate_id
+                    AND earlier.aggregate_version < outbox_events.aggregate_version
+                    AND earlier.status <> 'PUBLISHED')
             ORDER BY aggregate_id, aggregate_version ASC
             LIMIT :batchSize
             FOR UPDATE SKIP LOCKED
@@ -46,4 +51,13 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
             @Param("maxAttempts") int maxAttempts,
             @Param("batchSize") int batchSize
     );
+
+    /** Moves dead-lettered events back to retry; returns how many were requeued. */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = """
+            UPDATE outbox_events
+            SET status = 'FAILED', attempt_count = 0, next_attempt_at = :now
+            WHERE status = 'DEAD_LETTER'
+            """, nativeQuery = true)
+    int requeueDeadLetters(@Param("now") Instant now);
 }

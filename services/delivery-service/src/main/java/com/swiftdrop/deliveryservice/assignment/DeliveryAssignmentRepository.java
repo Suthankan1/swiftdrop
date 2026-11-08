@@ -29,6 +29,10 @@ public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssi
 
     Page<DeliveryAssignment> findByCourierSubOrderByAssignedAtDesc(String courierSub, Pageable pageable);
 
+    Page<DeliveryAssignment> findByActiveTrue(Pageable pageable);
+
+    List<DeliveryAssignment> findByParcelIdInAndActiveTrue(java.util.Collection<UUID> parcelIds);
+
     @org.springframework.data.jpa.repository.Query("""
         SELECT da.courierSub, COUNT(da)
         FROM DeliveryAssignment da

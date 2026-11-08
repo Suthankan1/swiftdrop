@@ -1,5 +1,7 @@
 package com.swiftdrop.deliveryservice.assignment.client;
 
+import com.swiftdrop.security.grpc.SwiftDropGrpcClientInterceptor;
+import com.swiftdrop.security.service.ServiceTokenProvider;
 import com.swiftdrop.accounts.v1.AccountsInternalServiceGrpc;
 import com.swiftdrop.accounts.v1.CourierEligibilityRequest;
 import com.swiftdrop.accounts.v1.CourierEligibilityResponse;
@@ -30,12 +32,15 @@ public class GrpcCourierEligibilityClient implements CourierEligibilityClient {
     private final int grpcPort;
     private final long deadlineMs;
     private final boolean clientEnabled;
+    private final ServiceTokenProvider serviceTokenProvider;
 
     public GrpcCourierEligibilityClient(
-            @Value("${swiftdrop.accounts.grpc.host:localhost}") String grpcHost,
-            @Value("${swiftdrop.accounts.grpc.port:9091}") int grpcPort,
+            @Value("${swiftdrop.accounts.grpc.host:${ACCOUNTS_GRPC_HOST:localhost}}") String grpcHost,
+            @Value("${swiftdrop.accounts.grpc.port:${ACCOUNTS_GRPC_PORT:9081}}") int grpcPort,
             @Value("${swiftdrop.accounts.grpc.deadline-ms:2000}") long deadlineMs,
-            @Value("${swiftdrop.accounts.grpc.enabled:true}") boolean clientEnabled) {
+            @Value("${swiftdrop.accounts.grpc.enabled:true}") boolean clientEnabled,
+            ServiceTokenProvider serviceTokenProvider) {
+        this.serviceTokenProvider = serviceTokenProvider;
         this.grpcHost = grpcHost;
         this.grpcPort = grpcPort;
         this.deadlineMs = deadlineMs;
@@ -53,6 +58,7 @@ public class GrpcCourierEligibilityClient implements CourierEligibilityClient {
         try {
             channel = ManagedChannelBuilder.forAddress(grpcHost, grpcPort)
                     .usePlaintext()
+                    .intercept(new SwiftDropGrpcClientInterceptor(serviceTokenProvider, deadlineMs))
                     .build();
 
             AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =

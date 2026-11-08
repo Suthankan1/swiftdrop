@@ -26,6 +26,8 @@ public class GrpcAccountsMerchantKeyValidator implements AccountsMerchantKeyVali
     private static final Logger log = LoggerFactory.getLogger(GrpcAccountsMerchantKeyValidator.class);
     private static final Pattern KEY_PATTERN = Pattern.compile("^swd_live_[0-9a-zA-Z]{32}$");
     public static final long DEFAULT_DEADLINE_MS = 2000L;
+    /** "swd_live_" plus four characters: must match the prefix Accounts stores when it generates a key. */
+    private static final int KEY_PREFIX_LENGTH = 13;
 
     private final AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub;
     private final long deadlineMs;
@@ -45,7 +47,7 @@ public class GrpcAccountsMerchantKeyValidator implements AccountsMerchantKeyVali
             return MerchantKeyValidationResult.invalid("MALFORMED_KEY");
         }
 
-        String keyPrefix = rawApiKey.substring(0, 12);
+        String keyPrefix = rawApiKey.substring(0, KEY_PREFIX_LENGTH);
         String keyDigest = sha256Hex(rawApiKey);
 
         MerchantKeyDigestRequest request = MerchantKeyDigestRequest.newBuilder()

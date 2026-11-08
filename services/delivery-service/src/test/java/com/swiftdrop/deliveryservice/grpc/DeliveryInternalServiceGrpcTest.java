@@ -485,7 +485,7 @@ class DeliveryInternalServiceGrpcTest {
         AuthorizeEventRecipientRequest request = AuthorizeEventRecipientRequest.newBuilder()
                 .setEventId(eventId.toString())
                 .setParcelId(parcelId.toString())
-                .setAllowStale(true)
+                .setAllowStale(false)
                 .build();
 
         AuthorizeEventRecipientResponse response = createCommsStub().authorizeEventRecipient(request);
@@ -494,6 +494,30 @@ class DeliveryInternalServiceGrpcTest {
         assertThat(response.getIsTerminal()).isTrue();
         assertThat(response.getIsStale()).isTrue();
         assertThat(response.getAuthorizationReason()).isEqualTo("STALE_TERMINAL_EVENT");
+    }
+
+    @Test
+    @DisplayName("AuthorizeEventRecipient: Stale event on terminal parcel is authorized when the caller allows stale events")
+    void testAuthorizeEventRecipient_StaleEvent_OnTerminalParcel_AllowedWhenRequested() {
+        Parcel parcel = createParcel(ParcelStatus.DELIVERED, 4L, merchantId);
+        OutboxEvent earlierEvent = createOutboxEvent(eventId, parcelId, 2L, "parcel.status.changed.v1");
+
+        when(outboxEventRepository.findById(eventId)).thenReturn(Optional.of(earlierEvent));
+        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        when(deliveryAssignmentRepository.findByParcelIdAndActiveTrue(parcelId)).thenReturn(Optional.empty());
+
+        AuthorizeEventRecipientRequest request = AuthorizeEventRecipientRequest.newBuilder()
+                .setEventId(eventId.toString())
+                .setParcelId(parcelId.toString())
+                .setAllowStale(true)
+                .build();
+
+        AuthorizeEventRecipientResponse response = createCommsStub().authorizeEventRecipient(request);
+
+        assertThat(response.getIsAuthorized()).isTrue();
+        assertThat(response.getIsTerminal()).isTrue();
+        assertThat(response.getIsStale()).isTrue();
+        assertThat(response.getAuthorizationReason()).isEqualTo("AUTHORIZED_STALE");
     }
 
     @Test

@@ -68,7 +68,7 @@ class GrpcAccountsMerchantKeyValidatorTest {
         verify(stub).validateMerchantKeyDigest(captor.capture());
         MerchantKeyDigestRequest sentRequest = captor.getValue();
 
-        assertThat(sentRequest.getKeyPrefix()).isEqualTo(apiKey.substring(0, 12));
+        assertThat(sentRequest.getKeyPrefix()).isEqualTo(apiKey.substring(0, 13));
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         String expectedHash = HexFormat.of().formatHex(md.digest(apiKey.getBytes(StandardCharsets.UTF_8)));
         assertThat(sentRequest.getKeyDigest()).isEqualTo(expectedHash);

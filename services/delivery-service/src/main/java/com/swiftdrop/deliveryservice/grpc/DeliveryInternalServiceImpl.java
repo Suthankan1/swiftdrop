@@ -370,7 +370,7 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
         boolean isAuthorized;
         String reason;
 
-        if (isStale && isTerminal) {
+        if (isStale && isTerminal && !request.getAllowStale()) {
             isAuthorized = false;
             reason = "STALE_TERMINAL_EVENT";
         } else if (isStale && !request.getAllowStale()) {
@@ -611,7 +611,10 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 inTransitCount = parcelRepository.countInTransitBeforeOrAt(endInstant);
             }
 
-            long totalCount = createdCount + deliveredCount + failedCount + inTransitCount;
+            // Each parcel counts once however many transitions it had in the window.
+            long totalCount = statusFilter.isEmpty()
+                    ? historyRepository.countDistinctParcelsWithActivityBetween(startInstant, endInstant)
+                    : createdCount + deliveredCount + failedCount + inTransitCount;
 
             // Calculate average delivery duration from creation to first DELIVERED transition
             if (deliveredCount > 0) {
@@ -1024,8 +1027,9 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         ? assignmentRepository.findByCourierSubAndActiveTrueAndParcelIdIn(effectiveCourierSub, validUuids)
                         : assignmentRepository.findByCourierSubAndParcelIdIn(effectiveCourierSub, validUuids);
 
+                java.util.Map<UUID, Parcel> parcelsById = loadParcels(assignments);
                 for (DeliveryAssignment da : assignments) {
-                    summaries.add(toCourierAssignmentSummary(da));
+                    summaries.add(toCourierAssignmentSummary(da, parcelsById));
                 }
                 totalCount = summaries.size();
             } else {
@@ -1034,8 +1038,9 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         ? assignmentRepository.findActiveByCourierSub(effectiveCourierSub, pageable)
                         : assignmentRepository.findAllByCourierSub(effectiveCourierSub, pageable);
 
+                java.util.Map<UUID, Parcel> parcelsById = loadParcels(assignmentPage.getContent());
                 for (DeliveryAssignment da : assignmentPage.getContent()) {
-                    summaries.add(toCourierAssignmentSummary(da));
+                    summaries.add(toCourierAssignmentSummary(da, parcelsById));
                 }
                 totalCount = (int) assignmentPage.getTotalElements();
             }
@@ -1269,8 +1274,16 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 .build();
     }
 
-    private CourierAssignmentSummary toCourierAssignmentSummary(DeliveryAssignment da) {
-        Optional<Parcel> parcelOpt = parcelRepository.findById(da.getParcelId());
+    private java.util.Map<UUID, Parcel> loadParcels(List<DeliveryAssignment> assignments) {
+        java.util.Map<UUID, Parcel> byId = new java.util.HashMap<>();
+        parcelRepository.findAllById(assignments.stream().map(DeliveryAssignment::getParcelId).toList())
+                .forEach(p -> byId.put(p.getParcelId(), p));
+        return byId;
+    }
+
+    private CourierAssignmentSummary toCourierAssignmentSummary(DeliveryAssignment da,
+                                                                java.util.Map<UUID, Parcel> parcelsById) {
+        Optional<Parcel> parcelOpt = Optional.ofNullable(parcelsById.get(da.getParcelId()));
         String trackingNumber = parcelOpt.map(Parcel::getTrackingNumber).orElse("UNKNOWN");
         String currentStatus = parcelOpt.map(p -> p.getStatus().name()).orElse("UNKNOWN");
         long version = parcelOpt.map(p -> p.getVersion() != null ? p.getVersion() : 1L).orElse(1L);
@@ -1282,10 +1295,10 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 .setParcelId(da.getParcelId().toString())
                 .setTrackingNumber(trackingNumber)
                 .setCurrentStatus(currentStatus)
-                .setPickupAddress("")
-                .setDropoffAddress("")
-                .setRecipientName("")
-                .setRecipientPhone("")
+                .setPickupAddress(parcelOpt.map(Parcel::getPickupAddress).orElse(""))
+                .setDropoffAddress(parcelOpt.map(Parcel::getDropoffAddress).orElse(""))
+                .setRecipientName(parcelOpt.map(Parcel::getRecipientName).orElse(""))
+                .setRecipientPhone(parcelOpt.map(Parcel::getRecipientPhone).orElse(""))
                 .setAssignedAt(toTimestamp(assignedAt))
                 .setVersion(version)
                 .setIsActive(da.isActive())
