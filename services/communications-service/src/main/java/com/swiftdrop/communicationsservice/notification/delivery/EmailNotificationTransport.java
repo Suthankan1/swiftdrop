@@ -164,10 +164,29 @@ public class EmailNotificationTransport {
 
     private String buildBody(NotificationJob job, String template) {
         String cleanStatus = template.replace("PARCEL_", "");
-        return "Hello,\n\n"
-                + "Your parcel status has been updated to: " + cleanStatus + ".\n"
-                + "Tracking Reference: " + job.getParcelId() + "\n"
-                + "Notification Reference: " + job.getNotificationId() + "\n\n"
-                + "Thank you for using SwiftDrop.";
+        String trackingNumber = snapshotText(job, "trackingNumber");
+        String reason = snapshotText(job, "reason");
+        StringBuilder body = new StringBuilder("Hello,\n\n")
+                .append("Your parcel status has been updated to: ").append(cleanStatus).append(".\n");
+        if (reason != null) {
+            body.append("Reason: ").append(reason.replace('_', ' ').toLowerCase(java.util.Locale.ROOT)).append(".\n");
+        }
+        body.append("Tracking number: ").append(trackingNumber != null ? trackingNumber : "unavailable").append("\n")
+                .append("Notification reference: ").append(job.getNotificationId()).append("\n\n")
+                .append("Thank you for using SwiftDrop.");
+        return body.toString();
+    }
+
+    private static String snapshotText(NotificationJob job, String field) {
+        if (job.getEventSnapshot() == null || job.getEventSnapshot().isBlank()) {
+            return null;
+        }
+        try {
+            var value = tools.jackson.databind.json.JsonMapper.builder().build()
+                    .readTree(job.getEventSnapshot()).get(field);
+            return value == null || value.isNull() || value.asText().isBlank() ? null : value.asText();
+        } catch (RuntimeException ex) {
+            return null;
+        }
     }
 }

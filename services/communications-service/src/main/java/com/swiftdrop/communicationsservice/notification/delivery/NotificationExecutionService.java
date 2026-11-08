@@ -159,7 +159,8 @@ public class NotificationExecutionService {
         }
 
         // 2. Persist attempt record and update lifecycle inside an atomic database transaction
-        persistAttemptAndAdvanceJob(notificationId, claimToken, result);
+        final NotificationAttemptResult outcome = result;
+        inTransaction(() -> persistAttemptAndAdvanceJob(notificationId, claimToken, outcome));
 
         return result;
     }
@@ -175,7 +176,7 @@ public class NotificationExecutionService {
         }
 
         // Verify lease has not been reclaimed or stolen
-        if (!claimToken.equals(job.getClaimToken()) && job.getStatus() != NotificationStatus.PROCESSING) {
+        if (!claimToken.equals(job.getClaimToken()) || job.getStatus() != NotificationStatus.PROCESSING) {
             log.error("Lease ownership conflict during attempt commit [notificationId={}, currentStatus={}, heldToken={}]",
                     notificationId, job.getStatus(), job.getClaimToken());
             return;
@@ -310,5 +311,27 @@ public class NotificationExecutionService {
         }
 
         return stuckJobs.size();
+    }
+
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
+    /** Calls within this class bypass the @Transactional proxy, so commits go through this template. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTransactionManager(org.springframework.transaction.PlatformTransactionManager transactionManager) {
+        this.transactionTemplate = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        this.transactionTemplate.setPropagationBehavior(
+                org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    private void inTransaction(Runnable work) {
+        if (transactionTemplate == null) {
+            work.run();
+        } else {
+            transactionTemplate.executeWithoutResult(status -> work.run());
+        }
+    }
+
+    private <T> T inTransaction(java.util.function.Supplier<T> work) {
+        return transactionTemplate == null ? work.get() : transactionTemplate.execute(status -> work.get());
     }
 }
