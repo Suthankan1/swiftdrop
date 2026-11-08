@@ -25,6 +25,8 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
 
     Page<Parcel> findByMerchantIdOrderByCreatedAtDesc(UUID merchantId, Pageable pageable);
 
+    Page<Parcel> findByMerchantIdOrSenderSubOrderByCreatedAtDesc(UUID merchantId, String senderSub, Pageable pageable);
+
     List<Parcel> findByStatus(ParcelStatus status);
 
     boolean existsByTrackingNumber(String trackingNumber);
