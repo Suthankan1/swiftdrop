@@ -164,7 +164,7 @@ export function CustomerBookingConfirmedPage() {
                 </div>
                 <div className="summary-row">
                   <dt>Dimensions (L×W×H)</dt>
-                  <dd>{parcel.dimensions} cm</dd>
+                  <dd>{parcel.dimensions}{/^\d/.test(parcel.dimensions) ? ' cm' : ''}</dd>
                 </div>
                 <div className="summary-row">
                   <dt>Internal Booking UUID</dt>

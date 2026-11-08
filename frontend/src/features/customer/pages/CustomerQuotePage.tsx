@@ -95,7 +95,11 @@ export function CustomerQuotePage() {
   const [formValidationErrors, setFormValidationErrors] = useState<Record<string, string>>({})
 
   // Quote State
-  const [quote, setQuote] = useState<QuoteResponse | null>(null)
+  const [rawQuote, setRawQuote] = useState<QuoteResponse | null>(null)
+  const [quotedInputs, setQuotedInputs] = useState<string | null>(null)
+  // A quote only applies to the exact inputs it was calculated for; any change requires a new quote.
+  const currentInputs = [pickupZone, dropoffZone, weightKg, lengthCm, widthCm, heightCm].join('|')
+  const quote = rawQuote && quotedInputs === currentInputs ? rawQuote : null
   const [isCalculating, setIsCalculating] = useState(false)
   const [quoteError, setQuoteError] = useState<string | null>(null)
 
@@ -229,7 +233,8 @@ export function CustomerQuotePage() {
 
     try {
       const calculatedQuote = await pricingApi.calculateQuote(requestPayload)
-      setQuote(calculatedQuote)
+      setRawQuote(calculatedQuote)
+      setQuotedInputs(currentInputs)
       // Generate a stable idempotency key for this new quote session
       const newKey = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
