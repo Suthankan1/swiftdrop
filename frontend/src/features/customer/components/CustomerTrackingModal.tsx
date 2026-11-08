@@ -262,7 +262,7 @@ export function CustomerTrackingModal({
                 </div>
                 <div>
                   <span className="meta-label">Dimensions</span>
-                  <span className="meta-value">{parcel.dimensions} cm</span>
+                  <span className="meta-value">{parcel.dimensions}{/^\d/.test(parcel.dimensions) ? ' cm' : ''}</span>
                 </div>
                 <div>
                   <span className="meta-label">Delivery Fee</span>

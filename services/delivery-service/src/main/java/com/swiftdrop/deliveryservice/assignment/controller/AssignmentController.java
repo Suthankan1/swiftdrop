@@ -207,6 +207,12 @@ public class AssignmentController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
             Authentication authentication) {
+        Collection<String> roles = extractRoles(authentication);
+        if (roles.contains("ROLE_DISPATCHER") || roles.contains("ROLE_ADMIN")
+                || roles.contains("DISPATCHER") || roles.contains("ADMIN")) {
+            return ResponseEntity.ok(assignmentService.listAssignments(activeOnly,
+                    PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)))));
+        }
         return getMyAssignments(activeOnly, page, size, authentication);
     }
 

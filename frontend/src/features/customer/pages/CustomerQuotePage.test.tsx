@@ -256,6 +256,29 @@ describe('CustomerQuotePage & Booking Workflow (Issue #118)', () => {
     expect(screen.getByText(/quote valid for/i)).toBeInTheDocument()
   })
 
+  it('drops the quote when its inputs change so a stale price cannot be booked', async () => {
+    const user = userEvent.setup({ delay: null })
+    render(
+      <TestProviders auth={customerAuth}>
+        <MemoryRouter initialEntries={['/customer/quote']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </TestProviders>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /calculate delivery quote/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /confirm & book delivery/i })).toBeInTheDocument()
+    })
+
+    const weight = screen.getByLabelText(/physical weight/i)
+    await user.clear(weight)
+    await user.type(weight, '25')
+
+    expect(screen.queryByRole('button', { name: /confirm & book delivery/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /calculate delivery quote/i })).toBeInTheDocument()
+  })
+
   it('handles quote calculation API failure gracefully', async () => {
     mockFetch.mockImplementation((url: string | URL | Request) => {
       const urlStr = url.toString()

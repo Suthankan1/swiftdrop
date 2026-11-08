@@ -147,7 +147,9 @@ public class ParcelSseConnectionManager {
         CopyOnWriteArrayList<SseSubscriberSession> subscribers =
                 parcelSubscribers.computeIfAbsent(parcelId, k -> new CopyOnWriteArrayList<>());
         synchronized (subscribers) {
-            if (subscribers.size() >= properties.getMaxConnectionsPerParcel()) {
+            // Signed-in viewers have their own allowance, so anonymous watchers cannot lock the owner out.
+            if (subscribers.stream().filter(session -> !session.isPublic()).count()
+                    >= properties.getMaxConnectionsPerParcel()) {
                 userCount.decrementAndGet();
                 globalConnectionCount.decrementAndGet();
                 recordRejected("limit_parcel");
@@ -238,7 +240,8 @@ public class ParcelSseConnectionManager {
         CopyOnWriteArrayList<SseSubscriberSession> subscribers =
                 parcelSubscribers.computeIfAbsent(parcelId, k -> new CopyOnWriteArrayList<>());
         synchronized (subscribers) {
-            if (subscribers.size() >= properties.getMaxConnectionsPerParcel()) {
+            if (subscribers.stream().filter(SseSubscriberSession::isPublic).count()
+                    >= properties.getMaxConnectionsPerParcel()) {
                 globalConnectionCount.decrementAndGet();
                 recordRejected("limit_parcel");
                 log.warn("Rejected public SSE connection for tracking {}: parcel limit {} reached",
@@ -413,19 +416,9 @@ public class ParcelSseConnectionManager {
         }
     }
 
+    /** Kept for callers; Delivery no longer invents hub names, so an event without a zone has none. */
     public static String coarseZoneForStatus(String statusStr) {
-        if (statusStr == null) {
-            return "Western Province Hub";
-        }
-        return switch (statusStr) {
-            case "CREATED" -> "Order Confirmed (Colombo)";
-            case "PICKED_UP" -> "Picked Up (Western Province Sorting Hub)";
-            case "IN_TRANSIT" -> "In Transit (Western Province Sorting Hub)";
-            case "OUT_FOR_DELIVERY" -> "Out for Delivery (Local Zone)";
-            case "DELIVERED" -> "Delivered";
-            case "FAILED" -> "Delivery Attempted (Western Province)";
-            default -> "Transit Checkpoint (" + statusStr + ")";
-        };
+        return null;
     }
 
     /**

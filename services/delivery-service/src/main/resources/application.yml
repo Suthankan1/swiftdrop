@@ -9,6 +9,11 @@ grpc:
 spring:
   application:
     name: delivery-service
+  servlet:
+    multipart:
+      # Proof photos may be up to 5 MiB (ProofService.MAX_PROOF_SIZE_BYTES) plus form overhead.
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: ${DELIVERY_DB_URL}
     username: ${DELIVERY_DB_USERNAME}

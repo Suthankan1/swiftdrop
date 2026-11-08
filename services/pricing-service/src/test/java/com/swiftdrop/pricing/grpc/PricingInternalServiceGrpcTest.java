@@ -429,6 +429,51 @@ class PricingInternalServiceGrpcTest {
     }
 
     @Test
+    @DisplayName("Verified merchant can claim an anonymous unbound quote")
+    void merchantClaimingAnonymousQuote_succeeds() {
+        QuoteSnapshot snapshot = createSampleQuote(quoteId, null, null, true, baseTime.plusSeconds(600));
+        when(quoteRepository.findById(quoteId)).thenReturn(Optional.of(QuoteEntity.fromDomain(snapshot)));
+
+        PricingInternalServiceGrpc.PricingInternalServiceBlockingStub stub =
+                createDeliveryStubWithActorDelegation("merchant-sub", SwiftDropRoles.ROLE_MERCHANT, merchantTenant);
+
+        assertThat(stub.validateQuote(ValidateQuoteRequest.newBuilder()
+                .setQuoteId(quoteId.toString())
+                .build()).getIsValid()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Verified merchant can claim their own unbound quote")
+    void merchantClaimingOwnUnboundQuote_succeeds() {
+        QuoteSnapshot snapshot = createSampleQuote(quoteId, "merchant-sub", null, false, baseTime.plusSeconds(600));
+        when(quoteRepository.findById(quoteId)).thenReturn(Optional.of(QuoteEntity.fromDomain(snapshot)));
+
+        PricingInternalServiceGrpc.PricingInternalServiceBlockingStub stub =
+                createDeliveryStubWithActorDelegation("merchant-sub", SwiftDropRoles.ROLE_MERCHANT, merchantTenant);
+
+        assertThat(stub.validateQuote(ValidateQuoteRequest.newBuilder()
+                .setQuoteId(quoteId.toString())
+                .build()).getIsValid()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Merchant cannot claim an unbound quote that belongs to someone else")
+    void merchantClaimingAnotherSubjectsUnboundQuote_rejected() {
+        QuoteSnapshot snapshot = createSampleQuote(quoteId, "another-customer", null, false, baseTime.plusSeconds(600));
+        when(quoteRepository.findById(quoteId)).thenReturn(Optional.of(QuoteEntity.fromDomain(snapshot)));
+
+        PricingInternalServiceGrpc.PricingInternalServiceBlockingStub stub =
+                createDeliveryStubWithActorDelegation("merchant-sub", SwiftDropRoles.ROLE_MERCHANT, merchantTenant);
+
+        assertThatThrownBy(() -> stub.validateQuote(ValidateQuoteRequest.newBuilder()
+                .setQuoteId(quoteId.toString())
+                .build()))
+                .isInstanceOf(StatusRuntimeException.class)
+                .satisfies(ex -> assertThat(((StatusRuntimeException) ex).getStatus().getCode())
+                        .isEqualTo(Status.Code.PERMISSION_DENIED));
+    }
+
+    @Test
     @DisplayName("Merchant accessing quote matching their own tenant succeeds")
     void merchantAccessingOwnTenantQuote_succeeds() {
         QuoteSnapshot snapshot = createSampleQuote(quoteId, "merchant-sub", merchantTenant, false, baseTime.plusSeconds(600));

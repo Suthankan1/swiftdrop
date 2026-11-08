@@ -1,5 +1,6 @@
 package com.swiftdrop.apigateway.security.merchant;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,13 @@ public class DefaultMerchantApiKeyValidator implements MerchantApiKeyValidator {
 
     private final Map<String, RegisteredMerchantKey> registeredKeys = new ConcurrentHashMap<>();
 
+    /**
+     * When true, a well-formed key that is not registered locally is forwarded unverified: Delivery
+     * Operations validates its digest, approval status and scope against Accounts before any booking.
+     */
+    @Value("${swiftdrop.gateway.merchant-keys.delegate-to-service:false}")
+    private boolean delegateToService;
+
     public void registerKey(RegisteredMerchantKey key) {
         this.registeredKeys.put(key.rawApiKey(), key);
     }
@@ -64,6 +72,12 @@ public class DefaultMerchantApiKeyValidator implements MerchantApiKeyValidator {
                 matched = candidate;
                 break;
             }
+        }
+
+        if (matched == null && delegateToService) {
+            String keyPrefix = rawApiKey.substring(0, 13);
+            return Mono.just(MerchantApiKeyValidationResult.success(
+                    "unverified:" + keyPrefix, keyPrefix, keyPrefix, Set.of(requiredScope)));
         }
 
         if (matched == null) {

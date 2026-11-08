@@ -38,6 +38,8 @@ import java.util.UUID;
 @Service
 public class DeliveryAssignmentService implements CourierAssignmentContract {
 
+    private static final int MAX_AUDIT_ENTRIES = 200;
+
     private final DeliveryAssignmentRepository assignmentRepository;
     private final ParcelRepository parcelRepository;
     private final CourierEligibilityClient courierEligibilityClient;
@@ -178,6 +180,18 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         ));
 
         return PagedResponse.of(dtoPage);
+    }
+
+    /** All assignments for dispatchers and admins, newest first, bounded to 100 per page. */
+    public PagedResponse<AssignmentResponse> listAssignments(boolean activeOnly, Pageable pageable) {
+        Pageable safe = PageRequest.of(pageable.getPageNumber(), Math.min(pageable.getPageSize(), 100),
+                Sort.by(Sort.Direction.DESC, "assignedAt"));
+        Page<DeliveryAssignment> page = activeOnly
+                ? assignmentRepository.findByActiveTrue(safe)
+                : assignmentRepository.findAll(safe);
+        return PagedResponse.of(page.map(a -> new AssignmentResponse(
+                a.getAssignmentId(), a.getParcelId(), a.getCourierSub(), a.isActive(), a.getAssignedAt(),
+                a.getAssignedBy(), null, a.getEndedAt(), null)));
     }
 
     // --- Initial Assignment Command Implementation (Issue #24) ---
@@ -523,6 +537,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
 
         return assignmentAuditRepository.findByParcelIdOrderByOccurredAtDesc(parcelId)
                 .stream()
+                .limit(MAX_AUDIT_ENTRIES)
                 .map(a -> new AssignmentAuditResponse(
                         a.getAuditId(),
                         a.getParcelId(),

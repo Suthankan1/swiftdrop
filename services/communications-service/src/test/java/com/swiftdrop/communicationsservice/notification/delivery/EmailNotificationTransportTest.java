@@ -209,6 +209,7 @@ class EmailNotificationTransportTest {
                 eq(NotificationChannel.EMAIL)
         )).thenReturn(Optional.of(validContact));
 
+        job.setEventSnapshot("{\"trackingNumber\":\"SWD-20261108-ABCD1234\",\"newStatus\":\"DELIVERED\"}");
         NotificationAttemptResult result = transport.send(job);
 
         assertThat(result.isSuccess()).isTrue();
@@ -221,7 +222,8 @@ class EmailNotificationTransportTest {
         assertThat(sent.getTo()).containsExactly("customer@example.com");
         assertThat(sent.getSubject()).contains("DELIVERED");
         assertThat(sent.getText()).contains("Your parcel status has been updated");
-        assertThat(sent.getText()).contains(job.getParcelId().toString());
+        assertThat(sent.getText()).contains("Tracking number: SWD-20261108-ABCD1234");
+        assertThat(sent.getText()).doesNotContain(job.getParcelId().toString());
     }
 
     @Test

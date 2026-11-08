@@ -172,6 +172,8 @@ spring:
               - Origin
               - X-Requested-With
               - Idempotency-Key
+              - Cache-Control
+              - Last-Event-ID
             allow-credentials: true
             max-age: 3600
 
@@ -219,7 +221,7 @@ swiftdrop:
       enabled: ${PAYLOAD_LIMIT_ENABLED:true}
       max-quote-bytes: ${MAX_QUOTE_PAYLOAD_BYTES:65536} # 64 KB
       max-standard-bytes: ${MAX_STANDARD_PAYLOAD_BYTES:262144} # 256 KB
-      max-proof-bytes: ${MAX_PROOF_PAYLOAD_BYTES:5242880} # 5 MB
+      max-proof-bytes: ${MAX_PROOF_PAYLOAD_BYTES:6291456} # 5 MB photo plus multipart overhead
     sse:
       enabled: ${SSE_POLICY_ENABLED:true}
       max-public-connections: ${SSE_MAX_PUBLIC_CONCURRENT:5}

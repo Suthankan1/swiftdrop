@@ -40,6 +40,9 @@ import java.util.UUID;
 @Transactional
 public class MerchantRoleReconciliationService {
 
+    /** Issued as the merchant_id token claim by the realm protocol mapper. */
+    private static final String MERCHANT_ID_ATTRIBUTE = "merchant_id";
+
     private static final Logger log = LoggerFactory.getLogger(MerchantRoleReconciliationService.class);
 
     private final MerchantRepository merchantRepository;
@@ -89,6 +92,9 @@ public class MerchantRoleReconciliationService {
         boolean shouldHaveRole = triggerPolicy.shouldHaveMerchantRole(merchant.getStatus());
 
         ReconciliationResult result = identityAdapter.reconcileRole(targetSub, "MERCHANT", shouldHaveRole);
+        if (shouldHaveRole) {
+            identityAdapter.setUserAttribute(targetSub, MERCHANT_ID_ATTRIBUTE, merchant.getId().toString());
+        }
 
         String initiator = callerIdentity != null && callerIdentity.subject() != null ? callerIdentity.subject() : "SYSTEM";
         recordAudit(targetSub, "MERCHANT", "STATUS_SYNC", merchant.getStatus().name(),
@@ -161,6 +167,7 @@ public class MerchantRoleReconciliationService {
         ReconciliationResult result;
         try {
             result = identityAdapter.reconcileRole(merchant.getKeycloakSub(), "MERCHANT", true);
+            identityAdapter.setUserAttribute(merchant.getKeycloakSub(), MERCHANT_ID_ATTRIBUTE, merchant.getId().toString());
             if (businessAudit != null) {
                 businessAudit.setReconciliationOutcome(result.outcome().name(), result.message());
                 businessAuditRepository.save(businessAudit);

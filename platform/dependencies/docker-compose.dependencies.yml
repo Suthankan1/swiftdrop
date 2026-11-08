@@ -113,6 +113,29 @@ services:
     networks:
       - dependencies-net
 
+  # One-shot creation of the private proof bucket. New MinIO buckets are private by default.
+  minio-init:
+    image: curlimages/curl:8.10.1
+    container_name: ${MINIO_INIT_CONTAINER_NAME:-swiftdrop-minio-init}
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-swiftdrop_storage_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_dev_password}
+      SWIFTDROP_STORAGE_BUCKET: ${SWIFTDROP_STORAGE_BUCKET:-swiftdrop-pod}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        code=$$(curl -s -o /dev/null -w '%{http_code}' --aws-sigv4 'aws:amz:us-east-1:s3' \
+          --user "$$MINIO_ROOT_USER:$$MINIO_ROOT_PASSWORD" -X PUT "http://minio:9000/$$SWIFTDROP_STORAGE_BUCKET")
+        echo "Bucket $$SWIFTDROP_STORAGE_BUCKET: HTTP $$code"
+        [ "$$code" = "200" ] || [ "$$code" = "409" ]
+    restart: "no"
+    networks:
+      - dependencies-net
+
 volumes:
   swiftdrop-kafka-data:
     name: swiftdrop-kafka-data

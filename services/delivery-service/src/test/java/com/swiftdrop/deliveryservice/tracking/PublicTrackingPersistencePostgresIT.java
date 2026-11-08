@@ -76,6 +76,7 @@ class PublicTrackingPersistencePostgresIT {
                 new BigDecimal("1.500")
         );
         parcel.setStatus(ParcelStatus.IN_TRANSIT);
+        parcel.setQuoteSnapshot("{\"pickupZoneName\":\"Colombo Municipal District\",\"dropoffZoneName\":\"Western Province Suburbs\"}");
         parcelRepository.saveAndFlush(parcel);
 
         Instant t1 = Instant.now().minusSeconds(120);
@@ -96,8 +97,8 @@ class PublicTrackingPersistencePostgresIT {
         assertThat(response).isNotNull();
         assertThat(response.trackingNumber()).isEqualTo(trackingNumber);
         assertThat(response.currentStatus()).isEqualTo(ParcelStatus.IN_TRANSIT);
-        assertThat(response.originCity()).isEqualTo("Colombo");
-        assertThat(response.destinationCity()).isEqualTo("Gampaha");
+        assertThat(response.originCity()).isEqualTo("Colombo Municipal District");
+        assertThat(response.destinationCity()).isEqualTo("Western Province Suburbs");
         assertThat(response.timeline()).hasSize(2);
         assertThat(response.timeline().get(0).status()).isEqualTo(ParcelStatus.CREATED);
         assertThat(response.timeline().get(1).status()).isEqualTo(ParcelStatus.IN_TRANSIT);

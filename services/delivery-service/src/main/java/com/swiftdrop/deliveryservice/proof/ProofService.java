@@ -258,7 +258,8 @@ public class ProofService {
             return toResponse(saved);
         } catch (RuntimeException e) {
             log.error("Database write failed after proof upload for parcel {}. Triggering compensation.", parcelId);
-            if (newRef != null) {
+            // Inside a transaction the rollback hook already removes the orphan; compensate here only without one.
+            if (newRef != null && !TransactionSynchronizationManager.isSynchronizationActive()) {
                 compensationService.compensateOrphan(newRef, "DB_PERSISTENCE_FAILURE");
             }
             throw e;

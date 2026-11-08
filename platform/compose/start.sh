@@ -67,6 +67,10 @@ if [ ! -f "${ENV_FILE}" ]; then
     sed -i 's/replace_with_local_keycloak_admin_password/admin_local_dev/' "${ENV_FILE}"
   sed -i '' 's/replace_with_local_minio_password/minio_dev_password/' "${ENV_FILE}" 2>/dev/null || \
     sed -i 's/replace_with_local_minio_password/minio_dev_password/' "${ENV_FILE}"
+  sed -i '' 's/replace_with_local_communications_client_secret/communications_dev_secret/' "${ENV_FILE}" 2>/dev/null || \
+    sed -i 's/replace_with_local_communications_client_secret/communications_dev_secret/' "${ENV_FILE}"
+  sed -i '' 's/replace_with_local_graphql_client_secret/graphql_dev_secret/' "${ENV_FILE}" 2>/dev/null || \
+    sed -i 's/replace_with_local_graphql_client_secret/graphql_dev_secret/' "${ENV_FILE}"
   echo "  [OK] Local .env template configured."
 fi
 
@@ -76,8 +80,15 @@ set -a
 source "${ENV_FILE}"
 set +a
 
-IMAGE_TAG="${SWIFTDROP_IMAGE_TAG:-b8ac497}"
-echo "  [OK] Using approved image tag: ${IMAGE_TAG}"
+IMAGE_TAG="${SWIFTDROP_IMAGE_TAG:-local}"
+BUILD_FLAG=""
+if [ "${IMAGE_TAG}" = "local" ]; then
+  BUILD_FLAG="--build"
+  echo "  [OK] Building images from this checkout (tag: local). The first build takes several minutes."
+else
+  echo "  [WARNING] Running published image tag ${IMAGE_TAG}, which may be older than this checkout."
+  echo "            Set SWIFTDROP_IMAGE_TAG=local in ${ENV_FILE} to run the code you have checked out."
+fi
 
 # ------------------------------------------------------------------------------
 # 3. Port Conflict Preflight (Loopback Bindings)
@@ -172,16 +183,20 @@ done
 echo "  Initializing Kafka lifecycle topics..."
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up kafka-init >/dev/null 2>&1 || true
 
-# Initialize MinIO private bucket idempotently
+# Create the private proof bucket idempotently. Proof uploads cannot work without it.
 echo "  Ensuring private S3 bucket '${SWIFTDROP_STORAGE_BUCKET:-swiftdrop-pod}' exists..."
-python3 "${REPO_ROOT}/platform/dependencies/init-storage.py" >/dev/null 2>&1 || true
+if ! docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up minio-init >/dev/null 2>&1; then
+  echo "ERROR: Could not create the proof storage bucket."
+  docker logs --tail 10 "${MINIO_INIT_CONTAINER_NAME:-swiftdrop-minio-init}" 2>/dev/null || true
+  exit 1
+fi
 
 # ------------------------------------------------------------------------------
 # 5. Phase 2: Start Keycloak Identity Provider
 # ------------------------------------------------------------------------------
 echo ""
 echo "[5/6] Starting Keycloak Identity Provider (PostgreSQL persistent mode)..."
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d keycloak
+docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d ${BUILD_FLAG} keycloak
 
 echo -n "  Waiting for Keycloak OIDC discovery on http://localhost:${KEYCLOAK_PORT:-8090}..."
 RETRIES=45
@@ -203,7 +218,7 @@ echo " [READY]"
 # ------------------------------------------------------------------------------
 echo ""
 echo "[6/6] Starting application microservices, API Gateway, and React SPA..."
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d \
+docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d ${BUILD_FLAG} \
   accounts-service \
   pricing-service \
   delivery-service \

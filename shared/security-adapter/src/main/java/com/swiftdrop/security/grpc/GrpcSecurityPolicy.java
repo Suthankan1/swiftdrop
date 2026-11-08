@@ -81,7 +81,8 @@ public class GrpcSecurityPolicy {
         // Accounts CheckAccountEligibility (Actor: CUSTOMER, MERCHANT, COURIER, DISPATCHER, ADMIN, #109)
         register(new MethodPolicy(
                 "swiftdrop.accounts.v1.AccountsInternalService/CheckAccountEligibility",
-                Set.of(SwiftDropServiceIdentity.DELIVERY_SERVICE, SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE),
+                Set.of(SwiftDropServiceIdentity.DELIVERY_SERVICE, SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE,
+                        SwiftDropServiceIdentity.COMMUNICATIONS_SERVICE),
                 DelegationRequirement.REQUIRED,
                 Set.of(SwiftDropRoles.ROLE_CUSTOMER, SwiftDropRoles.ROLE_MERCHANT, SwiftDropRoles.ROLE_COURIER,
                         SwiftDropRoles.ROLE_DISPATCHER, SwiftDropRoles.ROLE_ADMIN)

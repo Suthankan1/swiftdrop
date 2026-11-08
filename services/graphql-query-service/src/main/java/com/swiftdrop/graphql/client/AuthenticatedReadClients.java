@@ -21,6 +21,13 @@ public final class AuthenticatedReadClients implements AutoCloseable {
     private final ManagedChannel channel;
     private final SwiftDropGrpcClientInterceptor interceptor;
 
+    /** Plaintext is only for a private local network such as the Compose runtime. */
+    public static AuthenticatedReadClients forTarget(String target, ServiceTokenProvider tokens, boolean plaintext) {
+        if (!plaintext) return new AuthenticatedReadClients(target, tokens);
+        return new AuthenticatedReadClients(ManagedChannelBuilder.forTarget(target).usePlaintext()
+                .maxInboundMessageSize(262144).build(), tokens);
+    }
+
     public AuthenticatedReadClients(String target, ServiceTokenProvider tokens) {
         this(ManagedChannelBuilder.forTarget(target).useTransportSecurity().maxInboundMessageSize(262144).build(), tokens);
     }

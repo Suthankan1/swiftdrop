@@ -83,7 +83,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/api/v1/assignments").hasAnyRole("DISPATCHER", "ADMIN")
 
                         // Courier operations (status patch, proof upload)
-                        .pathMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").hasRole("COURIER")
+                        .pathMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").hasAnyRole("COURIER", "DISPATCHER", "ADMIN")
                         .pathMatchers(HttpMethod.POST, "/api/v1/parcels/*/proof").hasRole("COURIER")
 
                         // Customer parcel booking
@@ -146,7 +146,8 @@ public class SecurityConfig {
                 .toList();
         config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "Idempotency-Key"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "Idempotency-Key",
+                "Cache-Control", "Last-Event-ID"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
