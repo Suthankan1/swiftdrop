@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router'
+import { Navigate, useParams, useNavigate, useSearchParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -19,7 +19,17 @@ function safeDateTime(isoString: string): string {
 }
 
 export function PublicTrackingPage() {
-  const { trackingNumber: routeTrackingNumber } = useParams<{ trackingNumber?: string }>()
+  const { trackingNumber: routeParam } = useParams<{ trackingNumber?: string }>()
+  const [searchParams] = useSearchParams()
+  const queryTrackingNumber = searchParams.get('trackingNumber')?.trim()
+  // Older links used ?trackingNumber=; send them to the canonical /tracking/:trackingNumber route.
+  if (!routeParam && queryTrackingNumber) {
+    return <Navigate to={`/tracking/${encodeURIComponent(queryTrackingNumber)}`} replace />
+  }
+  return <PublicTrackingView routeTrackingNumber={routeParam} />
+}
+
+function PublicTrackingView({ routeTrackingNumber }: { routeTrackingNumber?: string }) {
   const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState(routeTrackingNumber || '')
   const [prevRouteTrackingNumber, setPrevRouteTrackingNumber] = useState(routeTrackingNumber)
