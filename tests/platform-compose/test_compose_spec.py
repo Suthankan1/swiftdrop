@@ -209,18 +209,34 @@ class TestComposeRuntimeSpec(unittest.TestCase):
 
     def test_docker_compose_config_validation(self):
         """Runs docker compose config to validate merged schema integrity."""
+        env = dict(os.environ, WEBHOOK_ENCRYPTION_KEY="0" * 64)
         res = subprocess.run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "config"],
             cwd=str(REPO_ROOT),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            env=env,
         )
         self.assertEqual(
             res.returncode,
             0,
             f"docker compose config failed:\nStdout: {res.stdout}\nStderr: {res.stderr}"
         )
+
+    def test_compose_refuses_to_run_without_webhook_key(self):
+        """The webhook master key has no built-in fallback; Compose must fail fast without it."""
+        env = {k: v for k, v in os.environ.items() if k != "WEBHOOK_ENCRYPTION_KEY"}
+        res = subprocess.run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE), "config"],
+            cwd=str(REPO_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+        )
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("WEBHOOK_ENCRYPTION_KEY", res.stderr)
 
 
 if __name__ == "__main__":

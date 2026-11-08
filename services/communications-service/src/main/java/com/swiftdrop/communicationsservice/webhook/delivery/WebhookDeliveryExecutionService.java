@@ -249,8 +249,9 @@ public class WebhookDeliveryExecutionService {
         try {
             destinationValidator.validate(subscription.getHttpsUrl());
         } catch (InvalidWebhookDestinationException ex) {
-            log.warn("Destination URL failed security validation [deliveryId={}, url={}, error={}]",
-                    deliveryId, subscription.getHttpsUrl(), ex.getMessage());
+            log.warn("Destination URL failed security validation [deliveryId={}, host={}]",
+                    deliveryId, com.swiftdrop.communicationsservice.webhook.service.WebhookSubscriptionService
+                            .hostOf(subscription.getHttpsUrl()));
             WebhookResponseClassification classification = responseClassifier.classifyException(ex, 0);
             WebhookAttempt attempt = inTransaction(() -> persistAttemptAndUpdateDelivery(delivery, classification));
             return new WebhookAttemptResult(deliveryId, attempt.getAttemptId(), delivery.getStatus(),

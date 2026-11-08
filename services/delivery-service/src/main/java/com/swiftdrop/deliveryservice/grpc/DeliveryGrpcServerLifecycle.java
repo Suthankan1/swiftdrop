@@ -90,7 +90,7 @@ public class DeliveryGrpcServerLifecycle implements SmartLifecycle {
             SwiftDropGrpcServerSecurityInterceptor securityInterceptor =
                     new SwiftDropGrpcServerSecurityInterceptor(serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy, meterRegistry);
 
-            server = ServerBuilder.forPort(port)
+            server = com.swiftdrop.security.grpc.GrpcTransport.server(port)
                     .intercept(securityInterceptor)
                     .addService(deliveryInternalService)
                     .build()

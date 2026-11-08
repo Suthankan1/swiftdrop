@@ -34,7 +34,7 @@ public class PricingGrpcClientConfig {
             @Value("${KEYCLOAK_JWKS_URI:${swiftdrop.keycloak.jwks-uri:${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}}}") String jwksUri,
             @Value("${KEYCLOAK_ISSUER_URI:${swiftdrop.keycloak.issuer-uri:${spring.security.oauth2.resourceserver.jwt.issuer-uri:http://localhost:8090/realms/swiftdrop}}}") String issuerUri,
             @Value("${SWIFTDROP_DELIVERY_CLIENT_ID:delivery-service}") String clientId,
-            @Value("${SWIFTDROP_DELIVERY_CLIENT_SECRET:delivery-service-secret-internal}") String clientSecret) {
+            @Value("${SWIFTDROP_DELIVERY_CLIENT_SECRET:}") String clientSecret) {
         return new KeycloakServiceTokenProvider(staticToken, tokenUri, jwksUri, issuerUri, clientId, clientSecret);
     }
 
@@ -46,8 +46,7 @@ public class PricingGrpcClientConfig {
         SwiftDropGrpcClientInterceptor interceptor =
                 new SwiftDropGrpcClientInterceptor(serviceTokenProvider, deadlineMs, meterRegistryProvider.getIfAvailable());
 
-        return ManagedChannelBuilder.forAddress(pricingHost, pricingPort)
-                .usePlaintext()
+        return com.swiftdrop.security.grpc.GrpcTransport.channel(pricingHost, pricingPort)
                 .intercept(interceptor)
                 .build();
     }

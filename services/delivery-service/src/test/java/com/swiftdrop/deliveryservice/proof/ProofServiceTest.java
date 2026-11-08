@@ -148,7 +148,8 @@ class ProofServiceTest {
             UploadProofRequest request = new UploadProofRequest("K. Silva", validRef, "Note");
             assertThatThrownBy(() -> proofService.recordProofMetadata(parcelId, request, otherCourierSub, List.of("COURIER")))
                     .isInstanceOf(ProofAccessDeniedException.class)
-                    .hasMessageContaining("not actively assigned");
+                    .hasMessageContaining("not the courier assigned")
+                    .hasMessageNotContaining(otherCourierSub);
         }
 
         @Test
@@ -321,7 +322,8 @@ class ProofServiceTest {
             ProofDetailResponse detail = proofService.getProofMetadata(parcelId, customerSub, List.of("CUSTOMER"));
             assertThat(detail).isNotNull();
             assertThat(detail.parcelId()).isEqualTo(parcelId);
-            assertThat(detail.objectReference()).isEqualTo(validRef);
+            // The storage path stays inside Delivery; callers get an opaque handle.
+            assertThat(detail.objectReference()).isEqualTo("proof:" + proof.getProofId()).doesNotContain(validRef);
             assertThat(detail.recipientName()).isEqualTo("Nimal");
         }
 
@@ -341,6 +343,41 @@ class ProofServiceTest {
         }
 
         @Test
+        @DisplayName("A courier who uploaded the proof loses access once no longer assigned")
+        void getProofMetadata_formerCourier_forbidden() {
+            Parcel parcel = createParcel(ParcelStatus.DELIVERED);
+            when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    UUID.randomUUID(), parcelId, validRef, "PHOTO", "image/png", 2048L, "Nimal", "Front porch", courierSub, Instant.now()
+            );
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+            when(courierAssignmentContract.hasActiveAssignment(parcelId, courierSub)).thenReturn(false);
+
+            assertThatThrownBy(() -> proofService.getProofMetadata(parcelId, courierSub, List.of("COURIER")))
+                    .isInstanceOf(ProofAccessDeniedException.class)
+                    .hasMessageNotContaining(courierSub);
+        }
+
+        @Test
+        @DisplayName("The merchant tenant that owns the order can read its proof; another tenant cannot")
+        void getProofMetadata_merchantTenant() {
+            UUID tenant = UUID.randomUUID();
+            Parcel parcel = createParcel(ParcelStatus.DELIVERED);
+            parcel.setMerchantId(tenant);
+            when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+            ProofOfDelivery proof = new ProofOfDelivery(
+                    UUID.randomUUID(), parcelId, validRef, "PHOTO", "image/png", 2048L, "Nimal", "Front porch", courierSub, Instant.now()
+            );
+            when(proofRepository.findByParcelId(parcelId)).thenReturn(Optional.of(proof));
+
+            assertThat(proofService.getProofMetadata(parcelId, "merchant-user", List.of("MERCHANT"), tenant.toString()))
+                    .isNotNull();
+            assertThatThrownBy(() -> proofService.getProofMetadata(parcelId, "other-merchant", List.of("MERCHANT"),
+                    UUID.randomUUID().toString()))
+                    .isInstanceOf(ProofAccessDeniedException.class);
+        }
+
+        @Test
         @DisplayName("Other customer is denied with 403 Forbidden")
         void getProofMetadata_otherCustomer_forbidden() {
             Parcel parcel = createParcel(ParcelStatus.DELIVERED);
@@ -348,7 +385,7 @@ class ProofServiceTest {
 
             assertThatThrownBy(() -> proofService.getProofMetadata(parcelId, "unrelated-customer-sub", List.of("CUSTOMER")))
                     .isInstanceOf(ProofAccessDeniedException.class)
-                    .hasMessageContaining("not authorized to access proof");
+                    .hasMessageContaining("not authorized to view this proof");
         }
 
         @Test

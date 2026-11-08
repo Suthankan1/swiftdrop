@@ -22,6 +22,13 @@ class WebhookSigningSecretServiceTest {
     }
 
     @Test
+    void refusesToStartWithoutAKeyUnlessTheDevelopmentKeyIsExplicitlyAllowed() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new WebhookSigningSecretService("", false))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("WEBHOOK_ENCRYPTION_KEY");
+    }
+
+    @Test
     @DisplayName("Generated secret starts with swd_whsec_ and contains 64 hex characters (256-bit entropy)")
     void generateSecret_ValidFormatAndEntropy() {
         String secret = secretService.generateSecret();

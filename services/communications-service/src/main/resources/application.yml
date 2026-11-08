@@ -70,6 +70,8 @@ swiftdrop:
       from: ${NOTIFICATION_EMAIL_FROM:notifications@swiftdrop.com}
   webhooks:
     encryption-key: ${WEBHOOK_ENCRYPTION_KEY:}
+    # Only tests may fall back to a built-in key; production must set WEBHOOK_ENCRYPTION_KEY.
+    allow-development-key: ${WEBHOOK_ALLOW_DEVELOPMENT_KEY:false}
     dispatch:
       connect-timeout-ms: ${WEBHOOK_CONNECT_TIMEOUT_MS:3000}
       request-timeout-ms: ${WEBHOOK_REQUEST_TIMEOUT_MS:5000}

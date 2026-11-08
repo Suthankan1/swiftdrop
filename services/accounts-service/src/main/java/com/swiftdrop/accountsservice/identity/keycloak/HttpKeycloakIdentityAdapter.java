@@ -331,6 +331,32 @@ public class HttpKeycloakIdentityAdapter implements KeycloakIdentityAdapter {
         }
     }
 
+    @Override
+    public void removeDefaultRoles(String subject) {
+        String encodedSub = URLEncoder.encode(subject.trim(), StandardCharsets.UTF_8);
+        RoleDescriptor descriptor = getRoleDescriptor("default-roles-" + properties.getRealm());
+        String url = properties.getServerUrl() + "/admin/realms/" + properties.getRealm()
+                + "/users/" + encodedSub + "/role-mappings/realm";
+        String payload = "[{\"id\":\"" + descriptor.id() + "\",\"name\":\"" + descriptor.name() + "\"}]";
+        try {
+            HttpResponse<String> response = httpClient.send(createAdminRequest(url)
+                    .header("Content-Type", "application/json")
+                    .method("DELETE", HttpRequest.BodyPublishers.ofString(payload))
+                    .build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200 && response.statusCode() != 204) {
+                throw new KeycloakAdminUnavailableException(
+                        "Keycloak default role removal failed with HTTP " + response.statusCode());
+            }
+        } catch (KeycloakAdminException e) {
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new KeycloakAdminUnavailableException("Keycloak default role removal interrupted", e);
+        } catch (Exception e) {
+            throw new KeycloakAdminUnavailableException("Keycloak default role removal failed", e);
+        }
+    }
+
     private RoleDescriptor getRoleDescriptor(String roleName) {
         String url = properties.getServerUrl() + "/admin/realms/" + properties.getRealm() +
                      "/roles/" + URLEncoder.encode(roleName, StandardCharsets.UTF_8);

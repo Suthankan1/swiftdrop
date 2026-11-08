@@ -70,4 +70,9 @@ public interface KeycloakIdentityAdapter {
      * Stores a single-valued user attribute that a realm protocol mapper can issue as a token claim.
      */
     void setUserAttribute(String subject, String attributeName, String value);
+
+    /**
+     * Removes the realm's default role bundle (which carries CUSTOMER) so staff accounts hold only their staff role.
+     */
+    void removeDefaultRoles(String subject);
 }

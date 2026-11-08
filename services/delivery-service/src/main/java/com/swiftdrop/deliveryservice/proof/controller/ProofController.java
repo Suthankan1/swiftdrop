@@ -95,7 +95,7 @@ public class ProofController {
         String actorSub = extractSubject(authentication);
         Collection<String> roles = extractRoles(authentication);
 
-        ProofDetailResponse response = proofService.getProofMetadata(parcelId, actorSub, roles);
+        ProofDetailResponse response = proofService.getProofMetadata(parcelId, actorSub, roles, merchantTenant(authentication));
         return ResponseEntity.ok(response);
     }
 
@@ -116,7 +116,7 @@ public class ProofController {
         String actorSub = extractSubject(authentication);
         Collection<String> roles = extractRoles(authentication);
 
-        RetrievedProofObject retrieved = proofService.getProofContent(parcelId, actorSub, roles);
+        RetrievedProofObject retrieved = proofService.getProofContent(parcelId, actorSub, roles, merchantTenant(authentication));
         String contentType = retrieved.contentType().orElse("image/jpeg");
 
         HttpHeaders headers = new HttpHeaders();
@@ -132,6 +132,14 @@ public class ProofController {
         };
 
         return new ResponseEntity<>(resource, headers, HttpStatus.OK);
+    }
+
+    private static String merchantTenant(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtToken) {
+            Object claim = jwtToken.getToken().getClaim("merchant_id");
+            return claim == null ? null : claim.toString();
+        }
+        return null;
     }
 
     private String extractSubject(Authentication authentication) {

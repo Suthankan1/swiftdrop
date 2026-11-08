@@ -226,7 +226,7 @@ class ProofControllerSecurityTest {
         UUID proofId = UUID.randomUUID();
         String ref = "proofs/v1/" + UUID.randomUUID();
 
-        when(proofService.getProofMetadata(eq(parcelId), eq("customer-sender"), any()))
+        when(proofService.getProofMetadata(eq(parcelId), eq("customer-sender"), any(), any()))
                 .thenReturn(new ProofDetailResponse(proofId, parcelId, ref, "PHOTO", "image/jpeg", 2048L, "Nimal", "Note", "courier-1", Instant.now()));
 
         mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof", parcelId)
@@ -244,7 +244,7 @@ class ProofControllerSecurityTest {
         UUID parcelId = UUID.randomUUID();
         String token = createJwt("unrelated-user", List.of("CUSTOMER"), false);
 
-        when(proofService.getProofMetadata(eq(parcelId), eq("unrelated-user"), any()))
+        when(proofService.getProofMetadata(eq(parcelId), eq("unrelated-user"), any(), any()))
                 .thenThrow(new ProofAccessDeniedException("Forbidden: Caller is not authorized"));
 
         mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof", parcelId)
@@ -261,7 +261,7 @@ class ProofControllerSecurityTest {
         UUID parcelId = UUID.randomUUID();
         String token = createJwt("customer-sender", List.of("CUSTOMER"), false);
 
-        when(proofService.getProofMetadata(eq(parcelId), eq("customer-sender"), any()))
+        when(proofService.getProofMetadata(eq(parcelId), eq("customer-sender"), any(), any()))
                 .thenThrow(new ProofNotFoundException(parcelId));
 
         mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof", parcelId)
@@ -280,7 +280,7 @@ class ProofControllerSecurityTest {
 
         byte[] imageBytes = new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
         RetrievedProofObject retrieved = new RetrievedProofObject(new ByteArrayInputStream(imageBytes), 4L, "image/jpeg");
-        when(proofService.getProofContent(eq(parcelId), eq("customer-sender"), any()))
+        when(proofService.getProofContent(eq(parcelId), eq("customer-sender"), any(), any()))
                 .thenReturn(retrieved);
 
         mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof/content", parcelId)
@@ -298,7 +298,7 @@ class ProofControllerSecurityTest {
         UUID parcelId = UUID.randomUUID();
         String token = createJwt("customer-sender", List.of("CUSTOMER"), false);
 
-        when(proofService.getProofMetadata(eq(parcelId), eq("customer-sender"), any()))
+        when(proofService.getProofMetadata(eq(parcelId), eq("customer-sender"), any(), any()))
                 .thenThrow(new ProofNotFoundException(parcelId));
 
         mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof", parcelId)
@@ -318,7 +318,7 @@ class ProofControllerSecurityTest {
         UUID parcelId = UUID.randomUUID();
         String token = createJwt("customer-sender", List.of("CUSTOMER"), false);
 
-        when(proofService.getProofContent(eq(parcelId), eq("customer-sender"), any()))
+        when(proofService.getProofContent(eq(parcelId), eq("customer-sender"), any(), any()))
                 .thenThrow(new ProofNotFoundException(parcelId));
 
         mockMvc.perform(get("/api/v1/parcels/{parcelId}/proof/content", parcelId)

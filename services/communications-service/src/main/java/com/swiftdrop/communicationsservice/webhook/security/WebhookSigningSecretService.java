@@ -38,12 +38,19 @@ public class WebhookSigningSecretService {
     private final SecretKey masterKey;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @org.springframework.beans.factory.annotation.Autowired
     public WebhookSigningSecretService(
-            @Value("${swiftdrop.webhooks.encryption-key:}") String configuredKey) {
-        this.masterKey = resolveMasterKey(configuredKey);
+            @Value("${swiftdrop.webhooks.encryption-key:}") String configuredKey,
+            @Value("${swiftdrop.webhooks.allow-development-key:false}") boolean allowDevelopmentKey) {
+        this.masterKey = resolveMasterKey(configuredKey, allowDevelopmentKey);
     }
 
-    private SecretKey resolveMasterKey(String configuredKey) {
+    /** Test convenience: only for code that explicitly opts into the development key. */
+    public WebhookSigningSecretService(String configuredKey) {
+        this(configuredKey, true);
+    }
+
+    private SecretKey resolveMasterKey(String configuredKey, boolean allowDevelopmentKey) {
         String keyMaterial = configuredKey;
         if (keyMaterial == null || keyMaterial.isBlank()) {
             keyMaterial = System.getenv("SWIFTDROP_WEBHOOK_SECRET_KEY");
@@ -67,8 +74,12 @@ public class WebhookSigningSecretService {
                 }
             }
         } else {
-            // Secure deterministic fallback for test and local development
-            log.warn("No webhook master encryption key configured; utilizing local test key derivation.");
+            if (!allowDevelopmentKey) {
+                throw new IllegalStateException("WEBHOOK_ENCRYPTION_KEY is not set. Configure a 32-byte key "
+                        + "(64 hex characters) so stored webhook signing secrets are encrypted with a private key.");
+            }
+            // Explicitly allowed for tests only (swiftdrop.webhooks.allow-development-key=true).
+            log.warn("No webhook master encryption key configured; using the development-only key.");
             keyBytes = sha256("swiftdrop-local-test-master-key-seed".getBytes(StandardCharsets.UTF_8));
         }
 

@@ -433,6 +433,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.delivery.secretRefs.storageSecretName }}
                   key: {{ .Values.delivery.secretRefs.storageSecretKeyKey }}
+            - name: SWIFTDROP_DELIVERY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.delivery.secretRefs.internalClientSecretName }}
+                  key: {{ .Values.delivery.secretRefs.deliveryClientSecretKey }}
           lifecycle:
             preStop:
               exec:
@@ -526,6 +531,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.communications.secretRefs.dbSecretName }}
                   key: {{ .Values.communications.secretRefs.dbPasswordKey }}
+            - name: WEBHOOK_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.communications.secretRefs.webhookKeySecretName }}
+                  key: {{ .Values.communications.secretRefs.webhookKeyKey }}
           lifecycle:
             preStop:
               exec:
@@ -728,6 +738,11 @@ spec:
                   name: {{ .Values.keycloak.secretRefs.googleSecretName }}
                   key: {{ .Values.keycloak.secretRefs.googleClientSecretKey }}
                   optional: true
+            - name: DELIVERY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.secretRefs.internalClientSecretName }}
+                  key: {{ .Values.keycloak.secretRefs.deliveryClientSecretKey }}
             - name: SMTP_HOST
               valueFrom:
                 secretKeyRef:

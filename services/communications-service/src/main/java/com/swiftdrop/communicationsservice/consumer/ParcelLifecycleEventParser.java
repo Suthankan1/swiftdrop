@@ -156,7 +156,7 @@ public class ParcelLifecycleEventParser {
         if (payloadNode.hasNonNull("reason")) {
             reason = payloadNode.get("reason").asText();
             if (!VALID_FAILURE_REASONS.contains(reason)) {
-                throw new EventValidationException("Invalid failure reason: " + reason + " (allowed: " + VALID_FAILURE_REASONS + ")");
+                throw new EventValidationException("Invalid failure reason code (not in the approved list)");
             }
         }
 
@@ -166,7 +166,7 @@ public class ParcelLifecycleEventParser {
             }
         } else {
             if (reason != null) {
-                throw new EventValidationException("reason code must be null when newStatus is not FAILED (got: " + reason + ")");
+                throw new EventValidationException("reason code must be null when newStatus is not FAILED");
             }
         }
 

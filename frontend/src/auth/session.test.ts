@@ -140,23 +140,26 @@ describe('in-memory Keycloak session', () => {
     expect(persist).not.toHaveBeenCalled()
     session.destroy()
   })
-  it('synchronizes login across tabs via BroadcastChannel without persisting tokens', async () => {
-    const { session: tab1 } = fixture(false)
+  it('synchronizes login across tabs without sending tokens between them', async () => {
+    const { client: client1, session: tab1 } = fixture(false)
     const { session: tab2 } = fixture(true)
     await tab1.initialize()
     expect(tab1.getState().snapshot.status).toBe('unauthenticated')
 
+    const sent: unknown[] = []
+    const spy = new BroadcastChannel('swiftdrop_auth_channel')
+    spy.onmessage = (event) => sent.push(event.data)
+
     await tab2.initialize()
-    // Wait a brief tick for message dispatch
     await new Promise((r) => setTimeout(r, 20))
 
-    expect(tab1.getState().snapshot).toEqual({
-      status: 'authenticated',
-      subject: 'subject-a',
-      roles: ['CUSTOMER'],
-    })
-    expect(await tab1.getAccessToken()).toBe('test-access')
+    // The signal names the subject only; the other tab signs itself in silently with its own tokens.
+    expect(sent).toContainEqual({ type: 'AUTH_SYNC_LOGIN', subject: 'subject-a' })
+    expect(JSON.stringify(sent)).not.toContain('test-access')
+    expect(client1.login).toHaveBeenCalledWith(expect.objectContaining({ prompt: 'none' }))
+    expect(await tab1.getAccessToken()).toBeNull()
 
+    spy.close()
     tab1.destroy()
     tab2.destroy()
   })

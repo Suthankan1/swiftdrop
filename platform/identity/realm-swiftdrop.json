@@ -241,7 +241,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "delivery-service-secret-internal",
+      "secret": "${DELIVERY_CLIENT_SECRET}",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,

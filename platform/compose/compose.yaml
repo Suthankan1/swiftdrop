@@ -102,6 +102,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:-communications_dev_secret}
       GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:-graphql_dev_secret}
+      DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:-delivery_dev_secret}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     ports:
       - "127.0.0.1:${KEYCLOAK_PORT:-8090}:8080"
@@ -124,6 +125,36 @@ services:
       - app-net
 
   # ----------------------------------------------------------------------------
+  # One-shot local CA and certificate for internal gRPC TLS (kept in a volume, never committed)
+  # ----------------------------------------------------------------------------
+  grpc-certs:
+    image: apache/kafka:4.2.1
+    container_name: ${GRPC_CERTS_CONTAINER_NAME:-swiftdrop-grpc-certs}
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        cd /tls
+        if [ -s server.crt ] && [ -s server.key ] && [ -s ca.crt ]; then echo "gRPC TLS material present"; exit 0; fi
+        openssl req -x509 -newkey rsa:3072 -nodes -days 825 -subj "/CN=SwiftDrop local gRPC CA" \
+          -keyout ca.key -out ca.crt
+        printf 'subjectAltName=DNS:accounts-service,DNS:pricing-service,DNS:delivery-service,DNS:localhost\nextendedKeyUsage=serverAuth\n' > ext.cnf
+        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out server.key
+        openssl req -new -key server.key -subj "/CN=swiftdrop-internal-grpc" -out server.csr
+        openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 825 -extfile ext.cnf -out server.crt
+        rm -f server.csr ext.cnf ca.key ca.srl
+        # Services run as uid 10001; the key is readable only inside this private volume.
+        chown 10001:10001 server.key server.crt ca.crt
+        chmod 400 server.key
+        chmod 444 server.crt ca.crt
+    volumes:
+      - swiftdrop-grpc-tls:/tls
+    # Generates files only; it needs no network access.
+    network_mode: none
+    restart: "no"
+
+  # ----------------------------------------------------------------------------
   # 2. Accounts & Partners Service (#128 Image)
   # ----------------------------------------------------------------------------
   accounts-service:
@@ -133,6 +164,10 @@ services:
       dockerfile: services/accounts-service/Dockerfile
     container_name: swiftdrop-accounts-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8081
       ACCOUNTS_GRPC_PORT: 9081
       ACCOUNTS_DB_URL: jdbc:postgresql://accounts-postgres:5432/accounts_db
@@ -145,6 +180,8 @@ services:
       SWIFTDROP_KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
       SWIFTDROP_KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health || exit 1"]
       interval: 5s
@@ -152,6 +189,8 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       accounts-postgres:
         condition: service_healthy
       keycloak:
@@ -171,6 +210,10 @@ services:
       dockerfile: services/pricing-service/Dockerfile
     container_name: swiftdrop-pricing-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8082
       PRICING_GRPC_PORT: 9083
       PRICING_DB_URL: jdbc:postgresql://business-postgres:5432/pricing_db
@@ -180,6 +223,8 @@ services:
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/actuator/health || exit 1"]
       interval: 5s
@@ -187,6 +232,8 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       business-postgres:
         condition: service_healthy
       keycloak:
@@ -206,6 +253,10 @@ services:
       dockerfile: services/delivery-service/Dockerfile
     container_name: swiftdrop-delivery-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8083
       DELIVERY_GRPC_PORT: 9082
       DELIVERY_DB_URL: jdbc:postgresql://business-postgres:5432/delivery_db
@@ -225,7 +276,10 @@ services:
       PRICING_GRPC_PORT: 9083
       ACCOUNTS_GRPC_HOST: accounts-service
       ACCOUNTS_GRPC_PORT: 9081
+      SWIFTDROP_DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:-delivery_dev_secret}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8083/actuator/health || exit 1"]
       interval: 5s
@@ -233,6 +287,8 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       business-postgres:
         condition: service_healthy
       kafka:
@@ -256,6 +312,10 @@ services:
       dockerfile: services/communications-service/Dockerfile
     container_name: swiftdrop-communications-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8084
       COMMUNICATIONS_DB_URL: jdbc:postgresql://business-postgres:5432/communications_db
       COMMUNICATIONS_DB_USERNAME: ${COMMUNICATIONS_DB_USERNAME:-communications_app}
@@ -271,7 +331,11 @@ services:
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
       SWIFTDROP_COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:-communications_dev_secret}
+      # Required: encrypts stored webhook signing secrets. start.sh generates one in .env.
+      WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:?Set WEBHOOK_ENCRYPTION_KEY (64 hex characters); start.sh generates one}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/actuator/health || exit 1"]
       interval: 5s
@@ -279,6 +343,8 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       business-postgres:
         condition: service_healthy
       kafka:
@@ -302,15 +368,20 @@ services:
       dockerfile: services/graphql-query-service/Dockerfile
     container_name: swiftdrop-graphql-query-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       GRAPHQL_SERVER_PORT: 8085
       SWIFTDROP_GRPC_ACCOUNTS_TARGET: accounts-service:9081
       SWIFTDROP_GRPC_DELIVERY_TARGET: delivery-service:9082
-      SWIFTDROP_GRPC_PLAINTEXT: "true"
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
       SWIFTDROP_GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:-graphql_dev_secret}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8085/actuator/health || exit 1"]
       interval: 5s
@@ -318,6 +389,8 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       keycloak:
         condition: service_healthy
       accounts-service:
@@ -410,3 +483,5 @@ volumes:
     name: ${ACCOUNTS_DB_VOLUME:-swiftdrop-accounts-postgres-data}
   swiftdrop-keycloak-postgres-data:
     name: ${KEYCLOAK_DB_VOLUME:-swiftdrop-keycloak-postgres-data}
+  swiftdrop-grpc-tls:
+    name: swiftdrop-grpc-tls

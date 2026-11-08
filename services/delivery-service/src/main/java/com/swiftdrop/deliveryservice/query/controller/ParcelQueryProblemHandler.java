@@ -45,7 +45,7 @@ public class ParcelQueryProblemHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException e, HttpServletRequest request) {
-        String detail = "Invalid parameter '" + e.getName() + "': value '" + e.getValue() + "' is not of expected type.";
+        String detail = "Invalid parameter '" + e.getName() + "': value is not of the expected type.";
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
         problem.setTitle("Invalid Request Parameter");
         problem.setType(URI.create("https://swiftdrop.com/errors/INVALID_PARAMETER"));

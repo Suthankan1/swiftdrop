@@ -145,6 +145,8 @@ public class StaffRoleReconciliationService {
         // Reconcile role in Keycloak
         try {
             identityAdapter.grantRole(command.keycloakSub(), targetRole);
+            // Least privilege: staff do not keep the CUSTOMER role every self-registered account starts with.
+            identityAdapter.removeDefaultRoles(command.keycloakSub());
             recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", "NONE", "ACTIVE",
                     ReconciliationOutcome.SUCCESS, adminIdentity.subject(), null);
         } catch (KeycloakAdminException e) {

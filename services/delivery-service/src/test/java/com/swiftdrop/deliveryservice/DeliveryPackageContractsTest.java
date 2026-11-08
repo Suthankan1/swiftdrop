@@ -326,6 +326,7 @@ class DeliveryPackageContractsTest {
                 new com.swiftdrop.deliveryservice.query.exception.ParcelAccessDeniedException(parcelId);
 
         assertThat(ex.getParcelId()).isEqualTo(parcelId);
-        assertThat(ex.getMessage()).contains(parcelId.toString());
+        // The id stays on the exception for logs; the client-facing message does not repeat it.
+        assertThat(ex.getMessage()).doesNotContain(parcelId.toString());
     }
 }
