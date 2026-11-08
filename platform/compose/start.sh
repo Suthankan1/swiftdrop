@@ -67,12 +67,25 @@ if [ ! -f "${ENV_FILE}" ]; then
     sed -i 's/replace_with_local_keycloak_admin_password/admin_local_dev/' "${ENV_FILE}"
   sed -i '' 's/replace_with_local_minio_password/minio_dev_password/' "${ENV_FILE}" 2>/dev/null || \
     sed -i 's/replace_with_local_minio_password/minio_dev_password/' "${ENV_FILE}"
-  sed -i '' 's/replace_with_local_communications_client_secret/communications_dev_secret/' "${ENV_FILE}" 2>/dev/null || \
-    sed -i 's/replace_with_local_communications_client_secret/communications_dev_secret/' "${ENV_FILE}"
-  sed -i '' 's/replace_with_local_graphql_client_secret/graphql_dev_secret/' "${ENV_FILE}" 2>/dev/null || \
-    sed -i 's/replace_with_local_graphql_client_secret/graphql_dev_secret/' "${ENV_FILE}"
   echo "  [OK] Local .env template configured."
 fi
+
+# Generate per-installation secrets instead of shipping fixed values (also upgrades an older .env).
+ensure_generated_secret() {
+  local name="$1" placeholder="$2"
+  if grep -q "^${name}=${placeholder}$" "${ENV_FILE}"; then
+    local value
+    value="$(openssl rand -hex 32)"
+    sed -i '' "s/^${name}=${placeholder}$/${name}=${value}/" "${ENV_FILE}" 2>/dev/null || \
+      sed -i "s/^${name}=${placeholder}$/${name}=${value}/" "${ENV_FILE}"
+  elif ! grep -q "^${name}=" "${ENV_FILE}"; then
+    printf '\n%s=%s\n' "${name}" "$(openssl rand -hex 32)" >> "${ENV_FILE}"
+  fi
+}
+ensure_generated_secret WEBHOOK_ENCRYPTION_KEY replace_with_generated_webhook_key
+ensure_generated_secret DELIVERY_CLIENT_SECRET replace_with_local_delivery_client_secret
+ensure_generated_secret COMMUNICATIONS_CLIENT_SECRET replace_with_local_communications_client_secret
+ensure_generated_secret GRAPHQL_CLIENT_SECRET replace_with_local_graphql_client_secret
 
 # Load variables safely without printing secrets
 set -a
