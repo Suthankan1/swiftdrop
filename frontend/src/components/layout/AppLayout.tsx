@@ -46,7 +46,7 @@ function MainNavigation() {
             <span className="nav-auth-item">
               {auth.snapshot.roles.length > 0 && (
                 <Badge variant="brand" className="header-role-badge">
-                  {auth.snapshot.roles[0]}
+                  {primaryRole(auth.snapshot.roles)}
                 </Badge>
               )}
               <Link to="/logout" className="header-auth-link" onClick={() => setMenuOpen(false)}>
@@ -63,6 +63,12 @@ function MainNavigation() {
       </div>
     </header>
   )
+}
+
+/** The most specific role names the workspace; every account also starts as a customer. */
+const ROLE_PRIORITY = ['ADMIN', 'DISPATCHER', 'COURIER', 'MERCHANT', 'CUSTOMER'] as const
+function primaryRole(roles: readonly string[]): string {
+  return ROLE_PRIORITY.find((role) => roles.includes(role)) ?? roles[0] ?? ''
 }
 
 export function AppLayout() {
