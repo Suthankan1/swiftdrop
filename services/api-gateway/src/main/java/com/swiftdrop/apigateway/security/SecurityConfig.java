@@ -76,7 +76,10 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/v1/merchants/*/status").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
 
                         // Admin operations (merchant approval, administrative commands)
-                        .pathMatchers(HttpMethod.POST, "/api/v1/merchants/*/approve").hasRole("ADMIN")
+                        .pathMatchers(HttpMethod.POST, "/api/v1/merchants/*/approve", "/api/v1/merchants/*/reject",
+                                "/api/v1/merchants/*/suspend").hasRole("ADMIN")
+                        // Communications operator tools (notification replay, quarantine)
+                        .pathMatchers("/api/v1/internal/**").hasAnyRole("ADMIN", "DISPATCHER")
                         .pathMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                         // Dispatcher operations (courier assignment)
