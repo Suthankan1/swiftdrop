@@ -33,14 +33,14 @@ function makeSseChunk(event: ParcelLifecycleSseEvent): string {
   ].join('')
 }
 
-function createMockStream(chunks: string[] = []): Response {
+function createMockStream(chunks: string[] = [], { close = false }: { close?: boolean } = {}): Response {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const chunk of chunks) {
         controller.enqueue(encoder.encode(chunk))
       }
-      controller.close()
+      if (close) controller.close()
     },
   })
   return new Response(stream, {
