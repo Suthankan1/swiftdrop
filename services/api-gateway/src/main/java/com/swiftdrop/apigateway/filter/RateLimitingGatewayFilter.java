@@ -41,6 +41,12 @@ public class RateLimitingGatewayFilter implements GlobalFilter, Ordered {
     private final long unauthenticatedLimitPerMinute;
     private final long unauthenticatedBurstCapacity;
 
+    /** Assistant chat calls cost AI tokens, so they get their own, tighter per-IP bucket. */
+    @Value("${swiftdrop.gateway.rate-limit.assistant-limit-per-minute:12}")
+    private long assistantLimitPerMinute = 12;
+    @Value("${swiftdrop.gateway.rate-limit.assistant-burst-capacity:4}")
+    private long assistantBurstCapacity = 4;
+
     public RateLimitingGatewayFilter(
             InMemoryRateLimiter rateLimiter,
             @Value("${swiftdrop.gateway.rate-limit.enabled:true}") boolean enabled,
@@ -67,6 +73,16 @@ public class RateLimitingGatewayFilter implements GlobalFilter, Ordered {
         }
 
         String path = exchange.getRequest().getPath().value();
+
+        // 0. AI assistant chat (signed-in or anonymous): per-IP bucket independent of tracking and quotes
+        if (path.equals("/api/v1/assistant/chat")) {
+            InMemoryRateLimiter.ConsumptionResult result = rateLimiter.tryConsume(
+                    "pub:assistant:" + resolveClientIp(exchange), 1, assistantBurstCapacity, assistantLimitPerMinute);
+            if (!result.allowed()) {
+                return reject(exchange, path, result.retryAfterSeconds());
+            }
+            return chain.filter(exchange);
+        }
 
         // 1. Merchant machine endpoints
         if (path.startsWith("/api/v1/merchant/parcels")) {
