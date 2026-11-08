@@ -42,8 +42,7 @@ public class MerchantBookingConfiguration {
             @Value("${ACCOUNTS_GRPC_HOST:localhost}") String host,
             @Value("${ACCOUNTS_GRPC_PORT:9081}") int port,
             ServiceTokenProvider serviceTokenProvider) {
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
+        ManagedChannel channel = com.swiftdrop.security.grpc.GrpcTransport.channel(host, port)
                 .intercept(new SwiftDropGrpcClientInterceptor(serviceTokenProvider, GRPC_DEADLINE_MS))
                 .build();
         AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
@@ -57,8 +56,7 @@ public class MerchantBookingConfiguration {
             @Value("${ACCOUNTS_GRPC_HOST:localhost}") String host,
             @Value("${ACCOUNTS_GRPC_PORT:9081}") int port,
             ServiceTokenProvider serviceTokenProvider) {
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
+        ManagedChannel channel = com.swiftdrop.security.grpc.GrpcTransport.channel(host, port)
                 .intercept(new SwiftDropGrpcClientInterceptor(serviceTokenProvider, GRPC_DEADLINE_MS))
                 .build();
         AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =

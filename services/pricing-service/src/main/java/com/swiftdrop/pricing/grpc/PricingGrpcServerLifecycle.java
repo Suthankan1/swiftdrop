@@ -61,7 +61,7 @@ public class PricingGrpcServerLifecycle implements SmartLifecycle {
             SwiftDropGrpcServerSecurityInterceptor securityInterceptor =
                     new SwiftDropGrpcServerSecurityInterceptor(serviceTokenValidator, actorDelegationValidator, grpcSecurityPolicy);
 
-            server = ServerBuilder.forPort(port)
+            server = com.swiftdrop.security.grpc.GrpcTransport.server(port)
                     .intercept(securityInterceptor)
                     .addService(pricingInternalService)
                     .build()

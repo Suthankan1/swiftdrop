@@ -56,8 +56,7 @@ public class GrpcCourierEligibilityClient implements CourierEligibilityClient {
 
         ManagedChannel channel = null;
         try {
-            channel = ManagedChannelBuilder.forAddress(grpcHost, grpcPort)
-                    .usePlaintext()
+            channel = com.swiftdrop.security.grpc.GrpcTransport.channel(grpcHost, grpcPort)
                     .intercept(new SwiftDropGrpcClientInterceptor(serviceTokenProvider, deadlineMs))
                     .build();
 

@@ -23,6 +23,10 @@ public final class AuthenticatedReadClients implements AutoCloseable {
 
     /** Plaintext is only for a private local network such as the Compose runtime. */
     public static AuthenticatedReadClients forTarget(String target, ServiceTokenProvider tokens, boolean plaintext) {
+        if (com.swiftdrop.security.grpc.GrpcTransport.tlsEnabled()) {
+            return new AuthenticatedReadClients(com.swiftdrop.security.grpc.GrpcTransport.channel(target)
+                    .maxInboundMessageSize(262144).build(), tokens);
+        }
         if (!plaintext) return new AuthenticatedReadClients(target, tokens);
         return new AuthenticatedReadClients(ManagedChannelBuilder.forTarget(target).usePlaintext()
                 .maxInboundMessageSize(262144).build(), tokens);
