@@ -357,6 +357,42 @@ public class HttpKeycloakIdentityAdapter implements KeycloakIdentityAdapter {
         }
     }
 
+    @Override
+    public void setUserEnabled(String subject, boolean enabled) {
+        if (subject == null || subject.isBlank()) {
+            throw new IllegalArgumentException("Subject must not be blank");
+        }
+        String userUrl = properties.getServerUrl() + "/admin/realms/" + properties.getRealm()
+                + "/users/" + URLEncoder.encode(subject.trim(), StandardCharsets.UTF_8);
+        try {
+            HttpResponse<String> response = httpClient.send(createAdminRequest(userUrl)
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString("{\"enabled\":" + enabled + "}"))
+                    .build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 404) {
+                throw new IdentityNotFoundException("Identity not found in Keycloak");
+            }
+            if (response.statusCode() != 200 && response.statusCode() != 204) {
+                throw new KeycloakAdminUnavailableException("Keycloak user update failed with HTTP " + response.statusCode());
+            }
+            if (!enabled) {
+                HttpResponse<String> logout = httpClient.send(createAdminRequest(userUrl + "/logout")
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build(), HttpResponse.BodyHandlers.ofString());
+                if (logout.statusCode() != 200 && logout.statusCode() != 204) {
+                    throw new KeycloakAdminUnavailableException("Keycloak session logout failed with HTTP " + logout.statusCode());
+                }
+            }
+        } catch (KeycloakAdminException e) {
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new KeycloakAdminUnavailableException("Keycloak user update interrupted", e);
+        } catch (Exception e) {
+            throw new KeycloakAdminUnavailableException("Keycloak user update failed", e);
+        }
+    }
+
     private RoleDescriptor getRoleDescriptor(String roleName) {
         String url = properties.getServerUrl() + "/admin/realms/" + properties.getRealm() +
                      "/roles/" + URLEncoder.encode(roleName, StandardCharsets.UTF_8);

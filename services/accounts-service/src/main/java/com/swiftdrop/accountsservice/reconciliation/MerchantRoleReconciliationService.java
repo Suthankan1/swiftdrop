@@ -287,6 +287,70 @@ public class MerchantRoleReconciliationService {
     }
 
     /**
+     * Rejects a PENDING registration with a mandatory reason and a durable audit record.
+     * The merchant never held an active tenant, so any MERCHANT role is revoked best-effort.
+     */
+    @Transactional(noRollbackFor = KeycloakAdminException.class)
+    public ReconciliationResult rejectMerchant(TrustedIdentity adminIdentity, UUID merchantId, String reason,
+                                               Long expectedVersion, String correlationId) {
+        validateAdminCaller(adminIdentity);
+        Objects.requireNonNull(merchantId, "Merchant ID is required");
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new MerchantDecisionValidationException("Rejection requires a non-empty reason.");
+        }
+        String sanitizedReason = reason.trim();
+        if (sanitizedReason.length() > 500) {
+            throw new MerchantDecisionValidationException("Rejection reason cannot exceed 500 characters.");
+        }
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new MerchantNotFoundException("Merchant not found"));
+        MerchantStatus statusBefore = merchant.getStatus();
+        if (statusBefore != MerchantStatus.PENDING) {
+            throw new MerchantIllegalStateTransitionException(
+                    "Rejection is only permitted for PENDING merchants. Current status: " + statusBefore);
+        }
+        if (expectedVersion != null && !Objects.equals(merchant.getVersion(), expectedVersion)) {
+            throw new MerchantConcurrencyConflictException(
+                    "Merchant record has changed concurrently; review refreshed state before retry.");
+        }
+        merchant.setStatus(MerchantStatus.REJECTED, Instant.now());
+        merchantRepository.save(merchant);
+
+        MerchantBusinessAudit businessAudit = null;
+        if (businessAuditRepository != null) {
+            businessAudit = new MerchantBusinessAudit(
+                    UUID.randomUUID(), merchant.getId(), adminIdentity.subject(), "REJECT",
+                    statusBefore.name(), MerchantStatus.REJECTED.name(), sanitizedReason, Instant.now(),
+                    correlationId, merchant.getVersion() != null ? merchant.getVersion() : 0L,
+                    "SUCCESS", null, null);
+            businessAuditRepository.save(businessAudit);
+        }
+
+        ReconciliationResult result;
+        try {
+            result = identityAdapter.reconcileRole(merchant.getKeycloakSub(), "MERCHANT", false);
+            if (businessAudit != null) {
+                businessAudit.setReconciliationOutcome(result.outcome().name(), result.message());
+                businessAuditRepository.save(businessAudit);
+            }
+        } catch (KeycloakAdminException ex) {
+            log.warn("Keycloak role revocation failed for rejected merchant {}; reconciliation PENDING_RETRY", merchant.getId());
+            if (businessAudit != null) {
+                businessAudit.setReconciliationOutcome("PENDING_RETRY", ex.getMessage());
+                businessAuditRepository.save(businessAudit);
+            }
+            recordAudit(merchant.getKeycloakSub(), "MERCHANT", "REJECT_MERCHANT", statusBefore.name(),
+                    MerchantStatus.REJECTED.name(), ReconciliationOutcome.PENDING_RETRY, adminIdentity.subject(),
+                    "Rejected: " + sanitizedReason);
+            return ReconciliationResult.failed(merchant.getKeycloakSub(), "MERCHANT", "Keycloak role revocation failed; scheduled for retry");
+        }
+        recordAudit(merchant.getKeycloakSub(), "MERCHANT", "REJECT_MERCHANT", statusBefore.name(),
+                MerchantStatus.REJECTED.name(), result.outcome(), adminIdentity.subject(),
+                "Rejected: " + sanitizedReason);
+        return result;
+    }
+
+    /**
      * Hook invoked during merchant enrollment. Under ON_APPROVAL policy, this is a safe no-op.
      */
     public ReconciliationResult handleEnrollment(String targetSub) {

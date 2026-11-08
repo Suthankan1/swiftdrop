@@ -25,9 +25,13 @@ public class AdminReadController {
     @GetMapping("/users")
     public ResponseEntity<AdminPageResponse<AdminUserSummaryResponse>> users(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q) {
         validatePage(page, size);
-        return noStore(service.users(page, size));
+        if (q != null && q.length() > 100) {
+            throw new IllegalArgumentException("Search text cannot exceed 100 characters");
+        }
+        return noStore(q == null || q.isBlank() ? service.users(page, size) : service.users(page, size, q));
     }
 
     @GetMapping("/merchants")

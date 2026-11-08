@@ -75,4 +75,9 @@ public interface KeycloakIdentityAdapter {
      * Removes the realm's default role bundle (which carries CUSTOMER) so staff accounts hold only their staff role.
      */
     void removeDefaultRoles(String subject);
+
+    /**
+     * Enables or disables sign-in for a user. Disabling also ends the user's active Keycloak sessions.
+     */
+    void setUserEnabled(String subject, boolean enabled);
 }
