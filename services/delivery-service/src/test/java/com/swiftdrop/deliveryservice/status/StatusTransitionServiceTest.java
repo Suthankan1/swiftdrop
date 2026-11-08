@@ -285,7 +285,8 @@ class StatusTransitionServiceTest {
                 courierSub,
                 List.of("ROLE_COURIER")
         )).isInstanceOf(StatusAccessDeniedException.class)
-                .hasMessageContaining("not actively assigned");
+                .hasMessageContaining("not the courier assigned")
+                .hasMessageNotContaining(courierSub);
 
         verifyNoInteractions(statusHistoryRepository);
     }

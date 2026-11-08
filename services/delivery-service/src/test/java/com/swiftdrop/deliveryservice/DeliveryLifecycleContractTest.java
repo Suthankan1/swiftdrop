@@ -100,7 +100,7 @@ class DeliveryLifecycleContractTest {
         // Unapproved reason
         assertThatThrownBy(() -> ParcelLifecycleTransitionContract.validateTransition(ParcelStatus.OUT_FOR_DELIVERY, ParcelStatus.FAILED, "DRIVER_TIRED", null))
                 .isInstanceOf(InvalidTransitionException.class)
-                .hasMessageContaining("Unapproved failure reason");
+                .hasMessageContaining("not one of the approved reason codes");
     }
 
     @Test

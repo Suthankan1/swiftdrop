@@ -204,7 +204,7 @@ public class StatusTransitionService {
             }
             if (!courierAssignmentContract.hasActiveAssignment(parcelId, actorSub)) {
                 throw new StatusAccessDeniedException(
-                        "Forbidden - courier " + actorSub + " is not actively assigned to parcel " + parcelId
+                        "Forbidden - you are not the courier assigned to this parcel."
                 );
             }
         }

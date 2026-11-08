@@ -243,7 +243,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         CourierEligibilityResult eligibility = courierEligibilityClient.checkEligibility(request.courierSub());
         if (!eligibility.isApproved()) {
             throw new IneligibleCourierException(
-                    "Courier " + request.courierSub() + " is not eligible for assignment: " + eligibility.rejectionReason()
+                    "The selected courier is not eligible for assignment: " + eligibility.rejectionReason()
             );
         }
 
@@ -359,7 +359,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         String replacementCourierSub = request.replacementCourierSub().trim();
         if (replacementCourierSub.equals(currentAssignment.getCourierSub())) {
             throw new AssignmentConflictException(
-                    "Replacement courier " + replacementCourierSub + " is already actively assigned to parcel " + request.parcelId()
+                    "The replacement courier is already assigned to this parcel."
             );
         }
 
@@ -367,7 +367,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         CourierEligibilityResult eligibility = courierEligibilityClient.checkEligibility(replacementCourierSub);
         if (!eligibility.isApproved()) {
             throw new IneligibleCourierException(
-                    "Replacement courier " + replacementCourierSub + " is not eligible for assignment: " + eligibility.rejectionReason()
+                    "The replacement courier is not eligible for assignment: " + eligibility.rejectionReason()
             );
         }
 

@@ -238,7 +238,6 @@ public class BookingService {
                 payload.put("oldStatus", null);
                 payload.put("newStatus", "CREATED");
                 payload.put("merchantId", merchantId.toString());
-                payload.put("merchantReference", request.merchantReference());
                 payload.put("cityOrZone", quote.pickupZoneName());
                 // Strictly zero customer street address, recipient phone, or PII in Kafka event
 

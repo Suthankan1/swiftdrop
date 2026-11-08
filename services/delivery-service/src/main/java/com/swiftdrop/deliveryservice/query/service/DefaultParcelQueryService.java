@@ -151,8 +151,6 @@ public class DefaultParcelQueryService implements ParcelQueryService {
         Page<Parcel> parcels;
         if (roles.contains("ADMIN") || roles.contains("DISPATCHER")) {
             parcels = parcelRepository.findAll(safePageable);
-        } else if (roles.contains("CUSTOMER") && callerSub != null) {
-            parcels = parcelRepository.findBySenderSubOrderByCreatedAtDesc(callerSub, safePageable);
         } else if (roles.contains("MERCHANT")) {
             Object merchantClaim = jwt.getClaim("merchant_id");
             UUID merchantId = null;
@@ -165,11 +163,16 @@ public class DefaultParcelQueryService implements ParcelQueryService {
                 merchantId = merchantTenantResolver.resolveMerchantTenant(callerSub).orElse(null);
             }
 
+            // Merchants were customers first, so they also keep their own personal bookings.
             if (merchantId != null) {
-                parcels = parcelRepository.findByMerchantIdOrderByCreatedAtDesc(merchantId, safePageable);
+                parcels = parcelRepository.findByMerchantIdOrSenderSubOrderByCreatedAtDesc(merchantId, callerSub, safePageable);
+            } else if (callerSub != null) {
+                parcels = parcelRepository.findBySenderSubOrderByCreatedAtDesc(callerSub, safePageable);
             } else {
                 parcels = Page.empty(safePageable);
             }
+        } else if (roles.contains("CUSTOMER") && callerSub != null) {
+            parcels = parcelRepository.findBySenderSubOrderByCreatedAtDesc(callerSub, safePageable);
         } else {
             parcels = Page.empty(safePageable);
         }

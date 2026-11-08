@@ -11,7 +11,7 @@ public class ParcelAccessDeniedException extends RuntimeException {
     private final UUID parcelId;
 
     public ParcelAccessDeniedException(UUID parcelId) {
-        super("Access denied to parcel: " + parcelId);
+        super("Access denied to this parcel.");
         this.parcelId = parcelId;
     }
 

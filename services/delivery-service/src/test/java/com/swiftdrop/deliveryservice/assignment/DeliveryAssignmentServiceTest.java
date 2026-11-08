@@ -434,7 +434,8 @@ class DeliveryAssignmentServiceTest {
                 dispatcherSub,
                 List.of("ROLE_DISPATCHER")
         )).isInstanceOf(AssignmentConflictException.class)
-                .hasMessageContaining("already actively assigned to parcel");
+                .hasMessageContaining("already assigned to this parcel")
+                .hasMessageNotContaining(courierSub);
     }
 
     @Test
