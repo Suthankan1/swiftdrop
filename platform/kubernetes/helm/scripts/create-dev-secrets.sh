@@ -73,12 +73,25 @@ create_or_update_secret swiftdrop-apps swiftdrop-minio-secret \
   --from-literal=accesskey="${MINIO_ROOT_USER:-swiftdrop_storage_admin}" \
   --from-literal=secretkey="${MINIO_ROOT_PASSWORD:-minio_dev_password}"
 
+# Generated once per run unless provided; Keycloak and Delivery must receive the same client secret.
+DELIVERY_CLIENT_SECRET="${DELIVERY_CLIENT_SECRET:-$(openssl rand -hex 32)}"
+WEBHOOK_ENCRYPTION_KEY="${WEBHOOK_ENCRYPTION_KEY:-$(openssl rand -hex 32)}"
+
+create_or_update_secret swiftdrop-apps swiftdrop-internal-client-secret \
+  --from-literal=delivery-client-secret="${DELIVERY_CLIENT_SECRET}"
+
+create_or_update_secret swiftdrop-apps communications-webhook-key \
+  --from-literal=encryption-key="${WEBHOOK_ENCRYPTION_KEY}"
+
 # --- swiftdrop-identity secrets ---
 echo ""
 echo "--- 4. PROVISIONING SWIFTDROP-IDENTITY SECRETS ---"
 create_or_update_secret swiftdrop-identity keycloak-admin-secret \
   --from-literal=admin-username="${KEYCLOAK_ADMIN_USER:-admin}" \
   --from-literal=admin-password="${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}"
+
+create_or_update_secret swiftdrop-identity swiftdrop-internal-client-secret \
+  --from-literal=delivery-client-secret="${DELIVERY_CLIENT_SECRET}"
 
 create_or_update_secret swiftdrop-identity keycloak-db-secret \
   --from-literal=username="${KEYCLOAK_DB_USERNAME:-keycloak}" \

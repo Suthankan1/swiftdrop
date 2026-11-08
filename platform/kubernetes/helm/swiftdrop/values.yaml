@@ -309,6 +309,8 @@ delivery:
     storageSecretName: swiftdrop-minio-secret
     storageAccessKeyKey: accesskey
     storageSecretKeyKey: secretkey
+    internalClientSecretName: swiftdrop-internal-client-secret
+    deliveryClientSecretKey: delivery-client-secret
 
 # ------------------------------------------------------------------------------
 # 6. Communications Service
@@ -365,6 +367,8 @@ communications:
     dbSecretName: communications-db-secret
     dbUsernameKey: username
     dbPasswordKey: password
+    webhookKeySecretName: communications-webhook-key
+    webhookKeyKey: encryption-key
 
 # ------------------------------------------------------------------------------
 # 7. GraphQL Query API
@@ -483,6 +487,8 @@ keycloak:
     googleSecretName: swiftdrop-google-oidc-secret
     googleClientIdKey: client-id
     googleClientSecretKey: client-secret
+    internalClientSecretName: swiftdrop-internal-client-secret
+    deliveryClientSecretKey: delivery-client-secret
     smtpSecretName: swiftdrop-smtp-secret
     smtpHostKey: host
     smtpPortKey: port
