@@ -649,9 +649,11 @@ export function createDeliveryApi({
       payload: BookParcelRequest,
       idempotencyKey?: string,
       signal?: AbortSignal,
+      /** 'merchant' books for the caller's merchant tenant via POST /api/v1/merchant/parcels. */
+      channel: 'customer' | 'merchant' = 'customer',
     ): Promise<ParcelDetailResponse> {
       const token = await resolveAuthToken()
-      const url = `${normalizedGateway}/api/v1/parcels`
+      const url = `${normalizedGateway}/api/v1/${channel === 'merchant' ? 'merchant/parcels' : 'parcels'}`
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',

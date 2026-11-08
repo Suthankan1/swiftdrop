@@ -11,26 +11,6 @@ import type { BookParcelRequest } from '../api/deliveryContracts'
 import { CustomerNav } from '../components/CustomerNav'
 import { formatCurrency } from '../components/customerUiUtils'
 
-const DEFAULT_FALLBACK_ZONES: readonly ZoneItem[] = [
-  {
-    zoneCode: 'ZONE_1',
-    name: 'Colombo Municipal District',
-    description: 'Intra-city delivery covering Colombo postal codes 1 through 15.',
-    standardTransitHours: 24,
-  },
-  {
-    zoneCode: 'ZONE_2',
-    name: 'Western Province Suburbs',
-    description: 'Greater Colombo, Gampaha, and Kalutara districts.',
-    standardTransitHours: 48,
-  },
-  {
-    zoneCode: 'ZONE_3',
-    name: 'Outstation Regional Hubs',
-    description: 'Central, Southern, and North-Western provincial distribution.',
-    standardTransitHours: 72,
-  },
-]
 
 export function CustomerQuotePage() {
   const auth = useAuth()
@@ -75,12 +55,9 @@ export function CustomerQuotePage() {
     staleTime: 60_000,
   })
 
-  const availableZones = useMemo(() => {
-    if (zonesQuery.data && zonesQuery.data.length > 0) {
-      return zonesQuery.data
-    }
-    return DEFAULT_FALLBACK_ZONES
-  }, [zonesQuery.data])
+  // Only zones confirmed by the pricing service are offered; there is no hardcoded fallback.
+  const availableZones = useMemo<readonly ZoneItem[]>(() => zonesQuery.data ?? [], [zonesQuery.data])
+  const zonesUnavailable = zonesQuery.isError || (zonesQuery.isSuccess && availableZones.length === 0)
 
   // Quote calculation parameters
   const [pickupZone, setPickupZone] = useState('ZONE_1')
@@ -98,7 +75,7 @@ export function CustomerQuotePage() {
   const [rawQuote, setRawQuote] = useState<QuoteResponse | null>(null)
   const [quotedInputs, setQuotedInputs] = useState<string | null>(null)
   // A quote only applies to the exact inputs it was calculated for; any change requires a new quote.
-  const currentInputs = [pickupZone, dropoffZone, weightKg, lengthCm, widthCm, heightCm].join('|')
+  const currentInputs = [pickupZone, dropoffZone, weightKg, lengthCm, widthCm, heightCm, serviceTier].join('|')
   const quote = rawQuote && quotedInputs === currentInputs ? rawQuote : null
   const [isCalculating, setIsCalculating] = useState(false)
   const [quoteError, setQuoteError] = useState<string | null>(null)
@@ -229,6 +206,7 @@ export function CustomerQuotePage() {
       lengthCm: parseInt(lengthCm, 10),
       widthCm: parseInt(widthCm, 10),
       heightCm: parseInt(heightCm, 10),
+      serviceTier,
     }
 
     try {
@@ -384,6 +362,15 @@ export function CustomerQuotePage() {
       </header>
 
       <CustomerNav />
+
+      {zonesUnavailable && (
+        <div className="feedback-banner is-error" role="alert">
+          <span>Delivery zones could not be loaded, so quotes are unavailable right now.</span>
+          <Button type="button" variant="secondary" size="sm" disabled={zonesQuery.isFetching} onClick={() => void zonesQuery.refetch()}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Quote calculation error feedback */}
       {quoteError && (
@@ -619,7 +606,7 @@ export function CustomerQuotePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Delivery Speed Tier:</span>
                 <Badge variant={serviceTier === 'EXPRESS' ? 'accent' : 'primary'} size="sm">
-                  {serviceTier === 'EXPRESS' ? '⚡ Express Same Day' : '🚚 Standard Next Day'}
+                  {serviceTier === 'EXPRESS' ? '⚡ Same Day' : '🚚 Standard'}
                 </Badge>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -629,7 +616,7 @@ export function CustomerQuotePage() {
                   style={{ flex: 1, minHeight: '34px', fontSize: '0.8rem' }}
                   onClick={() => setServiceTier('STANDARD')}
                 >
-                  Standard (24-48h)
+                  Standard
                 </Button>
                 <Button
                   size="sm"
@@ -637,7 +624,7 @@ export function CustomerQuotePage() {
                   style={{ flex: 1, minHeight: '34px', fontSize: '0.8rem' }}
                   onClick={() => setServiceTier('EXPRESS')}
                 >
-                  Priority Express (Same Day)
+                  Same Day (surcharge applies)
                 </Button>
               </div>
             </div>
@@ -646,7 +633,7 @@ export function CustomerQuotePage() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={isCalculating || isBooking}
+                disabled={isCalculating || isBooking || zonesUnavailable}
                 isLoading={isCalculating}
                 loadingText="Calculating Rate..."
               >
@@ -753,6 +740,12 @@ export function CustomerQuotePage() {
                     <dt>Weight Surcharge</dt>
                     <dd className="font-numeric">{formatCurrency(quote.weightSurchargeMinorUnits, quote.currency)}</dd>
                   </div>
+                  {quote.serviceTier === 'EXPRESS' && (
+                    <div className="breakdown-row">
+                      <dt>Same Day Surcharge</dt>
+                      <dd className="font-numeric">{formatCurrency(quote.expressSurchargeMinorUnits ?? 0, quote.currency)}</dd>
+                    </div>
+                  )}
                   <div className="breakdown-row">
                     <dt>Chargeable Weight</dt>
                     <dd className="font-numeric">{quote.chargeableWeightKg.toFixed(2)} kg</dd>
