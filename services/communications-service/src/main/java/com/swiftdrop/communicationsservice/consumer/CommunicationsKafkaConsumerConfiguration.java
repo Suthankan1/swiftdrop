@@ -52,8 +52,7 @@ public class CommunicationsKafkaConsumerConfiguration {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-        DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(1000L, 3L));
-        errorHandler.addNotRetryableExceptions(EventValidationException.class);
+        DefaultErrorHandler errorHandler = deadLetterErrorHandler();
         factory.setCommonErrorHandler(errorHandler);
         return factory;
     }
@@ -70,10 +69,42 @@ public class CommunicationsKafkaConsumerConfiguration {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(webhookConsumerFactory);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-        DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(1000L, 3L));
-        errorHandler.addNotRetryableExceptions(EventValidationException.class);
+        DefaultErrorHandler errorHandler = deadLetterErrorHandler();
         factory.setCommonErrorHandler(errorHandler);
         return factory;
+    }
+
+    @Value("${KAFKA_TOPIC_PARCEL_LIFECYCLE_DLT:parcel.lifecycle.v1.dlt}")
+    private String deadLetterTopic;
+
+    /** Total retry window per record before it is dead-lettered; a failing record holds its partition meanwhile. */
+    @Value("${swiftdrop.kafka.consumer.retry-max-elapsed-ms:30000}")
+    private long retryMaxElapsedMs;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.kafka.core.KafkaTemplate<Object, Object> deadLetterTemplate;
+
+    /**
+     * Retries with exponential backoff (30 seconds by default) so short outages of Delivery or Accounts
+     * do not lose events, then publishes the record to the dead-letter topic for inspection and replay.
+     */
+    private DefaultErrorHandler deadLetterErrorHandler() {
+        org.springframework.util.backoff.ExponentialBackOff backOff =
+                new org.springframework.util.backoff.ExponentialBackOff(1000L, 2.0);
+        backOff.setMaxInterval(10_000L);
+        backOff.setMaxElapsedTime(retryMaxElapsedMs);
+        DefaultErrorHandler handler = deadLetterTemplate == null
+                ? new DefaultErrorHandler(backOff)
+                : new DefaultErrorHandler(new org.springframework.kafka.listener.DeadLetterPublishingRecoverer(
+                        deadLetterTemplate,
+                        (record, ex) -> new org.apache.kafka.common.TopicPartition(deadLetterTopic, -1)), backOff);
+        // Business rejections will not change on retry; send them straight to the dead-letter topic.
+        handler.addNotRetryableExceptions(
+                EventValidationException.class,
+                com.swiftdrop.communicationsservice.client.DeliveryAuthorizationException.class,
+                RecipientNotFoundException.class,
+                NoEligibleNotificationTargetException.class);
+        return handler;
     }
 
     private ConsumerFactory<String, String> createConsumerFactory(String groupId) {

@@ -49,6 +49,9 @@ public class WebhookDelivery {
     @Column(name = "correlation_id", length = 64)
     private String correlationId;
 
+    @Column(name = "event_snapshot", columnDefinition = "TEXT")
+    private String eventSnapshot;
+
     public WebhookDelivery() {
     }
 
@@ -189,5 +192,13 @@ public class WebhookDelivery {
 
     public void setCorrelationId(String correlationId) {
         this.correlationId = correlationId;
+    }
+
+    public String getEventSnapshot() {
+        return eventSnapshot;
+    }
+
+    public void setEventSnapshot(String eventSnapshot) {
+        this.eventSnapshot = eventSnapshot;
     }
 }
