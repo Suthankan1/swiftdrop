@@ -6,8 +6,8 @@ This log records every verified defect that has been remediated, tested, and sub
 |---|---|---|---|---|---|---|
 | BE-001 | Missing Gateway Route for Staff Profile | api-gateway | Missing route predicate | PR #302 | GatewayBusinessRoutesIntegrationTest | Fixed (PR #302 Submitted) |
 | BE-002 | Gateway Route Fallback Port 8084 | api-gateway | Default port in @Value | PR #302 | GatewayRoutesConfig default | Fixed (PR #302 Submitted) |
-| INT-005| Merchant Browser Missing merchant_id | delivery-service | Keycloak token lacks claim | PR #302 | MerchantParcelBookingControllerTest | Fixed (PR #302 Submitted) |
-| FE-001 | Fake Bulk Order Intake in UI | frontend | Simulated setTimeout without API | PR #302 | BulkOrderUploadModal.test.tsx | Fixed (PR #302 Submitted) |
+| INT-005| Merchant Browser Missing merchant_id | delivery-service | Keycloak token lacks claim | PR #302, completed on branch fix/security-privacy | MerchantParcelBookingControllerTest; live merchant booking and idempotent retry on a full local stack (2026-11-09) | Fixed. PR #302 alone did not make merchant booking work; re-verified live after the later fixes. |
+| FE-001 | Fake Bulk Order Intake in UI | frontend | Simulated setTimeout without API | PR #302 (disabled the fake), branch fix/security-privacy (real import) | BulkOrderUploadModal.test.tsx, merchantBooking.test.ts; live /merchant/parcels booking | Fixed. PR #302 only disabled the fake import; the CSV import now books real orders through Pricing and Delivery. |
 | FE-002 | Fake Webhook Test Ping in UI | frontend | Simulated setTimeout with fake HMAC | PR #302 | Component Inspection | Fixed (PR #302 Submitted) |
 | OPS-001| Gateway Route Precedence for Pricing | api-gateway | Missing route in application.yml | PR #302 | GatewayBusinessRoutesIntegrationTest | Fixed (PR #302 Submitted) |
 | A11Y-001| Native window.alert in File Upload | frontend | Direct window.alert call | PR #302 | BulkOrderUploadModal.test.tsx | Fixed (PR #302 Submitted) |
