@@ -61,4 +61,4 @@ npm test -- src/test/e2e/customerCourierJourneys.test.tsx --run
 1. **Standalone Harness Mode (Default when local Docker daemon is offline):**
    Executes complete state-machine, contract invariants, JWT role scoping, and negative security checks in-process. Does not require external databases or running containers.
 2. **Live Service Discovery Mode:**
-   Automatically detects running backend services (Ports: 8080 Gateway, 8081 Accounts, 8082 Delivery, 8083 Pricing, 8090 Keycloak) and performs live TCP/HTTP interactions.
+   Automatically detects running backend services (Ports: 8080 Gateway, 8081 Accounts, 8082 Pricing, 8083 Delivery, 8090 Keycloak) and performs live TCP/HTTP interactions.
