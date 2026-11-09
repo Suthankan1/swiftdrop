@@ -198,7 +198,9 @@ export function ProtectedRoute({ role, anyOf }: { role?: SwiftDropRole; anyOf?: 
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
   }
   if ((role && !snapshot.roles.includes(role)) || (anyOf && !anyOf.some(item => snapshot.roles.includes(item)))) {
-    return <FeedbackState title="Access unavailable" tone="error">This entry is unavailable for your current role.</FeedbackState>
+    return <FeedbackState title="Access unavailable" tone="error">
+      This page is not available for your role. <Link to="/login">Go to your workspaces</Link>.
+    </FeedbackState>
   }
   return <Outlet />
 }
