@@ -191,6 +191,14 @@ export function useParcelTrackingStream({
         return
       }
 
+      // A delivered or failed parcel emits nothing more: show its final state without opening a stream.
+      if (isTerminalParcelStatus(currentStatusRef.current ?? initialParcel?.currentStatus)) {
+        abortActiveStream()
+        clearReconnectTimer()
+        setStreamState(prev => ({ ...prev, status: 'idle', retryAttempt: 0, errorMessage: undefined }))
+        return
+      }
+
       // Check offline status
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         if (isMountedRef.current) {
@@ -408,6 +416,7 @@ export function useParcelTrackingStream({
       enabled,
       gatewayUrl,
       parcelId,
+      initialParcel?.currentStatus,
     ],
   )
 

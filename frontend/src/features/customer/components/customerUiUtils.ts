@@ -125,3 +125,21 @@ export function getActiveStepIndex(status: ParcelStatus | string): number {
   if (status === 'FAILED') return 4 // Terminal failed at last stage
   return 0
 }
+
+/** Real values only: missing or zero measurements read "Not recorded" instead of a made-up placeholder. */
+export function formatWeight(kg: number | null | undefined): string {
+  return typeof kg === 'number' && Number.isFinite(kg) && kg > 0 ? `${kg} kg` : 'Not recorded'
+}
+
+export function formatDimensions(dimensions: string | null | undefined): string {
+  return dimensions && /^\d/.test(dimensions) ? `${dimensions} cm` : 'Not recorded'
+}
+
+/**
+ * For a failed parcel, the step that did not happen: the one after the last status reached before the failure.
+ * Returns -1 when that is unknown, so no earlier steps are shown as completed.
+ */
+export function getFailedStepIndex(statusBeforeFailure: string | null | undefined): number {
+  const reached = LIFECYCLE_STEPS.indexOf(statusBeforeFailure as ParcelStatus)
+  return reached >= 0 ? Math.min(reached + 1, LIFECYCLE_STEPS.length - 1) : -1
+}

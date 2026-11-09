@@ -613,6 +613,7 @@ export function CustomerQuotePage() {
                 <Button
                   size="sm"
                   variant={serviceTier === 'STANDARD' ? 'primary' : 'tonal'}
+                  aria-pressed={serviceTier === 'STANDARD'}
                   style={{ flex: 1, minHeight: '34px', fontSize: '0.8rem' }}
                   onClick={() => setServiceTier('STANDARD')}
                 >
@@ -621,6 +622,7 @@ export function CustomerQuotePage() {
                 <Button
                   size="sm"
                   variant={serviceTier === 'EXPRESS' ? 'accent' : 'tonal'}
+                  aria-pressed={serviceTier === 'EXPRESS'}
                   style={{ flex: 1, minHeight: '34px', fontSize: '0.8rem' }}
                   onClick={() => setServiceTier('EXPRESS')}
                 >

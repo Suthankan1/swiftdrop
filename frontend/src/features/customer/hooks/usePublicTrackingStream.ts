@@ -220,6 +220,11 @@ export function usePublicTrackingStream({
     async (isRetry = false, attempt = 0) => {
       if (!isMountedRef.current || !enabled || !trackingNumber) return
       if (isConnectingRef.current || isConnectedRef.current) return
+      // A delivered or failed parcel emits nothing more: show its final state without opening a stream.
+      if (isTerminalParcelStatus(currentStatusRef.current ?? initialTracking?.currentStatus)) {
+        setStreamState((prev) => ({ ...prev, status: 'idle', retryAttempt: 0, errorMessage: undefined }))
+        return
+      }
 
       if (activeAbortControllerRef.current) {
         activeAbortControllerRef.current.abort()
@@ -337,7 +342,7 @@ export function usePublicTrackingStream({
         }
       }
     },
-    [enabled, gatewayUrl, handleIncomingEvent, trackingNumber, triggerReconciliation],
+    [enabled, gatewayUrl, handleIncomingEvent, trackingNumber, triggerReconciliation, initialTracking?.currentStatus],
   )
 
   connectStreamRef.current = connectStream

@@ -88,7 +88,7 @@ describe('CustomerBookingConfirmedPage (Issue #118)', () => {
     expect(screen.getByText('45 Kandy Road, Gampaha')).toBeInTheDocument()
     expect(screen.getByText('2.5 kg')).toBeInTheDocument()
     expect(screen.getByText('30x20x15 cm')).toBeInTheDocument()
-    expect(screen.getByText('RATE-2026-V1')).toBeInTheDocument()
+    expect(screen.queryByText('RATE-2026-V1')).not.toBeInTheDocument() // internal rate version is not shown (audit 79)
     expect(screen.getByText('Created')).toBeInTheDocument()
   })
 

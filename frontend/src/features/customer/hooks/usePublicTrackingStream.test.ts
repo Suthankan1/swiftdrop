@@ -326,7 +326,7 @@ describe('usePublicTrackingStream', () => {
 
     await waitFor(() => expect(result.current.streamState.status).toBe('idle'))
     await new Promise(resolve => setTimeout(resolve, 200))
-    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch).not.toHaveBeenCalled() // finished parcels never open a stream
   })
 
   describe('tab visibility', () => {
