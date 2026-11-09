@@ -56,7 +56,7 @@ export function MerchantOrderSummaryCards({
         onClick={() => onSelectFilter?.('FAILED')}
         aria-pressed={activeFilter === 'FAILED'}
       >
-        <span className="eyebrow">Exceptions &amp; Failed</span>
+        <span className="eyebrow">Failed</span>
         <span className="metric-value monospace">{failedOrdersCount}</span>
         <span className="muted metric-caption">Parcels requiring merchant attention</span>
       </button>

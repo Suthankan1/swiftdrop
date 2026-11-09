@@ -76,7 +76,6 @@ export function MerchantProfile({ state }: MerchantProfileProps) {
         <ProfileField label="Account owner" value={profile.fullName} />
         <ProfileField label="Contact email" value={profile.email} />
         <ProfileField label="Phone number" value={profile.phoneNumber || 'Not provided'} />
-        <ProfileField label="Identity reference" value={profile.keycloakSub} />
         <ProfileField
           label="Member since"
           value={

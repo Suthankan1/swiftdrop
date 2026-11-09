@@ -61,6 +61,7 @@ export function MerchantWebhooksPage() {
   const [inspectingSub, setInspectingSub] = useState<WebhookSubscription | null>(null)
   const [deletingSub, setDeletingSub] = useState<WebhookSubscription | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // 4. Mutation Handlers
   async function handleCreateSubscription(request: CreateWebhookSubscriptionRequest) {
@@ -88,12 +89,14 @@ export function MerchantWebhooksPage() {
   async function handleConfirmDelete() {
     if (!deletingSub) return
     setIsDeleting(true)
+    setActionError(null)
     try {
       await commsApi.deleteSubscription(deletingSub.subscriptionId)
       setDeletingSub(null)
       await queryClient.invalidateQueries({ queryKey: ['merchant', 'webhooks', merchantProfile?.merchantId] })
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to deactivate subscription.')
+      setDeletingSub(null)
+      setActionError(err instanceof Error ? err.message : 'Failed to deactivate subscription.')
     } finally {
       setIsDeleting(false)
     }
@@ -135,6 +138,13 @@ export function MerchantWebhooksPage() {
       </header>
 
       <MerchantNav />
+
+      {actionError && (
+        <div className="feedback-banner is-error" role="alert">
+          <span>{actionError}</span>
+          <button type="button" className="feedback-dismiss" onClick={() => setActionError(null)} aria-label="Dismiss error">✕</button>
+        </div>
+      )}
 
       {/* Profile Loading Feedback */}
       {profileQuery.isPending && (
@@ -190,7 +200,7 @@ export function MerchantWebhooksPage() {
               errorMessage={
                 subscriptionsQuery.error instanceof CommunicationsError
                   ? subscriptionsQuery.error.message
-                  : 'Communications Service is currently unreachable (Backend implementation scheduled under Issue #116).'
+                  : 'The webhook service is unreachable right now. Please try again shortly.'
               }
               onRetry={() => { void subscriptionsQuery.refetch() }}
               onInspectDeliveries={(sub) => setInspectingSub(sub)}
@@ -217,7 +227,7 @@ export function MerchantWebhooksPage() {
               </div>
               <div className="spec-item">
                 <dt className="field-label">Retry Policy</dt>
-                <dd className="field-value">5 attempts with exponential backoff & jitter (max 6h)</dd>
+                <dd className="field-value">Up to 5 attempts with exponential backoff and jitter (at most 5 minutes between attempts)</dd>
               </div>
               <div className="spec-item">
                 <dt className="field-label">Terminal Status</dt>
