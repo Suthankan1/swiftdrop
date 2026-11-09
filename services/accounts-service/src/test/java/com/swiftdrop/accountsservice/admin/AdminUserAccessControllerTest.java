@@ -64,6 +64,7 @@ class AdminUserAccessControllerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().enabled()).isFalse();
         verify(identityAdapter).setUserEnabled("customer-sub", false);
+        verify(accounts).setSignInDisabled(profileId, true);
         verify(auditService).recordAudit(eq("customer-sub"), eq("USER"), eq("DISABLE_USER"), eq("ENABLED"),
                 eq("DISABLED"), eq(ReconciliationOutcome.SUCCESS), eq("admin-sub"), any(), any());
     }
@@ -74,6 +75,7 @@ class AdminUserAccessControllerTest {
 
         assertThat(controller.enable(profileId).getBody().enabled()).isTrue();
         verify(identityAdapter).setUserEnabled("customer-sub", true);
+        verify(accounts).setSignInDisabled(profileId, false);
     }
 
     @Test

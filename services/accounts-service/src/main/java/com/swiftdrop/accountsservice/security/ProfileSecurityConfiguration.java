@@ -45,6 +45,8 @@ public class ProfileSecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").hasAnyRole("CUSTOMER", "MERCHANT", "COURIER", "DISPATCHER", "ADMIN")
+                        // Gateway access check: any valid token may ask about its own subject.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/me/access").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/merchants").hasAnyRole("CUSTOMER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/merchants/me").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/merchants/{merchantId}/status").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
