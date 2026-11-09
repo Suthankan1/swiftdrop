@@ -51,6 +51,7 @@ EXPECTED_REQUIRED_GATE_JOBS = [
     "contract-validation",
     "container-security",
     "workflow-regression-tests",
+    "ai-assistant-tests",
 ]
 
 
