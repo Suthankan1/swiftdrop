@@ -17,6 +17,12 @@ export interface CourierAssignmentListProps {
 
 const PAGE_SIZE = 20
 
+/** The courier's local midnight; the server filters on it so every page respects "today". */
+function startOfToday(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
 export function CourierAssignmentList({
   selectedParcelId,
   onSelectParcel,
@@ -65,6 +71,7 @@ export function CourierAssignmentList({
           page: currentPage,
           size: PAGE_SIZE,
           signal: controller.signal,
+          ...(todayOnly ? { assignedSince: startOfToday() } : {}),
         })
         if (active) {
           setPagedData(response)
@@ -102,7 +109,7 @@ export function CourierAssignmentList({
       active = false
       controller.abort()
     }
-  }, [api, currentPage, subject])
+  }, [api, currentPage, subject, todayOnly])
 
   const handleRetry = () => {
     if (!subject) return
@@ -113,6 +120,7 @@ export function CourierAssignmentList({
         activeOnly: true,
         page: currentPage,
         size: PAGE_SIZE,
+        ...(todayOnly ? { assignedSince: startOfToday() } : {}),
       })
       .then((data) => {
         setPagedData(data)
@@ -131,9 +139,8 @@ export function CourierAssignmentList({
   const hasPrevious = Boolean(pagedData?.hasPrevious && currentPage > 0)
   const hasNext = Boolean(pagedData?.hasNext && currentPage < totalPages - 1)
 
-  const visibleItems = todayOnly
-    ? items.filter((item) => new Date(item.assignedAt).toDateString() === new Date().toDateString())
-    : items
+  // The server already applied the "today" filter.
+  const visibleItems = items
 
   return (
     <section className="card assignment-list-section" aria-labelledby="assignment-list-heading">
@@ -167,7 +174,11 @@ export function CourierAssignmentList({
         </div>
       )}
 
-      {!isLoading && !error && items.length === 0 && (
+      {!isLoading && !error && items.length === 0 && todayOnly && (
+        <p className="muted" role="status">No parcels have been assigned to you today.</p>
+      )}
+
+      {!isLoading && !error && items.length === 0 && !todayOnly && (
         <div className="empty-state" role="status">
           <p className="muted">
             No active delivery assignments found for your courier profile.
@@ -176,15 +187,11 @@ export function CourierAssignmentList({
         </div>
       )}
 
-      {!isLoading && !error && items.length > 0 && (
+      {!isLoading && !error && (items.length > 0 || todayOnly) && (
         <label className="assignment-today-filter">
-          <input type="checkbox" checked={todayOnly} onChange={(event) => setTodayOnly(event.target.checked)} />
+          <input type="checkbox" checked={todayOnly} onChange={(event) => { setTodayOnly(event.target.checked); setCurrentPage(0) }} />
           {' '}Assigned today only
         </label>
-      )}
-
-      {!isLoading && !error && items.length > 0 && todayOnly && visibleItems.length === 0 && (
-        <p className="muted" role="status">No parcels on this page were assigned today.</p>
       )}
 
       {!isLoading && !error && items.length > 0 && (

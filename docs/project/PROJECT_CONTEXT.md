@@ -16,7 +16,7 @@ React+TS+Vite SPA → Spring Cloud Gateway: **REST for commands/simple reads, re
 
 ## Actual implementation and deferred targets
 
-The React/Keycloak/Gateway/Accounts initial-login slice and local verification tooling now exist; inspect [STATUS.md](STATUS.md) for dated results and review gaps. Delivery, Pricing, Communications, GraphQL, gRPC, Kafka, SSE, Kubernetes and the AI assistant remain deferred design targets. Preserve the placeholder READMEs in those modules. **Do not treat report/diagram presence as passing software.**
+All six services are implemented and run together locally: Accounts, Pricing, Delivery, Communications, the read-only GraphQL Query API, and the API Gateway, with Keycloak, gRPC (TLS), Kafka with the outbox relay, SSE tracking, and the React SPA. The optional AI delivery assistant (`ai-assistant/`, Gemini function calling plus an MCP endpoint) is implemented and stays disabled until `GEMINI_API_KEY` is set. Helm charts cover all services; the assistant is opt-in there. Inspect [STATUS.md](STATUS.md) for dated results and `tests/README.md` for how each layer is tested, including the opt-in live journeys. **Do not treat report/diagram presence as passing software.**
 
 ## Design constraints
 

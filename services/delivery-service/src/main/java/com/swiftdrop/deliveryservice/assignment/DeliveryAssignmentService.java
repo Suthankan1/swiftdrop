@@ -132,6 +132,19 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
             Collection<String> roles,
             boolean activeOnly,
             Pageable pageable) {
+        return getMyAssignments(courierSub, roles, activeOnly, null, pageable);
+    }
+
+    /**
+     * Courier's own assignments, optionally only those assigned at or after {@code assignedSince}
+     * (the courier's local start of day, sent by the client). Filtering in the query keeps paging correct.
+     */
+    public PagedResponse<AssignmentResponse> getMyAssignments(
+            String courierSub,
+            Collection<String> roles,
+            boolean activeOnly,
+            java.time.Instant assignedSince,
+            Pageable pageable) {
 
         if (courierSub == null || courierSub.isBlank()) {
             throw new AssignmentAccessDeniedException("Authenticated subject is required.");
@@ -155,7 +168,13 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         );
 
         Page<DeliveryAssignment> page;
-        if (activeOnly) {
+        if (assignedSince != null) {
+            page = activeOnly
+                    ? assignmentRepository.findByCourierSubAndActiveTrueAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                            courierSub.trim(), assignedSince, safePageable)
+                    : assignmentRepository.findByCourierSubAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                            courierSub.trim(), assignedSince, safePageable);
+        } else if (activeOnly) {
             page = assignmentRepository.findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
                     courierSub.trim(),
                     safePageable

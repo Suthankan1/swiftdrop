@@ -155,7 +155,7 @@ describe('MerchantOrdersDashboardPage', () => {
     const customerAuth = authenticatedMerchant(merchantA, ['CUSTOMER'])
     renderOrdersDashboard(customerAuth)
     expect(screen.getByText('Access unavailable')).toBeInTheDocument()
-    expect(screen.getByText(/this entry is unavailable for your current role/i)).toBeInTheDocument()
+    expect(screen.getByText(/this page is not available for your role/i)).toBeInTheDocument()
     expect(screen.queryByText(/commercial order dashboard/i)).not.toBeInTheDocument()
   })
 
@@ -196,7 +196,7 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('4')).toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /active dispatches/i })).getByText('2')).toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /^delivered/i })).getByText('1')).toBeInTheDocument()
-    expect(within(screen.getByRole('button', { name: /exceptions & failed/i })).getByText('1')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /^failed/i })).getByText('1')).toBeInTheDocument()
 
     // Canonical Status Labels (rendered via role="status" pills with descriptive titles)
     expect(screen.getByRole('status', { name: /package in transit/i })).toHaveTextContent('In Transit')

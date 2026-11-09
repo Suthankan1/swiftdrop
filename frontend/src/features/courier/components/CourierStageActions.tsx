@@ -13,6 +13,7 @@ import { CourierStatusError } from '../api/statusContracts'
 import type { CourierTransitionStatus } from '../api/statusContracts'
 import type { ProofLookupStatus } from './CourierParcelDetails'
 import { FailedDeliveryReason } from './FailedDeliveryReason'
+import { getStatusPresentation } from '../../customer/components/customerUiUtils'
 
 const NEXT_STAGE: Partial<Record<ParcelStatus, CourierTransitionStatus>> = {
   CREATED: 'PICKED_UP',
@@ -222,7 +223,7 @@ export function CourierStageActions({
 
       setNote('')
       setPreparedFailure(null)
-      announce('success', `${ACTION_LABEL[target]} confirmed. Parcel is now ${response.currentStatus}.`)
+      announce('success', `${ACTION_LABEL[target]} confirmed. Parcel is now ${getStatusPresentation(response.currentStatus).label}.`)
     } catch (error) {
       if (controller.signal.aborted) return
       if (error instanceof CourierStatusError) {
@@ -317,7 +318,7 @@ export function CourierStageActions({
           {nextStage && (
             <div className="stage-command-panel">
               <p>
-                Next permitted stage: <strong>{nextStage}</strong>
+                Next stage: <strong>{getStatusPresentation(nextStage).label}</strong>
               </p>
               <label className="field-label" htmlFor={`status-note-${parcel.parcelId}`}>
                 Operational notes (optional)

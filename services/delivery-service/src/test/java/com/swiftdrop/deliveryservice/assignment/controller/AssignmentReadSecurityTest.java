@@ -154,7 +154,7 @@ class AssignmentReadSecurityTest {
                 List.of(item), 0, 20, 1, 1, false, false
         );
 
-        when(assignmentService.getMyAssignments(eq(COURIER_SUB), any(), eq(true), any()))
+        when(assignmentService.getMyAssignments(eq(COURIER_SUB), any(), eq(true), any(), any()))
                 .thenReturn(pagedResponse);
 
         String token = issueToken(COURIER_SUB, List.of("COURIER"));
@@ -179,7 +179,7 @@ class AssignmentReadSecurityTest {
                 List.of(), 0, 20, 0, 0, false, false
         );
 
-        when(assignmentService.getMyAssignments(eq(COURIER_SUB), any(), anyBoolean(), any()))
+        when(assignmentService.getMyAssignments(eq(COURIER_SUB), any(), anyBoolean(), any(), any()))
                 .thenReturn(emptyResponse);
 
         String token = issueToken(COURIER_SUB, List.of("COURIER"));
@@ -196,7 +196,7 @@ class AssignmentReadSecurityTest {
     @Test
     @DisplayName("Non-courier (CUSTOMER role) calling own-assignment read returns 403 Forbidden")
     void customerCallingAssignmentsReturns403() throws Exception {
-        when(assignmentService.getMyAssignments(any(), any(), anyBoolean(), any()))
+        when(assignmentService.getMyAssignments(any(), any(), anyBoolean(), any(), any()))
                 .thenThrow(new AssignmentAccessDeniedException("Caller does not hold required COURIER role."));
 
         String token = issueToken("customer-user", List.of("CUSTOMER"));
@@ -209,5 +209,25 @@ class AssignmentReadSecurityTest {
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.title").value("Access Denied"))
                 .andExpect(jsonPath("$.code").value("ASSIGNMENT_FORBIDDEN"));
+    }
+
+    @Test
+    @DisplayName("assignedSince is parsed as an instant and passed to the service; invalid values are 400")
+    void assignedSinceFilterIsValidated() throws Exception {
+        PagedResponse<AssignmentResponse> empty = new PagedResponse<>(List.of(), 0, 20, 0, 0, false, false);
+        Instant midnight = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS);
+        when(assignmentService.getMyAssignments(eq(COURIER_SUB), any(), eq(true), eq(midnight), any())).thenReturn(empty);
+        String token = issueToken(COURIER_SUB, List.of("COURIER"));
+
+        mvc.perform(get("/api/v1/assignments/my?activeOnly=true&assignedSince=" + midnight)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+        org.mockito.Mockito.verify(assignmentService).getMyAssignments(eq(COURIER_SUB), any(), eq(true), eq(midnight), any());
+
+        for (String bad : List.of("yesterday", "2001-01-01T00:00:00Z", Instant.now().plus(java.time.Duration.ofDays(5)).toString())) {
+            mvc.perform(get("/api/v1/assignments/my").param("assignedSince", bad)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                    .andExpect(status().isBadRequest());
+        }
     }
 }

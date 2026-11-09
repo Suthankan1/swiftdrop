@@ -340,7 +340,7 @@ class AccountProfilePostgresIT {
     @Test
     void migratesCleanPostgresAndValidatesSchema() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("accounts_db");
     }
 
@@ -441,7 +441,7 @@ class AccountProfilePostgresIT {
                 SELECT column_name FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = 'account_profiles'
                 """, String.class);
-        assertThat(columns).containsExactlyInAnyOrder("id", "keycloak_sub", "email", "full_name", "phone_number", "created_at");
+        assertThat(columns).containsExactlyInAnyOrder("id", "keycloak_sub", "email", "full_name", "phone_number", "created_at", "sign_in_disabled");
         assertThat(jdbc.queryForList("""
                 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
                 """, String.class)).containsExactlyInAnyOrder("account_profiles", "merchants", "staff_profiles", "merchant_api_keys", "identity_reconciliation_audit", "merchant_business_audit", "flyway_schema_history");
@@ -469,5 +469,20 @@ class AccountProfilePostgresIT {
 
     private int count(String subject) {
         return jdbc.queryForObject("SELECT count(*) FROM account_profiles WHERE keycloak_sub = ?", Integer.class, subject);
+    }
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void signInDisabledFlagDefaultsOffAndFollowsAdminChanges() {
+        String subject = "disable-flag-" + java.util.UUID.randomUUID();
+        repository.insertIfAbsent(subject, subject + "@example.test", "Flag User");
+        java.util.UUID id = repository.findByKeycloakSub(subject).orElseThrow().getId();
+
+        assertThat(repository.isSignInDisabled(subject)).isFalse();
+        repository.setSignInDisabled(id, true);
+        assertThat(repository.isSignInDisabled(subject)).isTrue();
+        repository.setSignInDisabled(id, false);
+        assertThat(repository.isSignInDisabled(subject)).isFalse();
+        assertThat(repository.isSignInDisabled("no-such-subject-" + java.util.UUID.randomUUID())).isFalse();
     }
 }

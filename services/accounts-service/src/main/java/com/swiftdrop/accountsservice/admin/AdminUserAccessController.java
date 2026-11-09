@@ -94,11 +94,13 @@ public class AdminUserAccessController {
     }
 
     @PostMapping("/{profileId}/disable")
+    @Transactional
     public ResponseEntity<UserAccessResponse> disable(@PathVariable UUID profileId) {
         return change(profileId, false);
     }
 
     @PostMapping("/{profileId}/enable")
+    @Transactional
     public ResponseEntity<UserAccessResponse> enable(@PathVariable UUID profileId) {
         return change(profileId, true);
     }
@@ -114,6 +116,8 @@ public class AdminUserAccessController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Administrators cannot disable their own account");
         }
         identityAdapter.setUserEnabled(profile.getKeycloakSub(), enabled);
+        // The gateway reads this flag to reject the user's still-valid access tokens right away.
+        accounts.setSignInDisabled(profileId, !enabled);
         if (auditService != null) {
             auditService.recordAudit(profile.getKeycloakSub(), "USER", enabled ? "ENABLE_USER" : "DISABLE_USER",
                     enabled ? "DISABLED" : "ENABLED", enabled ? "ENABLED" : "DISABLED",

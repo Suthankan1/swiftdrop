@@ -105,7 +105,7 @@ export function CustomerHistoryPage() {
       {receiptFeedback && (
         <div
           className={`feedback-banner ${receiptFeedback.type === 'success' ? 'is-success' : 'is-error'}`}
-          role="alert"
+          role={receiptFeedback.type === 'success' ? 'status' : 'alert'}
         >
           <span>{receiptFeedback.message}</span>
           <button
@@ -124,14 +124,14 @@ export function CustomerHistoryPage() {
         <div className="lookup-header">
           <h2 id="lookup-heading">Quick Tracking Lookup</h2>
           <p className="muted small-note">
-            Inspect real-time milestone checkpoints by tracking number (e.g., SWD-20261025-XXXX).
+            Inspect real-time milestone checkpoints by tracking number (e.g. SWD-20261023-A1B2C3).
           </p>
         </div>
         <form onSubmit={handleSearchSubmit} className="lookup-form" role="search">
           <input
             type="text"
             className="lookup-input"
-            placeholder="Enter tracking number (e.g. SWD-20261025-A1B2C3)"
+            placeholder="Enter tracking number (e.g. SWD-20261023-A1B2C3)"
             value={searchTrackingInput}
             onChange={(e) => setSearchTrackingInput(e.target.value)}
             aria-label="Tracking number or parcel reference"

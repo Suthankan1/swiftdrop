@@ -8,8 +8,8 @@ describe('FailedDeliveryReason component', () => {
     render(<FailedDeliveryReason parcelId="parcel-123" trackingNumber="SWD-20261026-0001" />)
 
     expect(screen.getByRole('heading', { name: /record failed delivery reason/i })).toBeInTheDocument()
-    expect(screen.getByRole('note')).toHaveTextContent(/lifecycle boundary notice/i)
-    expect(screen.getByRole('note')).toHaveTextContent(/no status change has been committed to the backend/i)
+    expect(screen.getByRole('note')).toHaveTextContent(/how this works/i)
+    expect(screen.getByRole('note')).toHaveTextContent(/nothing is recorded until you confirm the failure/i)
     expect(screen.getByRole('combobox', { name: /approved failure reason/i })).toBeInTheDocument()
 
     // Confirms approved backend options exist
@@ -47,7 +47,7 @@ describe('FailedDeliveryReason component', () => {
 
     expect(onSubmitReady).toHaveBeenCalledWith('REFUSED_BY_RECIPIENT', 'Recipient declined delivery citing wrong item order.')
     expect(screen.getByRole('status')).toHaveTextContent(/failure reason prepared locally: REFUSED_BY_RECIPIENT/i)
-    expect(screen.getByRole('status')).toHaveTextContent(/not committed to backend/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/confirm the failure below to record it/i)
   })
 
   it('disables controls when disabled prop is true', () => {

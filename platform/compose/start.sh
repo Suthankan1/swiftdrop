@@ -108,16 +108,29 @@ fi
 # ------------------------------------------------------------------------------
 echo ""
 echo "[3/6] Verifying host loopback port availability..."
+# Fails before starting anything when a port or container name belongs to something other than this stack
+# (for example the separate swiftdrop-dependencies project, which uses the same container names).
+PREFLIGHT_PROBLEMS=0
 check_port() {
   local port="$1"
   local svc="$2"
   local container="$3"
+  local owner_project=""
+  if docker ps -a --format '{{.Names}}' | grep -qx "${container}"; then
+    owner_project="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "${container}" 2>/dev/null || true)"
+    if [ "${owner_project}" != "swiftdrop" ]; then
+      echo "  [CONFLICT] Container name ${container} is already used by project '${owner_project:-none}'."
+      echo "             Stop that project first, e.g.: docker compose -p ${owner_project:-<project>} down  (keep -v off to keep its data)"
+      PREFLIGHT_PROBLEMS=$((PREFLIGHT_PROBLEMS + 1))
+      return
+    fi
+  fi
   if lsof -i ":${port}" -sTCP:LISTEN >/dev/null 2>&1; then
-    if docker ps --filter "name=${container}" --format '{{.Names}}' | grep -qx "${container}"; then
-      echo "  Port ${port} (${svc}) is bound by active container ${container}."
+    if [ "${owner_project}" = "swiftdrop" ] && docker ps --format '{{.Names}}' | grep -qx "${container}"; then
+      echo "  Port ${port} (${svc}) is bound by this stack's running container ${container}."
     else
-      echo "  [CONFLICT] Port ${port} (${svc}) is occupied by another process."
-      echo "  Checking if legacy container can be cleanly stopped or port adjusted..."
+      echo "  [CONFLICT] Port ${port} (${svc}) is used by another process. Free it, or change the port in ${ENV_FILE}."
+      PREFLIGHT_PROBLEMS=$((PREFLIGHT_PROBLEMS + 1))
     fi
   else
     echo "  Port ${port} (${svc}) is free."
@@ -133,6 +146,13 @@ check_port "${KEYCLOAK_DB_PORT:-5437}" "Keycloak DB" "swiftdrop-keycloak-postgre
 check_port "${BUSINESS_DB_PORT:-5439}" "Business DB" "swiftdrop-business-postgres"
 check_port "${KAFKA_PORT:-9092}" "Kafka External" "swiftdrop-kafka"
 check_port "${MINIO_PORT:-9000}" "MinIO API" "swiftdrop-minio"
+
+if [ "${PREFLIGHT_PROBLEMS}" -gt 0 ] && [ "${SWIFTDROP_ALLOW_PORT_CONFLICTS:-0}" != "1" ]; then
+  echo ""
+  echo "  [STOP] ${PREFLIGHT_PROBLEMS} conflict(s) found; nothing was started."
+  echo "         Fix them as shown above, or set SWIFTDROP_ALLOW_PORT_CONFLICTS=1 to try anyway."
+  exit 1
+fi
 
 # ------------------------------------------------------------------------------
 # 4. Phase 1: Start Stateful Dependencies (Databases, Kafka, MinIO, Mailpit)

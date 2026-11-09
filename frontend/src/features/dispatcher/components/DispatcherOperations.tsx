@@ -18,6 +18,13 @@ export function DispatcherOperations() {
   const [pending, setPending] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
   const command = useRef<AbortController | null>(null)
+  const assignmentPanel = useRef<HTMLElement>(null)
+  // Bring the confirm panel into view and move focus to it when a parcel is selected (audit 92).
+  useEffect(() => {
+    if (!selected || !assignmentPanel.current) return
+    assignmentPanel.current.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+    assignmentPanel.current.querySelector<HTMLElement>('h2')?.focus()
+  }, [selected])
   const api = createDispatcherApi({ getAccessToken: auth.getAccessToken })
   const queryKey = ['private', 'dispatcher-dashboard', subject] as const
   const query = useQuery({
@@ -94,9 +101,12 @@ export function DispatcherOperations() {
               key={z}
               size="sm"
               variant={zoneFilter === z ? 'primary' : 'tonal'}
+              aria-pressed={zoneFilter === z}
               style={{ minHeight: '28px', padding: '2px 8px', fontSize: '0.78rem' }}
               onClick={() => { setZoneFilter(z); setPage(0); clear() }}
             >
+              {/* Selected state is shown by a check mark and aria-pressed, not colour alone (audit 97). */}
+              {zoneFilter === z && <span aria-hidden="true">✓ </span>}
               {z === 'ALL' ? 'All Zones' : z}
             </Button>
           ))}
@@ -150,8 +160,8 @@ export function DispatcherOperations() {
           })}
         </ul>
       </section>
-      {selected && <section className="card dispatcher-assignment" aria-labelledby="assignment-heading">
-        <h2 id="assignment-heading" className="section-heading">Confirm courier assignment</h2>
+      {selected && <section ref={assignmentPanel} className="card dispatcher-assignment" aria-labelledby="assignment-heading">
+        <h2 id="assignment-heading" className="section-heading" tabIndex={-1}>Confirm courier assignment</h2>
         <p>{selected.trackingNumber} · Parcel {selected.parcelId} · Version {selected.version}</p>
         <p>{selected.pickupZone} → {selected.dropoffZone} · {selected.weightKg} kg · {selected.sizeCategory}</p>
         <label htmlFor="assignment-courier">Eligible courier</label>

@@ -29,7 +29,10 @@ function MainNavigation() {
         <nav id="main-navigation" className={`main-navigation${menuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
           <NavLink end to="/" className="nav-link" onClick={() => setMenuOpen(false)}>Home</NavLink>
           <NavLink to="/tracking" className="nav-link" onClick={() => setMenuOpen(false)}>Track parcel</NavLink>
-          <NavLink to="/customer" className="nav-link" onClick={() => setMenuOpen(false)}>Customer space <span aria-hidden="true">↗</span></NavLink>
+          {/* Visitors see it as the way in; signed-in users only when they actually have the customer role. */}
+          {(auth.snapshot.status !== 'authenticated' || auth.snapshot.roles.includes('CUSTOMER')) && (
+            <NavLink to="/customer" className="nav-link" onClick={() => setMenuOpen(false)}>Customer space <span aria-hidden="true">↗</span></NavLink>
+          )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('MERCHANT') && (
             <NavLink to="/merchant" className="nav-link" onClick={() => setMenuOpen(false)}>Merchant space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
@@ -76,7 +79,7 @@ export function AppLayout() {
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <MainNavigation />
-      <main id="main-content" tabIndex={-1}><Outlet /></main>
+      <main id="main-content" className="app-main-content" tabIndex={-1}><Outlet /></main>
       <footer className="site-footer"><div className="footer-inner">
         <Link className="footer-brand" to="/">SwiftDrop.</Link><span>Moving things. Connecting people.</span>
         <span className="footer-location">Made for the journey ahead <span aria-hidden="true">↗</span></span>

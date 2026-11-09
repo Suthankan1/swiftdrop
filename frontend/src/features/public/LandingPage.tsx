@@ -33,7 +33,7 @@ export function LandingPage() {
               <input
                 type="text"
                 className="hero-track-input"
-                placeholder="Enter tracking number (e.g. TRK-2026-...)"
+                placeholder="Enter tracking number (e.g. SWD-20261023-A1B2C3)"
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 aria-label="Parcel tracking number"
@@ -76,7 +76,7 @@ export function LandingPage() {
           <div className="portal-card">
             <div className="portal-card-tag">Customer Space</div>
             <h3>Personal & On-Demand</h3>
-            <p>Instant pricing quotes across 5 delivery zones, one-click booking, live parcel updates, and downloadable delivery receipts.</p>
+            <p>Instant pricing quotes across our delivery zones, one-click booking, live parcel updates, and downloadable delivery receipts.</p>
             <Link to="/customer" className="button button-tonal portal-cta">
               Customer portal <ArrowIcon diagonal />
             </Link>
@@ -92,7 +92,7 @@ export function LandingPage() {
           <div className="portal-card">
             <div className="portal-card-tag">Courier Dispatch</div>
             <h3>Operational Agility</h3>
-            <p>Assigned route rosters, dynamic status transitions, signature capture, and secure tamper-evident photo proof-of-delivery.</p>
+            <p>Assigned route rosters, stage-by-stage status updates, recipient name capture, and photo proof of delivery.</p>
             <Link to="/courier" className="button button-tonal portal-cta">
               Courier workspace <ArrowIcon diagonal />
             </Link>
@@ -102,7 +102,7 @@ export function LandingPage() {
 
       <section className="introduction page-container" aria-labelledby="introduction-title">
         <div className="introduction-heading"><p className="eyebrow">A GOOD PLACE TO START</p><h2 id="introduction-title">Your journey.<br />A shared beginning.</h2></div>
-        <div className="introduction-copy"><p>Every delivery starts with a person. Your customer space brings that idea home, with a dedicated place for your profile.</p><p className="muted">This is our first step. Account sign-in and connected delivery services are coming next.</p><Link className="text-link" to="/customer">Take a look around <ArrowIcon diagonal /></Link></div>
+        <div className="introduction-copy"><p>Every delivery starts with a person. Your customer space brings that idea home, with a dedicated place for your profile.</p><p className="muted">Sign in to book deliveries, follow them live and download receipts.</p><Link className="text-link" to="/customer">Take a look around <ArrowIcon diagonal /></Link></div>
       </section>
       <section className="welcome-banner page-container" aria-label="Customer space introduction"><div className="welcome-banner-inner">
         <div className="welcome-symbol" aria-hidden="true">↗</div><div><p className="eyebrow">THERE’S A PLACE FOR YOU HERE</p><h2>Your next chapter starts with you.</h2></div><Link className="button button-light" to="/customer">Customer space <ArrowIcon /></Link>

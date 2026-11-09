@@ -20,6 +20,7 @@ import java.time.Instant;
 /**
  * Standardized RFC 7807 ProblemDetail handler for receipt operations.
  */
+@org.springframework.core.annotation.Order(0)
 @RestControllerAdvice(basePackageClasses = ReceiptController.class)
 public class ReceiptProblemHandler {
 

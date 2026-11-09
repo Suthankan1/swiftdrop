@@ -28,6 +28,7 @@ import java.time.Instant;
  * Controller advice translating webhook domain exceptions into RFC 7807 ProblemDetail responses.
  * Strictly avoids leaking internal stack traces, DB details, or plaintext secret references.
  */
+@org.springframework.core.annotation.Order(0)
 @RestControllerAdvice(basePackageClasses = WebhookSubscriptionController.class)
 public class WebhookProblemHandler {
 

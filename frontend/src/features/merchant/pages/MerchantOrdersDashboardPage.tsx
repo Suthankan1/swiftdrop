@@ -95,7 +95,7 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
             parcelId: item.parcelId,
             trackingNumber: item.trackingNumber,
             currentStatus: item.currentStatus as MerchantOrderSummaryItem['currentStatus'],
-            weightKg: Number.NaN,
+            weightKg: typeof item.weightKg === 'number' ? item.weightKg : Number.NaN,
             feeMinorUnits: item.amountMinorUnits,
             currency: item.currency,
             createdAt: item.createdAt,

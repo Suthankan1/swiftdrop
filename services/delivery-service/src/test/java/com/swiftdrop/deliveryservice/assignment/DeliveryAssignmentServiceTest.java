@@ -608,4 +608,32 @@ class DeliveryAssignmentServiceTest {
         verifyNoInteractions(parcelRepository);
         verifyNoInteractions(assignmentAuditRepository);
     }
+
+    @org.junit.jupiter.api.Test
+    void myAssignmentsSinceUsesTheDateBoundedQueries() {
+        DeliveryAssignmentRepository repo = org.mockito.Mockito.mock(DeliveryAssignmentRepository.class);
+        DeliveryAssignmentService service = new DeliveryAssignmentService(repo,
+                org.mockito.Mockito.mock(com.swiftdrop.deliveryservice.core.ParcelRepository.class),
+                org.mockito.Mockito.mock(CourierEligibilityClient.class));
+        java.time.Instant since = java.time.Instant.parse("2026-11-09T00:00:00Z");
+        org.springframework.data.domain.Page<DeliveryAssignment> empty = org.springframework.data.domain.Page.empty();
+        org.mockito.Mockito.when(repo.findByCourierSubAndActiveTrueAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                org.mockito.ArgumentMatchers.eq("courier-1"), org.mockito.ArgumentMatchers.eq(since), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(empty);
+        org.mockito.Mockito.when(repo.findByCourierSubAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                org.mockito.ArgumentMatchers.eq("courier-1"), org.mockito.ArgumentMatchers.eq(since), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(empty);
+
+        service.getMyAssignments("courier-1", java.util.List.of("COURIER"), true, since,
+                org.springframework.data.domain.PageRequest.of(0, 20));
+        service.getMyAssignments("courier-1", java.util.List.of("COURIER"), false, since,
+                org.springframework.data.domain.PageRequest.of(0, 20));
+
+        org.mockito.Mockito.verify(repo).findByCourierSubAndActiveTrueAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                org.mockito.ArgumentMatchers.eq("courier-1"), org.mockito.ArgumentMatchers.eq(since), org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(repo).findByCourierSubAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                org.mockito.ArgumentMatchers.eq("courier-1"), org.mockito.ArgumentMatchers.eq(since), org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(repo, org.mockito.Mockito.never()).findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
 }

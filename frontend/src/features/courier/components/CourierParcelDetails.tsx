@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { getStatusPresentation } from '../../customer/components/customerUiUtils'
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
@@ -257,7 +258,7 @@ export function CourierParcelDetails({
                   }
                   pulse={parcel.currentStatus === 'IN_TRANSIT' || parcel.currentStatus === 'OUT_FOR_DELIVERY'}
                 >
-                  {parcel.currentStatus}
+                  {getStatusPresentation(parcel.currentStatus).label}
                 </Badge>
                 <Badge variant="neutral">
                   v{parcel.version}
@@ -395,6 +396,7 @@ export function CourierParcelDetails({
               </div>
             )}
 
+            {parcel.currentStatus === 'OUT_FOR_DELIVERY' || existingProof ? (
             <ProofCaptureForm
               key={`${subject}-${parcel.parcelId}-${existingProof?.proofId || 'new'}`}
               parcel={parcel}
@@ -427,6 +429,11 @@ export function CourierParcelDetails({
                   })
               }}
             />
+            ) : (
+              <p className="muted" role="note">
+                Proof of delivery opens once the parcel is Out for Delivery.
+              </p>
+            )}
           </section>
         </>
       )}

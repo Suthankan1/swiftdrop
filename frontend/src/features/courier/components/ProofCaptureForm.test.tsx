@@ -90,7 +90,7 @@ describe('ProofCaptureForm component', () => {
     expect(screen.getByRole('heading', { name: /capture handover evidence/i })).toBeInTheDocument()
     expect(screen.getByText('SWD-20261026-0001')).toBeInTheDocument()
     expect(screen.getByText('45 Kandy Road, Gampaha')).toBeInTheDocument()
-    expect(screen.getAllByText('OUT_FOR_DELIVERY').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Out for Delivery').length).toBeGreaterThanOrEqual(1)
 
     const submitBtn = screen.getByRole('button', { name: /submit proof of delivery/i })
 
@@ -108,7 +108,7 @@ describe('ProofCaptureForm component', () => {
     )
 
     expect(
-      screen.getByText(/proof upload requires parcel status OUT_FOR_DELIVERY/i),
+      screen.getByText(/proof can be added once the parcel is out for delivery/i),
     ).toBeInTheDocument()
 
     const fileInput = document.getElementById(
@@ -128,7 +128,7 @@ describe('ProofCaptureForm component', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      /parcel is in terminal state \(DELIVERED\)\. proof capture is closed\./i,
+      /this parcel is delivered, so proof can no longer be added\./i,
     )
   })
 

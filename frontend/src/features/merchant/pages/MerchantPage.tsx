@@ -63,7 +63,7 @@ export function MerchantPage() {
         <aside className="card merchant-note" aria-labelledby="merchant-note-heading">
           <h2 id="merchant-note-heading">Merchant operations</h2>
           <p className="muted">
-            Batch order dispatching, shipping labels, and real-time webhook tracking will arrive in the upcoming delivery milestone.
+            Book orders one by one or by CSV upload, manage API keys, and subscribe to delivery webhooks from the tabs above.
           </p>
           <Link
             to="/merchant/orders"

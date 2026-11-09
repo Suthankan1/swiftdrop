@@ -173,6 +173,16 @@ describe('shared application routes', () => {
     }
   })
 
+  it.each<{ roles: readonly SwiftDropRole[]; visible: boolean }>([
+    { roles: ['CUSTOMER'], visible: true }, { roles: ['COURIER'], visible: false },
+    { roles: ['DISPATCHER', 'ADMIN'], visible: false }, { roles: ['MERCHANT', 'CUSTOMER'], visible: true },
+  ])('shows Customer space only to customers ($roles)', ({ roles, visible }) => {
+    renderRoute('/login', { ...anonymousAuth, snapshot: { status: 'authenticated', subject: 'nav-subject', roles } })
+    const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))
+    if (visible) expect(nav.getByRole('link', { name: /customer space/i })).toBeInTheDocument()
+    else expect(nav.queryByRole('link', { name: /customer space/i })).not.toBeInTheDocument()
+  })
+
   it.each(['unauthenticated', 'loading'] as const)('hides both staff navigation entries while %s', (status) => {
     renderRoute('/', { ...anonymousAuth, snapshot: { status, subject: null, roles: [] } })
     const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))

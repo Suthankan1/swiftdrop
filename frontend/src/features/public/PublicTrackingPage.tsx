@@ -322,7 +322,7 @@ function PublicTrackingView({ routeTrackingNumber }: { routeTrackingNumber?: str
                   const itemPresentation = getStatusPresentation(item.status)
                   const hasValidTime = !Number.isNaN(Date.parse(item.occurredAt))
                   return (
-                    <li key={`${item.status}-${item.occurredAt}-${idx}`} className="timeline-item" tabIndex={0}>
+                    <li key={`${item.status}-${item.occurredAt}-${idx}`} className="timeline-item">
                       <div className="timeline-marker" aria-hidden="true" />
                       <div className="timeline-content">
                         <div className="timeline-header">

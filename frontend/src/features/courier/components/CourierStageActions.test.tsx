@@ -135,7 +135,7 @@ describe('CourierStageActions', () => {
       }),
       expect.any(AbortSignal),
     )
-    expect(await screen.findByRole('status')).toHaveTextContent(/confirmed.*PICKED_UP/i)
+    expect(await screen.findByRole('status')).toHaveTextContent(/confirmed.*Picked Up/i)
   })
 
   it('filters failure reasons by courier actor and stage, then sends prepared reason and notes in the real command', async () => {

@@ -91,6 +91,8 @@ export interface CustomerDeliverySummary {
   pickupAddress?: string
   dropoffAddress?: string
   recipientCity?: string
+  /** Present when the list endpoint returns full parcel rows. */
+  weightKg?: number
   createdAt: string
   updatedAt?: string
 }

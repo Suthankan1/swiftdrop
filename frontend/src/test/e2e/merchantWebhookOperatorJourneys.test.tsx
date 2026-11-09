@@ -338,7 +338,7 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('4')).toBeInTheDocument()
       expect(within(screen.getByRole('button', { name: /active dispatches/i })).getByText('2')).toBeInTheDocument()
       expect(within(screen.getByRole('button', { name: /^delivered/i })).getByText('1')).toBeInTheDocument()
-      expect(within(screen.getByRole('button', { name: /exceptions & failed/i })).getByText('1')).toBeInTheDocument()
+      expect(within(screen.getByRole('button', { name: /^failed/i })).getByText('1')).toBeInTheDocument()
 
       // 3. Orders Table Content
       expect(screen.getByText('SWD-20261028-A102')).toBeInTheDocument()
@@ -783,7 +783,7 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
 
       expect(await screen.findByRole('heading', { name: /access unavailable/i })).toBeInTheDocument()
       expect(
-        screen.getByText(/this entry is unavailable for your current role/i),
+        screen.getByText(/this page is not available for your role/i),
       ).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: /review merchant applications/i })).not.toBeInTheDocument()
     })

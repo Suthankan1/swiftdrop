@@ -2126,3 +2126,40 @@ main:focus { outline: none; }
     height: calc(100vh - 100px);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Compact page headings (audit 78, 89): the heading class sits on <header> wrappers too, so size the h1 only
+   and give subtitles normal spacing. Work pages start closer to the top, especially on phones.
+   --------------------------------------------------------------------------- */
+.page-heading, .staff-heading { font-size: inherit; letter-spacing: normal; margin-bottom: 20px; }
+.page-heading h1, h1.page-heading, .staff-heading h1 {
+  font-size: clamp(26px, 2.6vw, 38px); line-height: 1.15; letter-spacing: -0.6px; margin-bottom: 8px;
+}
+.page-heading p, .page-heading .muted, .staff-heading p, .staff-heading .muted {
+  font-size: 15px; letter-spacing: normal; line-height: 1.6; max-width: 640px;
+}
+.page-heading .eyebrow, .staff-heading .eyebrow { letter-spacing: 1.2px; margin-bottom: 6px; }
+.customer-page, .courier-page, .merchant-page, .staff-page { padding-block: 28px 64px; }
+@media (max-width: 640px) {
+  .page-heading h1, h1.page-heading, .staff-heading h1 { font-size: 24px; letter-spacing: -0.3px; }
+  .page-heading br, .staff-heading br { display: none; }
+  .customer-page, .courier-page, .merchant-page, .staff-page { padding-block: 16px 48px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Assistant placement (audit 88): reserve room under page content for the floating button, and on phones use a
+   compact icon button and a shorter bottom sheet so the page stays readable behind it.
+   --------------------------------------------------------------------------- */
+.app-main-content { padding-bottom: 80px; }
+.ai-assistant-drawer { height: min(560px, calc(100vh - 120px)); }
+@media (max-width: 640px) {
+  .app-main-content { padding-bottom: 72px; }
+  .ai-assistant-launcher { right: 16px; bottom: 16px; padding: 12px; }
+  .ai-assistant-launcher .ai-launcher-text {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .ai-assistant-drawer { right: 8px; left: 8px; bottom: 72px; width: auto; height: min(70vh, 520px); }
+}
+
+/* The delivery stepper is an ordered list for screen readers; keep its visual layout (audit 96). */
+ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }

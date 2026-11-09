@@ -36,4 +36,13 @@ public interface AccountProfileRepository extends Repository<AccountProfile, UUI
             nativeQuery = true)
     int updateContactDetails(@Param("id") UUID id, @Param("fullName") String fullName,
                              @Param("phoneNumber") String phoneNumber);
+
+    @Modifying
+    @Query(value = "UPDATE account_profiles SET sign_in_disabled = :disabled WHERE id = :id", nativeQuery = true)
+    int setSignInDisabled(@Param("id") UUID id, @Param("disabled") boolean disabled);
+
+    /** True only for a profile an admin has disabled; unknown subjects are not disabled. */
+    @Query(value = "SELECT COALESCE((SELECT sign_in_disabled FROM account_profiles WHERE keycloak_sub = :subject), FALSE)",
+            nativeQuery = true)
+    boolean isSignInDisabled(@Param("subject") String subject);
 }

@@ -43,6 +43,7 @@ export function CustomerHistoryTable({
         <p className="muted">
           Your booked deliveries, live journey milestones, and official PDF receipts will be recorded here.
         </p>
+        <a className="button button-primary button-sm" href="/customer/quote">Book your first delivery</a>
       </div>
     )
   }
@@ -81,7 +82,7 @@ export function CustomerHistoryTable({
                   <td className="text-muted">{formatDateTime(item.createdAt)}</td>
                   <td>
                     <span className="route-summary">
-                      {item.pickupAddress || 'Origin'} &rarr; {item.dropoffAddress || item.recipientCity || 'Destination'}
+                      {item.pickupAddress || 'Pickup not recorded'} &rarr; {item.dropoffAddress || item.recipientCity || 'Drop-off not recorded'}
                     </span>
                   </td>
                   <td>

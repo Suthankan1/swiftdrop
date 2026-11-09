@@ -127,7 +127,13 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
         role="dialog"
         aria-modal="true"
         aria-labelledby="bulk-upload-title"
+        tabIndex={-1}
+        ref={(node) => { if (node && !node.contains(document.activeElement)) node.focus() }}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          // Escape closes the dialog unless an import is running (audit 95).
+          if (e.key === 'Escape' && !importing) { e.preventDefault(); cancelled.current = true; onClose() }
+        }}
       >
         <div className="modal-header">
           <div>
@@ -192,7 +198,8 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
             <p style={{ fontWeight: 600, margin: '0 0 4px 0' }}>Drop your CSV file here, or browse</p>
             <p className="muted" style={{ fontSize: '0.82rem', margin: 0 }}>Template format, up to 500 rows and 1 MB</p>
             <div style={{ marginTop: '16px' }}>
-              <Button type="button" variant="secondary" size="sm">
+              <Button type="button" variant="secondary" size="sm"
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
                 Choose CSV File
               </Button>
             </div>
