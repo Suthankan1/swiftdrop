@@ -831,3 +831,93 @@ spec:
           configMap:
             name: swiftdrop-keycloak-realm
 {{- end }}
+
+{{- if .Values.aiAssistant.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-assistant
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "ai-assistant") | nindent 4 }}
+spec:
+  replicas: {{ .Values.aiAssistant.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "ai-assistant") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swiftdrop.componentLabels" (dict "context" . "component" "ai-assistant") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: swiftdrop-ai-assistant-sa
+      {{- include "swiftdrop.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ai-assistant
+          image: {{ include "swiftdrop.image" .Values.aiAssistant.image }}
+          imagePullPolicy: {{ .Values.aiAssistant.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.aiAssistant.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8086
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: swiftdrop-ai-assistant-config
+          env:
+            # Optional: without the Secret the assistant starts disabled (keyword mode in the frontend).
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aiAssistant.secretRefs.geminiSecretName }}
+                  key: {{ .Values.aiAssistant.secretRefs.geminiKeyKey }}
+                  optional: true
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.aiAssistant.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.aiAssistant.probes.readiness.path }}
+              port: {{ .Values.aiAssistant.probes.readiness.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.aiAssistant.probes.liveness.path }}
+              port: {{ .Values.aiAssistant.probes.liveness.port }}
+            initialDelaySeconds: {{ .Values.aiAssistant.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.aiAssistant.probes.liveness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.aiAssistant.probes.readiness.path }}
+              port: {{ .Values.aiAssistant.probes.readiness.port }}
+            initialDelaySeconds: {{ .Values.aiAssistant.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.aiAssistant.probes.readiness.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+{{- end }}

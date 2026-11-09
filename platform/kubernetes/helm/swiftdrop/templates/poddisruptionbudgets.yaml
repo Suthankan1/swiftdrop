@@ -135,3 +135,19 @@ spec:
     matchLabels:
       {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "keycloak") | nindent 6 }}
 {{- end }}
+
+{{- if .Values.aiAssistant.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ai-assistant-budget
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "ai-assistant") | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "ai-assistant") | nindent 6 }}
+{{- end }}
