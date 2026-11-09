@@ -282,11 +282,17 @@ public class DispatcherDashboardResolver implements RootQueryResolver {
             ));
         }
 
-        // 8. Delivery: List Unassigned Parcels
+        // 8. Delivery: List Unassigned Parcels. A scoped dispatcher is always limited to their own zone;
+        // an unscoped dispatcher or admin may narrow the queue with the optional zone argument.
+        String requestedZone = environment.getArgument("zone") instanceof String z ? z.trim().toUpperCase(java.util.Locale.ROOT) : "";
+        if (!requestedZone.isEmpty() && !requestedZone.matches("[A-Z0-9_]{1,32}")) {
+            throw Status.INVALID_ARGUMENT.withDescription("zone must be a zone code").asRuntimeException();
+        }
+        String queueZone = !assignedZone.isBlank() ? assignedZone : requestedZone;
         ListUnassignedParcelsRequest parcelReq = ListUnassignedParcelsRequest.newBuilder()
                 .setPage(page)
                 .setPageSize(size)
-                .setZone(assignedZone)
+                .setZone(queueZone)
                 .build();
 
         ListUnassignedParcelsResponse parcelRes = deliveryClient.delivery(

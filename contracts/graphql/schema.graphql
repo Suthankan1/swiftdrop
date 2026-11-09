@@ -30,8 +30,10 @@ type Query {
   """
   Dispatcher operational queue: unassigned parcels, active courier workloads.
   Requires role: DISPATCHER or ADMIN.
+  Optional zone (a zone code such as ZONE_1) filters the queue server-side by pickup or drop-off zone.
+  A dispatcher with an assigned operational zone is always limited to that zone.
   """
-  dispatcherDashboard(pagination: PaginationInput): DispatcherDashboard!
+  dispatcherDashboard(pagination: PaginationInput, zone: String): DispatcherDashboard!
 
   """
   System administrative summary: platform overview, merchant onboarding queue, delivery outcome totals.
