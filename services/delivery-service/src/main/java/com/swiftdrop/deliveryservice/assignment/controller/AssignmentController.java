@@ -186,15 +186,30 @@ public class AssignmentController {
             @RequestParam(name = "activeOnly", defaultValue = "true") boolean activeOnly,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "assignedSince", required = false) String assignedSince,
             Authentication authentication) {
 
         String courierSub = extractSubject(authentication);
         Collection<String> roles = extractRoles(authentication);
 
+        java.time.Instant since = null;
+        if (assignedSince != null && !assignedSince.isBlank()) {
+            try {
+                since = java.time.Instant.parse(assignedSince.trim());
+            } catch (java.time.format.DateTimeParseException ex) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "assignedSince must be an ISO-8601 instant, e.g. 2026-11-09T00:00:00Z");
+            }
+            java.time.Instant now = java.time.Instant.now();
+            if (since.isAfter(now.plus(java.time.Duration.ofDays(1))) || since.isBefore(now.minus(java.time.Duration.ofDays(366)))) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "assignedSince must be within the last year");
+            }
+        }
+
         PagedResponse<AssignmentResponse> response = assignmentService.getMyAssignments(
                 courierSub,
                 roles,
                 activeOnly,
+                since,
                 PageRequest.of(page, size)
         );
 
@@ -213,7 +228,7 @@ public class AssignmentController {
             return ResponseEntity.ok(assignmentService.listAssignments(activeOnly,
                     PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)))));
         }
-        return getMyAssignments(activeOnly, page, size, authentication);
+        return getMyAssignments(activeOnly, page, size, null, authentication);
     }
 
     private String extractSubject(Authentication authentication) {

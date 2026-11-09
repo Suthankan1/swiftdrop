@@ -29,6 +29,12 @@ public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssi
 
     Page<DeliveryAssignment> findByCourierSubOrderByAssignedAtDesc(String courierSub, Pageable pageable);
 
+    Page<DeliveryAssignment> findByCourierSubAndActiveTrueAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+            String courierSub, java.time.Instant since, Pageable pageable);
+
+    Page<DeliveryAssignment> findByCourierSubAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+            String courierSub, java.time.Instant since, Pageable pageable);
+
     Page<DeliveryAssignment> findByActiveTrue(Pageable pageable);
 
     List<DeliveryAssignment> findByParcelIdInAndActiveTrue(java.util.Collection<UUID> parcelIds);
