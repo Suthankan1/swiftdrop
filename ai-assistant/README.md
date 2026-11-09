@@ -23,6 +23,21 @@ The assistant cannot book, cancel or change anything.
   Anonymous calls are allowed; a bearer token, if sent, is validated and used for `list_my_parcels`.
   The gateway rate-limits these calls per IP because each one costs Gemini tokens.
 
+## MCP (Model Context Protocol)
+
+`POST /api/v1/assistant/mcp` speaks MCP over Streamable HTTP (JSON-RPC 2.0, JSON responses; protocol versions
+2025-06-18, 2025-03-26 and 2024-11-05). It exposes the same four read-only tools, so an MCP client such as an IDE or
+desktop AI app can use SwiftDrop data under the same rules: public tools anonymously, `list_my_parcels` only with the
+user's own `Authorization: Bearer` token. It does not need a Gemini key. Supported methods: `initialize`, `ping`,
+`tools/list`, `tools/call`; notifications get `202 Accepted`. `GET` returns `405` (no server-initiated stream).
+The gateway applies the assistant rate limit to this path too.
+
+Example client entry (URL-based MCP server):
+
+```json
+{ "mcpServers": { "swiftdrop": { "url": "http://localhost:8080/api/v1/assistant/mcp" } } }
+```
+
 ## Configuration
 
 | Variable | Default | Notes |

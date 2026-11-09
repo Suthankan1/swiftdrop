@@ -17,6 +17,9 @@ public class AssistantSecurityConfiguration {
     public ServiceSecurityCustomizer assistantSecurityCustomizer() {
         return auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/v1/assistant/status").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/assistant/chat").permitAll();
+                .requestMatchers(HttpMethod.POST, "/api/v1/assistant/chat").permitAll()
+                // MCP: same tools, same caller-scoped access; GET answers 405 (no server-initiated stream).
+                .requestMatchers(HttpMethod.POST, "/api/v1/assistant/mcp").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/assistant/mcp").permitAll();
     }
 }
