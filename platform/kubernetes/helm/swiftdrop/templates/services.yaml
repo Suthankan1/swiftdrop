@@ -266,3 +266,23 @@ spec:
       port: 1025
       targetPort: 1025
 {{- end }}
+
+{{- if .Values.aiAssistant.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-assistant
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "ai-assistant") | nindent 4 }}
+spec:
+  type: {{ .Values.aiAssistant.service.type }}
+  selector:
+    {{- include "swiftdrop.selectorLabels" (dict "context" . "component" "ai-assistant") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.aiAssistant.service.httpPort }}
+      targetPort: 8086
+      protocol: TCP
+{{- end }}

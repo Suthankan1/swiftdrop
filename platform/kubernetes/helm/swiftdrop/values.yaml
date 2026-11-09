@@ -132,6 +132,7 @@ apiGateway:
     deliveryServiceUrl: http://delivery-service.swiftdrop-apps.svc.cluster.local:8083
     communicationsServiceUrl: http://communications-service.swiftdrop-apps.svc.cluster.local:8084
     graphqlServiceUrl: http://graphql-query-service.swiftdrop-apps.svc.cluster.local:8085
+    aiAssistantUrl: http://ai-assistant.swiftdrop-apps.svc.cluster.local:8086
     corsAllowedOrigin: "https://swiftdrop.local:18443,http://localhost:5173,http://localhost:3000"
     javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
 
@@ -419,6 +420,63 @@ graphql:
     keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
     jwtAudience: swiftdrop-api
     javaToolOptions: "-XX:+UseContainerSupport -Xms96m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+
+# ------------------------------------------------------------------------------
+# 7b. AI delivery assistant (optional, opt-in)
+# Enable after the image is published and pinned by digest, and the Gemini key Secret exists:
+#   kubectl -n swiftdrop-apps create secret generic ai-assistant-gemini --from-literal=api-key=...
+# Without the Secret the assistant runs disabled and the frontend uses keyword mode.
+# ------------------------------------------------------------------------------
+aiAssistant:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ghcr.io/suthankan1/swiftdrop-ai-assistant
+    tag: local
+    digest: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 8086
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  probes:
+    liveness:
+      path: /actuator/health
+      port: 8086
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readiness:
+      path: /actuator/health
+      port: 8086
+      initialDelaySeconds: 10
+      periodSeconds: 5
+  config:
+    serverPort: 8086
+    geminiModel: gemini-2.5-flash
+    pricingServiceUrl: http://pricing-service.swiftdrop-apps.svc.cluster.local:8082
+    deliveryServiceUrl: http://delivery-service.swiftdrop-apps.svc.cluster.local:8083
+    keycloakIssuerUri: https://swiftdrop.local:18443/realms/swiftdrop
+    keycloakJwksUri: http://keycloak.swiftdrop-identity.svc.cluster.local:8080/realms/swiftdrop/protocol/openid-connect/certs
+    jwtAudience: swiftdrop-api
+    javaToolOptions: "-XX:+UseContainerSupport -Xms64m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+  secretRefs:
+    geminiSecretName: ai-assistant-gemini
+    geminiKeyKey: api-key
 
 # ------------------------------------------------------------------------------
 # 8. Keycloak Identity Provider (in swiftdrop-identity namespace)

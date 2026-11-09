@@ -45,6 +45,9 @@ class AdminUserAccessControllerTest {
         controller = new AdminUserAccessController(identityProvider, accounts, identityAdapter, auditService);
         AccountProfile profile = mock(AccountProfile.class);
         when(profile.getKeycloakSub()).thenReturn("customer-sub");
+        when(profile.getFullName()).thenReturn("Old Name");
+        when(profile.getPhoneNumber()).thenReturn("");
+        when(profile.getEmail()).thenReturn("c@b.test");
         when(accounts.findById(profileId)).thenReturn(Optional.of(profile));
     }
 
@@ -94,5 +97,46 @@ class AdminUserAccessControllerTest {
         caller("admin-sub", "ADMIN");
 
         assertThatThrownBy(() -> controller.disable(UUID.randomUUID())).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void adminUpdatesNameAndPhoneAndTheChangeIsAudited() {
+        caller("admin-sub", "ADMIN");
+
+        var response = controller.update(profileId, new AdminUserAccessController.UpdateUserRequest("  New Name ", "+94 77 123 4567"));
+
+        assertThat(response.getBody().fullName()).isEqualTo("New Name");
+        assertThat(response.getBody().phoneNumber()).isEqualTo("+94 77 123 4567");
+        verify(accounts).updateContactDetails(profileId, "New Name", "+94 77 123 4567");
+        verify(auditService).recordAudit(eq("customer-sub"), eq("USER"), eq("UPDATE_USER"), any(), any(),
+                eq(ReconciliationOutcome.SUCCESS), eq("admin-sub"), any(), any());
+    }
+
+    @Test
+    void partialUpdateKeepsTheOtherField() {
+        caller("admin-sub", "ADMIN");
+        controller.update(profileId, new AdminUserAccessController.UpdateUserRequest(null, "0771234567"));
+        verify(accounts).updateContactDetails(profileId, "Old Name", "0771234567");
+    }
+
+    @Test
+    void invalidEditsAreRejectedAndNothingIsWritten() {
+        caller("admin-sub", "ADMIN");
+        for (var bad : java.util.List.of(
+                new AdminUserAccessController.UpdateUserRequest(null, null),
+                new AdminUserAccessController.UpdateUserRequest("   ", null),
+                new AdminUserAccessController.UpdateUserRequest("Bad\u0000Name", null),
+                new AdminUserAccessController.UpdateUserRequest(null, "call me maybe"))) {
+            assertThatThrownBy(() -> controller.update(profileId, bad)).isInstanceOf(ResponseStatusException.class);
+        }
+        verify(accounts, never()).updateContactDetails(any(), any(), any());
+    }
+
+    @Test
+    void nonAdminCannotEdit() {
+        caller("dispatcher-sub", "DISPATCHER");
+        assertThatThrownBy(() -> controller.update(profileId, new AdminUserAccessController.UpdateUserRequest("X", null)))
+                .isInstanceOf(StaffAccessDeniedException.class);
+        verify(accounts, never()).updateContactDetails(any(), any(), any());
     }
 }

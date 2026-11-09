@@ -29,4 +29,11 @@ public interface AccountProfileRepository extends Repository<AccountProfile, UUI
         """, nativeQuery = true)
     int insertIfAbsent(@Param("subject") String subject, @Param("email") String email,
                        @Param("fullName") String fullName);
+
+    /** Admin correction of contact details; email stays owned by the identity provider. */
+    @Modifying
+    @Query(value = "UPDATE account_profiles SET full_name = :fullName, phone_number = :phoneNumber WHERE id = :id",
+            nativeQuery = true)
+    int updateContactDetails(@Param("id") UUID id, @Param("fullName") String fullName,
+                             @Param("phoneNumber") String phoneNumber);
 }

@@ -402,6 +402,39 @@ services:
       - app-net
 
   # ----------------------------------------------------------------------------
+  # 6b. AI delivery assistant (optional; disabled until GEMINI_API_KEY is set)
+  # ----------------------------------------------------------------------------
+  ai-assistant:
+    image: ghcr.io/suthankan1/swiftdrop-ai-assistant:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: ai-assistant/Dockerfile
+    container_name: swiftdrop-ai-assistant
+    environment:
+      SERVER_PORT: 8086
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      PRICING_SERVICE_URL: http://pricing-service:8082
+      DELIVERY_SERVICE_URL: http://delivery-service:8083
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8086/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      # Reaches Pricing, Delivery and Keycloak (signing keys); outbound internet for the Gemini API.
+      - app-net
+
+  # ----------------------------------------------------------------------------
   # 7. Spring Cloud API Gateway (#128 Image)
   # ----------------------------------------------------------------------------
   api-gateway:
@@ -420,6 +453,7 @@ services:
       DELIVERY_SERVICE_URL: http://delivery-service:8083
       COMMUNICATIONS_SERVICE_URL: http://communications-service:8084
       GRAPHQL_SERVICE_URL: http://graphql-query-service:8085
+      AI_ASSISTANT_URL: http://ai-assistant:8086
       SWIFTDROP_GATEWAY_MERCHANT_KEYS_DELEGATE_TO_SERVICE: "true"
       CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:3000}
       SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"

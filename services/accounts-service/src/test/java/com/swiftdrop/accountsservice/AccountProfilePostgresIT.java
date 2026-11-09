@@ -340,7 +340,7 @@ class AccountProfilePostgresIT {
     @Test
     void migratesCleanPostgresAndValidatesSchema() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("accounts_db");
     }
 

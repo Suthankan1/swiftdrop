@@ -293,7 +293,7 @@ describe('connectPublicTrackingStream', () => {
     const sseChunk = [
       ':keepalive\n\n',
       `id: ${rawPublicEvent.eventId}\n`,
-      'event: tracking.status.changed\n',
+      'event: parcel.status.changed\n',
       `data: ${JSON.stringify(rawPublicEvent)}\n\n`,
     ].join('')
 

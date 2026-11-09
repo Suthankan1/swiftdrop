@@ -14,15 +14,16 @@ export function DispatcherOperations() {
   const [selected, setSelected] = useState<UnassignedParcel | null>(null)
   const [courierSub, setCourierSub] = useState('')
   const [zoneFilter, setZoneFilter] = useState('ALL')
+  const [seenZones, setSeenZones] = useState<string[]>([])
   const [pending, setPending] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
   const command = useRef<AbortController | null>(null)
   const api = createDispatcherApi({ getAccessToken: auth.getAccessToken })
   const queryKey = ['private', 'dispatcher-dashboard', subject] as const
   const query = useQuery({
-    queryKey: [...queryKey, page, 20],
+    queryKey: [...queryKey, page, 20, zoneFilter],
     queryFn: async ({ signal }) => {
-      try { return await api.dashboard(page, 20, signal) }
+      try { return await (zoneFilter === 'ALL' ? api.dashboard(page, 20, signal) : api.dashboard(page, 20, signal, zoneFilter)) }
       catch (error) {
         if (!signal.aborted && error instanceof DispatcherError && error.kind === 'auth-required') await auth.handleSessionExpiry()
         throw error
@@ -66,15 +67,14 @@ export function DispatcherOperations() {
   const available = data?.availableCouriers.filter(c => c.eligible) ?? []
   const chosenCourier = available.find(c => c.courierSub === courierSub)
 
-  // Zone choices come from the parcels actually in the queue, so any configured zone appears.
-  const zoneCodes = Array.from(new Set(
-    (data?.unassignedParcels ?? []).flatMap(p => [p.pickupZone, p.dropoffZone]).filter(Boolean),
-  )).sort()
+  // Zone choices accumulate from every page seen, so a zone stays selectable after filtering to it.
+  const pageZones = (data?.unassignedParcels ?? []).flatMap(p => [p.pickupZone, p.dropoffZone])
+    .filter(z => Boolean(z) && z !== 'UNKNOWN')
+  if (pageZones.some(z => !seenZones.includes(z))) setSeenZones(Array.from(new Set([...seenZones, ...pageZones])).sort())
+  const zoneCodes = seenZones
 
-  const displayedParcels = data?.unassignedParcels.filter(p => {
-    if (zoneFilter === 'ALL') return true
-    return p.pickupZone === zoneFilter || p.dropoffZone === zoneFilter
-  }) ?? []
+  // The server already filtered by zone, so the page is shown as returned.
+  const displayedParcels = data?.unassignedParcels ?? []
 
   return <section className="dispatcher-operations" aria-label="Dispatch operations" aria-busy={query.isFetching || pending}>
     <div className="dispatcher-toolbar">
@@ -86,7 +86,7 @@ export function DispatcherOperations() {
     {query.isError && <div role="alert"><p>{query.error instanceof DispatcherError ? query.error.message : 'Operations provider unavailable.'}</p><p>Refresh operations to try again.</p></div>}
     {data && !query.isError && <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} parcels{zoneFilter !== 'ALL' && ` · zone filter applies to this page (${displayedParcels.length} of ${data.unassignedParcels.length})`}</p>
+        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} parcels{zoneFilter !== 'ALL' && ` in ${zoneFilter}`}</p>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} aria-label="Filter unassigned parcels by zone">
           <span className="muted" style={{ fontSize: '0.85rem' }}>Zone:</span>
           {['ALL', ...zoneCodes].map(z => (
@@ -95,7 +95,7 @@ export function DispatcherOperations() {
               size="sm"
               variant={zoneFilter === z ? 'primary' : 'tonal'}
               style={{ minHeight: '28px', padding: '2px 8px', fontSize: '0.78rem' }}
-              onClick={() => setZoneFilter(z)}
+              onClick={() => { setZoneFilter(z); setPage(0); clear() }}
             >
               {z === 'ALL' ? 'All Zones' : z}
             </Button>

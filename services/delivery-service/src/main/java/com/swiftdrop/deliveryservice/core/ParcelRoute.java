@@ -11,9 +11,15 @@ import java.math.BigDecimal;
  * never leave the parcel record.
  */
 public record ParcelRoute(String pickupZoneName, String dropoffZoneName, String sizeCategory, BigDecimal weightKg,
-                          String dimensionsCm) {
+                          String dimensionsCm, String pickupZone, String dropoffZone) {
 
-    public static final ParcelRoute UNKNOWN = new ParcelRoute(null, null, null, null, null);
+    public static final ParcelRoute UNKNOWN = new ParcelRoute(null, null, null, null, null, null, null);
+
+    /** Name-only route (zone codes unknown), kept for existing callers. */
+    public ParcelRoute(String pickupZoneName, String dropoffZoneName, String sizeCategory, BigDecimal weightKg,
+                       String dimensionsCm) {
+        this(pickupZoneName, dropoffZoneName, sizeCategory, weightKg, dimensionsCm, null, null);
+    }
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     /** Parses the parcel's stored quote snapshot. Older parcels without one get {@link #UNKNOWN}. */
@@ -29,7 +35,8 @@ public record ParcelRoute(String pickupZoneName, String dropoffZoneName, String 
                 weight = new BigDecimal(w.asText());
             }
             return new ParcelRoute(text(node, "pickupZoneName"), text(node, "dropoffZoneName"),
-                    text(node, "sizeCategory"), weight, text(node, "dimensionsCm"));
+                    text(node, "sizeCategory"), weight, text(node, "dimensionsCm"),
+                    text(node, "pickupZone"), text(node, "dropoffZone"));
         } catch (RuntimeException ex) {
             return UNKNOWN;
         }

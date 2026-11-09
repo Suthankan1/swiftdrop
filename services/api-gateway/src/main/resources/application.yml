@@ -88,6 +88,11 @@ spring:
               predicates:
                 - Path=/graphql
               order: 10
+            - id: ai-assistant
+              uri: ${AI_ASSISTANT_URL:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/assistant/**
+              order: 10
       routes:
         - id: communications-service-webhooks
           uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
@@ -163,6 +168,11 @@ spring:
           predicates:
             - Path=/graphql
           order: 10
+        - id: ai-assistant
+          uri: ${AI_ASSISTANT_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/assistant/**
+          order: 10
       globalcors:
         cors-configurations:
           '[/**]':
@@ -227,6 +237,8 @@ swiftdrop:
       merchant-burst-capacity: ${RATE_LIMIT_MERCHANT_BURST:20}
       unauthenticated-limit-per-minute: ${RATE_LIMIT_UNAUTH_PER_MIN:10}
       unauthenticated-burst-capacity: ${RATE_LIMIT_UNAUTH_BURST:5}
+      assistant-limit-per-minute: ${RATE_LIMIT_ASSISTANT_PER_MIN:12}
+      assistant-burst-capacity: ${RATE_LIMIT_ASSISTANT_BURST:4}
     payload:
       enabled: ${PAYLOAD_LIMIT_ENABLED:true}
       max-quote-bytes: ${MAX_QUOTE_PAYLOAD_BYTES:65536} # 64 KB

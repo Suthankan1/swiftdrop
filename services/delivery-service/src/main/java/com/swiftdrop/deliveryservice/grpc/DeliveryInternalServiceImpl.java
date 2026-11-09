@@ -428,20 +428,18 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 return;
             }
 
-            // If a specific zone is requested, since Delivery does not yet persist zone columns,
-            // return empty result to prevent fabricating unauthorized/incorrect zone assignments.
-            if (request.getZone() != null && !request.getZone().isBlank()) {
-                ListUnassignedParcelsResponse response = ListUnassignedParcelsResponse.newBuilder()
-                        .setPage(page)
-                        .setPageSize(pageSize)
-                        .setTotalCount(0)
-                        .build();
-                responseObserver.onNext(response);
-                responseObserver.onCompleted();
+            // Zone codes come from the verified quote snapshot captured at booking; the filter runs in the
+            // database so a zone-scoped dispatcher gets complete, correctly paged results.
+            String zone = request.getZone() == null ? "" : request.getZone().trim();
+            if (!zone.isEmpty() && !zone.matches("[A-Za-z0-9_]{1,32}")) {
+                responseObserver.onError(Status.INVALID_ARGUMENT
+                        .withDescription("zone must be a zone code")
+                        .asRuntimeException());
                 return;
             }
-
-            Page<Parcel> parcelPage = parcelRepository.findUnassignedParcels(PageRequest.of(page, pageSize));
+            Page<Parcel> parcelPage = zone.isEmpty()
+                    ? parcelRepository.findUnassignedParcels(PageRequest.of(page, pageSize))
+                    : parcelRepository.findUnassignedParcelsInZone(zone, PageRequest.of(page, pageSize));
 
             ListUnassignedParcelsResponse.Builder responseBuilder = ListUnassignedParcelsResponse.newBuilder()
                     .setPage(parcelPage.getNumber())
@@ -457,6 +455,12 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         .setCurrency(parcel.getCurrency() != null ? parcel.getCurrency() : "LKR")
                         .setAmountMinorUnits(parcel.getAmountMinorUnits() != null ? parcel.getAmountMinorUnits() : 0L)
                         .setWeightKg(parcel.getWeightKg() != null ? parcel.getWeightKg().doubleValue() : 0.0);
+
+                // Route facts the dispatcher needs; parcels booked before snapshots existed report UNKNOWN.
+                com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcel);
+                summaryBuilder.setPickupZone(route.pickupZone() != null ? route.pickupZone() : "UNKNOWN");
+                summaryBuilder.setDropoffZone(route.dropoffZone() != null ? route.dropoffZone() : "UNKNOWN");
+                if (route.sizeCategory() != null) summaryBuilder.setSizeCategory(route.sizeCategory());
 
                 if (parcel.getCreatedAt() != null) {
                     summaryBuilder.setCreatedAt(toTimestamp(parcel.getCreatedAt()));
