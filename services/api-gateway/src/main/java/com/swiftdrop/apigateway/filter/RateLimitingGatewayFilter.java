@@ -75,7 +75,7 @@ public class RateLimitingGatewayFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getPath().value();
 
         // 0. AI assistant chat (signed-in or anonymous): per-IP bucket independent of tracking and quotes
-        if (path.equals("/api/v1/assistant/chat")) {
+        if (path.equals("/api/v1/assistant/chat") || path.equals("/api/v1/assistant/mcp")) {
             InMemoryRateLimiter.ConsumptionResult result = rateLimiter.tryConsume(
                     "pub:assistant:" + resolveClientIp(exchange), 1, assistantBurstCapacity, assistantLimitPerMinute);
             if (!result.allowed()) {

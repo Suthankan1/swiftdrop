@@ -254,6 +254,12 @@ public class GatewayAbuseAndSsePolicyTest {
         // Tracking is unaffected, and the status probe is public.
         webTestClient.get().uri("/api/v1/tracking/SWD-TRACK-001").exchange().expectStatus().isOk();
         webTestClient.get().uri("/api/v1/assistant/status").exchange().expectStatus().isOk();
+        // MCP shares the same bucket, so it is limited too.
+        webTestClient.post().uri("/api/v1/assistant/mcp")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}")
+                .exchange()
+                .expectStatus().isEqualTo(429);
         // Other assistant paths stay closed at the gateway.
         webTestClient.get().uri("/api/v1/assistant/admin").exchange().expectStatus().isUnauthorized();
     }

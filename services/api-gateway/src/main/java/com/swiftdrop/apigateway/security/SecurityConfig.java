@@ -72,7 +72,7 @@ public class SecurityConfig {
 
                         // AI assistant: anonymous allowed (public tools only); a bearer, if sent, is validated
                         .pathMatchers(HttpMethod.GET, "/api/v1/assistant/status").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/v1/assistant/chat").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/v1/assistant/chat", "/api/v1/assistant/mcp").permitAll()
 
                         // Merchant onboarding registration and standing inspection (authenticated user)
                         .pathMatchers(HttpMethod.POST, "/api/v1/merchants").authenticated()
