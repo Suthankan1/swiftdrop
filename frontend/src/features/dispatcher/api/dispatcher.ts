@@ -42,8 +42,8 @@ export class DispatcherError extends Error {
   readonly kind: DispatcherFailure
   constructor(kind: DispatcherFailure) { super(messages[kind]); this.name = 'DispatcherError'; this.kind = kind }
 }
-export const dashboardQuery = `query DispatcherQueue($pagination: PaginationInput) {
-  dispatcherDashboard(pagination: $pagination) {
+export const dashboardQuery = `query DispatcherQueue($pagination: PaginationInput, $zone: String) {
+  dispatcherDashboard(pagination: $pagination, zone: $zone) {
     unassignedParcels { parcelId trackingNumber pickupZone dropoffZone weightKg sizeCategory createdAt version }
     pageInfo { currentPage pageSize totalElements totalPages hasNext }
     availableCouriers { courierSub fullName activeAssignmentsCount maxCapacity eligible }
@@ -109,9 +109,13 @@ export function createDispatcherApi({ getAccessToken, gatewayUrl = import.meta.e
     }
   }
   return {
-    async dashboard(page = 0, size = 20, signal?: AbortSignal): Promise<DispatcherDashboard> {
+    async dashboard(page = 0, size = 20, signal?: AbortSignal, zone?: string): Promise<DispatcherDashboard> {
       if (!integer(page) || !integer(size) || size < 1 || size > 50) throw new DispatcherError('invalid-pagination')
-      const result = await post('/graphql', { query: dashboardQuery, variables: { pagination: { page, size } } }, signal)
+      // Zone filtering happens on the server so every page of the queue is filtered, not just this one.
+      const zoneCode = zone?.trim().toUpperCase()
+      if (zoneCode && !/^[A-Z0-9_]{1,32}$/.test(zoneCode)) throw new DispatcherError('invalid-pagination')
+      const variables = { pagination: { page, size }, ...(zoneCode ? { zone: zoneCode } : {}) }
+      const result = await post('/graphql', { query: dashboardQuery, variables }, signal)
       if (!isRecord(result)) throw new DispatcherError('invalid-response')
       if (Array.isArray(result.errors) && result.errors.length) {
         const codes = result.errors.map(e => isRecord(e) && isRecord(e.extensions) ? e.extensions.code : undefined)
