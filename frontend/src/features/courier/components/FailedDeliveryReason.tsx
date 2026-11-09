@@ -48,12 +48,10 @@ export function FailedDeliveryReason({
       </div>
 
       <div className="failure-boundary-notice" role="note">
-        <strong>Lifecycle Boundary Notice:</strong>
+        <strong>How this works:</strong>
         <p className="muted">
-          Delivery exception metadata is prepared locally for your review.
-          Transitioning parcel status to <code>FAILED</code> requires the authoritative lifecycle command
-          (<code>PATCH /api/v1/parcels/{'{parcelId}'}/status</code> owned by Issue #98 / #153).
-          No status change has been committed to the backend.
+          Choose the reason and add a note if it helps. Nothing is recorded until you confirm the failure,
+          and the customer then sees the reason on their tracking page.
         </p>
       </div>
 
@@ -118,7 +116,7 @@ export function FailedDeliveryReason({
             <span>
               Failure reason prepared locally: <strong>{selectedReason}</strong>
               {trackingNumber ? ` for parcel ${trackingNumber}` : ''}.
-              Held in local state for lifecycle dispatch (Issue #98/#153). Not committed to backend.
+              Confirm the failure below to record it.
             </span>
           </div>
         )}

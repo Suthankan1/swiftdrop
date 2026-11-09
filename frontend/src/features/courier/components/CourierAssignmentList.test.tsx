@@ -183,4 +183,28 @@ describe('CourierAssignmentList component', () => {
     expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
+
+  it('filters "today" on the server from the courier\'s local midnight and keeps the toggle visible when empty', async () => {
+    const getMyAssignmentsPaged = vi.fn(async (args?: { assignedSince?: Date }) =>
+      args?.assignedSince ? { ...mockPagedResponse, items: [], totalElements: 0, totalPages: 0 } : mockPagedResponse)
+    const api = createMockApi({ getMyAssignmentsPaged } as never)
+    const user = userEvent.setup()
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+    await screen.findByText('2 Assignments')
+    await user.click(screen.getByRole('checkbox', { name: /assigned today only/i }))
+
+    expect(await screen.findByText(/No parcels have been assigned to you today/)).toBeInTheDocument()
+    const call = getMyAssignmentsPaged.mock.calls.at(-1)![0] as { assignedSince: Date; page: number }
+    const midnight = new Date()
+    midnight.setHours(0, 0, 0, 0)
+    expect(call.assignedSince.getTime()).toBe(midnight.getTime())
+    expect(call.page).toBe(0)
+    // The toggle stays available so the courier can turn the filter off again.
+    await user.click(screen.getByRole('checkbox', { name: /assigned today only/i }))
+    expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
+  })
 })

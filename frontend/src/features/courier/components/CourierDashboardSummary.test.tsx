@@ -47,7 +47,7 @@ describe('CourierDashboardSummary component', () => {
 
     expect(screen.getByText(/active assigned/i)).toBeInTheDocument()
     expect(screen.getByText(/delivered \(today\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/exceptions \(today\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/failed \(today\)/i)).toBeInTheDocument()
   })
 
   it('displays provider failure truthfully with working retry', async () => {

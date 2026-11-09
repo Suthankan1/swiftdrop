@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { getStatusPresentation } from '../../customer/components/customerUiUtils'
 import { Button } from '../../../components/ui/Button'
 import {
   CourierProofError,
@@ -182,7 +183,7 @@ export function ProofCaptureForm({
     }
 
     if (!isEligibleStage) {
-      setValidationError(`Proof upload requires OUT_FOR_DELIVERY stage (current: ${parcel.currentStatus}).`)
+      setValidationError(`Proof can be added once the parcel is Out for Delivery (current stage: ${getStatusPresentation(parcel.currentStatus).label}).`)
       return
     }
 
@@ -300,7 +301,7 @@ export function ProofCaptureForm({
                 : 'badge-pending'
           }`}
         >
-          {parcel.currentStatus}
+          {getStatusPresentation(parcel.currentStatus).label}
         </span>
       </div>
 
@@ -315,7 +316,7 @@ export function ProofCaptureForm({
         </div>
         <div className="context-item">
           <span className="context-label">Lifecycle Stage</span>
-          <span className="context-value">{parcel.currentStatus}</span>
+          <span className="context-value">{getStatusPresentation(parcel.currentStatus).label}</span>
         </div>
       </div>
 
@@ -326,8 +327,8 @@ export function ProofCaptureForm({
         >
           <span>
             {isTerminal
-              ? `Parcel is in terminal state (${parcel.currentStatus}). Proof capture is closed.`
-              : `Proof upload requires parcel status OUT_FOR_DELIVERY. Current status is ${parcel.currentStatus}.`}
+              ? `This parcel is ${getStatusPresentation(parcel.currentStatus).label.toLowerCase()}, so proof can no longer be added.`
+              : `Proof can be added once the parcel is Out for Delivery. Current stage: ${getStatusPresentation(parcel.currentStatus).label}.`}
           </span>
         </div>
       )}

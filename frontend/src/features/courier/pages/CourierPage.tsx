@@ -53,7 +53,7 @@ export function CourierPage({
           <br /> next route.
         </h1>
         <p className="muted">
-          This protected entry confirms the Courier navigation experience and secure proof of delivery capture.
+          Your assigned parcels, stage updates and proof of delivery in one place.
         </p>
       </header>
 

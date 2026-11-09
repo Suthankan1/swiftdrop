@@ -133,7 +133,7 @@ export function CourierDashboardSummary({ apiOverride, refreshToken = 0 }: Couri
           </article>
 
           <article className="card metric-card" aria-labelledby="metric-failed-heading">
-            <p className="eyebrow" id="metric-failed-heading">Exceptions (Today)</p>
+            <p className="eyebrow" id="metric-failed-heading">Failed (Today)</p>
             <div className="metric-value monospace">{summary.todayFailedCount}</div>
             <p className="muted metric-caption">Delivery attempts with logged exceptions</p>
           </article>
