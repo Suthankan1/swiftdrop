@@ -55,9 +55,22 @@ echo ""
 echo "------------------------------------------------------------------------------"
 echo " Logical Database & Infrastructure State"
 echo "------------------------------------------------------------------------------"
+# Resolve containers by Compose service so renamed or separately named stacks are inspected correctly.
+container_for() {
+  local service="$1"
+  local id
+  id="$(docker compose -f "${COMPOSE_FILE}" ps -q "${service}" 2>/dev/null | head -n 1)"
+  if [ -n "${id}" ]; then
+    docker inspect -f '{{.Name}}' "${id}" | sed 's#^/##'
+  else
+    echo "${service}"
+  fi
+}
+
 probe_db() {
   local name="$1"
-  local container="$2"
+  local container
+  container="$(container_for "$2")"
   local user="$3"
   local db="$4"
   if docker exec "$container" pg_isready -U "$user" -d "$db" >/dev/null 2>&1; then
@@ -67,13 +80,13 @@ probe_db() {
   fi
 }
 
-probe_db "Accounts Database" "swiftdrop-accounts-postgres" "accounts_app" "accounts_db"
-probe_db "Keycloak Database" "swiftdrop-keycloak-postgres" "keycloak" "keycloak_db"
-probe_db "Pricing Database" "swiftdrop-business-postgres" "pricing_app" "pricing_db"
-probe_db "Delivery Database" "swiftdrop-business-postgres" "delivery_app" "delivery_db"
-probe_db "Communications Database" "swiftdrop-business-postgres" "communications_app" "communications_db"
+probe_db "Accounts Database" "accounts-postgres" "accounts_app" "accounts_db"
+probe_db "Keycloak Database" "keycloak-postgres" "keycloak" "keycloak_db"
+probe_db "Pricing Database" "business-postgres" "pricing_app" "pricing_db"
+probe_db "Delivery Database" "business-postgres" "delivery_app" "delivery_db"
+probe_db "Communications Database" "business-postgres" "communications_app" "communications_db"
 
-if docker exec swiftdrop-kafka /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1; then
+if docker exec "$(container_for kafka)" /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1; then
   printf "  %-32s : [PASS] Broker responsive (PLAINTEXT://kafka:29092)\n" "Kafka KRaft Broker"
 else
   printf "  %-32s : [FAIL] Broker unresponsive\n" "Kafka KRaft Broker"
