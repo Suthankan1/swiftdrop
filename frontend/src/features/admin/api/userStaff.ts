@@ -108,6 +108,8 @@ export interface AdminManagementApi {
   users: (page: number, signal: AbortSignal, search?: string) => Promise<AdminPage<AdminUser>>
   /** Enables or disables sign-in for an account; disabling ends its sessions. */
   setUserEnabled?: (profileId: string, enabled: boolean, signal: AbortSignal) => Promise<void>
+  /** Corrects a user's name and/or phone number; omitted fields keep their value. */
+  updateUser?: (profileId: string, changes: { fullName?: string; phoneNumber?: string }, signal: AbortSignal) => Promise<void>
   staff: (page: number, filters: StaffFilters, signal: AbortSignal) => Promise<AdminPage<AdminStaff>>
   detail: (id: string, signal: AbortSignal) => Promise<AdminStaff>
   audit: (staff: AdminStaff, signal: AbortSignal) => Promise<StaffAudit[]>
@@ -120,7 +122,7 @@ export function createAdminManagementApi({ getAccessToken, gatewayUrl = import.m
   const base = `${gatewayUrl.replace(/\/$/, '')}/api/v1/admin`
   // profileFetch is deliberately restricted to self-profile GETs. Reuse the shared
   // in-memory token getter and the feature adapter convention; never replay a command.
-  async function request(path: string, signal: AbortSignal, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<unknown> {
+  async function request(path: string, signal: AbortSignal, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown): Promise<unknown> {
     signal.throwIfAborted()
     let token: string | null
     try { token = await getAccessToken() } catch { throw new AdminManagementError('auth-required') }
@@ -129,11 +131,11 @@ export function createAdminManagementApi({ getAccessToken, gatewayUrl = import.m
     let response: Response
     try {
       response = await fetchRequest(`${base}${path}`, { method, headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal, credentials: 'omit', cache: 'no-store', redirect: 'error' })
-    } catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method === 'POST' ? 'unconfirmed' : 'unavailable') }
+    } catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method !== 'GET' ? 'unconfirmed' : 'unavailable') }
     signal.throwIfAborted()
     if (!response.ok) throw adminHttpError(response.status)
     try { const result: unknown = await response.json(); signal.throwIfAborted(); return result }
-    catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method === 'POST' ? 'unconfirmed' : 'invalid-response') }
+    catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method !== 'GET' ? 'unconfirmed' : 'invalid-response') }
   }
   function pagePath(page: number): string {
     if (!Number.isSafeInteger(page) || page < 0) throw new AdminManagementError('validation')
@@ -144,6 +146,25 @@ export function createAdminManagementApi({ getAccessToken, gatewayUrl = import.m
       const term = search?.trim() ?? ''
       if (term.length > 100 || hasControls(term)) throw new AdminManagementError('validation')
       return parseAdminPage(await request(`/users?${pagePath(page)}${term ? `&q=${encodeURIComponent(term)}` : ''}`, signal), page, 20, parseAdminUser)
+    },
+    updateUser: async (profileId, changes, signal) => {
+      if (!isProfileId(profileId)) throw new AdminManagementError('validation')
+      const body: { fullName?: string; phoneNumber?: string } = {}
+      if (changes.fullName !== undefined) {
+        const name = changes.fullName.trim()
+        if (!name || name.length > 255 || hasControls(name)) throw new AdminManagementError('validation')
+        body.fullName = name
+      }
+      if (changes.phoneNumber !== undefined) {
+        const phone = changes.phoneNumber.trim()
+        if (phone && !/^\+?[0-9\s\-()]{7,25}$/.test(phone)) throw new AdminManagementError('validation')
+        body.phoneNumber = phone
+      }
+      if (!Object.keys(body).length) throw new AdminManagementError('validation')
+      const raw = await request(`/users/${profileId}`, signal, 'PATCH', body)
+      try {
+        if (record(raw).profileId !== profileId) invalid()
+      } catch { throw new AdminManagementError('unconfirmed') }
     },
     setUserEnabled: async (profileId, enabled, signal) => {
       if (!isProfileId(profileId)) throw new AdminManagementError('validation')
