@@ -77,6 +77,8 @@ h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3 { font-weight: 600; }
 main:focus { outline: none; }
 .app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+/* Room below the footer so the floating assistant button never sits on top of the last content (re-audit U1). */
+.app-shell { padding-bottom: 76px; }
 .app-shell > main { flex: 1; }
 .page-container { width: min(1280px, calc(100% - 112px)); margin-inline: auto; }
 .skip-link { position: fixed; top: 12px; left: 12px; z-index: 100; transform: translateY(-160%); padding: 14px 20px; background: var(--color-ink); color: white; border-radius: 6px; }
@@ -573,7 +575,7 @@ main:focus { outline: none; }
 .table-responsive-wrapper { overflow-x: auto; }
 .history-row td { padding: 14px 16px; font-size: 13px; }
 .font-mono { font-family: 'SFMono-Regular', Consolas, monospace; }
-.tracking-link-btn { background: none; border: none; padding: 0; color: var(--color-teal); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
+.tracking-link-btn { background: none; border: none; padding: 0; color: var(--color-teal); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; white-space: nowrap; }
 .tracking-link-btn:hover { color: #103e31; }
 .route-summary { color: var(--color-ink); font-weight: 500; }
 .font-numeric { font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -1892,6 +1894,11 @@ main:focus { outline: none; }
 }
 .ai-launcher-icon {
   font-size: 15px;
+}
+/* On narrow screens the launcher is icon-only so it covers less of the page. */
+@media (max-width: 720px) {
+  .ai-assistant-launcher { padding: 10px 12px; }
+  .ai-launcher-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 .ai-assistant-drawer {
   position: fixed;
