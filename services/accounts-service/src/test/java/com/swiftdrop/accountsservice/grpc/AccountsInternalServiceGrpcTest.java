@@ -58,6 +58,7 @@ class AccountsInternalServiceGrpcTest {
 
     private Server server;
     private ManagedChannel channel;
+    private com.swiftdrop.accountsservice.identity.keycloak.IdentityPresenceCache identityPresence;
 
     private final UUID customerProfileId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private final String customerSub = "cust-alice-123";
@@ -84,6 +85,8 @@ class AccountsInternalServiceGrpcTest {
                 staffProfileRepository,
                 apiKeyValidator
         );
+        identityPresence = mock(com.swiftdrop.accountsservice.identity.keycloak.IdentityPresenceCache.class);
+        serviceImpl.setIdentityPresence(identityPresence);
 
         ServiceTokenValidator serviceValidator = new JwtServiceTokenValidator(
                 jwtHelper.createServiceJwtDecoder(),
@@ -588,6 +591,55 @@ class AccountsInternalServiceGrpcTest {
     // =========================================================================
     // 4. GetAvailableCouriersSummary Tests (#109, #135)
     // =========================================================================
+
+    @Test
+    @DisplayName("GetAvailableCouriersSummary: couriers deleted in Keycloak are left out; disabled ones are not eligible (re-audit F2)")
+    void testGetAvailableCouriersSummary_DeletedAndDisabledCouriers() {
+        StaffProfile live = new StaffProfile(courierProfileId, customerProfileId, courierSub,
+                "STF-001", StaffRole.COURIER, "LOGISTICS", "ZONE-COLOMBO", StaffStatus.ACTIVE, Instant.now(), Instant.now());
+        StaffProfile deleted = new StaffProfile(UUID.randomUUID(), UUID.randomUUID(), "courier-deleted",
+                "STF-002", StaffRole.COURIER, "LOGISTICS", "ZONE-COLOMBO", StaffStatus.ACTIVE, Instant.now(), Instant.now());
+        StaffProfile disabled = new StaffProfile(UUID.randomUUID(), UUID.randomUUID(), "courier-disabled",
+                "STF-003", StaffRole.COURIER, "LOGISTICS", "ZONE-COLOMBO", StaffStatus.ACTIVE, Instant.now(), Instant.now());
+        when(staffProfileRepository.findByRoleAndAssignedZone(StaffRole.COURIER, "ZONE-COLOMBO"))
+                .thenReturn(List.of(live, deleted, disabled));
+        when(identityPresence.isGone("courier-deleted")).thenReturn(true);
+        when(accountProfileRepository.isSignInDisabled("courier-disabled")).thenReturn(true);
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.DELIVERY_SERVICE.getServiceName(), dispatcherSub, "DISPATCHER");
+        AvailableCouriersSummaryResponse response = stub.getAvailableCouriersSummary(
+                AvailableCouriersSummaryRequest.newBuilder().setZoneFilter("ZONE-COLOMBO").setPage(0).setPageSize(20).build());
+
+        assertThat(response.getTotalCount()).isEqualTo(2);
+        assertThat(response.getItemsList()).extracting(CourierSummaryItem::getCourierSub)
+                .containsExactly(courierSub, "courier-disabled");
+        assertThat(response.getItems(0).getIsEligible()).isTrue();
+        assertThat(response.getItems(1).getIsEligible()).isFalse();
+    }
+
+    @Test
+    @DisplayName("checkCourierEligibility rejects couriers deleted in Keycloak or with sign-in disabled (re-audit F2)")
+    void testCheckCourierEligibility_DeletedOrDisabled() {
+        StaffProfile courier = new StaffProfile(courierProfileId, customerProfileId, courierSub,
+                "STF-001", StaffRole.COURIER, "LOGISTICS", "ZONE-COLOMBO", StaffStatus.ACTIVE, Instant.now(), Instant.now());
+        when(staffProfileRepository.findByKeycloakSub(courierSub)).thenReturn(Optional.of(courier));
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.DELIVERY_SERVICE.getServiceName(), dispatcherSub, "DISPATCHER");
+
+        when(identityPresence.isGone(courierSub)).thenReturn(true);
+        CourierEligibilityResponse gone = stub.checkCourierEligibility(
+                CourierEligibilityRequest.newBuilder().setCourierSub(courierSub).build());
+        assertThat(gone.getIsEligible()).isFalse();
+        assertThat(gone.getRejectionReason()).isEqualTo("COURIER_NOT_FOUND");
+
+        when(identityPresence.isGone(courierSub)).thenReturn(false);
+        when(accountProfileRepository.isSignInDisabled(courierSub)).thenReturn(true);
+        CourierEligibilityResponse disabledCourier = stub.checkCourierEligibility(
+                CourierEligibilityRequest.newBuilder().setCourierSub(courierSub).build());
+        assertThat(disabledCourier.getIsEligible()).isFalse();
+        assertThat(disabledCourier.getRejectionReason()).isEqualTo("COURIER_SIGN_IN_DISABLED");
+    }
 
     @Test
     @DisplayName("GetAvailableCouriersSummary: dispatcher queries available couriers bounded by page size")

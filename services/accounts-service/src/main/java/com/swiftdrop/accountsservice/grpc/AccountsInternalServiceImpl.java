@@ -66,6 +66,18 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
         this.apiKeyValidator = Objects.requireNonNull(apiKeyValidator, "MerchantApiKeyValidator is required");
     }
 
+    /** Optional: when present, couriers deleted in Keycloak are neither listed nor eligible (re-audit F2). */
+    private com.swiftdrop.accountsservice.identity.keycloak.IdentityPresenceCache identityPresence;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setIdentityPresence(com.swiftdrop.accountsservice.identity.keycloak.IdentityPresenceCache identityPresence) {
+        this.identityPresence = identityPresence;
+    }
+
+    private boolean identityGone(String subject) {
+        return identityPresence != null && identityPresence.isGone(subject);
+    }
+
     @Override
     public void checkCourierEligibility(CourierEligibilityRequest request,
                                         StreamObserver<CourierEligibilityResponse> responseObserver) {
@@ -119,6 +131,19 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
                     .setIsEligible(false)
                     .setIsActive(false)
                     .setRejectionReason("COURIER_" + profile.getStatus().name())
+                    .build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        String unavailableReason = identityGone(sanitizedSub) ? "COURIER_NOT_FOUND"
+                : accountProfiles.isSignInDisabled(sanitizedSub) ? "COURIER_SIGN_IN_DISABLED" : null;
+        if (unavailableReason != null) {
+            responseObserver.onNext(CourierEligibilityResponse.newBuilder()
+                    .setCourierSub(sanitizedSub)
+                    .setIsEligible(false)
+                    .setIsActive(false)
+                    .setRejectionReason(unavailableReason)
                     .build());
             responseObserver.onCompleted();
             return;
@@ -444,6 +469,8 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
         } else {
             couriers = staffProfiles.findByRole(StaffRole.COURIER);
         }
+        // Couriers deleted in Keycloak are no longer couriers, even though their local profiles remain.
+        couriers = couriers.stream().filter(c -> !identityGone(c.getKeycloakSub())).toList();
 
         int totalCount = couriers.size();
         int fromIndex = Math.min(page * pageSize, totalCount);
@@ -465,7 +492,7 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
             }
 
             boolean isActive = cp.getStatus().isActive();
-            boolean isEligible = isActive;
+            boolean isEligible = isActive && !accountProfiles.isSignInDisabled(cp.getKeycloakSub());
 
             builder.addItems(CourierSummaryItem.newBuilder()
                     .setCourierSub(cp.getKeycloakSub())
