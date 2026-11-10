@@ -15,7 +15,11 @@ export interface QuoteRequest {
   lengthCm: number
   widthCm: number
   heightCm: number
+  /** EXPRESS is Same Day and carries a surcharge; omitted means STANDARD. */
+  serviceTier?: ServiceTier
 }
+
+export type ServiceTier = 'STANDARD' | 'EXPRESS'
 
 export interface QuoteResponse {
   quoteId: string
@@ -28,6 +32,9 @@ export interface QuoteResponse {
   sizeCategory: SizeCategory
   baseFeeMinorUnits: number
   weightSurchargeMinorUnits: number
+  /** Absent from older servers; treated as STANDARD with no surcharge. */
+  serviceTier?: ServiceTier
+  expressSurchargeMinorUnits?: number
   totalAmountMinorUnits: number
   currency: string
   createdAt: string

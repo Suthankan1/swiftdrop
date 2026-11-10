@@ -240,7 +240,7 @@ public class WebhookDeliveryExecutionService {
                     WebhookOutcomeCategory.CLIENT_ERROR, false, false, null, 0,
                     responseClassifier.sanitize(errorMsg), null
             );
-            WebhookAttempt attempt = persistAttemptAndUpdateDelivery(delivery, classification);
+            WebhookAttempt attempt = inTransaction(() -> persistAttemptAndUpdateDelivery(delivery, classification));
             return new WebhookAttemptResult(deliveryId, attempt.getAttemptId(), delivery.getStatus(),
                     delivery.getAttemptCount(), classification, attempt);
         }
@@ -249,10 +249,11 @@ public class WebhookDeliveryExecutionService {
         try {
             destinationValidator.validate(subscription.getHttpsUrl());
         } catch (InvalidWebhookDestinationException ex) {
-            log.warn("Destination URL failed security validation [deliveryId={}, url={}, error={}]",
-                    deliveryId, subscription.getHttpsUrl(), ex.getMessage());
+            log.warn("Destination URL failed security validation [deliveryId={}, host={}]",
+                    deliveryId, com.swiftdrop.communicationsservice.webhook.service.WebhookSubscriptionService
+                            .hostOf(subscription.getHttpsUrl()));
             WebhookResponseClassification classification = responseClassifier.classifyException(ex, 0);
-            WebhookAttempt attempt = persistAttemptAndUpdateDelivery(delivery, classification);
+            WebhookAttempt attempt = inTransaction(() -> persistAttemptAndUpdateDelivery(delivery, classification));
             return new WebhookAttemptResult(deliveryId, attempt.getAttemptId(), delivery.getStatus(),
                     delivery.getAttemptCount(), classification, attempt);
         }
@@ -269,7 +270,7 @@ public class WebhookDeliveryExecutionService {
                     WebhookOutcomeCategory.SECURITY_FAILURE, false, false, null, 0,
                     responseClassifier.sanitize(errorMsg), null
             );
-            WebhookAttempt attempt = persistAttemptAndUpdateDelivery(delivery, classification);
+            WebhookAttempt attempt = inTransaction(() -> persistAttemptAndUpdateDelivery(delivery, classification));
             return new WebhookAttemptResult(deliveryId, attempt.getAttemptId(), delivery.getStatus(),
                     delivery.getAttemptCount(), classification, attempt);
         }
@@ -314,7 +315,8 @@ public class WebhookDeliveryExecutionService {
                 classification.responseTimeMs(), classification.isRetryable());
 
             // 9. Persist attempt record and update job state atomically IN database transaction
-            WebhookAttempt savedAttempt = persistAttemptAndUpdateDelivery(delivery, classification);
+            final WebhookResponseClassification outcome = classification;
+            WebhookAttempt savedAttempt = inTransaction(() -> persistAttemptAndUpdateDelivery(delivery, outcome));
 
             if (communicationsMetrics != null) {
                 long durationMs = classification.responseTimeMs() != null
@@ -512,6 +514,10 @@ public class WebhookDeliveryExecutionService {
      * Constructs canonical JSON payload matching contracts/events/parcel.status.changed.v1.schema.json.
      */
     public String buildCanonicalPayload(WebhookDelivery delivery) {
+        // The producer's event is the canonical payload; rebuild only for jobs created before it was stored.
+        if (delivery.getEventSnapshot() != null && !delivery.getEventSnapshot().isBlank()) {
+            return delivery.getEventSnapshot();
+        }
         ObjectNode root = jsonMapper.createObjectNode();
         root.put("eventId", delivery.getEventId().toString());
         root.put("eventType", "parcel.status.changed.v1");
@@ -525,14 +531,36 @@ public class WebhookDeliveryExecutionService {
 
         ObjectNode payloadNode = root.putObject("payload");
         payloadNode.put("parcelId", delivery.getParcelId().toString());
-        payloadNode.put("trackingNumber", "SWD-20261027-" + delivery.getParcelId().toString().replace("-", "").substring(0, 8).toUpperCase());
+        payloadNode.putNull("trackingNumber");
         payloadNode.putNull("oldStatus");
-        payloadNode.put("newStatus", "IN_TRANSIT");
+        payloadNode.putNull("newStatus");
         payloadNode.putNull("reason");
         payloadNode.put("merchantId", delivery.getMerchantId().toString());
         payloadNode.putNull("courierSub");
         payloadNode.putNull("cityOrZone");
 
         return root.toString();
+    }
+
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
+    /** Calls within this class bypass the @Transactional proxy, so commits go through this template. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTransactionManager(org.springframework.transaction.PlatformTransactionManager transactionManager) {
+        this.transactionTemplate = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        this.transactionTemplate.setPropagationBehavior(
+                org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    private void inTransaction(Runnable work) {
+        if (transactionTemplate == null) {
+            work.run();
+        } else {
+            transactionTemplate.executeWithoutResult(status -> work.run());
+        }
+    }
+
+    private <T> T inTransaction(java.util.function.Supplier<T> work) {
+        return transactionTemplate == null ? work.get() : transactionTemplate.execute(status -> work.get());
     }
 }

@@ -5,7 +5,7 @@ import { useAuth } from '../../../auth/context'
 import { createDeliveryApi, DeliveryError } from '../api/delivery'
 import type { ParcelDetailResponse } from '../api/deliveryContracts'
 import { CustomerNav } from '../components/CustomerNav'
-import { formatCurrency, formatDateTime, getStatusPresentation } from '../components/customerUiUtils'
+import { formatCurrency, formatDateTime, formatDimensions, formatWeight, getStatusPresentation } from '../components/customerUiUtils'
 import { Button } from '../../../components/ui/Button'
 
 export function CustomerBookingConfirmedPage() {
@@ -58,10 +58,18 @@ export function CustomerBookingConfirmedPage() {
     <div className="page-container customer-page customer-confirmed-page">
       <header className="page-heading">
         <p className="eyebrow">Customer space</p>
-        <h1>Booking Confirmed &amp; <br />Scheduled for Dispatch.</h1>
-        <p className="muted">
-          Your delivery booking has been successfully committed to Delivery Operations.
-        </p>
+        {parcel ? (
+          <>
+            <h1>Booking Confirmed &amp; <br />Scheduled for Dispatch.</h1>
+            <p className="muted">
+              Your delivery booking has been successfully committed to Delivery Operations.
+            </p>
+          </>
+        ) : parcelQuery.isError ? (
+          <h1>Booking details unavailable.</h1>
+        ) : (
+          <h1>Checking your booking…</h1>
+        )}
       </header>
 
       <CustomerNav />
@@ -155,20 +163,12 @@ export function CustomerBookingConfirmedPage() {
                   </dd>
                 </div>
                 <div className="summary-row">
-                  <dt>Rate Table Version</dt>
-                  <dd><code>{parcel.rateVersion}</code></dd>
-                </div>
-                <div className="summary-row">
                   <dt>Parcel Weight</dt>
-                  <dd className="font-numeric">{parcel.weightKg} kg</dd>
+                  <dd className="font-numeric">{formatWeight(parcel.weightKg)}</dd>
                 </div>
                 <div className="summary-row">
                   <dt>Dimensions (L×W×H)</dt>
-                  <dd>{parcel.dimensions} cm</dd>
-                </div>
-                <div className="summary-row">
-                  <dt>Internal Booking UUID</dt>
-                  <dd className="font-mono text-xs">{parcel.parcelId}</dd>
+                  <dd>{formatDimensions(parcel.dimensions)}</dd>
                 </div>
               </dl>
             </div>

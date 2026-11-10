@@ -70,30 +70,67 @@ if [ ! -f "${ENV_FILE}" ]; then
   echo "  [OK] Local .env template configured."
 fi
 
+# Generate per-installation secrets instead of shipping fixed values (also upgrades an older .env).
+ensure_generated_secret() {
+  local name="$1" placeholder="$2"
+  if grep -q "^${name}=${placeholder}$" "${ENV_FILE}"; then
+    local value
+    value="$(openssl rand -hex 32)"
+    sed -i '' "s/^${name}=${placeholder}$/${name}=${value}/" "${ENV_FILE}" 2>/dev/null || \
+      sed -i "s/^${name}=${placeholder}$/${name}=${value}/" "${ENV_FILE}"
+  elif ! grep -q "^${name}=" "${ENV_FILE}"; then
+    printf '\n%s=%s\n' "${name}" "$(openssl rand -hex 32)" >> "${ENV_FILE}"
+  fi
+}
+ensure_generated_secret WEBHOOK_ENCRYPTION_KEY replace_with_generated_webhook_key
+ensure_generated_secret DELIVERY_CLIENT_SECRET replace_with_local_delivery_client_secret
+ensure_generated_secret COMMUNICATIONS_CLIENT_SECRET replace_with_local_communications_client_secret
+ensure_generated_secret GRAPHQL_CLIENT_SECRET replace_with_local_graphql_client_secret
+
 # Load variables safely without printing secrets
 set -a
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 set +a
 
-IMAGE_TAG="${SWIFTDROP_IMAGE_TAG:-b8ac497}"
-echo "  [OK] Using approved image tag: ${IMAGE_TAG}"
+IMAGE_TAG="${SWIFTDROP_IMAGE_TAG:-local}"
+BUILD_FLAG=""
+if [ "${IMAGE_TAG}" = "local" ]; then
+  BUILD_FLAG="--build"
+  echo "  [OK] Building images from this checkout (tag: local). The first build takes several minutes."
+else
+  echo "  [WARNING] Running published image tag ${IMAGE_TAG}, which may be older than this checkout."
+  echo "            Set SWIFTDROP_IMAGE_TAG=local in ${ENV_FILE} to run the code you have checked out."
+fi
 
 # ------------------------------------------------------------------------------
 # 3. Port Conflict Preflight (Loopback Bindings)
 # ------------------------------------------------------------------------------
 echo ""
 echo "[3/6] Verifying host loopback port availability..."
+# Fails before starting anything when a port or container name belongs to something other than this stack
+# (for example the separate swiftdrop-dependencies project, which uses the same container names).
+PREFLIGHT_PROBLEMS=0
 check_port() {
   local port="$1"
   local svc="$2"
   local container="$3"
+  local owner_project=""
+  if docker ps -a --format '{{.Names}}' | grep -qx "${container}"; then
+    owner_project="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "${container}" 2>/dev/null || true)"
+    if [ "${owner_project}" != "swiftdrop" ]; then
+      echo "  [CONFLICT] Container name ${container} is already used by project '${owner_project:-none}'."
+      echo "             Stop that project first, e.g.: docker compose -p ${owner_project:-<project>} down  (keep -v off to keep its data)"
+      PREFLIGHT_PROBLEMS=$((PREFLIGHT_PROBLEMS + 1))
+      return
+    fi
+  fi
   if lsof -i ":${port}" -sTCP:LISTEN >/dev/null 2>&1; then
-    if docker ps --filter "name=${container}" --format '{{.Names}}' | grep -qx "${container}"; then
-      echo "  Port ${port} (${svc}) is bound by active container ${container}."
+    if [ "${owner_project}" = "swiftdrop" ] && docker ps --format '{{.Names}}' | grep -qx "${container}"; then
+      echo "  Port ${port} (${svc}) is bound by this stack's running container ${container}."
     else
-      echo "  [CONFLICT] Port ${port} (${svc}) is occupied by another process."
-      echo "  Checking if legacy container can be cleanly stopped or port adjusted..."
+      echo "  [CONFLICT] Port ${port} (${svc}) is used by another process. Free it, or change the port in ${ENV_FILE}."
+      PREFLIGHT_PROBLEMS=$((PREFLIGHT_PROBLEMS + 1))
     fi
   else
     echo "  Port ${port} (${svc}) is free."
@@ -109,6 +146,13 @@ check_port "${KEYCLOAK_DB_PORT:-5437}" "Keycloak DB" "swiftdrop-keycloak-postgre
 check_port "${BUSINESS_DB_PORT:-5439}" "Business DB" "swiftdrop-business-postgres"
 check_port "${KAFKA_PORT:-9092}" "Kafka External" "swiftdrop-kafka"
 check_port "${MINIO_PORT:-9000}" "MinIO API" "swiftdrop-minio"
+
+if [ "${PREFLIGHT_PROBLEMS}" -gt 0 ] && [ "${SWIFTDROP_ALLOW_PORT_CONFLICTS:-0}" != "1" ]; then
+  echo ""
+  echo "  [STOP] ${PREFLIGHT_PROBLEMS} conflict(s) found; nothing was started."
+  echo "         Fix them as shown above, or set SWIFTDROP_ALLOW_PORT_CONFLICTS=1 to try anyway."
+  exit 1
+fi
 
 # ------------------------------------------------------------------------------
 # 4. Phase 1: Start Stateful Dependencies (Databases, Kafka, MinIO, Mailpit)
@@ -172,16 +216,20 @@ done
 echo "  Initializing Kafka lifecycle topics..."
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up kafka-init >/dev/null 2>&1 || true
 
-# Initialize MinIO private bucket idempotently
+# Create the private proof bucket idempotently. Proof uploads cannot work without it.
 echo "  Ensuring private S3 bucket '${SWIFTDROP_STORAGE_BUCKET:-swiftdrop-pod}' exists..."
-python3 "${REPO_ROOT}/platform/dependencies/init-storage.py" >/dev/null 2>&1 || true
+if ! docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up minio-init >/dev/null 2>&1; then
+  echo "ERROR: Could not create the proof storage bucket."
+  docker logs --tail 10 "${MINIO_INIT_CONTAINER_NAME:-swiftdrop-minio-init}" 2>/dev/null || true
+  exit 1
+fi
 
 # ------------------------------------------------------------------------------
 # 5. Phase 2: Start Keycloak Identity Provider
 # ------------------------------------------------------------------------------
 echo ""
 echo "[5/6] Starting Keycloak Identity Provider (PostgreSQL persistent mode)..."
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d keycloak
+docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d ${BUILD_FLAG} keycloak
 
 echo -n "  Waiting for Keycloak OIDC discovery on http://localhost:${KEYCLOAK_PORT:-8090}..."
 RETRIES=45
@@ -203,7 +251,7 @@ echo " [READY]"
 # ------------------------------------------------------------------------------
 echo ""
 echo "[6/6] Starting application microservices, API Gateway, and React SPA..."
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d \
+docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d ${BUILD_FLAG} \
   accounts-service \
   pricing-service \
   delivery-service \

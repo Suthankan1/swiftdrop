@@ -38,6 +38,8 @@ import java.util.UUID;
 @Service
 public class DeliveryAssignmentService implements CourierAssignmentContract {
 
+    private static final int MAX_AUDIT_ENTRIES = 200;
+
     private final DeliveryAssignmentRepository assignmentRepository;
     private final ParcelRepository parcelRepository;
     private final CourierEligibilityClient courierEligibilityClient;
@@ -130,6 +132,19 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
             Collection<String> roles,
             boolean activeOnly,
             Pageable pageable) {
+        return getMyAssignments(courierSub, roles, activeOnly, null, pageable);
+    }
+
+    /**
+     * Courier's own assignments, optionally only those assigned at or after {@code assignedSince}
+     * (the courier's local start of day, sent by the client). Filtering in the query keeps paging correct.
+     */
+    public PagedResponse<AssignmentResponse> getMyAssignments(
+            String courierSub,
+            Collection<String> roles,
+            boolean activeOnly,
+            java.time.Instant assignedSince,
+            Pageable pageable) {
 
         if (courierSub == null || courierSub.isBlank()) {
             throw new AssignmentAccessDeniedException("Authenticated subject is required.");
@@ -153,7 +168,13 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         );
 
         Page<DeliveryAssignment> page;
-        if (activeOnly) {
+        if (assignedSince != null) {
+            page = activeOnly
+                    ? assignmentRepository.findByCourierSubAndActiveTrueAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                            courierSub.trim(), assignedSince, safePageable)
+                    : assignmentRepository.findByCourierSubAndAssignedAtGreaterThanEqualOrderByAssignedAtDesc(
+                            courierSub.trim(), assignedSince, safePageable);
+        } else if (activeOnly) {
             page = assignmentRepository.findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
                     courierSub.trim(),
                     safePageable
@@ -178,6 +199,18 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         ));
 
         return PagedResponse.of(dtoPage);
+    }
+
+    /** All assignments for dispatchers and admins, newest first, bounded to 100 per page. */
+    public PagedResponse<AssignmentResponse> listAssignments(boolean activeOnly, Pageable pageable) {
+        Pageable safe = PageRequest.of(pageable.getPageNumber(), Math.min(pageable.getPageSize(), 100),
+                Sort.by(Sort.Direction.DESC, "assignedAt"));
+        Page<DeliveryAssignment> page = activeOnly
+                ? assignmentRepository.findByActiveTrue(safe)
+                : assignmentRepository.findAll(safe);
+        return PagedResponse.of(page.map(a -> new AssignmentResponse(
+                a.getAssignmentId(), a.getParcelId(), a.getCourierSub(), a.isActive(), a.getAssignedAt(),
+                a.getAssignedBy(), null, a.getEndedAt(), null)));
     }
 
     // --- Initial Assignment Command Implementation (Issue #24) ---
@@ -229,7 +262,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         CourierEligibilityResult eligibility = courierEligibilityClient.checkEligibility(request.courierSub());
         if (!eligibility.isApproved()) {
             throw new IneligibleCourierException(
-                    "Courier " + request.courierSub() + " is not eligible for assignment: " + eligibility.rejectionReason()
+                    "The selected courier is not eligible for assignment: " + eligibility.rejectionReason()
             );
         }
 
@@ -345,7 +378,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         String replacementCourierSub = request.replacementCourierSub().trim();
         if (replacementCourierSub.equals(currentAssignment.getCourierSub())) {
             throw new AssignmentConflictException(
-                    "Replacement courier " + replacementCourierSub + " is already actively assigned to parcel " + request.parcelId()
+                    "The replacement courier is already assigned to this parcel."
             );
         }
 
@@ -353,7 +386,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         CourierEligibilityResult eligibility = courierEligibilityClient.checkEligibility(replacementCourierSub);
         if (!eligibility.isApproved()) {
             throw new IneligibleCourierException(
-                    "Replacement courier " + replacementCourierSub + " is not eligible for assignment: " + eligibility.rejectionReason()
+                    "The replacement courier is not eligible for assignment: " + eligibility.rejectionReason()
             );
         }
 
@@ -523,6 +556,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
 
         return assignmentAuditRepository.findByParcelIdOrderByOccurredAtDesc(parcelId)
                 .stream()
+                .limit(MAX_AUDIT_ENTRIES)
                 .map(a -> new AssignmentAuditResponse(
                         a.getAuditId(),
                         a.getParcelId(),

@@ -1,12 +1,11 @@
 package com.swiftdrop.deliveryservice.booking;
 
+import com.swiftdrop.security.grpc.SwiftDropGrpcClientInterceptor;
+import com.swiftdrop.security.service.ServiceTokenProvider;
 import com.swiftdrop.accounts.v1.AccountsInternalServiceGrpc;
 import com.swiftdrop.deliveryservice.quote.BookingAuthorization;
-import com.swiftdrop.deliveryservice.quote.BookingQuoteProvider;
-import com.swiftdrop.deliveryservice.quote.GrpcBookingQuoteProvider;
 import com.swiftdrop.deliveryservice.security.merchant.AccountsMerchantKeyValidator;
 import com.swiftdrop.deliveryservice.security.merchant.GrpcAccountsMerchantKeyValidator;
-import com.swiftdrop.pricing.v1.PricingInternalServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +19,8 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Configuration
 public class MerchantBookingConfiguration {
+
+    private static final long GRPC_DEADLINE_MS = 2000L;
 
     @Bean
     @ConditionalOnMissingBean(JsonMapper.class)
@@ -39,9 +40,10 @@ public class MerchantBookingConfiguration {
     @ConditionalOnMissingBean(AccountsMerchantKeyValidator.class)
     public AccountsMerchantKeyValidator accountsMerchantKeyValidator(
             @Value("${ACCOUNTS_GRPC_HOST:localhost}") String host,
-            @Value("${ACCOUNTS_GRPC_PORT:9081}") int port) {
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
+            @Value("${ACCOUNTS_GRPC_PORT:9081}") int port,
+            ServiceTokenProvider serviceTokenProvider) {
+        ManagedChannel channel = com.swiftdrop.security.grpc.GrpcTransport.channel(host, port)
+                .intercept(new SwiftDropGrpcClientInterceptor(serviceTokenProvider, GRPC_DEADLINE_MS))
                 .build();
         AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
                 AccountsInternalServiceGrpc.newBlockingStub(channel);
@@ -52,25 +54,13 @@ public class MerchantBookingConfiguration {
     @ConditionalOnMissingBean(com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver.class)
     public com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver(
             @Value("${ACCOUNTS_GRPC_HOST:localhost}") String host,
-            @Value("${ACCOUNTS_GRPC_PORT:9081}") int port) {
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
+            @Value("${ACCOUNTS_GRPC_PORT:9081}") int port,
+            ServiceTokenProvider serviceTokenProvider) {
+        ManagedChannel channel = com.swiftdrop.security.grpc.GrpcTransport.channel(host, port)
+                .intercept(new SwiftDropGrpcClientInterceptor(serviceTokenProvider, GRPC_DEADLINE_MS))
                 .build();
         AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
                 AccountsInternalServiceGrpc.newBlockingStub(channel);
         return new com.swiftdrop.deliveryservice.security.merchant.GrpcAccountsMerchantTenantResolver(stub);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(BookingQuoteProvider.class)
-    public BookingQuoteProvider bookingQuoteProvider(
-            @Value("${PRICING_GRPC_HOST:localhost}") String host,
-            @Value("${PRICING_GRPC_PORT:9082}") int port) {
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
-                .build();
-        PricingInternalServiceGrpc.PricingInternalServiceBlockingStub stub =
-                PricingInternalServiceGrpc.newBlockingStub(channel);
-        return new GrpcBookingQuoteProvider(stub);
     }
 }

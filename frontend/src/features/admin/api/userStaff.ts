@@ -5,7 +5,7 @@ export const reconciliationOutcomes = ['SUCCESS', 'NO_OP', 'FAILED', 'PENDING_RE
 export type StaffRole = typeof staffRoles[number]
 export type StaffStatus = typeof staffStatuses[number]
 export type ReconciliationOutcome = typeof reconciliationOutcomes[number]
-export interface AdminUser { profileId: string; keycloakSub: string; email: string | null; fullName: string | null; createdAt: string }
+export interface AdminUser { profileId: string; keycloakSub: string; email: string | null; fullName: string | null; createdAt: string; /** absent when Keycloak could not be read */ enabled?: boolean }
 export interface AdminStaff {
   profileId: string; accountProfileId: string | null; staffId: string; keycloakSub: string
   role: StaffRole; department: string; assignedZone: string | null; businessStatus: StaffStatus
@@ -64,7 +64,7 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T { ret
 function integer(value: unknown): number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : invalid() }
 export function parseAdminUser(value: unknown): AdminUser {
   const v = record(value)
-  return { profileId: uuid(v.profileId), keycloakSub: string(v.keycloakSub), email: nullable(v.email, 320), fullName: nullable(v.fullName), createdAt: date(v.createdAt) }
+  return { profileId: uuid(v.profileId), keycloakSub: string(v.keycloakSub), email: nullable(v.email, 320), fullName: nullable(v.fullName), createdAt: date(v.createdAt), ...(typeof v.enabled === 'boolean' ? { enabled: v.enabled } : {}) }
 }
 export function parseAdminStaff(value: unknown): AdminStaff {
   const v = record(value)
@@ -105,7 +105,11 @@ export function provisionProblem(value: ProvisionStaff): string | null {
 export function canSuspend(staff: AdminStaff): boolean { return staff.businessStatus === 'ACTIVE' }
 export function canRecover(audit: StaffAudit): boolean { return audit.outcome === 'PENDING_RETRY' || audit.outcome === 'FAILED' }
 export interface AdminManagementApi {
-  users: (page: number, signal: AbortSignal) => Promise<AdminPage<AdminUser>>
+  users: (page: number, signal: AbortSignal, search?: string) => Promise<AdminPage<AdminUser>>
+  /** Enables or disables sign-in for an account; disabling ends its sessions. */
+  setUserEnabled?: (profileId: string, enabled: boolean, signal: AbortSignal) => Promise<void>
+  /** Corrects a user's name and/or phone number; omitted fields keep their value. */
+  updateUser?: (profileId: string, changes: { fullName?: string; phoneNumber?: string }, signal: AbortSignal) => Promise<void>
   staff: (page: number, filters: StaffFilters, signal: AbortSignal) => Promise<AdminPage<AdminStaff>>
   detail: (id: string, signal: AbortSignal) => Promise<AdminStaff>
   audit: (staff: AdminStaff, signal: AbortSignal) => Promise<StaffAudit[]>
@@ -118,7 +122,7 @@ export function createAdminManagementApi({ getAccessToken, gatewayUrl = import.m
   const base = `${gatewayUrl.replace(/\/$/, '')}/api/v1/admin`
   // profileFetch is deliberately restricted to self-profile GETs. Reuse the shared
   // in-memory token getter and the feature adapter convention; never replay a command.
-  async function request(path: string, signal: AbortSignal, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<unknown> {
+  async function request(path: string, signal: AbortSignal, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown): Promise<unknown> {
     signal.throwIfAborted()
     let token: string | null
     try { token = await getAccessToken() } catch { throw new AdminManagementError('auth-required') }
@@ -127,18 +131,49 @@ export function createAdminManagementApi({ getAccessToken, gatewayUrl = import.m
     let response: Response
     try {
       response = await fetchRequest(`${base}${path}`, { method, headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal, credentials: 'omit', cache: 'no-store', redirect: 'error' })
-    } catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method === 'POST' ? 'unconfirmed' : 'unavailable') }
+    } catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method !== 'GET' ? 'unconfirmed' : 'unavailable') }
     signal.throwIfAborted()
     if (!response.ok) throw adminHttpError(response.status)
     try { const result: unknown = await response.json(); signal.throwIfAborted(); return result }
-    catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method === 'POST' ? 'unconfirmed' : 'invalid-response') }
+    catch (error) { if (signal.aborted) throw error; throw new AdminManagementError(method !== 'GET' ? 'unconfirmed' : 'invalid-response') }
   }
   function pagePath(page: number): string {
     if (!Number.isSafeInteger(page) || page < 0) throw new AdminManagementError('validation')
     return `page=${page}&size=20`
   }
   return {
-    users: async (page, signal) => parseAdminPage(await request(`/users?${pagePath(page)}`, signal), page, 20, parseAdminUser),
+    users: async (page, signal, search) => {
+      const term = search?.trim() ?? ''
+      if (term.length > 100 || hasControls(term)) throw new AdminManagementError('validation')
+      return parseAdminPage(await request(`/users?${pagePath(page)}${term ? `&q=${encodeURIComponent(term)}` : ''}`, signal), page, 20, parseAdminUser)
+    },
+    updateUser: async (profileId, changes, signal) => {
+      if (!isProfileId(profileId)) throw new AdminManagementError('validation')
+      const body: { fullName?: string; phoneNumber?: string } = {}
+      if (changes.fullName !== undefined) {
+        const name = changes.fullName.trim()
+        if (!name || name.length > 255 || hasControls(name)) throw new AdminManagementError('validation')
+        body.fullName = name
+      }
+      if (changes.phoneNumber !== undefined) {
+        const phone = changes.phoneNumber.trim()
+        if (phone && !/^\+?[0-9\s\-()]{7,25}$/.test(phone)) throw new AdminManagementError('validation')
+        body.phoneNumber = phone
+      }
+      if (!Object.keys(body).length) throw new AdminManagementError('validation')
+      const raw = await request(`/users/${profileId}`, signal, 'PATCH', body)
+      try {
+        if (record(raw).profileId !== profileId) invalid()
+      } catch { throw new AdminManagementError('unconfirmed') }
+    },
+    setUserEnabled: async (profileId, enabled, signal) => {
+      if (!isProfileId(profileId)) throw new AdminManagementError('validation')
+      const raw = await request(`/users/${profileId}/${enabled ? 'enable' : 'disable'}`, signal, 'POST')
+      try {
+        const v = record(raw)
+        if (v.profileId !== profileId || v.enabled !== enabled) invalid()
+      } catch { throw new AdminManagementError('unconfirmed') }
+    },
     staff: async (page, filters, signal) => {
       if ((filters.staffRole && !staffRoles.includes(filters.staffRole)) || (filters.businessStatus && !staffStatuses.includes(filters.businessStatus)) || (filters.assignedZone && (filters.assignedZone.length > 100 || hasControls(filters.assignedZone)))) throw new AdminManagementError('validation')
       const params = new URLSearchParams({ ...(filters.staffRole ? { staffRole: filters.staffRole } : {}), ...(filters.businessStatus ? { businessStatus: filters.businessStatus } : {}), ...(filters.assignedZone?.trim() ? { assignedZone: filters.assignedZone.trim() } : {}) })

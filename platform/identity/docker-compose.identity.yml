@@ -29,6 +29,9 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?KC_BOOTSTRAP_ADMIN_PASSWORD must be explicitly set and non-empty in local .env}
       JAVA_OPTS_APPEND: "-Dkeycloak.migration.replace-placeholders=true"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:-communications_dev_secret}
+      GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:-graphql_dev_secret}
+      DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:-delivery_dev_secret}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     ports:
       - "${KEYCLOAK_PORT:-8090}:8080"

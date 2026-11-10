@@ -48,20 +48,21 @@ public class DefaultPublicTrackingService implements PublicTrackingService {
         // Load append-only chronological history
         List<StatusHistory> historyRecords = statusHistoryRepository.findByParcelIdOrderByResultingVersionAsc(parcel.getParcelId());
 
+        com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcel);
         List<TrackingTimelineItem> timeline = new ArrayList<>();
         if (historyRecords.isEmpty()) {
             // Initial CREATED checkpoint if history table has no entries yet
             timeline.add(new TrackingTimelineItem(
                     parcel.getStatus(),
                     parcel.getCreatedAt(),
-                    coarseZoneForStatus(parcel.getStatus())
+                    route.locationFor(parcel.getStatus())
             ));
         } else {
             for (StatusHistory record : historyRecords) {
                 timeline.add(new TrackingTimelineItem(
                         record.getNewStatus(),
                         record.getOccurredAt(),
-                        coarseZoneForStatus(record.getNewStatus())
+                        route.locationFor(record.getNewStatus())
                 ));
             }
         }
@@ -70,8 +71,8 @@ public class DefaultPublicTrackingService implements PublicTrackingService {
         return new PublicTrackingResponse(
                 parcel.getTrackingNumber(),
                 parcel.getStatus(),
-                "Colombo",
-                "Gampaha",
+                route.pickupZoneName() != null ? route.pickupZoneName() : "Not recorded",
+                route.dropoffZoneName() != null ? route.dropoffZoneName() : "Not recorded",
                 timeline
         );
     }
@@ -90,17 +91,4 @@ public class DefaultPublicTrackingService implements PublicTrackingService {
         }
     }
 
-    private String coarseZoneForStatus(ParcelStatus status) {
-        if (status == null) {
-            return "Western Province Hub";
-        }
-        return switch (status) {
-            case CREATED -> "Order Confirmed (Colombo)";
-            case PICKED_UP -> "Picked Up (Western Province Sorting Hub)";
-            case IN_TRANSIT -> "In Transit (Western Province Sorting Hub)";
-            case OUT_FOR_DELIVERY -> "Out for Delivery (Local Zone)";
-            case DELIVERED -> "Delivered";
-            case FAILED -> "Delivery Attempted (Western Province)";
-        };
-    }
 }

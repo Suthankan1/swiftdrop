@@ -28,13 +28,20 @@ public class GatewayRoutesConfig {
             @Value("${PRICING_SERVICE_URL:http://localhost:8082}") String pricingServiceUrl,
             @Value("${DELIVERY_SERVICE_URL:http://localhost:8083}") String deliveryServiceUrl,
             @Value("${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}") String communicationsServiceUrl,
-            @Value("${GRAPHQL_SERVICE_URL:http://localhost:8085}") String graphqlServiceUrl) {
+            @Value("${GRAPHQL_SERVICE_URL:http://localhost:8085}") String graphqlServiceUrl,
+            @Value("${AI_ASSISTANT_URL:http://localhost:8086}") String assistantUrl) {
 
         return builder.routes()
                 // Specific webhook route to Communications service (evaluates before generic /api/v1/merchants/**)
                 .route("communications-service-webhooks", r -> r
                         .order(SPECIFIC_ROUTE_ORDER)
                         .path("/api/v1/merchants/webhooks", "/api/v1/merchants/webhooks/**")
+                        .uri(communicationsServiceUrl))
+
+                // Communications operator endpoints (notification replay, quarantine)
+                .route("communications-service-internal", r -> r
+                        .order(ROUTE_ORDER)
+                        .path("/api/v1/internal/**")
                         .uri(communicationsServiceUrl))
 
                 // Accounts & Partners service routes
@@ -91,6 +98,12 @@ public class GatewayRoutesConfig {
                         .uri(deliveryServiceUrl))
 
                 // Read-only composite GraphQL Query API
+                // Optional AI delivery assistant
+                .route("ai-assistant", r -> r
+                        .order(ROUTE_ORDER)
+                        .path("/api/v1/assistant/**")
+                        .uri(assistantUrl))
+
                 .route("graphql-query-service", r -> r
                         .order(ROUTE_ORDER)
                         .path("/graphql")

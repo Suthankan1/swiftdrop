@@ -84,7 +84,7 @@ public class NotificationSchedulingService {
                 parcelId,
                 null,
                 merchantId,
-                false
+                true // every transition is a real fact the customer should hear about; the inbox dedupes repeats
         );
 
         if (!auth.isAuthorized()) {
@@ -147,6 +147,8 @@ public class NotificationSchedulingService {
                 destinationRef,
                 template
         );
+
+        notificationJob.setEventSnapshot(snapshotOf(event));
         notificationJob.setStatus(NotificationStatus.PENDING);
         notificationJob.setAttempts(0);
         notificationJob.setNextAttemptAt(Instant.now());
@@ -174,5 +176,16 @@ public class NotificationSchedulingService {
                     consumerGroup, eventId);
             return SchedulingResult.duplicate(eventId);
         }
+    }
+
+    /** Non-sensitive facts the email needs: tracking number, statuses and failure reason. */
+    private static String snapshotOf(ParcelStatusChangedEvent event) {
+        var node = tools.jackson.databind.json.JsonMapper.builder().build().createObjectNode();
+        node.put("trackingNumber", event.payload().trackingNumber());
+        node.put("oldStatus", event.payload().oldStatus());
+        node.put("newStatus", event.payload().newStatus());
+        node.put("reason", event.payload().reason());
+        node.put("aggregateVersion", event.aggregateVersion());
+        return node.toString();
     }
 }

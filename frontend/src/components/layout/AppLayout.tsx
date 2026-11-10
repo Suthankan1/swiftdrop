@@ -29,14 +29,17 @@ function MainNavigation() {
         <nav id="main-navigation" className={`main-navigation${menuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
           <NavLink end to="/" className="nav-link" onClick={() => setMenuOpen(false)}>Home</NavLink>
           <NavLink to="/tracking" className="nav-link" onClick={() => setMenuOpen(false)}>Track parcel</NavLink>
-          <NavLink to="/customer" className="nav-link" onClick={() => setMenuOpen(false)}>Customer space <span aria-hidden="true">↗</span></NavLink>
+          {/* Visitors see it as the way in; signed-in users only when they actually have the customer role. */}
+          {(auth.snapshot.status !== 'authenticated' || auth.snapshot.roles.includes('CUSTOMER')) && (
+            <NavLink to="/customer" className="nav-link" onClick={() => setMenuOpen(false)}>Customer space <span aria-hidden="true">↗</span></NavLink>
+          )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('MERCHANT') && (
             <NavLink to="/merchant" className="nav-link" onClick={() => setMenuOpen(false)}>Merchant space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('COURIER') && (
             <NavLink to="/courier" className="nav-link" onClick={() => setMenuOpen(false)}>Courier space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
-          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('DISPATCHER') && (
+          {auth.snapshot.status === 'authenticated' && (auth.snapshot.roles.includes('DISPATCHER') || auth.snapshot.roles.includes('ADMIN')) && (
             <NavLink to="/dispatcher" className="nav-link" onClick={() => setMenuOpen(false)}>Dispatcher space <span aria-hidden="true">&#8599;</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && (
@@ -46,7 +49,7 @@ function MainNavigation() {
             <span className="nav-auth-item">
               {auth.snapshot.roles.length > 0 && (
                 <Badge variant="brand" className="header-role-badge">
-                  {auth.snapshot.roles[0]}
+                  {primaryRole(auth.snapshot.roles)}
                 </Badge>
               )}
               <Link to="/logout" className="header-auth-link" onClick={() => setMenuOpen(false)}>
@@ -65,12 +68,18 @@ function MainNavigation() {
   )
 }
 
+/** The most specific role names the workspace; every account also starts as a customer. */
+const ROLE_PRIORITY = ['ADMIN', 'DISPATCHER', 'COURIER', 'MERCHANT', 'CUSTOMER'] as const
+function primaryRole(roles: readonly string[]): string {
+  return ROLE_PRIORITY.find((role) => roles.includes(role)) ?? roles[0] ?? ''
+}
+
 export function AppLayout() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <MainNavigation />
-      <main id="main-content" tabIndex={-1}><Outlet /></main>
+      <main id="main-content" className="app-main-content" tabIndex={-1}><Outlet /></main>
       <footer className="site-footer"><div className="footer-inner">
         <Link className="footer-brand" to="/">SwiftDrop.</Link><span>Moving things. Connecting people.</span>
         <span className="footer-location">Made for the journey ahead <span aria-hidden="true">↗</span></span>

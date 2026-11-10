@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AiDeliveryAssistant } from './AiDeliveryAssistant'
+import { AssistantApiError, keywordOnlyAssistantApi, type AssistantApi } from './assistantApi'
 
 describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
   let mockFetch: ReturnType<typeof vi.fn<typeof fetch>>
@@ -19,27 +20,27 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
   function renderAssistant() {
     return render(
       <MemoryRouter>
-        <AiDeliveryAssistant />
+        <AiDeliveryAssistant assistantApi={keywordOnlyAssistantApi} />
       </MemoryRouter>,
     )
   }
 
   it('renders launcher button in closed state initially', () => {
     renderAssistant()
-    const launcher = screen.getByRole('button', { name: /open ai logistics assistant/i })
+    const launcher = screen.getByRole('button', { name: /open help assistant/i })
     expect(launcher).toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: /swiftdrop ai logistics assistant/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /swiftdrop help assistant/i })).not.toBeInTheDocument()
   })
 
   it('toggles open on click and shows welcome message and suggested prompt chips', async () => {
     const user = userEvent.setup()
     renderAssistant()
 
-    const launcher = screen.getByRole('button', { name: /open ai logistics assistant/i })
+    const launcher = screen.getByRole('button', { name: /open help assistant/i })
     await user.click(launcher)
 
-    expect(screen.getByRole('dialog', { name: /swiftdrop ai logistics assistant/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'SwiftDrop AI Assistant' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: /swiftdrop help assistant/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'SwiftDrop Help Assistant' })).toBeInTheDocument()
     expect(screen.getByText(/i am your swiftdrop logistics assistant/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /track parcel swd-20261026-a1b2c3/i })).toBeInTheDocument()
   })
@@ -48,18 +49,18 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
     const user = userEvent.setup()
     renderAssistant()
 
-    await user.click(screen.getByRole('button', { name: /open ai logistics assistant/i }))
-    expect(screen.getByRole('dialog', { name: /swiftdrop ai logistics assistant/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+    expect(screen.getByRole('dialog', { name: /swiftdrop help assistant/i })).toBeInTheDocument()
 
     // Test close button
-    await user.click(screen.getByRole('button', { name: /dismiss ai assistant/i }))
-    expect(screen.queryByRole('dialog', { name: /swiftdrop ai logistics assistant/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /dismiss help assistant/i }))
+    expect(screen.queryByRole('dialog', { name: /swiftdrop help assistant/i })).not.toBeInTheDocument()
 
     // Re-open and test Escape key
-    await user.click(screen.getByRole('button', { name: /open ai logistics assistant/i }))
-    expect(screen.getByRole('dialog', { name: /swiftdrop ai logistics assistant/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+    expect(screen.getByRole('dialog', { name: /swiftdrop help assistant/i })).toBeInTheDocument()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog', { name: /swiftdrop ai logistics assistant/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /swiftdrop help assistant/i })).not.toBeInTheDocument()
   })
 
   it('executes parcel tracking tool with live backend API call', async () => {
@@ -86,9 +87,9 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
     )
 
     renderAssistant()
-    await user.click(screen.getByRole('button', { name: /open ai logistics assistant/i }))
+    await user.click(screen.getByRole('button', { name: /open help assistant/i }))
 
-    const input = screen.getByRole('textbox', { name: /ask swiftdrop ai assistant/i })
+    const input = screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i })
     await user.type(input, 'track SWD-20261026-A1B2C3')
     await user.click(screen.getByRole('button', { name: 'Send' }))
 
@@ -101,7 +102,7 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
     expect(screen.getByText('Gampaha')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open live checkpoints/i })).toHaveAttribute(
       'href',
-      '/tracking?trackingNumber=SWD-20261026-A1B2C3',
+      '/tracking/SWD-20261026-A1B2C3',
     )
   })
 
@@ -133,9 +134,9 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
     )
 
     renderAssistant()
-    await user.click(screen.getByRole('button', { name: /open ai logistics assistant/i }))
+    await user.click(screen.getByRole('button', { name: /open help assistant/i }))
 
-    const input = screen.getByRole('textbox', { name: /ask swiftdrop ai assistant/i })
+    const input = screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i })
     await user.type(input, 'quote for 2.5kg from ZONE_1 to ZONE_2')
     await user.click(screen.getByRole('button', { name: 'Send' }))
 
@@ -167,7 +168,7 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
     )
 
     renderAssistant()
-    await user.click(screen.getByRole('button', { name: /open ai logistics assistant/i }))
+    await user.click(screen.getByRole('button', { name: /open help assistant/i }))
 
     await user.click(screen.getByRole('button', { name: /what are the western province delivery zones\?/i }))
 
@@ -184,12 +185,73 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
   it('provides guided answers for merchant organization questions', async () => {
     const user = userEvent.setup()
     renderAssistant()
-    await user.click(screen.getByRole('button', { name: /open ai logistics assistant/i }))
+    await user.click(screen.getByRole('button', { name: /open help assistant/i }))
 
     await user.click(screen.getByRole('button', { name: /how do i register as a merchant\?/i }))
 
     await waitFor(() => {
       expect(screen.getByText(/commercial merchants can enroll for self-service verification/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('AI mode (server-side Gemini)', () => {
+    function renderWith(api: AssistantApi) {
+      return render(
+        <MemoryRouter>
+          <AiDeliveryAssistant assistantApi={api} />
+        </MemoryRouter>,
+      )
+    }
+
+    it('answers through the AI service with the conversation so far', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>().mockResolvedValue({ reply: 'Your parcel is in transit to Kandy.', toolsUsed: ['track_parcel'] })
+      renderWith({ status: async () => ({ enabled: true }), chat })
+
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      expect(await screen.findByRole('heading', { name: 'SwiftDrop AI Assistant' })).toBeInTheDocument()
+      await user.type(screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i }), 'Where is SWD-20261108-ABCD1234?')
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(await screen.findByText('Your parcel is in transit to Kandy.')).toBeInTheDocument()
+      expect(chat).toHaveBeenCalledWith([{ role: 'user', text: 'Where is SWD-20261108-ABCD1234?' }])
+      expect(mockFetch).not.toHaveBeenCalled() // no direct backend calls from the browser in AI mode
+    })
+
+    it('falls back to keyword mode when the AI service is not configured', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>().mockRejectedValue(new AssistantApiError('not-configured', 'x'))
+      renderWith({ status: async () => ({ enabled: true }), chat })
+
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      await screen.findByRole('heading', { name: 'SwiftDrop AI Assistant' })
+      await user.type(screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i }), 'How do I register as a Merchant?')
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(await screen.findByText(/AI unavailable, using keyword mode/)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'SwiftDrop Help Assistant' })).toBeInTheDocument()
+    })
+
+    it('shows the busy message instead of falling back when rate limited', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>().mockRejectedValue(new AssistantApiError('busy', 'The assistant is busy. Please wait a moment and try again.'))
+      renderWith({ status: async () => ({ enabled: true }), chat })
+
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      await screen.findByRole('heading', { name: 'SwiftDrop AI Assistant' })
+      await user.type(screen.getByRole('textbox', { name: /ask swiftdrop help assistant/i }), 'hello')
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(await screen.findByText(/assistant is busy/i)).toBeInTheDocument()
+    })
+
+    it('stays in keyword mode when the server reports the AI disabled', async () => {
+      const user = userEvent.setup()
+      const chat = vi.fn<AssistantApi['chat']>()
+      renderWith({ status: async () => ({ enabled: false }), chat })
+      await user.click(screen.getByRole('button', { name: /open help assistant/i }))
+      await waitFor(() => expect(screen.getByText(/Not a generative AI/)).toBeInTheDocument())
+      expect(chat).not.toHaveBeenCalled()
     })
   })
 })

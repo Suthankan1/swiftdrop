@@ -221,4 +221,14 @@ describe('courierAssignments API', () => {
       })
     })
   })
+
+  it('sends assignedSince as an ISO instant when filtering to today', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      items: [], totalElements: 0, totalPages: 0, currentPage: 0, pageSize: 20, hasNext: false, hasPrevious: false,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    const api = createCourierAssignmentsApi({ getAccessToken: async () => 'token', gatewayUrl: 'http://gw', fetch: fetchMock })
+    const since = new Date('2026-11-09T00:00:00+05:30')
+    await api.getMyAssignmentsPaged({ assignedSince: since })
+    expect(String(fetchMock.mock.calls[0]![0])).toContain(`assignedSince=${encodeURIComponent(since.toISOString())}`)
+  })
 })

@@ -48,6 +48,15 @@ public record QuoteRequest(
         @Min(value = 1, message = "heightCm must be at least 1 cm")
         @Max(value = 150, message = "heightCm must not exceed 150 cm")
         @JsonProperty("heightCm")
-        Integer heightCm
+        Integer heightCm,
+        @jakarta.validation.constraints.Pattern(regexp = "STANDARD|EXPRESS",
+                message = "serviceTier must be STANDARD or EXPRESS")
+        @JsonProperty("serviceTier")
+        String serviceTier
 ) {
+    /** Standard-tier request, as before the Same Day tier existed. */
+    public QuoteRequest(String pickupZone, String dropoffZone, BigDecimal weightKg,
+                        Integer lengthCm, Integer widthCm, Integer heightCm) {
+        this(pickupZone, dropoffZone, weightKg, lengthCm, widthCm, heightCm, null);
+    }
 }

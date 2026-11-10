@@ -164,6 +164,7 @@ public class WebhookJobMaterializationService {
             delivery.setAttemptCount(0);
             delivery.setNextAttemptAt(Instant.now());
             delivery.setCorrelationId(event.correlationId());
+            delivery.setEventSnapshot(rawPayload);
             deliveriesToPersist.add(delivery);
         }
 

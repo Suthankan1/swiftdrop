@@ -48,9 +48,13 @@ public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
         Objects.requireNonNull(quoteId, "quoteId must not be null");
         Objects.requireNonNull(merchantId, "merchantId must not be null");
 
-        String actorSub = authenticatedSubject != null && !authenticatedSubject.isBlank()
-                ? authenticatedSubject
-                : "merchant:" + merchantId;
+        // A signed-in merchant's own JWT travels with the call and carries the merchant_id claim.
+        if (org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken) {
+            return validate(quoteId, authenticatedSubject);
+        }
+
+        String actorSub = com.swiftdrop.security.grpc.ActorDelegationValidator.MACHINE_MERCHANT_PREFIX + merchantId;
 
         DelegatedActorContext actor = new DelegatedActorContext(
                 actorSub,
@@ -106,7 +110,16 @@ public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
                     response.getVerifiedAmountMinorUnits(),
                     response.getCurrency(),
                     expiresAt,
-                    response.getValidationCode()
+                    response.getValidationCode(),
+                    blankToNull(response.getPickupZone()),
+                    blankToNull(response.getDropoffZone()),
+                    blankToNull(response.getPickupZoneName()),
+                    blankToNull(response.getDropoffZoneName()),
+                    response.getPhysicalWeightKg().isBlank() ? null : new java.math.BigDecimal(response.getPhysicalWeightKg()),
+                    blankToNull(response.getSizeCategory()),
+                    response.getLengthCm() > 0
+                            ? response.getLengthCm() + " × " + response.getWidthCm() + " × " + response.getHeightCm()
+                            : null
             );
 
         } catch (StatusRuntimeException ex) {
@@ -132,5 +145,9 @@ public class GrpcBookingQuoteProvider implements BookingQuoteProvider {
                     "INTERNAL_ERROR"
             );
         }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }

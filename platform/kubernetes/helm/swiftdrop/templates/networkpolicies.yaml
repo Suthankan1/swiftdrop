@@ -164,6 +164,15 @@ spec:
       ports:
         - protocol: TCP
           port: 8085
+    {{- if .Values.aiAssistant.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ai-assistant
+      ports:
+        - protocol: TCP
+          port: 8086
+    {{- end }}
     # Gateway -> Keycloak JWKS in swiftdrop-identity
     - to:
         - namespaceSelector:
@@ -257,6 +266,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
+    {{- if .Values.aiAssistant.enabled }}
+    # HTTP from the AI assistant's read-only tools (same public/caller-token APIs the gateway exposes)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ai-assistant
+      ports:
+        - protocol: TCP
+          port: 8082
+    {{- end }}
     # gRPC from Delivery
     - from:
         - podSelector:
@@ -311,6 +330,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8083
+    {{- if .Values.aiAssistant.enabled }}
+    # HTTP from the AI assistant's read-only tools (same public/caller-token APIs the gateway exposes)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ai-assistant
+      ports:
+        - protocol: TCP
+          port: 8083
+    {{- end }}
     # gRPC from GraphQL, Communications
     - from:
         - podSelector:
@@ -471,6 +500,69 @@ spec:
       ports:
         - protocol: TCP
           port: 9082
+
+{{- if .Values.aiAssistant.enabled }}
+---
+# 10b. AI assistant: HTTP from the gateway only; egress to Pricing, Delivery, Keycloak JWKS and Gemini (HTTPS)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ai-assistant-traffic
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "ai-assistant") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ai-assistant
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8086
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: pricing-service
+      ports:
+        - protocol: TCP
+          port: 8082
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: delivery-service
+      ports:
+        - protocol: TCP
+          port: 8083
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.namespaces.identity }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Gemini API (generativelanguage.googleapis.com) over HTTPS only; private ranges stay blocked.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}
 
 # ------------------------------------------------------------------------------
 # B. swiftdrop-identity Namespace Policies

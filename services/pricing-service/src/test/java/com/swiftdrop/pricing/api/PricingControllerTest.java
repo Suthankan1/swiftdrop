@@ -70,7 +70,7 @@ class PricingControllerTest {
         QuoteResponse response = new QuoteResponse(
                 quoteId, "RATE-2026-V1", "ZONE_1", "ZONE_2",
                 new BigDecimal("2.50"), new BigDecimal("1.80"), new BigDecimal("2.50"),
-                SizeCategory.MEDIUM, 35000L, 15000L, 50000L, "LKR",
+                SizeCategory.MEDIUM, 35000L, 15000L, "STANDARD", 0L, 50000L, "LKR",
                 CREATED_AT, EXPIRES_AT, false
         );
 
@@ -242,7 +242,7 @@ class PricingControllerTest {
         QuoteResponse response = new QuoteResponse(
                 quoteId, "RATE-2026-V1", "ZONE_1", "ZONE_2",
                 new BigDecimal("2.50"), new BigDecimal("1.80"), new BigDecimal("2.50"),
-                SizeCategory.MEDIUM, 35000L, 15000L, 50000L, "LKR",
+                SizeCategory.MEDIUM, 35000L, 15000L, "STANDARD", 0L, 50000L, "LKR",
                 CREATED_AT, EXPIRES_AT, false
         );
 

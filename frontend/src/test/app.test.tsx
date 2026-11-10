@@ -166,9 +166,21 @@ describe('shared application routes', () => {
     for (const [role, label, path] of [
       ['DISPATCHER', 'Dispatcher space', '/dispatcher'], ['ADMIN', 'Admin space', '/admin'],
     ] as const) {
-      if (roles.includes(role)) expect(nav.getByRole('link', { name: new RegExp(label) })).toHaveAttribute('href', path)
+      // Admins may also run dispatch, so ADMIN alone shows the Dispatcher entry.
+      const visible = roles.includes(role) || (role === 'DISPATCHER' && roles.includes('ADMIN'))
+      if (visible) expect(nav.getByRole('link', { name: new RegExp(label) })).toHaveAttribute('href', path)
       else expect(nav.queryByRole('link', { name: new RegExp(label) })).not.toBeInTheDocument()
     }
+  })
+
+  it.each<{ roles: readonly SwiftDropRole[]; visible: boolean }>([
+    { roles: ['CUSTOMER'], visible: true }, { roles: ['COURIER'], visible: false },
+    { roles: ['DISPATCHER', 'ADMIN'], visible: false }, { roles: ['MERCHANT', 'CUSTOMER'], visible: true },
+  ])('shows Customer space only to customers ($roles)', ({ roles, visible }) => {
+    renderRoute('/login', { ...anonymousAuth, snapshot: { status: 'authenticated', subject: 'nav-subject', roles } })
+    const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))
+    if (visible) expect(nav.getByRole('link', { name: /customer space/i })).toBeInTheDocument()
+    else expect(nav.queryByRole('link', { name: /customer space/i })).not.toBeInTheDocument()
   })
 
   it.each(['unauthenticated', 'loading'] as const)('hides both staff navigation entries while %s', (status) => {

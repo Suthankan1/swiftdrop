@@ -8,7 +8,10 @@ import type { ParcelDetailResponse } from '../api/deliveryContracts'
 import {
   formatCurrency,
   formatDateTime,
+  formatDimensions,
+  formatWeight,
   getActiveStepIndex,
+  getFailedStepIndex,
   getStatusPresentation,
   LIFECYCLE_STEPS,
 } from './customerUiUtils'
@@ -70,6 +73,16 @@ export function CustomerTrackingModal({
     staleTime: 10_000,
   })
 
+  const historyQuery = useQuery({
+    queryKey: ['private', 'parcel-history', parcelId, query.data?.version],
+    enabled: isOpen && !!parcelId && !!query.data && typeof deliveryApi.getParcelHistory === 'function',
+    queryFn: async ({ signal }) => {
+      if (!parcelId) throw new DeliveryError('not-found', 'No parcel identifier provided.')
+      return deliveryApi.getParcelHistory(parcelId, { page: 0, size: 50 }, signal)
+    },
+    staleTime: 10_000,
+  })
+
   const {
     parcel: liveParcel,
     streamState,
@@ -97,19 +110,42 @@ export function CustomerTrackingModal({
     randomFn,
   })
 
-  // Keyboard navigation & focus management
+  // Keyboard navigation & focus management (audit 93): focus moves into the dialog on open, Tab stays inside it,
+  // Escape closes it, and focus returns to whatever opened it. Runs once per opening, not on every re-render.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose })
   useEffect(() => {
-    if (isOpen) {
-      closeButtonRef.current?.focus()
-      const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          onClose()
-        }
+    if (!isOpen) return
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    closeButtonRef.current?.focus()
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCloseRef.current()
+        return
       }
-      window.addEventListener('keydown', handleKeyDown)
-      return () => window.removeEventListener('keydown', handleKeyDown)
+      if (e.key !== 'Tab' || !modalRef.current) return
+      const focusable = Array.from(modalRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ))
+      if (focusable.length === 0) return
+      const first = focusable[0]!
+      const last = focusable[focusable.length - 1]!
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || !modalRef.current.contains(active))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (active === last || !modalRef.current.contains(active))) {
+        e.preventDefault()
+        first.focus()
+      }
     }
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      if (opener?.isConnected) opener.focus()
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -117,6 +153,8 @@ export function CustomerTrackingModal({
   const activeStatus = parcel?.currentStatus || 'CREATED'
   const presentation = getStatusPresentation(activeStatus)
   const activeStep = getActiveStepIndex(activeStatus)
+  const failureEvent = historyQuery.data?.items.find(item => item.newStatus === 'FAILED')
+  const failedStep = getFailedStepIndex(failureEvent?.previousStatus)
   const displayTracking = parcel?.trackingNumber || initialTrackingNumber || 'Tracking'
 
   async function handleCopyTracking() {
@@ -219,12 +257,15 @@ export function CustomerTrackingModal({
               </div>
 
               {/* Progress Milestones Tracker */}
-              <div className="timeline-stepper" aria-label="Delivery progress timeline">
+              <ol className="timeline-stepper" aria-label="Delivery progress timeline">
                 {LIFECYCLE_STEPS.map((step, idx) => {
                   const stepInfo = getStatusPresentation(step)
                   const isCurrent = idx === activeStep && !presentation.isFailed
-                  const isPast = idx < activeStep || presentation.isSuccess
-                  const isStepFailed = presentation.isFailed && idx === 4
+                  // A failed parcel only ticks the steps it actually reached (from its event history).
+                  const isPast = presentation.isFailed
+                    ? failedStep >= 0 && idx < failedStep
+                    : idx < activeStep || presentation.isSuccess
+                  const isStepFailed = presentation.isFailed && idx === failedStep
 
                   let stepClass = 'stepper-node'
                   if (isPast) stepClass += ' is-past'
@@ -232,25 +273,47 @@ export function CustomerTrackingModal({
                   if (isStepFailed) stepClass += ' is-failed'
 
                   return (
-                    <div key={step} className={stepClass} tabIndex={0} aria-label={`${stepInfo.label} status step`}>
+                    <li key={step} className={stepClass}
+                      aria-label={`${stepInfo.label}: ${isPast ? 'completed' : isStepFailed ? 'failed' : isCurrent ? 'current' : 'not reached'}`}
+                      aria-current={isCurrent ? 'step' : undefined}>
                       <div className="stepper-dot" aria-hidden="true">
                         {isPast ? '✓' : isStepFailed ? '✕' : idx + 1}
                       </div>
                       <span className="stepper-label">{isStepFailed ? 'Failed' : stepInfo.label}</span>
-                    </div>
+                    </li>
                   )
                 })}
-              </div>
+              </ol>
+
+              {/* Event history with notes and failure reasons */}
+              {historyQuery.isError && <p className="muted" role="status">The event history is unavailable right now.</p>}
+              {historyQuery.data && historyQuery.data.items.length > 0 && (
+                <section className="tracking-card" aria-labelledby="parcel-history-heading">
+                  <h3 id="parcel-history-heading" className="card-subtitle">Event history</h3>
+                  <ol className="parcel-history-list">
+                    {[...historyQuery.data.items]
+                      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+                      .map(item => (
+                        <li key={item.historyId}>
+                          <strong>{getStatusPresentation(item.newStatus).label}</strong>
+                          {' · '}<time dateTime={item.occurredAt}>{formatDateTime(item.occurredAt)}</time>
+                          {item.reason && <p>Reason: {item.reason.replaceAll('_', ' ').toLowerCase()}</p>}
+                          {item.note && <p>Note: {item.note}</p>}
+                        </li>
+                      ))}
+                  </ol>
+                </section>
+              )}
 
               {/* Address Route Card */}
               <div className="tracking-grid">
                 <div className="tracking-card">
                   <h3 className="card-subtitle">Pickup Location</h3>
-                  <p className="address-text">{parcel.pickupAddress || 'Standard Origin Depot'}</p>
+                  <p className="address-text">{parcel.pickupAddress || 'Not recorded'}</p>
                 </div>
                 <div className="tracking-card">
                   <h3 className="card-subtitle">Destination Location</h3>
-                  <p className="address-text">{parcel.dropoffAddress || 'Customer Destination'}</p>
+                  <p className="address-text">{parcel.dropoffAddress || 'Not recorded'}</p>
                 </div>
               </div>
 
@@ -258,11 +321,11 @@ export function CustomerTrackingModal({
               <div className="tracking-meta-strip">
                 <div>
                   <span className="meta-label">Weight</span>
-                  <span className="meta-value">{parcel.weightKg} kg</span>
+                  <span className="meta-value">{formatWeight(parcel.weightKg)}</span>
                 </div>
                 <div>
                   <span className="meta-label">Dimensions</span>
-                  <span className="meta-value">{parcel.dimensions} cm</span>
+                  <span className="meta-value">{formatDimensions(parcel.dimensions)}</span>
                 </div>
                 <div>
                   <span className="meta-label">Delivery Fee</span>
@@ -284,7 +347,7 @@ export function CustomerTrackingModal({
                     {parcel.currentStatus === 'DELIVERED'
                       ? 'Official PDF receipt with immutable fee snapshot and completion metadata.'
                       : parcel.currentStatus === 'FAILED'
-                        ? 'Receipt is not available because the delivery was cancelled or could not be completed.'
+                        ? 'Receipts are only issued for delivered parcels; this delivery failed.'
                         : 'Official PDF receipt will become available immediately upon successful delivery.'}
                   </p>
                 </div>

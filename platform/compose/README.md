@@ -1,5 +1,9 @@
 # SwiftDrop — Full-Stack Persistent Docker Compose Runtime (Issue #141)
 
+> **Default image source:** `SWIFTDROP_IMAGE_TAG=local` builds every image from this checkout, and `start.sh` adds `--build`. Set a commit SHA tag to run that published release instead; the `b8ac497` table below describes the last published set. An older `.env` keeps its old tag until you change it.
+>
+> **Upgrading an existing Keycloak volume:** Keycloak imports the realm only on first start, so the `communications-service` and `graphql-query-service` clients and the `http://localhost:3000` web origin are not added to an existing `swiftdrop-keycloak-postgres-data` volume. Add them in the admin console or start with a fresh volume.
+
 **Issue:** [#141](https://github.com/Suthankan1/swiftdrop/issues/141) · **Owner:** @Suthankan1 · **Priority:** P0  
 **Target Integration Branch:** `test` · **Feature Branch:** `feat/n10-p06-full-stack-compose-runtime`  
 **Independent Reviewers:** @Harithkeshan, @Vibhushan-2003  

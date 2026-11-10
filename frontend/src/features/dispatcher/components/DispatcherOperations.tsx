@@ -14,22 +14,30 @@ export function DispatcherOperations() {
   const [selected, setSelected] = useState<UnassignedParcel | null>(null)
   const [courierSub, setCourierSub] = useState('')
   const [zoneFilter, setZoneFilter] = useState('ALL')
+  const [seenZones, setSeenZones] = useState<string[]>([])
   const [pending, setPending] = useState(false)
   const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null)
   const command = useRef<AbortController | null>(null)
+  const assignmentPanel = useRef<HTMLElement>(null)
+  // Bring the confirm panel into view and move focus to it when a parcel is selected (audit 92).
+  useEffect(() => {
+    if (!selected || !assignmentPanel.current) return
+    assignmentPanel.current.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+    assignmentPanel.current.querySelector<HTMLElement>('h2')?.focus()
+  }, [selected])
   const api = createDispatcherApi({ getAccessToken: auth.getAccessToken })
   const queryKey = ['private', 'dispatcher-dashboard', subject] as const
   const query = useQuery({
-    queryKey: [...queryKey, page, 20],
+    queryKey: [...queryKey, page, 20, zoneFilter],
     queryFn: async ({ signal }) => {
-      try { return await api.dashboard(page, 20, signal) }
+      try { return await (zoneFilter === 'ALL' ? api.dashboard(page, 20, signal) : api.dashboard(page, 20, signal, zoneFilter)) }
       catch (error) {
         if (!signal.aborted && error instanceof DispatcherError && error.kind === 'auth-required') await auth.handleSessionExpiry()
         throw error
       }
     },
     retry: false, gcTime: 0, staleTime: 0,
-    enabled: auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('DISPATCHER'),
+    enabled: auth.snapshot.status === 'authenticated' && (auth.snapshot.roles.includes('DISPATCHER') || auth.snapshot.roles.includes('ADMIN')),
     refetchOnWindowFocus: false,
   })
   useEffect(() => () => { command.current?.abort() }, [])
@@ -66,10 +74,14 @@ export function DispatcherOperations() {
   const available = data?.availableCouriers.filter(c => c.eligible) ?? []
   const chosenCourier = available.find(c => c.courierSub === courierSub)
 
-  const displayedParcels = data?.unassignedParcels.filter(p => {
-    if (zoneFilter === 'ALL') return true
-    return p.pickupZone === zoneFilter || p.dropoffZone === zoneFilter
-  }) ?? []
+  // Zone choices accumulate from every page seen, so a zone stays selectable after filtering to it.
+  const pageZones = (data?.unassignedParcels ?? []).flatMap(p => [p.pickupZone, p.dropoffZone])
+    .filter(z => Boolean(z) && z !== 'UNKNOWN')
+  if (pageZones.some(z => !seenZones.includes(z))) setSeenZones(Array.from(new Set([...seenZones, ...pageZones])).sort())
+  const zoneCodes = seenZones
+
+  // The server already filtered by zone, so the page is shown as returned.
+  const displayedParcels = data?.unassignedParcels ?? []
 
   return <section className="dispatcher-operations" aria-label="Dispatch operations" aria-busy={query.isFetching || pending}>
     <div className="dispatcher-toolbar">
@@ -81,17 +93,20 @@ export function DispatcherOperations() {
     {query.isError && <div role="alert"><p>{query.error instanceof DispatcherError ? query.error.message : 'Operations provider unavailable.'}</p><p>Refresh operations to try again.</p></div>}
     {data && !query.isError && <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} parcels</p>
+        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} parcels{zoneFilter !== 'ALL' && ` in ${zoneFilter}`}</p>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} aria-label="Filter unassigned parcels by zone">
           <span className="muted" style={{ fontSize: '0.85rem' }}>Zone:</span>
-          {['ALL', 'ZONE_1', 'ZONE_2', 'ZONE_3'].map(z => (
+          {['ALL', ...zoneCodes].map(z => (
             <Button
               key={z}
               size="sm"
               variant={zoneFilter === z ? 'primary' : 'tonal'}
+              aria-pressed={zoneFilter === z}
               style={{ minHeight: '28px', padding: '2px 8px', fontSize: '0.78rem' }}
-              onClick={() => setZoneFilter(z)}
+              onClick={() => { setZoneFilter(z); setPage(0); clear() }}
             >
+              {/* Selected state is shown by a check mark and aria-pressed, not colour alone (audit 97). */}
+              {zoneFilter === z && <span aria-hidden="true">✓ </span>}
               {z === 'ALL' ? 'All Zones' : z}
             </Button>
           ))}
@@ -145,8 +160,8 @@ export function DispatcherOperations() {
           })}
         </ul>
       </section>
-      {selected && <section className="card dispatcher-assignment" aria-labelledby="assignment-heading">
-        <h2 id="assignment-heading" className="section-heading">Confirm courier assignment</h2>
+      {selected && <section ref={assignmentPanel} className="card dispatcher-assignment" aria-labelledby="assignment-heading">
+        <h2 id="assignment-heading" className="section-heading" tabIndex={-1}>Confirm courier assignment</h2>
         <p>{selected.trackingNumber} · Parcel {selected.parcelId} · Version {selected.version}</p>
         <p>{selected.pickupZone} → {selected.dropoffZone} · {selected.weightKg} kg · {selected.sizeCategory}</p>
         <label htmlFor="assignment-courier">Eligible courier</label>

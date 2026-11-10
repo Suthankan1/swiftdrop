@@ -96,7 +96,7 @@ public class KafkaOutboxRelay {
         }
 
         Instant now = Instant.now();
-        List<OutboxEvent> claimedBatch = claimEvents(now);
+        List<OutboxEvent> claimedBatch = inTransaction(() -> claimEvents(now));
         if (claimedBatch.isEmpty()) {
             return 0;
         }
@@ -140,9 +140,10 @@ public class KafkaOutboxRelay {
      * Step 2: Publish to Kafka with broker acknowledgement.
      */
     private boolean dispatchEvent(OutboxEvent event) {
-        String topic = (event.getTopic() != null && !event.getTopic().isBlank())
-                ? event.getTopic()
-                : properties.getTopic();
+        // The configured topic wins, so KAFKA_TOPIC_PARCEL_LIFECYCLE reaches producers and consumers alike.
+        String topic = (properties.getTopic() != null && !properties.getTopic().isBlank())
+                ? properties.getTopic()
+                : event.getTopic();
 
         String correlationId = extractCorrelationId(event);
 
@@ -158,7 +159,7 @@ public class KafkaOutboxRelay {
                 SendResult<String, String> sendResult = future.get(5, TimeUnit.SECONDS);
                 Instant ackTime = Instant.now();
 
-                markPublished(event.getEventId(), ackTime);
+                inTransaction(() -> { markPublished(event.getEventId(), ackTime); return null; });
                 if (outboxMetrics != null) {
                     outboxMetrics.recordPublish(true);
                 }
@@ -171,7 +172,7 @@ public class KafkaOutboxRelay {
             } catch (Exception e) {
                 String errorMsg = sanitizeError(e.getMessage());
                 log.warn("Failed to publish outbox event {}: {}", event.getEventId(), errorMsg);
-                markFailed(event.getEventId(), errorMsg);
+                inTransaction(() -> { markFailed(event.getEventId(), errorMsg); return null; });
                 if (outboxMetrics != null) {
                     outboxMetrics.recordPublish(false);
                 }
@@ -257,5 +258,35 @@ public class KafkaOutboxRelay {
 
     public String getWorkerId() {
         return workerId;
+    }
+
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
+    /** Self-invocation bypasses the @Transactional proxy, so work that must commit atomically uses this. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTransactionManager(org.springframework.transaction.PlatformTransactionManager transactionManager) {
+        this.transactionTemplate = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        this.transactionTemplate.setPropagationBehavior(
+                org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    private <T> T inTransaction(java.util.function.Supplier<T> work) {
+        return transactionTemplate == null ? work.get() : transactionTemplate.execute(status -> work.get());
+    }
+
+    /**
+     * Gives dead-lettered events another chance on a slow cycle. Later versions of the same parcel stay
+     * blocked behind them (see the claim query), so requeueing restores per-parcel order.
+     */
+    @Scheduled(fixedDelayString = "${OUTBOX_DEAD_LETTER_REQUEUE_INTERVAL_MS:600000}",
+            initialDelayString = "${OUTBOX_DEAD_LETTER_REQUEUE_INTERVAL_MS:600000}")
+    public void requeueDeadLetters() {
+        if (!properties.isEnabled()) {
+            return;
+        }
+        int requeued = inTransaction(() -> outboxEventRepository.requeueDeadLetters(Instant.now()));
+        if (requeued > 0) {
+            log.warn("Requeued {} dead-lettered outbox events for another delivery attempt", requeued);
+        }
     }
 }

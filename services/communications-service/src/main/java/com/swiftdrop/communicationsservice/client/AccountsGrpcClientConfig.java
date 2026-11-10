@@ -1,5 +1,6 @@
 package com.swiftdrop.communicationsservice.client;
 
+import com.swiftdrop.security.service.ClientCredentialsServiceTokenProvider;
 import com.swiftdrop.security.grpc.SwiftDropGrpcClientInterceptor;
 import com.swiftdrop.security.service.ServiceTokenProvider;
 import io.grpc.ManagedChannel;
@@ -30,13 +31,21 @@ public class AccountsGrpcClientConfig {
     @Bean
     @ConditionalOnMissingBean
     public ServiceTokenProvider communicationsServiceTokenProvider(
-            @Value("${grpc.client.accounts.service-token:}") String configuredToken) {
+            @Value("${grpc.client.accounts.service-token:}") String configuredToken,
+            @Value("${KEYCLOAK_JWKS_URI:}") String jwksUri,
+            @Value("${SWIFTDROP_COMMUNICATIONS_CLIENT_ID:communications-service}") String clientId,
+            @Value("${SWIFTDROP_COMMUNICATIONS_CLIENT_SECRET:}") String clientSecret) {
         if (configuredToken != null && !configuredToken.isBlank()) {
             return ServiceTokenProvider.of(configuredToken.trim());
         }
         String envToken = System.getenv("COMMUNICATIONS_SERVICE_JWT");
         if (envToken != null && !envToken.isBlank()) {
             return ServiceTokenProvider.of(envToken.trim());
+        }
+        if (clientSecret != null && !clientSecret.isBlank() && jwksUri != null && !jwksUri.isBlank()) {
+            return new ClientCredentialsServiceTokenProvider(
+                    jwksUri.replace("/protocol/openid-connect/certs", "/protocol/openid-connect/token"),
+                    clientId, clientSecret.trim());
         }
         // Fallback placeholder token for test/local development
         return () -> "";
@@ -48,8 +57,7 @@ public class AccountsGrpcClientConfig {
         SwiftDropGrpcClientInterceptor interceptor =
                 new SwiftDropGrpcClientInterceptor(tokenProvider, deadlineMs);
 
-        return ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
+        return com.swiftdrop.security.grpc.GrpcTransport.channel(host, port)
                 .intercept(interceptor)
                 .build();
     }

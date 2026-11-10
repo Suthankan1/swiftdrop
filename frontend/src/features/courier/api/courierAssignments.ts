@@ -69,11 +69,14 @@ export function createCourierAssignmentsApi({
       page = 0,
       size = 20,
       signal,
+      assignedSince,
     }: {
       activeOnly?: boolean
       page?: number
       size?: number
       signal?: AbortSignal
+      /** Only assignments made at or after this instant (e.g. the courier's local midnight). */
+      assignedSince?: Date
     } = {}): Promise<PagedAssignmentsResponse> {
       if (!Number.isSafeInteger(page) || page < 0 || !Number.isSafeInteger(size) || size < 1 || size > 50) {
         throw new CourierApiError('invalid-pagination', 'Page must be 0 or greater and size must be between 1 and 50.')
@@ -100,7 +103,10 @@ export function createCourierAssignmentsApi({
         controller.signal.throwIfAborted()
         const token = await Promise.race([resolveAuthToken(), interrupted])
 
-        const url = `${normalizedGateway}/api/v1/assignments/my?activeOnly=${activeOnly}&page=${page}&size=${size}`
+        const since = assignedSince && !Number.isNaN(assignedSince.getTime())
+          ? `&assignedSince=${encodeURIComponent(assignedSince.toISOString())}`
+          : ''
+        const url = `${normalizedGateway}/api/v1/assignments/my?activeOnly=${activeOnly}&page=${page}&size=${size}${since}`
         const response = await request(url, {
           method: 'GET',
           headers: {

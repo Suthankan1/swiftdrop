@@ -62,6 +62,9 @@ public class NotificationJob {
     @Column(name = "last_failure_category", length = 50)
     private String lastFailureCategory;
 
+    @Column(name = "event_snapshot", columnDefinition = "TEXT")
+    private String eventSnapshot;
+
     public NotificationJob() {
     }
 
@@ -234,5 +237,13 @@ public class NotificationJob {
 
     public void setLastFailureCategory(String lastFailureCategory) {
         this.lastFailureCategory = lastFailureCategory;
+    }
+
+    public String getEventSnapshot() {
+        return eventSnapshot;
+    }
+
+    public void setEventSnapshot(String eventSnapshot) {
+        this.eventSnapshot = eventSnapshot;
     }
 }

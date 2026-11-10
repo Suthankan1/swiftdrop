@@ -22,6 +22,8 @@ public class CommunicationsSecurityConfig {
         return auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/v1/merchants/webhooks").hasRole(SwiftDropRoles.ROLE_MERCHANT)
                 .requestMatchers(HttpMethod.GET, "/api/v1/merchants/webhooks", "/api/v1/merchants/webhooks/**").hasRole(SwiftDropRoles.ROLE_MERCHANT)
+                .requestMatchers(HttpMethod.POST, "/api/v1/merchants/webhooks/*/rotate-secret",
+                        "/api/v1/merchants/webhooks/*/deliveries/*/replay").hasRole(SwiftDropRoles.ROLE_MERCHANT)
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/merchants/webhooks/*").hasRole(SwiftDropRoles.ROLE_MERCHANT)
                 .requestMatchers("/api/v1/internal/**").hasAnyRole(SwiftDropRoles.ROLE_ADMIN, SwiftDropRoles.ROLE_DISPATCHER);
     }

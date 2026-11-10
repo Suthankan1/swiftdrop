@@ -34,6 +34,11 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PublicTrackingRedactionAndSecurityTest {
 
+    /** Coarse zone names captured from the quote at booking; addresses never appear in public tracking. */
+    private static final String ROUTE_SNAPSHOT =
+            "{\"pickupZoneName\":\"Colombo Municipal District\",\"dropoffZoneName\":\"Western Province Suburbs\"}";
+
+
     @Mock
     private ParcelRepository parcelRepository;
 
@@ -79,6 +84,7 @@ class PublicTrackingRedactionAndSecurityTest {
                 "LKR",
                 new BigDecimal("2.500")
         );
+        parcel.setQuoteSnapshot(ROUTE_SNAPSHOT);
         parcel.setStatus(ParcelStatus.IN_TRANSIT);
 
         List<StatusHistory> history = List.of(
@@ -98,8 +104,8 @@ class PublicTrackingRedactionAndSecurityTest {
         assertThat(response).isNotNull();
         assertThat(response.trackingNumber()).isEqualTo(trackingNumber);
         assertThat(response.currentStatus()).isEqualTo(ParcelStatus.IN_TRANSIT);
-        assertThat(response.originCity()).isEqualTo("Colombo");
-        assertThat(response.destinationCity()).isEqualTo("Gampaha");
+        assertThat(response.originCity()).isEqualTo("Colombo Municipal District");
+        assertThat(response.destinationCity()).isEqualTo("Western Province Suburbs");
         assertThat(response.timeline()).hasSize(3);
 
         // Verify ordering and coarse checkpoints
@@ -133,6 +139,7 @@ class PublicTrackingRedactionAndSecurityTest {
                 "LKR",
                 new BigDecimal("5.000")
         );
+        parcel.setQuoteSnapshot(ROUTE_SNAPSHOT);
         parcel.setStatus(ParcelStatus.FAILED);
 
         List<StatusHistory> history = List.of(
@@ -200,6 +207,7 @@ class PublicTrackingRedactionAndSecurityTest {
                 "LKR",
                 null
         );
+        parcel.setQuoteSnapshot(ROUTE_SNAPSHOT);
         parcel.setStatus(ParcelStatus.CREATED);
 
         when(parcelRepository.findByTrackingNumber(trackingNumber)).thenReturn(Optional.of(parcel));
@@ -210,7 +218,7 @@ class PublicTrackingRedactionAndSecurityTest {
         assertThat(response.timeline()).hasSize(1);
         TrackingTimelineItem item = response.timeline().get(0);
         assertThat(item.status()).isEqualTo(ParcelStatus.CREATED);
-        assertThat(item.cityOrZone()).contains("Order Confirmed");
+        assertThat(item.cityOrZone()).isEqualTo("Colombo Municipal District");
     }
 
     @Test
@@ -267,5 +275,21 @@ class PublicTrackingRedactionAndSecurityTest {
         assertThat(json).contains("\"cityOrZone\":\"Colombo Sorting Hub\"");
         assertThat(json).contains("\"occurredAt\":\"2026-10-23T14:30:00Z\"");
     }
-}
 
+    @Test
+    @DisplayName("Parcels booked before routes were stored show 'Not recorded' instead of invented cities")
+    void parcelsWithoutRoute_DoNotInventCities() {
+        String trackingNumber = "SWD-20261023-NOROUTE1";
+        Parcel parcel = new Parcel(SENSITIVE_PARCEL_ID, trackingNumber, SENSITIVE_SENDER_SUB,
+                null, null, null, null, "LKR", null);
+        parcel.setStatus(ParcelStatus.CREATED);
+        when(parcelRepository.findByTrackingNumber(trackingNumber)).thenReturn(Optional.of(parcel));
+        when(statusHistoryRepository.findByParcelIdOrderByResultingVersionAsc(SENSITIVE_PARCEL_ID)).thenReturn(List.of());
+
+        PublicTrackingResponse response = trackingService.getPublicTracking(trackingNumber);
+
+        assertThat(response.originCity()).isEqualTo("Not recorded");
+        assertThat(response.destinationCity()).isEqualTo("Not recorded");
+        assertThat(response.timeline().get(0).cityOrZone()).isNull();
+    }
+}

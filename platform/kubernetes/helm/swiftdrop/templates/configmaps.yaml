@@ -22,6 +22,9 @@ data:
   DELIVERY_SERVICE_URL: {{ .Values.apiGateway.config.deliveryServiceUrl | quote }}
   COMMUNICATIONS_SERVICE_URL: {{ .Values.apiGateway.config.communicationsServiceUrl | quote }}
   GRAPHQL_SERVICE_URL: {{ .Values.apiGateway.config.graphqlServiceUrl | quote }}
+  {{- if .Values.aiAssistant.enabled }}
+  AI_ASSISTANT_URL: {{ .Values.apiGateway.config.aiAssistantUrl | quote }}
+  {{- end }}
   CORS_ALLOWED_ORIGIN: {{ .Values.apiGateway.config.corsAllowedOrigin | quote }}
   JAVA_TOOL_OPTIONS: {{ .Values.apiGateway.config.javaToolOptions | quote }}
 {{- end }}
@@ -164,4 +167,24 @@ metadata:
 data:
   realm-swiftdrop.json: |-
 {{ .Files.Get "files/realm-swiftdrop.json" | indent 4 }}
+{{- end }}
+
+{{- if .Values.aiAssistant.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swiftdrop-ai-assistant-config
+  namespace: {{ .Values.namespaces.apps }}
+  labels:
+    {{- include "swiftdrop.componentLabels" (dict "context" . "component" "ai-assistant") | nindent 4 }}
+data:
+  SERVER_PORT: {{ .Values.aiAssistant.config.serverPort | quote }}
+  GEMINI_MODEL: {{ .Values.aiAssistant.config.geminiModel | quote }}
+  PRICING_SERVICE_URL: {{ .Values.aiAssistant.config.pricingServiceUrl | quote }}
+  DELIVERY_SERVICE_URL: {{ .Values.aiAssistant.config.deliveryServiceUrl | quote }}
+  KEYCLOAK_ISSUER_URI: {{ .Values.aiAssistant.config.keycloakIssuerUri | quote }}
+  KEYCLOAK_JWKS_URI: {{ .Values.aiAssistant.config.keycloakJwksUri | quote }}
+  JWT_AUDIENCE: {{ .Values.aiAssistant.config.jwtAudience | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.aiAssistant.config.javaToolOptions | quote }}
 {{- end }}

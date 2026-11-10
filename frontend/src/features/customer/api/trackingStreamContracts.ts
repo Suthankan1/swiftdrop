@@ -154,3 +154,11 @@ export function calculateBackoffWithJitter(
   )
   return Math.floor(randomFn() * exponential)
 }
+
+/** A stream must stay up this long before a drop earns a fresh retry budget (prevents open/close loops). */
+export const STABLE_STREAM_MS = 10_000
+
+/** No further lifecycle events can follow these statuses, so a closed stream is not reopened. */
+export function isTerminalParcelStatus(status: string | null | undefined): boolean {
+  return status === 'DELIVERED' || status === 'FAILED'
+}

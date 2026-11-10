@@ -7,6 +7,23 @@ grpc:
     enabled: ${PRICING_GRPC_ENABLED:true}
 
 spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    clean-disabled: true
+    locations: classpath:db/migration
+  mvc:
+    problemdetails:
+      enabled: true
   jackson:
     deserialization:
       fail-on-unknown-properties: true
@@ -35,26 +52,8 @@ swiftdrop:
     audience: ${JWT_AUDIENCE:swiftdrop-api}
   pricing:
     quote-validity-seconds: ${QUOTE_VALIDITY_SECONDS:900}
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: false
-        jdbc:
-          time_zone: UTC
-  flyway:
-    enabled: true
-    clean-disabled: true
-    locations: classpath:db/migration
-  jackson:
-    deserialization:
-      fail-on-unknown-properties: true
-  mvc:
-    problemdetails:
-      enabled: true
+    # Same Day (EXPRESS) surcharge as a percentage of the standard price.
+    express-surcharge-percent: ${EXPRESS_SURCHARGE_PERCENT:50}
 
 management:
   endpoints:

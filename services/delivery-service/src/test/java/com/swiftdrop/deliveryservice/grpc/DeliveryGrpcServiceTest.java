@@ -328,6 +328,7 @@ class DeliveryGrpcServiceTest {
         when(historyRepository.countDeliveredBetween(start, end)).thenReturn(5L);
         when(historyRepository.countFailedBetween(start, end)).thenReturn(1L);
         when(parcelRepository.countInTransitBeforeOrAt(end)).thenReturn(4L);
+        when(historyRepository.countDistinctParcelsWithActivityBetween(start, end)).thenReturn(12L);
 
         List<Object[]> durations = List.of(
                 new Object[]{Instant.parse("2026-10-29T02:00:00Z"), Instant.parse("2026-10-29T04:00:00Z")}, // 2 hours
@@ -346,7 +347,8 @@ class DeliveryGrpcServiceTest {
         assertThat(response.getDeliveredCount()).isEqualTo(5L);
         assertThat(response.getFailedCount()).isEqualTo(1L);
         assertThat(response.getInTransitCount()).isEqualTo(4L);
-        assertThat(response.getTotalCount()).isEqualTo(20L);
+        // Distinct parcels with activity, not the sum of per-status counts (a parcel can be in several).
+        assertThat(response.getTotalCount()).isEqualTo(12L);
         assertThat(response.hasAverageDeliveryHours()).isTrue();
         assertThat(response.getAverageDeliveryHours()).isEqualTo(2.5);
     }
@@ -628,7 +630,8 @@ class DeliveryGrpcServiceTest {
         when(historyRepository.countCourierFailedBetween(eq(courierSub), any(), any())).thenReturn(1);
         when(assignmentRepository.findActiveByCourierSub(eq(courierSub), any()))
                 .thenReturn(new PageImpl<>(List.of(assignment), PageRequest.of(0, 20), 1));
-        when(parcelRepository.findById(parcelId)).thenReturn(Optional.of(parcel));
+        // Parcels for the whole page are loaded in one query.
+        when(parcelRepository.findAllById(List.of(parcelId))).thenReturn(List.of(parcel));
 
         ListCourierAssignmentsResponse response = stub.listCourierAssignments(
                 ListCourierAssignmentsRequest.newBuilder().setActiveOnly(true).build()

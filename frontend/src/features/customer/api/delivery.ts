@@ -158,6 +158,7 @@ function isCustomerDeliverySummary(value: unknown): value is CustomerDeliverySum
     (value.pickupAddress === undefined || typeof value.pickupAddress === 'string') &&
     (value.dropoffAddress === undefined || typeof value.dropoffAddress === 'string') &&
     (value.recipientCity === undefined || typeof value.recipientCity === 'string') &&
+    (value.weightKg === undefined || value.weightKg === null || typeof value.weightKg === 'number') &&
     (value.updatedAt === undefined || typeof value.updatedAt === 'string')
   )
 }
@@ -649,9 +650,11 @@ export function createDeliveryApi({
       payload: BookParcelRequest,
       idempotencyKey?: string,
       signal?: AbortSignal,
+      /** 'merchant' books for the caller's merchant tenant via POST /api/v1/merchant/parcels. */
+      channel: 'customer' | 'merchant' = 'customer',
     ): Promise<ParcelDetailResponse> {
       const token = await resolveAuthToken()
-      const url = `${normalizedGateway}/api/v1/parcels`
+      const url = `${normalizedGateway}/api/v1/${channel === 'merchant' ? 'merchant/parcels' : 'parcels'}`
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',

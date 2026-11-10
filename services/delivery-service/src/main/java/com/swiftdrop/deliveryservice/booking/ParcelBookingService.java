@@ -41,6 +41,10 @@ import java.util.UUID;
 @Service
 public class ParcelBookingService {
 
+    private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 64;
+
+    private static final String NOT_RECORDED = "Not recorded";
+
     private static final Logger log = LoggerFactory.getLogger(ParcelBookingService.class);
 
     private final ParcelRepository parcelRepository;
@@ -83,17 +87,28 @@ public class ParcelBookingService {
         this.clock = clock;
     }
 
-    @Transactional
+    /**
+     * The Pricing gRPC check runs before any database transaction is opened; only the writes are transactional.
+     */
     public ParcelDetailResponse bookParcel(BookParcelRequest request, String callerSub, UUID merchantId, String idempotencyKey) {
         Objects.requireNonNull(request, "request cannot be null");
         Objects.requireNonNull(callerSub, "callerSub cannot be null");
 
         // 1. Idempotency Check
+        if (idempotencyKey != null && idempotencyKey.trim().length() > MAX_IDEMPOTENCY_KEY_LENGTH) {
+            throw new BookingFailure(400, "INVALID_REQUEST",
+                    "Idempotency-Key must be at most " + MAX_IDEMPOTENCY_KEY_LENGTH + " characters.");
+        }
         String requestDigest = null;
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             requestDigest = computeDigest(request);
             Optional<IdempotencyRecord> existingRecord = idempotencyRecordRepository
                     .findByPrincipalOrTenantAndIdempotencyKey(callerSub, idempotencyKey.trim());
+            if (existingRecord.isPresent() && existingRecord.get().getExpiresAt().isBefore(clock.instant())) {
+                // Expired keys may be reused; remove the old record so the unique constraint does not reject it.
+                idempotencyRecordRepository.delete(existingRecord.get());
+                existingRecord = Optional.empty();
+            }
 
             if (existingRecord.isPresent()) {
                 IdempotencyRecord record = existingRecord.get();
@@ -125,94 +140,109 @@ public class ParcelBookingService {
         QuoteValidation quote = bookingQuoteProvider.validate(request.quoteId(), callerSub);
         validateQuote(quote, request.quoteId());
 
-        Instant now = clock.instant();
+        final String digestForRecord = requestDigest;
+        try {
+            return inTransaction(() -> {
+                Instant now = clock.instant();
 
-        // 4. Generate Unique Tracking Number (SWD-YYYYMMDD-XXXXXXXX)
-        String datePrefix = DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneOffset.UTC).format(now);
-        String trackingNumber = generateUniqueTrackingNumber(datePrefix);
+                // 4. Generate Unique Tracking Number (SWD-YYYYMMDD-XXXXXXXX)
+                String datePrefix = DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneOffset.UTC).format(now);
+                String trackingNumber = generateUniqueTrackingNumber(datePrefix);
 
-        // 5. Persist Parcel Aggregate Root
-        UUID parcelId = UUID.randomUUID();
-        Parcel parcel = new Parcel(
-                parcelId,
-                trackingNumber,
-                callerSub,
-                merchantId,
-                request.quoteId(),
-                quote.rateVersion(),
-                quote.verifiedAmountMinorUnits(),
-                quote.currency() != null ? quote.currency() : "LKR",
-                null
-        );
-        parcel = parcelRepository.saveAndFlush(parcel);
-
-        // 6. Record Initial Status History (CREATED)
-        StatusHistory history = new StatusHistory(
-                UUID.randomUUID(),
-                parcelId,
-                null,
-                ParcelStatus.CREATED,
-                "INITIAL_CREATION",
-                request.deliveryNotes(),
-                null,
-                callerSub,
-                1L,
-                now
-        );
-        statusHistoryRepository.save(history);
-
-        // 7. Record Outbox Event Atomically
-        OutboxEvent outboxEvent = outboxEventFactory.createParcelStatusChangedEvent(
-                parcel,
-                null,
-                ParcelStatus.CREATED,
-                "INITIAL_CREATION",
-                null,
-                idempotencyKey,
-                now,
-                1L
-        );
-        outboxEventRepository.save(outboxEvent);
-
-        // 8. Construct Detail Response
-        ParcelDetailResponse response = new ParcelDetailResponse(
-                parcel.getParcelId(),
-                parcel.getTrackingNumber(),
-                parcel.getSenderSub(),
-                parcel.getMerchantId(),
-                parcel.getStatus(),
-                parcel.getVersion(),
-                parcel.getWeightKg() != null ? parcel.getWeightKg().doubleValue() : 0.0,
-                "STANDARD",
-                parcel.getAmountMinorUnits(),
-                parcel.getCurrency(),
-                parcel.getRateVersion(),
-                request.pickupAddress(),
-                request.dropoffAddress(),
-                null,
-                parcel.getCreatedAt()
-        );
-
-        // 9. Store Idempotency Result
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            try {
-                String storedJson = jsonMapper.writeValueAsString(response);
-                IdempotencyRecord record = new IdempotencyRecord(
-                        UUID.randomUUID(),
+                // 5. Persist Parcel Aggregate Root
+                UUID parcelId = UUID.randomUUID();
+                Parcel parcel = new Parcel(
+                        parcelId,
+                        trackingNumber,
                         callerSub,
-                        idempotencyKey.trim(),
-                        requestDigest,
-                        IdempotencyStatus.COMPLETED,
-                        storedJson,
-                        now.plus(24, ChronoUnit.HOURS)
+                        merchantId,
+                        request.quoteId(),
+                        quote.rateVersion(),
+                        quote.verifiedAmountMinorUnits(),
+                        quote.currency() != null ? quote.currency() : "LKR",
+                        null
                 );
-                idempotencyRecordRepository.save(record);
-            } catch (Exception ex) {
-                log.warn("Failed to store idempotency record for key {}: {}", idempotencyKey, ex.getMessage());
-            }
-        }
+                parcel.setPickupAddress(request.pickupAddress());
+                parcel.setDropoffAddress(request.dropoffAddress());
+                parcel.setRecipientName(request.recipientName());
+                parcel.setRecipientPhone(request.recipientPhone());
+                parcel.setDeliveryNotes(request.deliveryNotes());
+                parcel.setWeightKg(quote.weightKg());
+                parcel.setQuoteSnapshot(jsonMapper.writeValueAsString(quote));
+                parcel = parcelRepository.saveAndFlush(parcel);
 
-        return response;
+                // 6. Record Initial Status History (CREATED)
+                StatusHistory history = new StatusHistory(
+                        UUID.randomUUID(),
+                        parcelId,
+                        null,
+                        ParcelStatus.CREATED,
+                        "INITIAL_CREATION",
+                        request.deliveryNotes(),
+                        null,
+                        callerSub,
+                        1L,
+                        now
+                );
+                statusHistoryRepository.save(history);
+
+                // 7. Record Outbox Event Atomically
+                OutboxEvent outboxEvent = outboxEventFactory.createParcelStatusChangedEvent(
+                        parcel,
+                        null,
+                        ParcelStatus.CREATED,
+                        null,
+                        null,
+                        idempotencyKey,
+                        now,
+                        1L
+                );
+                outboxEventRepository.save(outboxEvent);
+
+                // 8. Construct Detail Response
+                ParcelDetailResponse response = new ParcelDetailResponse(
+                        parcel.getParcelId(),
+                        parcel.getTrackingNumber(),
+                        parcel.getSenderSub(),
+                        parcel.getMerchantId(),
+                        parcel.getStatus(),
+                        parcel.getVersion(),
+                        parcel.getWeightKg() != null ? parcel.getWeightKg().doubleValue() : 0.0,
+                        quote.dimensionsCm() != null ? quote.dimensionsCm() : NOT_RECORDED,
+                        parcel.getAmountMinorUnits(),
+                        parcel.getCurrency(),
+                        parcel.getRateVersion(),
+                        request.pickupAddress(),
+                        request.dropoffAddress(),
+                        null,
+                        parcel.getCreatedAt()
+                );
+
+                // 9. Store Idempotency Result
+                if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                    try {
+                        String storedJson = jsonMapper.writeValueAsString(response);
+                        IdempotencyRecord record = new IdempotencyRecord(
+                                UUID.randomUUID(),
+                                callerSub,
+                                idempotencyKey.trim(),
+                                digestForRecord,
+                                IdempotencyStatus.COMPLETED,
+                                storedJson,
+                                now.plus(24, ChronoUnit.HOURS)
+                        );
+                        idempotencyRecordRepository.save(record);
+                    } catch (Exception ex) {
+                        log.warn("Failed to store idempotency record for key {}: {}", idempotencyKey, ex.getMessage());
+                    }
+                }
+                return response;
+            });
+        } catch (org.springframework.dao.DataIntegrityViolationException race) {
+            // A concurrent request with the same quote or idempotency key committed first.
+            throw new BookingFailure(409, "BOOKING_CONFLICT",
+                    "This quote or idempotency key was just used by another request. Retry with the same key.");
+        }
     }
 
     private void validateQuote(QuoteValidation quote, UUID requestedQuoteId) {
@@ -266,5 +296,18 @@ public class ParcelBookingService {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
         }
     }
-}
 
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
+    /** Self-invocation bypasses the @Transactional proxy, so work that must commit atomically uses this. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTransactionManager(org.springframework.transaction.PlatformTransactionManager transactionManager) {
+        this.transactionTemplate = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        this.transactionTemplate.setPropagationBehavior(
+                org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    private <T> T inTransaction(java.util.function.Supplier<T> work) {
+        return transactionTemplate == null ? work.get() : transactionTemplate.execute(status -> work.get());
+    }
+}

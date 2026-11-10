@@ -82,7 +82,8 @@ public class OutboxEventFactory {
         payload.put("reason", reason);
         payload.put("merchantId", parcel.getMerchantId() != null ? parcel.getMerchantId().toString() : null);
         payload.put("courierSub", courierSub);
-        payload.put("cityOrZone", null); // Strictly zero street-level PII per DEC-EVT-03
+        // Coarse zone name only; never a street address (DEC-EVT-03).
+        payload.put("cityOrZone", com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcel).locationFor(newStatus));
 
         // 2. Construct canonical event envelope
         Map<String, Object> envelope = new LinkedHashMap<>();

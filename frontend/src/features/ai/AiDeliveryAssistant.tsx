@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -7,6 +7,8 @@ import type { PublicTrackingResponse } from '../customer/api/deliveryContracts'
 import { createPricingApi } from '../customer/api/pricing'
 import type { QuoteResponse, ZoneItem } from '../customer/api/pricingContracts'
 import { formatCurrency, formatDateTime } from '../customer/components/customerUiUtils'
+import { AuthContext } from '../../auth/context'
+import { AssistantApiError, createAssistantApi, type AssistantApi, type AssistantTurn } from './assistantApi'
 
 export interface AssistantMessage {
   id: string
@@ -201,7 +203,13 @@ async function processQuery(query: string): Promise<AssistantMessage> {
   }
 }
 
-export function AiDeliveryAssistant() {
+type AssistantMode = 'checking' | 'ai' | 'keyword'
+
+export function AiDeliveryAssistant({ assistantApi }: { assistantApi?: AssistantApi } = {}) {
+  const auth = useContext(AuthContext)
+  const getAccessToken = auth?.getAccessToken
+  const api = useMemo(() => assistantApi ?? createAssistantApi({ getAccessToken }), [assistantApi, getAccessToken])
+  const [mode, setMode] = useState<AssistantMode>('checking')
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -226,6 +234,16 @@ export function AiDeliveryAssistant() {
     }
   }, [isOpen, messages])
 
+  // Ask the server once (on first open) whether the AI provider is configured; otherwise use keyword mode.
+  useEffect(() => {
+    if (!isOpen || mode !== 'checking') return
+    const controller = new AbortController()
+    api.status(controller.signal)
+      .then((result) => { if (!controller.signal.aborted) setMode(result.enabled ? 'ai' : 'keyword') })
+      .catch(() => { if (!controller.signal.aborted) setMode('keyword') })
+    return () => controller.abort()
+  }, [api, isOpen, mode])
+
   // Accessible keyboard escape handler
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -247,6 +265,30 @@ export function AiDeliveryAssistant() {
     setIsProcessing(true)
 
     try {
+      if (mode === 'ai') {
+        const turns: AssistantTurn[] = [...messages, userMsg]
+          .filter((msg) => msg.id !== 'msg-welcome')
+          .map((msg) => ({ role: msg.sender, text: msg.text }))
+        try {
+          const result = await api.chat(turns)
+          setMessages((prev) => [...prev, {
+            id: `msg-${Date.now()}-ai`, sender: 'assistant', text: result.reply, timestamp: getCurrentTimeString(),
+          }])
+          return
+        } catch (error) {
+          if (error instanceof AssistantApiError && error.kind === 'busy') {
+            setMessages((prev) => [...prev, {
+              id: `msg-${Date.now()}-busy`, sender: 'assistant', text: error.message, timestamp: getCurrentTimeString(),
+            }])
+            return
+          }
+          // Not configured or unreachable: answer this question with keyword mode instead of failing.
+          if (error instanceof AssistantApiError && error.kind === 'not-configured') setMode('keyword')
+          const fallback = await processQuery(query)
+          setMessages((prev) => [...prev, { ...fallback, text: `(AI unavailable, using keyword mode) ${fallback.text}` }])
+          return
+        }
+      }
       const response = await processQuery(query)
       setMessages((prev) => [...prev, response])
     } catch {
@@ -268,11 +310,11 @@ export function AiDeliveryAssistant() {
         type="button"
         className="ai-assistant-launcher"
         onClick={() => setIsOpen((prev) => !prev)}
-        aria-label={isOpen ? 'Close AI Assistant' : 'Open AI Logistics Assistant'}
+        aria-label={isOpen ? 'Close Help Assistant' : 'Open Help Assistant'}
         aria-expanded={isOpen}
       >
         <span className="ai-launcher-icon" aria-hidden="true">✨</span>
-        <span className="ai-launcher-text">AI Assistant</span>
+        <span className="ai-launcher-text">Help Assistant</span>
       </button>
 
       {/* Slide-over Drawer */}
@@ -282,22 +324,28 @@ export function AiDeliveryAssistant() {
           className="ai-assistant-drawer"
           role="dialog"
           aria-modal="false"
-          aria-label="SwiftDrop AI Logistics Assistant"
+          aria-label="SwiftDrop Help Assistant"
         >
           {/* Header */}
           <div className="ai-drawer-header">
             <div className="ai-header-title-group">
               <span className="ai-status-indicator" aria-hidden="true" />
               <div>
-                <h2 className="ai-drawer-title">SwiftDrop AI Assistant</h2>
-                <p className="ai-drawer-subtitle">Authoritative tools · Live cluster data</p>
+                <h2 className="ai-drawer-title">{mode === 'ai' ? 'SwiftDrop AI Assistant' : 'SwiftDrop Help Assistant'}</h2>
+                <p className="ai-drawer-subtitle">
+                  {mode === 'ai'
+                    ? 'AI answers from live SwiftDrop data · Powered by Gemini · Read-only'
+                    : mode === 'checking'
+                      ? 'Connecting…'
+                      : 'Keyword commands: "track SWD-…", "quote", "help" · Not a generative AI'}
+                </p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsOpen(false)}
-              aria-label="Dismiss AI Assistant"
+              aria-label="Dismiss Help Assistant"
             >
               ✕
             </Button>
@@ -311,7 +359,7 @@ export function AiDeliveryAssistant() {
                 className={`ai-message-row is-${msg.sender}`}
               >
                 <div className="ai-message-bubble">
-                  <div className="ai-message-text">{msg.text}</div>
+                  <div className="ai-message-text" style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
 
                   {/* Render Grounded Tracking Card */}
                   {msg.trackingData && (
@@ -330,7 +378,7 @@ export function AiDeliveryAssistant() {
                         </div>
                       )}
                       <Link
-                        to={`/tracking?trackingNumber=${encodeURIComponent(msg.trackingData.trackingNumber)}`}
+                        to={`/tracking/${encodeURIComponent(msg.trackingData.trackingNumber)}`}
                         className="button button-tonal button-sm ai-card-action"
                         onClick={() => setIsOpen(false)}
                       >
@@ -429,11 +477,11 @@ export function AiDeliveryAssistant() {
               ref={inputRef}
               type="text"
               className="ai-input"
-              placeholder="Ask a question or enter tracking #..."
+              placeholder={mode === 'ai' ? 'Ask anything about your deliveries…' : 'Ask a question or enter tracking #...'}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isProcessing}
-              aria-label="Ask SwiftDrop AI Assistant"
+              aria-label="Ask SwiftDrop Help Assistant"
             />
             <Button
               type="submit"

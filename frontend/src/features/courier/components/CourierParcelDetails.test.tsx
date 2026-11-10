@@ -69,7 +69,7 @@ describe('CourierParcelDetails component', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'SWD-20261026-9999' })).toBeInTheDocument()
-    expect(screen.getAllByText('OUT_FOR_DELIVERY').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Out for Delivery').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('v4')).toBeInTheDocument()
     expect(screen.getByText('3.5 kg')).toBeInTheDocument()
     expect(screen.getByText('25 × 15 × 10 cm')).toBeInTheDocument()

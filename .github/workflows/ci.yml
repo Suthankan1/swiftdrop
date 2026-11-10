@@ -565,6 +565,61 @@ jobs:
           path: test-reports/${{ matrix.service }}
           retention-days: 7
 
+  ai-assistant-tests:
+    name: AI Assistant / verify and image scan
+    needs:
+      - java-shared-libraries
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Java 21 LTS
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download verified shared Maven artifacts
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          name: java-shared-artifacts
+          path: shared-artifacts
+
+      - name: Install verified shared Maven artifacts
+        run: |
+          mkdir -p ~/.m2/repository
+          tar -xzf shared-artifacts/swiftdrop-shared-m2.tar.gz -C ~/.m2/repository
+          test -f ~/.m2/repository/com/swiftdrop/security-adapter/0.0.1-SNAPSHOT/security-adapter-0.0.1-SNAPSHOT.jar || { echo "ERROR: security-adapter jar missing!"; exit 1; }
+
+      - name: Verify ai-assistant with Maven (fake Gemini, no key or network needed)
+        run: |
+          chmod +x ai-assistant/mvnw
+          (cd ai-assistant && ./mvnw -B verify)
+
+      - name: Build container image
+        run: docker build -f ai-assistant/Dockerfile -t swiftdrop/ai-assistant:ci-scan .
+
+      - name: Scan container image with Trivy
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.59.1 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            "swiftdrop/ai-assistant:ci-scan"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: java-test-reports-ai-assistant
+          path: ai-assistant/target/surefire-reports
+          retention-days: 7
+
   container-security:
     name: Container Security / ${{ matrix.target.name }}
     runs-on: ubuntu-latest
@@ -691,6 +746,7 @@ jobs:
       - contract-validation
       - container-security
       - workflow-regression-tests
+      - ai-assistant-tests
 
     steps:
       - name: Evaluate fail-closed gate policy
@@ -722,7 +778,8 @@ jobs:
               "dependency-scanning",
               "contract-validation",
               "container-security",
-              "workflow-regression-tests"
+              "workflow-regression-tests",
+              "ai-assistant-tests"
           ]
 
           print("=" * 80)
@@ -790,7 +847,7 @@ jobs:
                   print(f"  - {f_id}: {reason}")
               sys.exit(1)
 
-          print("✓ ALL 13 REQUIRED QUALITY & SECURITY GATES PASSED CLEANLY.")
+          print("✓ ALL 14 REQUIRED QUALITY & SECURITY GATES PASSED CLEANLY.")
           print(f"Publication eligibility: {trusted_pub} ({pub_reason})")
           EOF
 

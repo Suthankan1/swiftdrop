@@ -69,7 +69,7 @@ class AdminPricingPostgresIT {
     @Test
     void flywayAndZoneCrudAuditAndSoftDisable() {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
-        assertThat(flyway.info().applied()).hasSize(4);
+        assertThat(flyway.info().applied()).hasSize(5);
         ZoneView zone = admin.createZone(new ZoneCreate("ZONE_2", "Two", "Description", 48));
         assertThat(admin.getZone(zone.id()).zoneCode()).isEqualTo("ZONE_2");
         assertThat(admin.listZones(0, 20).items()).hasSize(2);

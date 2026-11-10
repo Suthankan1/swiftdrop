@@ -45,9 +45,12 @@ describe('CustomerProfile', () => {
     render(<CustomerProfile state={{ status: 'ready', profile: customerFixture }} />)
 
     expect(screen.getByRole('heading', { name: customerFixture.fullName })).toBeInTheDocument()
-    for (const value of [customerFixture.email, customerFixture.phoneNumber, customerFixture.id, customerFixture.keycloakSub, 'CUSTOMER', '15 October 2026']) {
+    for (const value of [customerFixture.email, customerFixture.phoneNumber, 'CUSTOMER', '15 October 2026']) {
       expect(screen.getByText(value)).toBeInTheDocument()
     }
+    // Internal identifiers are not shown to the customer (audit 79).
+    expect(screen.queryByText(customerFixture.id)).not.toBeInTheDocument()
+    expect(screen.queryByText(customerFixture.keycloakSub)).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Merchant profile' })).not.toBeInTheDocument()
   })
 

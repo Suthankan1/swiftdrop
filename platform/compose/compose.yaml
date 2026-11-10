@@ -83,7 +83,10 @@ services:
   # 1. Keycloak Identity Provider (Themed Image #128)
   # ----------------------------------------------------------------------------
   keycloak:
-    image: ghcr.io/suthankan1/swiftdrop-keycloak:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-keycloak:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: platform/identity/Dockerfile
     container_name: ${KEYCLOAK_CONTAINER_NAME:-swiftdrop-keycloak}
     command: start-dev --import-realm
     environment:
@@ -97,6 +100,9 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}
       JAVA_OPTS_APPEND: "-Dkeycloak.migration.replace-placeholders=true -Xms192m -Xmx384m"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:-communications_dev_secret}
+      GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:-graphql_dev_secret}
+      DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:-delivery_dev_secret}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     ports:
       - "127.0.0.1:${KEYCLOAK_PORT:-8090}:8080"
@@ -119,12 +125,49 @@ services:
       - app-net
 
   # ----------------------------------------------------------------------------
+  # One-shot local CA and certificate for internal gRPC TLS (kept in a volume, never committed)
+  # ----------------------------------------------------------------------------
+  grpc-certs:
+    image: apache/kafka:4.2.1
+    container_name: ${GRPC_CERTS_CONTAINER_NAME:-swiftdrop-grpc-certs}
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        cd /tls
+        if [ -s server.crt ] && [ -s server.key ] && [ -s ca.crt ]; then echo "gRPC TLS material present"; exit 0; fi
+        openssl req -x509 -newkey rsa:3072 -nodes -days 825 -subj "/CN=SwiftDrop local gRPC CA" \
+          -keyout ca.key -out ca.crt
+        printf 'subjectAltName=DNS:accounts-service,DNS:pricing-service,DNS:delivery-service,DNS:localhost\nextendedKeyUsage=serverAuth\n' > ext.cnf
+        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out server.key
+        openssl req -new -key server.key -subj "/CN=swiftdrop-internal-grpc" -out server.csr
+        openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 825 -extfile ext.cnf -out server.crt
+        rm -f server.csr ext.cnf ca.key ca.srl
+        # Services run as uid 10001; the key is readable only inside this private volume.
+        chown 10001:10001 server.key server.crt ca.crt
+        chmod 400 server.key
+        chmod 444 server.crt ca.crt
+    volumes:
+      - swiftdrop-grpc-tls:/tls
+    # Generates files only; it needs no network access.
+    network_mode: none
+    restart: "no"
+
+  # ----------------------------------------------------------------------------
   # 2. Accounts & Partners Service (#128 Image)
   # ----------------------------------------------------------------------------
   accounts-service:
-    image: ghcr.io/suthankan1/swiftdrop-accounts:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-accounts:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: services/accounts-service/Dockerfile
     container_name: swiftdrop-accounts-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8081
       ACCOUNTS_GRPC_PORT: 9081
       ACCOUNTS_DB_URL: jdbc:postgresql://accounts-postgres:5432/accounts_db
@@ -133,7 +176,12 @@ services:
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
-      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+      SWIFTDROP_KEYCLOAK_ADMIN_SERVERURL: http://keycloak:8080
+      SWIFTDROP_KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      SWIFTDROP_KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health || exit 1"]
       interval: 5s
@@ -141,6 +189,8 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       accounts-postgres:
         condition: service_healthy
       keycloak:
@@ -154,9 +204,16 @@ services:
   # 3. Pricing & Zones Service (#128 Image)
   # ----------------------------------------------------------------------------
   pricing-service:
-    image: ghcr.io/suthankan1/swiftdrop-pricing:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-pricing:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: services/pricing-service/Dockerfile
     container_name: swiftdrop-pricing-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8082
       PRICING_GRPC_PORT: 9083
       PRICING_DB_URL: jdbc:postgresql://business-postgres:5432/pricing_db
@@ -165,7 +222,9 @@ services:
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
-      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/actuator/health || exit 1"]
       interval: 5s
@@ -173,6 +232,8 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       business-postgres:
         condition: service_healthy
       keycloak:
@@ -186,9 +247,16 @@ services:
   # 4. Delivery Operations Service (#128 Image)
   # ----------------------------------------------------------------------------
   delivery-service:
-    image: ghcr.io/suthankan1/swiftdrop-delivery:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-delivery:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: services/delivery-service/Dockerfile
     container_name: swiftdrop-delivery-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8083
       DELIVERY_GRPC_PORT: 9082
       DELIVERY_DB_URL: jdbc:postgresql://business-postgres:5432/delivery_db
@@ -206,7 +274,12 @@ services:
       SWIFTDROP_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio_dev_password}
       PRICING_GRPC_HOST: pricing-service
       PRICING_GRPC_PORT: 9083
-      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+      ACCOUNTS_GRPC_HOST: accounts-service
+      ACCOUNTS_GRPC_PORT: 9081
+      SWIFTDROP_DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:-delivery_dev_secret}
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8083/actuator/health || exit 1"]
       interval: 5s
@@ -214,12 +287,14 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       business-postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      minio:
-        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       keycloak:
         condition: service_healthy
     restart: unless-stopped
@@ -231,9 +306,16 @@ services:
   # 5. Communications Service (#128 Image)
   # ----------------------------------------------------------------------------
   communications-service:
-    image: ghcr.io/suthankan1/swiftdrop-communications:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-communications:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: services/communications-service/Dockerfile
     container_name: swiftdrop-communications-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8084
       COMMUNICATIONS_DB_URL: jdbc:postgresql://business-postgres:5432/communications_db
       COMMUNICATIONS_DB_USERNAME: ${COMMUNICATIONS_DB_USERNAME:-communications_app}
@@ -244,7 +326,16 @@ services:
       DELIVERY_GRPC_PORT: 9082
       SPRING_MAIL_HOST: mailpit
       SPRING_MAIL_PORT: 1025
-      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      SWIFTDROP_COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:-communications_dev_secret}
+      # Required: encrypts stored webhook signing secrets. start.sh generates one in .env.
+      WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:?Set WEBHOOK_ENCRYPTION_KEY (64 hex characters); start.sh generates one}
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/actuator/health || exit 1"]
       interval: 5s
@@ -252,7 +343,13 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
       business-postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
       mailpit:
         condition: service_healthy
@@ -265,13 +362,26 @@ services:
   # 6. GraphQL Query API (#128 Image)
   # ----------------------------------------------------------------------------
   graphql-query-service:
-    image: ghcr.io/suthankan1/swiftdrop-graphql:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-graphql:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: services/graphql-query-service/Dockerfile
     container_name: swiftdrop-graphql-query-service
     environment:
+      SWIFTDROP_GRPC_TLS_ENABLED: "true"
+      SWIFTDROP_GRPC_TLS_CERT: /etc/swiftdrop/grpc-tls/server.crt
+      SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
+      SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       GRAPHQL_SERVER_PORT: 8085
       SWIFTDROP_GRPC_ACCOUNTS_TARGET: accounts-service:9081
       SWIFTDROP_GRPC_DELIVERY_TARGET: delivery-service:9082
-      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      SWIFTDROP_GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:-graphql_dev_secret}
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    volumes:
+      - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8085/actuator/health || exit 1"]
       interval: 5s
@@ -279,6 +389,10 @@ services:
       retries: 15
       start_period: 15s
     depends_on:
+      grpc-certs:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
       accounts-service:
         condition: service_healthy
       delivery-service:
@@ -288,10 +402,46 @@ services:
       - app-net
 
   # ----------------------------------------------------------------------------
+  # 6b. AI delivery assistant (optional; disabled until GEMINI_API_KEY is set)
+  # ----------------------------------------------------------------------------
+  ai-assistant:
+    image: ghcr.io/suthankan1/swiftdrop-ai-assistant:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: ai-assistant/Dockerfile
+    container_name: swiftdrop-ai-assistant
+    environment:
+      SERVER_PORT: 8086
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      PRICING_SERVICE_URL: http://pricing-service:8082
+      DELIVERY_SERVICE_URL: http://delivery-service:8083
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
+      JWT_AUDIENCE: swiftdrop-api
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -Xss512k"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8086/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      # Reaches Pricing, Delivery and Keycloak (signing keys); outbound internet for the Gemini API.
+      - app-net
+
+  # ----------------------------------------------------------------------------
   # 7. Spring Cloud API Gateway (#128 Image)
   # ----------------------------------------------------------------------------
   api-gateway:
-    image: ghcr.io/suthankan1/swiftdrop-api-gateway:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-api-gateway:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: services/api-gateway/Dockerfile
     container_name: swiftdrop-api-gateway
     environment:
       SERVER_PORT: 8080
@@ -303,9 +453,11 @@ services:
       DELIVERY_SERVICE_URL: http://delivery-service:8083
       COMMUNICATIONS_SERVICE_URL: http://communications-service:8084
       GRAPHQL_SERVICE_URL: http://graphql-query-service:8085
+      AI_ASSISTANT_URL: http://ai-assistant:8086
+      SWIFTDROP_GATEWAY_MERCHANT_KEYS_DELEGATE_TO_SERVICE: "true"
       CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:3000}
       SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
-      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -Xss512k"
+      JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
     ports:
       - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
     healthcheck:
@@ -335,7 +487,10 @@ services:
   # 8. React Single Page Application (#128 Image)
   # ----------------------------------------------------------------------------
   frontend:
-    image: ghcr.io/suthankan1/swiftdrop-frontend:${SWIFTDROP_IMAGE_TAG:-b8ac497}
+    image: ghcr.io/suthankan1/swiftdrop-frontend:${SWIFTDROP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile
     container_name: swiftdrop-frontend
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-3000}:8080"
@@ -362,3 +517,5 @@ volumes:
     name: ${ACCOUNTS_DB_VOLUME:-swiftdrop-accounts-postgres-data}
   swiftdrop-keycloak-postgres-data:
     name: ${KEYCLOAK_DB_VOLUME:-swiftdrop-keycloak-postgres-data}
+  swiftdrop-grpc-tls:
+    name: swiftdrop-grpc-tls

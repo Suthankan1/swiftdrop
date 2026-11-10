@@ -25,6 +25,8 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
 
     Page<Parcel> findByMerchantIdOrderByCreatedAtDesc(UUID merchantId, Pageable pageable);
 
+    Page<Parcel> findByMerchantIdOrSenderSubOrderByCreatedAtDesc(UUID merchantId, String senderSub, Pageable pageable);
+
     List<Parcel> findByStatus(ParcelStatus status);
 
     boolean existsByTrackingNumber(String trackingNumber);
@@ -41,6 +43,25 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
         ORDER BY p.createdAt ASC, p.parcelId ASC
     """)
     Page<Parcel> findUnassignedParcels(Pageable pageable);
+
+    /**
+     * Unassigned queue filtered to parcels whose pickup or drop-off zone code (from the verified quote snapshot
+     * captured at booking) matches {@code zone}. Filtering happens in the database so paging stays correct.
+     */
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT p.* FROM parcels p
+        WHERE p.status = 'CREATED'
+        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND NOT EXISTS (SELECT 1 FROM delivery_assignments da WHERE da.parcel_id = p.parcel_id AND da.active = true)
+        ORDER BY p.created_at ASC, p.parcel_id ASC
+        """, countQuery = """
+        SELECT COUNT(*) FROM parcels p
+        WHERE p.status = 'CREATED'
+        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND NOT EXISTS (SELECT 1 FROM delivery_assignments da WHERE da.parcel_id = p.parcel_id AND da.active = true)
+        """, nativeQuery = true)
+    Page<Parcel> findUnassignedParcelsInZone(@org.springframework.data.repository.query.Param("zone") String zone,
+                                             Pageable pageable);
 
     @org.springframework.data.jpa.repository.Query("""
         SELECT COUNT(p) FROM Parcel p

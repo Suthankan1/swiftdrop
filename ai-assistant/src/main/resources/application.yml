@@ -1,0 +1,24 @@
+server:
+  port: ${SERVER_PORT:8086}
+spring:
+  application:
+    name: ai-assistant
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+swiftdrop:
+  jwt:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/swiftdrop}
+    jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8090/realms/swiftdrop/protocol/openid-connect/certs}
+    audience: ${JWT_AUDIENCE:swiftdrop-api}
+  assistant:
+    # Leave GEMINI_API_KEY empty to run with the assistant disabled (the frontend falls back to keyword mode).
+    gemini-api-key: ${GEMINI_API_KEY:}
+    gemini-model: ${GEMINI_MODEL:gemini-2.5-flash}
+    gemini-base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+    pricing-url: ${PRICING_SERVICE_URL:http://localhost:8082}
+    delivery-url: ${DELIVERY_SERVICE_URL:http://localhost:8083}
+    request-timeout-seconds: ${ASSISTANT_REQUEST_TIMEOUT_SECONDS:20}
+    max-tool-rounds: ${ASSISTANT_MAX_TOOL_ROUNDS:4}

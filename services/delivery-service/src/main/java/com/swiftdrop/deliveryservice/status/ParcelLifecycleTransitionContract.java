@@ -99,12 +99,12 @@ public interface ParcelLifecycleTransitionContract {
                 throw new InvalidTransitionParametersException("Failure reason is mandatory when transitioning to FAILED");
             }
             if (!APPROVED_FAILURE_REASONS.contains(failureReason)) {
-                throw new InvalidTransitionParametersException("Unapproved failure reason: " + failureReason);
+                throw new InvalidTransitionParametersException("Failure reason is not one of the approved reason codes.");
             }
             Set<String> permittedForStage = STAGE_PERMITTED_FAILURE_REASONS.get(currentStatus);
             if (permittedForStage == null || !permittedForStage.contains(failureReason)) {
                 throw new InvalidTransitionParametersException(
-                        "Failure reason '" + failureReason + "' is not permitted when transitioning from stage " + currentStatus
+                        "That failure reason is not permitted when transitioning from stage " + currentStatus
                 );
             }
         }

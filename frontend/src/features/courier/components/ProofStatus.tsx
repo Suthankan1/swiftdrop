@@ -97,11 +97,10 @@ export function ProofStatus({
       </div>
 
       <div className="proof-policy-notice" role="note">
-        <strong>Conservative Delivery Policy:</strong>
+        <strong>Proof of delivery:</strong>
         <p className="muted">
-          Per platform integrity rules, verified delivery evidence cannot be arbitrarily overwritten or replaced.
-          Final status transition to <code>DELIVERED</code> is committed via separate status command (Issue #23 / #98).
-          Uploading proof records evidence but does not automatically transition the parcel status.
+          Saved proof cannot be replaced. Uploading proof does not complete the delivery on its own:
+          use Complete Delivery afterwards.
         </p>
       </div>
 

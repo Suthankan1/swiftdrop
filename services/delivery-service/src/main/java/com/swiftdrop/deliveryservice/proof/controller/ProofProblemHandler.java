@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.net.URI;
 
+@org.springframework.core.annotation.Order(0)
 @RestControllerAdvice(basePackages = "com.swiftdrop.deliveryservice.proof.controller")
 public class ProofProblemHandler {
 

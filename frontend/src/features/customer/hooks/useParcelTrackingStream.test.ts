@@ -30,14 +30,14 @@ function makeSseChunk(event: ParcelLifecycleSseEvent): string {
   ].join('')
 }
 
-function createMockStream(chunks: string[] = []): Response {
+function createMockStream(chunks: string[] = [], { close = false }: { close?: boolean } = {}): Response {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const chunk of chunks) {
         controller.enqueue(encoder.encode(chunk))
       }
-      controller.close()
+      if (close) controller.close()
     },
   })
   return new Response(stream, {
@@ -299,12 +299,10 @@ describe('useParcelTrackingStream', () => {
     expect(result.current.streamState.retryAttempt).toBe(0)
   })
 
-  it('refreshes session and reconnects on 401 Unauthorized', async () => {
+  it('retries once with a fresh token on 401 without ending the session', async () => {
     let callCount = 0
-    let token = 'expired-token'
-    const handleSessionExpiry = vi.fn().mockImplementation(async () => {
-      token = 'refreshed-token'
-    })
+    const handleSessionExpiry = vi.fn()
+    const tokens = ['expired-token', 'refreshed-token']
 
     const mockFetch = vi.fn().mockImplementation(() => {
       callCount++
@@ -319,7 +317,7 @@ describe('useParcelTrackingStream', () => {
         parcelId,
         subject,
         initialParcel: testParcel,
-        getAccessToken: async () => token,
+        getAccessToken: async () => tokens.shift() ?? 'refreshed-token',
         handleSessionExpiry,
         reconcileRest: vi.fn(),
         fetch: mockFetch,
@@ -330,7 +328,8 @@ describe('useParcelTrackingStream', () => {
       expect(result.current.streamState.status).toBe('connected')
     })
 
-    expect(handleSessionExpiry).toHaveBeenCalledTimes(1)
+    // Expiring the session would sign out every tab, so a single 401 must not do that.
+    expect(handleSessionExpiry).not.toHaveBeenCalled()
     expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 
@@ -355,7 +354,63 @@ describe('useParcelTrackingStream', () => {
     })
 
     expect(result.current.streamState.errorMessage).toContain('Session expired')
-    expect(mockFetch).toHaveBeenCalledTimes(1) // does not storm server
+    expect(mockFetch).toHaveBeenCalledTimes(2) // one fresh-token retry, then stops
+    expect(handleSessionExpiry).toHaveBeenCalledTimes(1)
+  })
+
+  it('reconnects and re-reads REST when the server closes the stream cleanly', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(createMockStream([':keepalive\n\n'], { close: true }))
+      .mockResolvedValue(createMockStream([':keepalive\n\n']))
+    const mockReconcile = vi.fn().mockResolvedValue({ ...testParcel, currentStatus: 'PICKED_UP', version: 2 })
+
+    const { result } = renderHook(() =>
+      useParcelTrackingStream({
+        parcelId,
+        subject,
+        initialParcel: testParcel,
+        getAccessToken: async () => 'valid-jwt-token',
+        reconcileRest: mockReconcile,
+        fetch: mockFetch,
+        reconnectConfig: fastReconnectConfig,
+        randomFn: () => 0,
+      }),
+    )
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(result.current.streamState.status).toBe('connected'))
+    await waitFor(() => expect(result.current.parcel?.currentStatus).toBe('PICKED_UP'))
+    expect(mockReconcile).toHaveBeenCalled()
+  })
+
+  it('does not show the previous parcel live status after switching parcels', async () => {
+    const event: ParcelLifecycleSseEvent = {
+      eventId: 'evt-a2', parcelId, trackingNumber: 'SWD-20261027-A1B2', aggregateVersion: 2,
+      oldStatus: 'CREATED', newStatus: 'PICKED_UP', reason: null, occurredAt: '2026-10-27T09:00:00Z',
+    }
+    const otherParcel = { ...testParcel, parcelId: '1c2d3e4f-0000-4000-8000-000000000002', trackingNumber: 'SWD-20261027-B9', version: 1 }
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(createMockStream([makeSseChunk(event)]))
+      .mockResolvedValue(createMockStream([]))
+
+    const { result, rerender } = renderHook(
+      ({ id, initial }) =>
+        useParcelTrackingStream({
+          parcelId: id,
+          subject,
+          initialParcel: initial,
+          getAccessToken: async () => 'valid-jwt-token',
+          reconcileRest: vi.fn(),
+          fetch: mockFetch,
+        }),
+      { initialProps: { id: parcelId, initial: testParcel } },
+    )
+
+    await waitFor(() => expect(result.current.parcel?.currentStatus).toBe('PICKED_UP'))
+    rerender({ id: otherParcel.parcelId, initial: otherParcel })
+    expect(result.current.parcel?.parcelId).toBe(otherParcel.parcelId)
+    expect(result.current.parcel?.currentStatus).toBe('CREATED')
+    expect(result.current.parcel?.version).toBe(1)
   })
 
   it('stops retrying immediately on 403 Forbidden (cross-customer access denial)', async () => {
@@ -547,5 +602,46 @@ describe('useParcelTrackingStream', () => {
 
     unmount()
     expect(wasAborted).toBe(true)
+  })
+
+  it('never loops when the server keeps opening and immediately closing the stream', async () => {
+    const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([], { close: true })))
+
+    const { result } = renderHook(() =>
+      useParcelTrackingStream({
+        parcelId,
+        subject,
+        initialParcel: testParcel,
+        getAccessToken: async () => 'valid-jwt-token',
+        reconcileRest: vi.fn().mockResolvedValue(null),
+        fetch: mockFetch,
+        reconnectConfig: fastReconnectConfig,
+        randomFn: () => 0,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.streamState.status).toBe('error'))
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(mockFetch).toHaveBeenCalledTimes(fastReconnectConfig.maxRetries + 1)
+  })
+
+  it('does not reopen the stream for a parcel that has reached a final status', async () => {
+    const mockFetch = vi.fn().mockImplementation(() => Promise.resolve(createMockStream([], { close: true })))
+
+    const { result } = renderHook(() =>
+      useParcelTrackingStream({
+        parcelId,
+        subject,
+        initialParcel: { ...testParcel, currentStatus: 'DELIVERED', version: 6 },
+        getAccessToken: async () => 'valid-jwt-token',
+        reconcileRest: vi.fn(),
+        fetch: mockFetch,
+        reconnectConfig: fastReconnectConfig,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.streamState.status).toBe('idle'))
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(mockFetch).not.toHaveBeenCalled() // finished parcels never open a stream
   })
 })

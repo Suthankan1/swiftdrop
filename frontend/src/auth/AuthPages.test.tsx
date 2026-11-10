@@ -169,7 +169,7 @@ describe('AuthPages - Browser Recovery & In-Memory Routing', () => {
       )
 
       expect(screen.getByText('Access unavailable')).toBeInTheDocument()
-      expect(screen.getByText('This entry is unavailable for your current role.')).toBeInTheDocument()
+      expect(screen.getByText(/This page is not available for your role/)).toBeInTheDocument()
       expect(screen.queryByText('Admin Secret Area')).not.toBeInTheDocument()
     })
   })

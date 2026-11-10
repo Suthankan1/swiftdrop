@@ -91,6 +91,8 @@ export interface CustomerDeliverySummary {
   pickupAddress?: string
   dropoffAddress?: string
   recipientCity?: string
+  /** Present when the list endpoint returns full parcel rows. */
+  weightKg?: number
   createdAt: string
   updatedAt?: string
 }
@@ -126,4 +128,6 @@ export interface BookParcelRequest {
   recipientName: string
   recipientPhone: string
   deliveryNotes?: string
+  /** Merchant bookings only: the merchant's own order reference. */
+  merchantReference?: string
 }

@@ -14,6 +14,7 @@ import { DispatcherPage } from '../../features/dispatcher/pages/DispatcherPage'
 import { MerchantPage } from '../../features/merchant/pages/MerchantPage'
 import { MerchantOrdersDashboardPage } from '../../features/merchant/pages/MerchantOrdersDashboardPage'
 import { MerchantOrderDetailPage } from '../../features/merchant/pages/MerchantOrderDetailPage'
+import { MerchantNewOrderPage } from '../../features/merchant/pages/MerchantNewOrderPage'
 import { MerchantWebhooksPage } from '../../features/merchant/pages/MerchantWebhooksPage'
 import { MerchantEnrollmentPage } from '../../features/merchant/pages/MerchantEnrollmentPage'
 import { MerchantCredentialsPage } from '../../features/merchant/pages/MerchantCredentialsPage'
@@ -43,13 +44,18 @@ export function AppRoutes() {
         <Route element={<ProtectedRoute role="MERCHANT" />}>
           <Route path="merchant" element={<MerchantPage />} />
           <Route path="merchant/orders" element={<MerchantOrdersDashboardPage />} />
+          <Route path="merchant/orders/new" element={<MerchantNewOrderPage />} />
           <Route path="merchant/orders/:parcelId" element={<MerchantOrderDetailPage />} />
           <Route path="merchant/credentials" element={<MerchantCredentialsPage />} />
           <Route path="merchant/webhooks" element={<MerchantWebhooksPage />} />
         </Route>
         <Route element={<ProtectedRoute role="COURIER" />}><Route path="courier" element={<CourierPage />} /></Route>
-        <Route element={<ProtectedRoute role="DISPATCHER" />}>
+        {/* Admins can run dispatch too; the backend allows ADMIN on every dispatch API. */}
+        <Route element={<ProtectedRoute anyOf={['DISPATCHER', 'ADMIN']} />}>
           <Route path="dispatcher" element={<DispatcherPage />} />
+        </Route>
+        {/* Admins use /admin/reports; dispatcher reports stay scoped to dispatcher zones. */}
+        <Route element={<ProtectedRoute role="DISPATCHER" />}>
           <Route path="dispatcher/reports" element={<ReportsPage audience="DISPATCHER" />} />
         </Route>
         <Route element={<ProtectedRoute role="ADMIN" />}>

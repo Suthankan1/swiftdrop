@@ -114,6 +114,8 @@ public class ApiGatewaySecurityAndRoutingTest {
         registry.add("devarom.jwt.issuer-uri", () -> issuerUrl);
         registry.add("devarom.jwt.audience", () -> "devarom-api");
         registry.add("ACCOUNTS_SERVICE_URL", () -> accountsServer.url("").toString().replaceAll("/$", ""));
+        // This test asserts exact upstream request queues; the disabled-account check has its own test.
+        registry.add("swiftdrop.gateway.disabled-account-check.enabled", () -> "false");
     }
 
     private String createTestJwt(String issuer, String audience, boolean expired, RSAKey signingKey) throws Exception {

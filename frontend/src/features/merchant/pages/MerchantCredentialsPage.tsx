@@ -65,6 +65,7 @@ export function MerchantCredentialsPage() {
 
   // Revocation modal state
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKeySummaryItem | null>(null)
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null)
   const [isRevoking, setIsRevoking] = useState(false)
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null)
 
@@ -103,11 +104,8 @@ export function MerchantCredentialsPage() {
       setActionSuccessMessage(`API Key "${revokedName}" was durably revoked.`)
       void queryClient.invalidateQueries({ queryKey: ['merchant', 'api-keys', merchantProfile.merchantId] })
     } catch (err) {
-      if (err instanceof MerchantCredentialsError) {
-        alert(err.message)
-      } else {
-        alert('Failed to revoke API key.')
-      }
+      setKeyToRevoke(null)
+      setActionErrorMessage(err instanceof MerchantCredentialsError ? err.message : 'Failed to revoke API key.')
     } finally {
       setIsRevoking(false)
     }
@@ -149,6 +147,13 @@ export function MerchantCredentialsPage() {
       </header>
 
       <MerchantNav />
+
+      {actionErrorMessage && (
+        <div className="feedback-banner is-error" role="alert">
+          <span>{actionErrorMessage}</span>
+          <button type="button" className="feedback-dismiss" onClick={() => setActionErrorMessage(null)} aria-label="Dismiss error">✕</button>
+        </div>
+      )}
 
       {actionSuccessMessage && (
         <aside className="alert-banner alert-banner-success" role="status">

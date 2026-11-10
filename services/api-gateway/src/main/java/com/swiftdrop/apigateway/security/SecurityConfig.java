@@ -70,20 +70,27 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/v1/quotes", "/api/v1/quotes/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/zones", "/api/v1/zones/**").permitAll()
 
+                        // AI assistant: anonymous allowed (public tools only); a bearer, if sent, is validated
+                        .pathMatchers(HttpMethod.GET, "/api/v1/assistant/status").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/v1/assistant/chat", "/api/v1/assistant/mcp").permitAll()
+
                         // Merchant onboarding registration and standing inspection (authenticated user)
                         .pathMatchers(HttpMethod.POST, "/api/v1/merchants").authenticated()
                         .pathMatchers(HttpMethod.GET, "/api/v1/merchants/me").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
                         .pathMatchers(HttpMethod.GET, "/api/v1/merchants/*/status").hasAnyRole("CUSTOMER", "MERCHANT", "ADMIN")
 
                         // Admin operations (merchant approval, administrative commands)
-                        .pathMatchers(HttpMethod.POST, "/api/v1/merchants/*/approve").hasRole("ADMIN")
+                        .pathMatchers(HttpMethod.POST, "/api/v1/merchants/*/approve", "/api/v1/merchants/*/reject",
+                                "/api/v1/merchants/*/suspend").hasRole("ADMIN")
+                        // Communications operator tools (notification replay, quarantine)
+                        .pathMatchers("/api/v1/internal/**").hasAnyRole("ADMIN", "DISPATCHER")
                         .pathMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                         // Dispatcher operations (courier assignment)
                         .pathMatchers(HttpMethod.POST, "/api/v1/assignments").hasAnyRole("DISPATCHER", "ADMIN")
 
                         // Courier operations (status patch, proof upload)
-                        .pathMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").hasRole("COURIER")
+                        .pathMatchers(HttpMethod.PATCH, "/api/v1/parcels/*/status").hasAnyRole("COURIER", "DISPATCHER", "ADMIN")
                         .pathMatchers(HttpMethod.POST, "/api/v1/parcels/*/proof").hasRole("COURIER")
 
                         // Customer parcel booking
@@ -146,7 +153,8 @@ public class SecurityConfig {
                 .toList();
         config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "Idempotency-Key"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "Idempotency-Key",
+                "Cache-Control", "Last-Event-ID"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 

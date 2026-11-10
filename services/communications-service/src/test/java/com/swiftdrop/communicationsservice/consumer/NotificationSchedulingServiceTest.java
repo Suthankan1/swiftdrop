@@ -139,7 +139,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
         when(accountsContactClient.resolveContact(recipientSub, NotificationSchedulingService.NOTIFICATION_PURPOSE, NotificationChannel.EMAIL))
                 .thenReturn(Optional.of(contact));
@@ -197,7 +197,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
 
         assertThatThrownBy(() -> service.processLifecycleEvent(sampleEvent))
@@ -228,7 +228,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
 
         assertThatThrownBy(() -> service.processLifecycleEvent(sampleEvent))
@@ -242,7 +242,7 @@ class NotificationSchedulingServiceTest {
     @DisplayName("Delivery service unavailable propagates exception to fail closed")
     void testDeliveryServiceUnavailable_PropagatesException() {
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenThrow(new DeliveryServiceUnavailableException("Connection timeout"));
 
         assertThatThrownBy(() -> service.processLifecycleEvent(sampleEvent))
@@ -255,7 +255,7 @@ class NotificationSchedulingServiceTest {
     @DisplayName("Delivery security exception propagates exception to fail closed")
     void testDeliverySecurityException_PropagatesException() {
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenThrow(new DeliverySecurityException("Caller unauthorized"));
 
         assertThatThrownBy(() -> service.processLifecycleEvent(sampleEvent))
@@ -284,7 +284,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
 
         assertThatThrownBy(() -> service.processLifecycleEvent(sampleEvent))
@@ -315,7 +315,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
         when(accountsContactClient.resolveContact(recipientSub, NotificationSchedulingService.NOTIFICATION_PURPOSE, NotificationChannel.EMAIL))
                 .thenReturn(Optional.empty());
@@ -360,7 +360,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
         when(accountsContactClient.resolveContact(recipientSub, NotificationSchedulingService.NOTIFICATION_PURPOSE, NotificationChannel.EMAIL))
                 .thenReturn(Optional.of(contact));
@@ -405,7 +405,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
         when(accountsContactClient.resolveContact(recipientSub, NotificationSchedulingService.NOTIFICATION_PURPOSE, NotificationChannel.EMAIL))
                 .thenReturn(Optional.of(contact));
@@ -437,7 +437,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
         when(accountsContactClient.resolveContact(recipientSub, NotificationSchedulingService.NOTIFICATION_PURPOSE, NotificationChannel.EMAIL))
                 .thenThrow(new AccountsServiceUnavailableException("Accounts service unavailable"));
@@ -496,7 +496,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
         when(accountsContactClient.resolveContact(recipientSub, NotificationSchedulingService.NOTIFICATION_PURPOSE, NotificationChannel.EMAIL))
                 .thenReturn(Optional.of(contact));
@@ -542,7 +542,7 @@ class NotificationSchedulingServiceTest {
         );
 
         when(durableJobPersistenceService.isEventConsumed(consumerGroup, eventId)).thenReturn(false);
-        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, false))
+        when(deliveryAuthorizationClient.authorizeEventRecipient(eventId, parcelId, null, merchantId, true))
                 .thenReturn(auth);
         when(accountsContactClient.resolveContact(recipientSub, NotificationSchedulingService.NOTIFICATION_PURPOSE, NotificationChannel.EMAIL))
                 .thenReturn(Optional.of(contact));

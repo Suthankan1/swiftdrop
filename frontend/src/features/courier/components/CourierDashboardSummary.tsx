@@ -9,9 +9,11 @@ import { Button } from '../../../components/ui/Button'
 
 export interface CourierDashboardSummaryProps {
   apiOverride?: ReturnType<typeof createCourierDashboardApi>
+  /** Changing this value reloads the counts, e.g. after a parcel status change. */
+  refreshToken?: number
 }
 
-export function CourierDashboardSummary({ apiOverride }: CourierDashboardSummaryProps) {
+export function CourierDashboardSummary({ apiOverride, refreshToken = 0 }: CourierDashboardSummaryProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
 
@@ -68,7 +70,7 @@ export function CourierDashboardSummary({ apiOverride }: CourierDashboardSummary
       active = false
       controller.abort()
     }
-  }, [api, subject])
+  }, [api, subject, refreshToken])
 
   const handleRetry = () => {
     if (!subject) return
@@ -131,7 +133,7 @@ export function CourierDashboardSummary({ apiOverride }: CourierDashboardSummary
           </article>
 
           <article className="card metric-card" aria-labelledby="metric-failed-heading">
-            <p className="eyebrow" id="metric-failed-heading">Exceptions (Today)</p>
+            <p className="eyebrow" id="metric-failed-heading">Failed (Today)</p>
             <div className="metric-value monospace">{summary.todayFailedCount}</div>
             <p className="muted metric-caption">Delivery attempts with logged exceptions</p>
           </article>

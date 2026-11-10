@@ -35,8 +35,6 @@ export function CustomerProfile({ state }: { state: ProfileState }) {
       <dl className="profile-details">
         <ProfileField label="Email" value={profile.email} />
         <ProfileField label="Phone number" value={profile.phoneNumber || 'Not provided'} />
-        <ProfileField label="Profile ID" value={profile.id} />
-        <ProfileField label="Identity reference" value={profile.keycloakSub} />
         <ProfileField label="Member since" value={Number.isNaN(createdAt.getTime()) ? 'Unavailable' : createdAt.toLocaleDateString('en-GB', { dateStyle: 'long', timeZone: 'UTC' })} />
       </dl>
       {profile.merchantProfile && (

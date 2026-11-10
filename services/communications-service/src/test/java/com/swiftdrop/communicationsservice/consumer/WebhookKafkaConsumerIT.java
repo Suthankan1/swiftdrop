@@ -72,6 +72,9 @@ class WebhookKafkaConsumerIT {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("swiftdrop.kafka.consumer.enabled", () -> "true");
         registry.add("swiftdrop.kafka.consumer.webhooks.enabled", () -> "true");
+        // Events built for the webhook tests fail in the notification consumer; keep their retries short
+        // so they do not hold the shared partitions past each test's 10-second wait.
+        registry.add("swiftdrop.kafka.consumer.retry-max-elapsed-ms", () -> "1500");
         registry.add("swiftdrop.kafka.topics.parcel-lifecycle", () -> TOPIC);
         registry.add("swiftdrop.kafka.consumer.webhooks.group-id", () -> WEBHOOK_CONSUMER_GROUP);
         registry.add("spring.kafka.consumer.group-id", () -> NOTIFICATION_CONSUMER_GROUP);

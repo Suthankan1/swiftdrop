@@ -108,7 +108,7 @@ class CommunicationsPersistencePostgresIT {
     @DisplayName("A. Flyway applies V1, V2, V3, and V4 migrations cleanly on real PostgreSQL communications_db")
     void testFlywayMigrationCleanApplication() {
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5"); // V5 stores event snapshots
         assertThat(jdbc.queryForObject("SELECT current_database()", String.class)).isEqualTo("communications_db");
 
         List<String> tables = jdbc.queryForList("""

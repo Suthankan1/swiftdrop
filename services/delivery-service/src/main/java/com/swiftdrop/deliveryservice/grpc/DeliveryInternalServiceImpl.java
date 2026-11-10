@@ -370,7 +370,7 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
         boolean isAuthorized;
         String reason;
 
-        if (isStale && isTerminal) {
+        if (isStale && isTerminal && !request.getAllowStale()) {
             isAuthorized = false;
             reason = "STALE_TERMINAL_EVENT";
         } else if (isStale && !request.getAllowStale()) {
@@ -428,20 +428,18 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 return;
             }
 
-            // If a specific zone is requested, since Delivery does not yet persist zone columns,
-            // return empty result to prevent fabricating unauthorized/incorrect zone assignments.
-            if (request.getZone() != null && !request.getZone().isBlank()) {
-                ListUnassignedParcelsResponse response = ListUnassignedParcelsResponse.newBuilder()
-                        .setPage(page)
-                        .setPageSize(pageSize)
-                        .setTotalCount(0)
-                        .build();
-                responseObserver.onNext(response);
-                responseObserver.onCompleted();
+            // Zone codes come from the verified quote snapshot captured at booking; the filter runs in the
+            // database so a zone-scoped dispatcher gets complete, correctly paged results.
+            String zone = request.getZone() == null ? "" : request.getZone().trim();
+            if (!zone.isEmpty() && !zone.matches("[A-Za-z0-9_]{1,32}")) {
+                responseObserver.onError(Status.INVALID_ARGUMENT
+                        .withDescription("zone must be a zone code")
+                        .asRuntimeException());
                 return;
             }
-
-            Page<Parcel> parcelPage = parcelRepository.findUnassignedParcels(PageRequest.of(page, pageSize));
+            Page<Parcel> parcelPage = zone.isEmpty()
+                    ? parcelRepository.findUnassignedParcels(PageRequest.of(page, pageSize))
+                    : parcelRepository.findUnassignedParcelsInZone(zone, PageRequest.of(page, pageSize));
 
             ListUnassignedParcelsResponse.Builder responseBuilder = ListUnassignedParcelsResponse.newBuilder()
                     .setPage(parcelPage.getNumber())
@@ -457,6 +455,12 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         .setCurrency(parcel.getCurrency() != null ? parcel.getCurrency() : "LKR")
                         .setAmountMinorUnits(parcel.getAmountMinorUnits() != null ? parcel.getAmountMinorUnits() : 0L)
                         .setWeightKg(parcel.getWeightKg() != null ? parcel.getWeightKg().doubleValue() : 0.0);
+
+                // Route facts the dispatcher needs; parcels booked before snapshots existed report UNKNOWN.
+                com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcel);
+                summaryBuilder.setPickupZone(route.pickupZone() != null ? route.pickupZone() : "UNKNOWN");
+                summaryBuilder.setDropoffZone(route.dropoffZone() != null ? route.dropoffZone() : "UNKNOWN");
+                if (route.sizeCategory() != null) summaryBuilder.setSizeCategory(route.sizeCategory());
 
                 if (parcel.getCreatedAt() != null) {
                     summaryBuilder.setCreatedAt(toTimestamp(parcel.getCreatedAt()));
@@ -611,7 +615,10 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 inTransitCount = parcelRepository.countInTransitBeforeOrAt(endInstant);
             }
 
-            long totalCount = createdCount + deliveredCount + failedCount + inTransitCount;
+            // Each parcel counts once however many transitions it had in the window.
+            long totalCount = statusFilter.isEmpty()
+                    ? historyRepository.countDistinctParcelsWithActivityBetween(startInstant, endInstant)
+                    : createdCount + deliveredCount + failedCount + inTransitCount;
 
             // Calculate average delivery duration from creation to first DELIVERED transition
             if (deliveredCount > 0) {
@@ -1024,8 +1031,9 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         ? assignmentRepository.findByCourierSubAndActiveTrueAndParcelIdIn(effectiveCourierSub, validUuids)
                         : assignmentRepository.findByCourierSubAndParcelIdIn(effectiveCourierSub, validUuids);
 
+                java.util.Map<UUID, Parcel> parcelsById = loadParcels(assignments);
                 for (DeliveryAssignment da : assignments) {
-                    summaries.add(toCourierAssignmentSummary(da));
+                    summaries.add(toCourierAssignmentSummary(da, parcelsById));
                 }
                 totalCount = summaries.size();
             } else {
@@ -1034,8 +1042,9 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         ? assignmentRepository.findActiveByCourierSub(effectiveCourierSub, pageable)
                         : assignmentRepository.findAllByCourierSub(effectiveCourierSub, pageable);
 
+                java.util.Map<UUID, Parcel> parcelsById = loadParcels(assignmentPage.getContent());
                 for (DeliveryAssignment da : assignmentPage.getContent()) {
-                    summaries.add(toCourierAssignmentSummary(da));
+                    summaries.add(toCourierAssignmentSummary(da, parcelsById));
                 }
                 totalCount = (int) assignmentPage.getTotalElements();
             }
@@ -1269,8 +1278,16 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 .build();
     }
 
-    private CourierAssignmentSummary toCourierAssignmentSummary(DeliveryAssignment da) {
-        Optional<Parcel> parcelOpt = parcelRepository.findById(da.getParcelId());
+    private java.util.Map<UUID, Parcel> loadParcels(List<DeliveryAssignment> assignments) {
+        java.util.Map<UUID, Parcel> byId = new java.util.HashMap<>();
+        parcelRepository.findAllById(assignments.stream().map(DeliveryAssignment::getParcelId).toList())
+                .forEach(p -> byId.put(p.getParcelId(), p));
+        return byId;
+    }
+
+    private CourierAssignmentSummary toCourierAssignmentSummary(DeliveryAssignment da,
+                                                                java.util.Map<UUID, Parcel> parcelsById) {
+        Optional<Parcel> parcelOpt = Optional.ofNullable(parcelsById.get(da.getParcelId()));
         String trackingNumber = parcelOpt.map(Parcel::getTrackingNumber).orElse("UNKNOWN");
         String currentStatus = parcelOpt.map(p -> p.getStatus().name()).orElse("UNKNOWN");
         long version = parcelOpt.map(p -> p.getVersion() != null ? p.getVersion() : 1L).orElse(1L);
@@ -1282,10 +1299,10 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 .setParcelId(da.getParcelId().toString())
                 .setTrackingNumber(trackingNumber)
                 .setCurrentStatus(currentStatus)
-                .setPickupAddress("")
-                .setDropoffAddress("")
-                .setRecipientName("")
-                .setRecipientPhone("")
+                .setPickupAddress(parcelOpt.map(Parcel::getPickupAddress).orElse(""))
+                .setDropoffAddress(parcelOpt.map(Parcel::getDropoffAddress).orElse(""))
+                .setRecipientName(parcelOpt.map(Parcel::getRecipientName).orElse(""))
+                .setRecipientPhone(parcelOpt.map(Parcel::getRecipientPhone).orElse(""))
                 .setAssignedAt(toTimestamp(assignedAt))
                 .setVersion(version)
                 .setIsActive(da.isActive())

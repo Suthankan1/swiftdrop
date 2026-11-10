@@ -45,6 +45,15 @@ message ValidateQuoteResponse {
   bool is_anonymous = 12;
   int64 base_fee_minor_units = 13;
   int64 weight_surcharge_minor_units = 14;
+
+  // Additive parcel facts so Delivery stores what was actually priced (decimal string, kg).
+  string physical_weight_kg = 15;
+  string size_category = 16;
+  int32 length_cm = 17;
+  int32 width_cm = 18;
+  int32 height_cm = 19;
+  string pickup_zone_name = 20;
+  string dropoff_zone_name = 21;
 }
 
 // Request for bounded administrative zone and rate summaries.

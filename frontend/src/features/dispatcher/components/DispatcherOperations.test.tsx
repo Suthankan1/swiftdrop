@@ -25,6 +25,21 @@ async function select() {
 beforeEach(() => vi.stubGlobal('fetch', vi.fn<typeof fetch>()))
 afterEach(() => vi.unstubAllGlobals())
 describe('Dispatcher operations', () => {
+  it('filters by zone on the server, from page zero, and keeps the zone list', async () => {
+    vi.mocked(fetch).mockImplementation(async () => dashboard())
+    setup()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'GAL' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    const body = JSON.parse(String(vi.mocked(fetch).mock.calls[1]![1]!.body))
+    expect(body.variables).toEqual({ pagination: { page: 0, size: 20 }, zone: 'GAL' })
+    expect(body.query).toContain('dispatcherDashboard(pagination: $pagination, zone: $zone)')
+    // Zones seen earlier stay selectable after filtering, and All Zones drops the variable again.
+    expect(screen.getByRole('button', { name: 'CMB' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'All Zones' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[2]![1]!.body)).variables).toEqual({ pagination: { page: 0, size: 20 } })
+  })
   it('shows loading separately from an empty queue', async () => {
     let resolve!: (v: Response) => void
     vi.mocked(fetch).mockImplementation(() => new Promise(r => { resolve = r }))

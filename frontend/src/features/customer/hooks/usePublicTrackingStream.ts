@@ -3,6 +3,8 @@ import type { PublicTrackingResponse, ParcelStatus, TrackingTimelineItem } from 
 import {
   calculateBackoffWithJitter,
   DEFAULT_RECONNECT_CONFIG,
+  isTerminalParcelStatus,
+  STABLE_STREAM_MS,
   type PublicTrackingSseEvent,
   type ReconnectConfig,
   type TrackingStreamState,
@@ -11,6 +13,9 @@ import {
   connectPublicTrackingStream,
   StreamHttpError,
 } from '../api/trackingStreamClient'
+
+/** How long a hidden tab keeps its stream before releasing it. Short hide/show flips then cost nothing. */
+export const HIDDEN_STREAM_GRACE_MS = 60_000
 
 export interface UsePublicTrackingStreamOptions {
   trackingNumber: string | null
@@ -81,8 +86,18 @@ export function usePublicTrackingStream({
       prevTrackingNumberRef.current = trackingNumber
       setLiveState(null)
       lastDeliveredVersionRef.current = 0
+      hasConnectedRef.current = false
     }
   }, [trackingNumber])
+
+  // A fresh REST snapshot (e.g. the Refresh button) is authoritative and replaces live overrides.
+  const lastSnapshotRef = useRef(initialTracking)
+  useEffect(() => {
+    if (initialTracking && initialTracking !== lastSnapshotRef.current) {
+      lastSnapshotRef.current = initialTracking
+      setLiveState(null)
+    }
+  }, [initialTracking])
 
   // Merge initial REST data with live SSE milestones and status updates
   const tracking: PublicTrackingResponse | null = useMemo(() => {
@@ -96,6 +111,11 @@ export function usePublicTrackingStream({
     }
   }, [initialTracking, liveState])
 
+  const currentStatusRef = useRef<ParcelStatus | null>(null)
+  useEffect(() => {
+    currentStatusRef.current = tracking?.currentStatus ?? null
+  }, [tracking])
+
   const activeAbortControllerRef = useRef<AbortController | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
@@ -103,6 +123,7 @@ export function usePublicTrackingStream({
   const isReconcilingRef = useRef(false)
   const isConnectedRef = useRef(false)
   const lastDeliveredVersionRef = useRef<number>(0)
+  const hasConnectedRef = useRef(false)
 
   const connectStreamRef = useRef<(isRetry?: boolean, attempt?: number) => Promise<void>>(
     () => Promise.resolve(),
@@ -199,6 +220,11 @@ export function usePublicTrackingStream({
     async (isRetry = false, attempt = 0) => {
       if (!isMountedRef.current || !enabled || !trackingNumber) return
       if (isConnectingRef.current || isConnectedRef.current) return
+      // A delivered or failed parcel emits nothing more: show its final state without opening a stream.
+      if (isTerminalParcelStatus(currentStatusRef.current ?? initialTracking?.currentStatus)) {
+        setStreamState((prev) => ({ ...prev, status: 'idle', retryAttempt: 0, errorMessage: undefined }))
+        return
+      }
 
       if (activeAbortControllerRef.current) {
         activeAbortControllerRef.current.abort()
@@ -207,6 +233,8 @@ export function usePublicTrackingStream({
       const controller = new AbortController()
       activeAbortControllerRef.current = controller
       isConnectingRef.current = true
+      let connectedAt: number | null = null
+      let closedCleanly = false
 
       setStreamState((prev) => ({
         ...prev,
@@ -225,6 +253,10 @@ export function usePublicTrackingStream({
             if (!isMountedRef.current) return
             isConnectedRef.current = true
             isConnectingRef.current = false
+            // Any connection after the first may have missed events: re-read the canonical state.
+            if (hasConnectedRef.current || isRetry) void triggerReconciliation()
+            hasConnectedRef.current = true
+            connectedAt = Date.now()
             setStreamState((prev) => ({
               ...prev,
               status: 'connected',
@@ -240,6 +272,11 @@ export function usePublicTrackingStream({
             // Heartbeat received
           },
         })
+        // 74: a clean server close is an interruption, not a healthy "Live" stream.
+        if (!controller.signal.aborted) {
+          closedCleanly = true
+          throw new Error('Live stream closed by the server.')
+        }
       } catch (err) {
         if (!isMountedRef.current || controller.signal.aborted) return
 
@@ -269,7 +306,15 @@ export function usePublicTrackingStream({
           return
         }
 
-        // Bounded exponential backoff with full jitter
+        // A finished parcel emits nothing more: do not reopen a stream the server ended.
+        if (closedCleanly && isTerminalParcelStatus(currentStatusRef.current)) {
+          setStreamState((prev) => ({ ...prev, status: 'idle', retryAttempt: 0, errorMessage: undefined }))
+          return
+        }
+
+        // Bounded exponential backoff with full jitter. Only a stream that stayed up earns a fresh
+        // budget; open-then-close counts as a failed attempt so it can never loop.
+        if (connectedAt !== null && Date.now() - connectedAt >= STABLE_STREAM_MS) attempt = 0
         const nextAttempt = attempt + 1
         const cfg = reconnectConfigRef.current
         if (nextAttempt <= cfg.maxRetries) {
@@ -282,6 +327,7 @@ export function usePublicTrackingStream({
           }))
 
           reconnectTimerRef.current = setTimeout(() => {
+            reconnectTimerRef.current = null
             if (isMountedRef.current) {
               connectStreamRef.current(true, nextAttempt)
             }
@@ -296,7 +342,7 @@ export function usePublicTrackingStream({
         }
       }
     },
-    [enabled, gatewayUrl, handleIncomingEvent, trackingNumber],
+    [enabled, gatewayUrl, handleIncomingEvent, trackingNumber, triggerReconciliation, initialTracking?.currentStatus],
   )
 
   connectStreamRef.current = connectStream
@@ -314,26 +360,37 @@ export function usePublicTrackingStream({
     }
   }, [cleanupActiveConnection, connectStream, enabled, trackingNumber])
 
-  // Tab visibility management: disconnect when hidden to conserve edge resources, reconnect when visible
+  // Tab visibility management. A hidden tab keeps its stream for a grace period, so switching tabs or
+  // panels does not spend anonymous rate-limit budget; only a long absence releases the connection.
   useEffect(() => {
     if (typeof document === 'undefined') return
+    let releaseTimer: ReturnType<typeof setTimeout> | null = null
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        cleanupActiveConnection()
-        setStreamState((prev) => ({
-          ...prev,
-          status: 'idle',
-        }))
+        if (releaseTimer === null) {
+          releaseTimer = setTimeout(() => {
+            releaseTimer = null
+            cleanupActiveConnection()
+            setStreamState((prev) => ({ ...prev, status: 'idle' }))
+          }, HIDDEN_STREAM_GRACE_MS)
+        }
       } else {
-        if (enabled && trackingNumber && isMountedRef.current) {
-          connectStreamRef.current(false, 0)
+        if (releaseTimer !== null) {
+          clearTimeout(releaseTimer)
+          releaseTimer = null
+        }
+        // Still connected (or connecting): nothing to do. Otherwise reconnect; the reconnect re-reads REST.
+        if (enabled && trackingNumber && isMountedRef.current && !isConnectedRef.current && !isConnectingRef.current
+            && reconnectTimerRef.current === null) {
+          connectStreamRef.current(true, 0)
         }
       }
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
+      if (releaseTimer !== null) clearTimeout(releaseTimer)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [cleanupActiveConnection, enabled, trackingNumber])

@@ -139,6 +139,8 @@ public class GatewayBusinessRoutesIntegrationTest {
         registry.add("swiftdrop.jwt.issuer-uri", () -> issuerUrl);
         registry.add("swiftdrop.jwt.audience", () -> "swiftdrop-api");
         registry.add("ACCOUNTS_SERVICE_URL", () -> accountsServer.url("").toString().replaceAll("/$", ""));
+        // This test asserts exact upstream request queues; the disabled-account check has its own test.
+        registry.add("swiftdrop.gateway.disabled-account-check.enabled", () -> "false");
         registry.add("PRICING_SERVICE_URL", () -> pricingServer.url("").toString().replaceAll("/$", ""));
         registry.add("DELIVERY_SERVICE_URL", () -> deliveryServer.url("").toString().replaceAll("/$", ""));
         registry.add("COMMUNICATIONS_SERVICE_URL", () -> communicationsServer.url("").toString().replaceAll("/$", ""));

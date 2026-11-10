@@ -3,6 +3,8 @@ import type { ParcelDetailResponse, ParcelStatus } from '../api/deliveryContract
 import {
   calculateBackoffWithJitter,
   DEFAULT_RECONNECT_CONFIG,
+  isTerminalParcelStatus,
+  STABLE_STREAM_MS,
   type ReconnectConfig,
   type TrackingStreamState,
 } from '../api/trackingStreamContracts'
@@ -26,8 +28,16 @@ export interface UseParcelTrackingStreamOptions {
 }
 
 interface LiveStatusOverride {
+  parcelId: string
   status: ParcelStatus
   version: number
+}
+
+/** A stream that ends cleanly (server close, proxy timeout) is retried like any other interruption. */
+class StreamClosedError extends Error {
+  constructor() {
+    super('Live stream closed by the server.')
+  }
 }
 
 export function useParcelTrackingStream({
@@ -44,6 +54,7 @@ export function useParcelTrackingStream({
   randomFn,
 }: UseParcelTrackingStreamOptions) {
   const [liveOverride, setLiveOverride] = useState<LiveStatusOverride | null>(null)
+  const [trackedParcelId, setTrackedParcelId] = useState(parcelId)
   const [streamState, setStreamState] = useState<TrackingStreamState>({
     status: 'idle',
     retryAttempt: 0,
@@ -56,6 +67,21 @@ export function useParcelTrackingStream({
   })
 
   // Synchronize latest callback functions and configurations in refs to ensure stable connectStream references
+  // Switching parcels clears every live value from the previous parcel before it can render.
+  if (parcelId !== trackedParcelId) {
+    setTrackedParcelId(parcelId)
+    setLiveOverride(null)
+    setStreamState(prev => ({
+      ...prev,
+      status: 'idle',
+      retryAttempt: 0,
+      lastDeliveredVersion: initialParcel?.parcelId === parcelId ? initialParcel.version : null,
+      lastEventId: null,
+      lastEventAt: null,
+      errorMessage: undefined,
+    }))
+  }
+
   const reconcileRestRef = useRef(reconcileRest)
   const getAccessTokenRef = useRef(getAccessToken)
   const handleSessionExpiryRef = useRef(handleSessionExpiry)
@@ -75,7 +101,7 @@ export function useParcelTrackingStream({
   // Compute authoritative parcel by merging initial REST data with real-time SSE overrides
   const parcel: ParcelDetailResponse | null = useMemo(() => {
     if (!subject || !initialParcel) return null
-    if (!liveOverride) return initialParcel
+    if (!liveOverride || liveOverride.parcelId !== initialParcel.parcelId) return initialParcel
     if (liveOverride.version >= initialParcel.version) {
       return {
         ...initialParcel,
@@ -86,6 +112,11 @@ export function useParcelTrackingStream({
     return initialParcel
   }, [initialParcel, liveOverride, subject])
 
+  const currentStatusRef = useRef<ParcelStatus | null>(null)
+  useEffect(() => {
+    currentStatusRef.current = parcel?.currentStatus ?? null
+  }, [parcel])
+
   const activeAbortControllerRef = useRef<AbortController | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
@@ -93,6 +124,20 @@ export function useParcelTrackingStream({
   const isReconcilingRef = useRef(false)
   const isConnectedRef = useRef(false)
   const lastDeliveredVersionRef = useRef<number>(initialParcel?.version ?? 0)
+  const authRetriedRef = useRef(false)
+
+  // Reset the version cursor for a new parcel, and raise it when a fresher REST snapshot arrives.
+  const versionParcelRef = useRef(parcelId)
+  useEffect(() => {
+    if (versionParcelRef.current !== parcelId) {
+      versionParcelRef.current = parcelId
+      lastDeliveredVersionRef.current = 0
+      authRetriedRef.current = false
+    }
+    if (initialParcel && initialParcel.parcelId === parcelId) {
+      lastDeliveredVersionRef.current = Math.max(lastDeliveredVersionRef.current, initialParcel.version)
+    }
+  }, [parcelId, initialParcel])
 
   // Forward ref for connectStream to avoid circular declaration access
   const connectStreamRef = useRef<(isRetry?: boolean, attempt?: number) => Promise<void>>(
@@ -121,9 +166,10 @@ export function useParcelTrackingStream({
     isReconcilingRef.current = true
     try {
       const fresh = await reconcileRestRef.current()
-      if (fresh && isMountedRef.current) {
+      if (fresh && isMountedRef.current && fresh.parcelId === parcelId) {
         lastDeliveredVersionRef.current = Math.max(lastDeliveredVersionRef.current, fresh.version)
         setLiveOverride({
+          parcelId: fresh.parcelId,
           status: fresh.currentStatus,
           version: fresh.version,
         })
@@ -142,6 +188,14 @@ export function useParcelTrackingStream({
   const connectStream = useCallback(
     async (isRetryAttempt = false, currentAttempt = 0) => {
       if (!isMountedRef.current || !enabled || !parcelId) {
+        return
+      }
+
+      // A delivered or failed parcel emits nothing more: show its final state without opening a stream.
+      if (isTerminalParcelStatus(currentStatusRef.current ?? initialParcel?.currentStatus)) {
+        abortActiveStream()
+        clearReconnectTimer()
+        setStreamState(prev => ({ ...prev, status: 'idle', retryAttempt: 0, errorMessage: undefined }))
         return
       }
 
@@ -167,6 +221,7 @@ export function useParcelTrackingStream({
       isConnectingRef.current = true
 
       const attemptNum = isRetryAttempt ? currentAttempt + 1 : 0
+      let connectedAt: number | null = null
 
       if (isMountedRef.current) {
         setStreamState(prev => ({
@@ -187,6 +242,8 @@ export function useParcelTrackingStream({
           onConnected: () => {
             if (!isMountedRef.current || controller.signal.aborted) return
             isConnectedRef.current = true
+            connectedAt = Date.now()
+            authRetriedRef.current = false
             setStreamState(prev => ({
               ...prev,
               status: 'connected',
@@ -214,6 +271,7 @@ export function useParcelTrackingStream({
               lastDeliveredVersionRef.current = event.aggregateVersion
 
               setLiveOverride({
+                parcelId,
                 status: event.newStatus,
                 version: event.aggregateVersion,
               })
@@ -233,22 +291,32 @@ export function useParcelTrackingStream({
             void doReconcileRest()
           },
         })
+        if (!controller.signal.aborted) throw new StreamClosedError()
       } catch (err) {
         isConnectedRef.current = false
         if (!isMountedRef.current || controller.signal.aborted) return
 
         // 1. Session expired / invalid authentication
         if (err instanceof StreamHttpError && err.statusCode === 401) {
-          if (handleSessionExpiryRef.current) {
+          // First 401: the token may have expired in flight. Retry once with a freshly obtained token
+          // before declaring the session over, because expiring the session signs out every tab.
+          if (!authRetriedRef.current) {
+            authRetriedRef.current = true
             try {
-              await handleSessionExpiryRef.current()
               const freshToken = await getAccessTokenRef.current()
-              if (freshToken?.trim() && isMountedRef.current) {
+              if (freshToken?.trim() && isMountedRef.current && !controller.signal.aborted) {
                 void connectStreamRef.current(true, attemptNum)
                 return
               }
             } catch {
-              // Session refresh failed
+              // fall through to session expiry
+            }
+          }
+          if (handleSessionExpiryRef.current) {
+            try {
+              await handleSessionExpiryRef.current()
+            } catch {
+              // ignore
             }
           }
           if (isMountedRef.current) {
@@ -297,11 +365,19 @@ export function useParcelTrackingStream({
           return
         }
 
-        // 5. Temporary network disconnection or recoverable failure
+        // 5a. A finished parcel emits nothing more: do not reopen a stream the server ended.
+        if (err instanceof StreamClosedError && isTerminalParcelStatus(currentStatusRef.current)) {
+          setStreamState(prev => ({ ...prev, status: 'idle', retryAttempt: 0, errorMessage: undefined }))
+          return
+        }
+
+        // 5b. Temporary network disconnection or recoverable failure
         const currentReconnectConfig = reconnectConfigRef.current
-        if (attemptNum < currentReconnectConfig.maxRetries) {
+        // Only a stream that stayed up starts a fresh retry budget; open-then-close counts as a failure.
+        const retryBase = connectedAt !== null && Date.now() - connectedAt >= STABLE_STREAM_MS ? 0 : attemptNum
+        if (retryBase < currentReconnectConfig.maxRetries) {
           const delay = calculateBackoffWithJitter(
-            attemptNum,
+            retryBase,
             currentReconnectConfig,
             randomFnRef.current,
           )
@@ -309,13 +385,13 @@ export function useParcelTrackingStream({
             setStreamState(prev => ({
               ...prev,
               status: 'reconnecting',
-              retryAttempt: attemptNum,
-              errorMessage: `Connection interrupted. Reconnecting (attempt ${attemptNum}/${currentReconnectConfig.maxRetries})...`,
+              retryAttempt: retryBase,
+              errorMessage: `Connection interrupted. Reconnecting (attempt ${retryBase}/${currentReconnectConfig.maxRetries})...`,
             }))
           }
           reconnectTimerRef.current = setTimeout(() => {
             if (isMountedRef.current) {
-              void connectStreamRef.current(true, attemptNum)
+              void connectStreamRef.current(true, retryBase)
             }
           }, delay)
         } else {
@@ -340,6 +416,7 @@ export function useParcelTrackingStream({
       enabled,
       gatewayUrl,
       parcelId,
+      initialParcel?.currentStatus,
     ],
   )
 
@@ -350,6 +427,7 @@ export function useParcelTrackingStream({
 
   // Manual retry function exposed to UI
   const retry = useCallback(() => {
+    authRetriedRef.current = false
     clearReconnectTimer()
     abortActiveStream()
     void doReconcileRest()

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router'
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
 import { createDeliveryApi, DeliveryError, triggerBlobDownload } from '../api/delivery'
@@ -9,6 +10,7 @@ import { CustomerTrackingModal } from '../components/CustomerTrackingModal'
 
 export function CustomerHistoryPage() {
   const auth = useAuth()
+  const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(0)
   const [selectedParcelId, setSelectedParcelId] = useState<string | null>(null)
   const [selectedTrackingNumber, setSelectedTrackingNumber] = useState<string | undefined>()
@@ -80,9 +82,10 @@ export function CustomerHistoryPage() {
     if (uuidRegex.test(trimmed)) {
       handleSelectParcel(trimmed)
     } else {
-      setSelectedParcelId(trimmed)
-      setSelectedTrackingNumber(trimmed)
-      setIsModalOpen(true)
+      // A tracking number: open the parcel if it is on this page, otherwise use public tracking.
+      const match = historyQuery.data?.items.find(item => item.trackingNumber.toUpperCase() === trimmed.toUpperCase())
+      if (match) handleSelectParcel(match.parcelId, match.trackingNumber)
+      else navigate(`/tracking/${encodeURIComponent(trimmed.toUpperCase())}`)
     }
   }
 
@@ -102,7 +105,7 @@ export function CustomerHistoryPage() {
       {receiptFeedback && (
         <div
           className={`feedback-banner ${receiptFeedback.type === 'success' ? 'is-success' : 'is-error'}`}
-          role="alert"
+          role={receiptFeedback.type === 'success' ? 'status' : 'alert'}
         >
           <span>{receiptFeedback.message}</span>
           <button
@@ -121,14 +124,14 @@ export function CustomerHistoryPage() {
         <div className="lookup-header">
           <h2 id="lookup-heading">Quick Tracking Lookup</h2>
           <p className="muted small-note">
-            Inspect real-time milestone checkpoints by tracking number (e.g., SWD-20261025-XXXX).
+            Inspect real-time milestone checkpoints by tracking number (e.g. SWD-20261023-A1B2C3).
           </p>
         </div>
         <form onSubmit={handleSearchSubmit} className="lookup-form" role="search">
           <input
             type="text"
             className="lookup-input"
-            placeholder="Enter tracking number (e.g. SWD-20261025-A1B2C3)"
+            placeholder="Enter tracking number (e.g. SWD-20261023-A1B2C3)"
             value={searchTrackingInput}
             onChange={(e) => setSearchTrackingInput(e.target.value)}
             aria-label="Tracking number or parcel reference"

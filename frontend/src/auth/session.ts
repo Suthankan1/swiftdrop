@@ -8,20 +8,14 @@ export type SessionState = { snapshot: AuthSnapshot; problem: AuthProblem }
 
 export type AuthSyncMessage =
   | {
+      // Carries no tokens: every tab obtains its own from Keycloak, so tokens stay in one tab's memory.
       type: 'AUTH_SYNC_LOGIN'
       subject: string
-      roles: SwiftDropRole[]
-      token?: string
-      idToken?: string
-      refreshToken?: string
-      tokenParsed?: Keycloak['tokenParsed']
     }
   | {
       type: 'AUTH_SYNC_LOGOUT'
     }
-  | {
-      type: 'AUTH_SYNC_REQUEST'
-    }
+
 
 export interface AuthSessionOptions {
   redirectUri?: string
@@ -80,28 +74,18 @@ export class AuthSession {
   private handleChannelMessage(data: AuthSyncMessage) {
     if (!data || typeof data !== 'object') return
     if (data.type === 'AUTH_SYNC_LOGIN') {
-      if (this.signingOut) return
-      this.client.token = data.token
-      this.client.idToken = data.idToken
-      this.client.refreshToken = data.refreshToken
-      this.client.tokenParsed = data.tokenParsed
-      this.client.authenticated = true
-      this.publish({ status: 'authenticated', subject: data.subject, roles: data.roles })
+      if (this.signingOut || this.state.snapshot.subject === data.subject) return
+      // Another tab signed in: sign this tab in silently through Keycloak's SSO session (no prompt).
+      if (this.state.snapshot.subject) { this.clearCredentials(); this.publish(anonymous) }
+      const login = this.client?.login
+      if (typeof login !== 'function') return
+      // Never let a cross-tab sign-in attempt surface as an unhandled error; this tab stays signed out instead.
+      Promise.resolve()
+        .then(() => this.client.login({ prompt: 'none', redirectUri: window.location.href }))
+        .catch(() => undefined)
     } else if (data.type === 'AUTH_SYNC_LOGOUT') {
       this.clearCredentials()
       this.publish(anonymous)
-    } else if (data.type === 'AUTH_SYNC_REQUEST') {
-      if (this.state.snapshot.status === 'authenticated' && this.client.token && this.state.snapshot.subject) {
-        this.broadcast({
-          type: 'AUTH_SYNC_LOGIN',
-          subject: this.state.snapshot.subject,
-          roles: [...this.state.snapshot.roles],
-          token: this.client.token,
-          idToken: this.client.idToken,
-          refreshToken: this.client.refreshToken,
-          tokenParsed: this.client.tokenParsed,
-        })
-      }
     }
   }
   private broadcast(msg: AuthSyncMessage) {
@@ -124,15 +108,7 @@ export class AuthSession {
     if (!this.client.authenticated || !this.client.token || !claims?.sub || !claims.exp || this.client.isTokenExpired(0)) return false
     const activeRoles = roles.filter((role) => this.client.hasRealmRole(role))
     this.publish({ status: 'authenticated', subject: claims.sub, roles: activeRoles })
-    this.broadcast({
-      type: 'AUTH_SYNC_LOGIN',
-      subject: claims.sub,
-      roles: activeRoles,
-      token: this.client.token,
-      idToken: this.client.idToken,
-      refreshToken: this.client.refreshToken,
-      tokenParsed: this.client.tokenParsed,
-    })
+    this.broadcast({ type: 'AUTH_SYNC_LOGIN', subject: claims.sub })
     return true
   }
   initialize = () => {
@@ -147,26 +123,7 @@ export class AuthSession {
     const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173'
     const isTestEnv = typeof navigator !== 'undefined' && navigator.userAgent.includes('jsdom')
 
-    // In a multi-tab browser context, ask open tabs if an active session exists
-    if (!isTestEnv && !callback && this.channel) {
-      this.broadcast({ type: 'AUTH_SYNC_REQUEST' })
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 100)
-        const check = () => {
-          if (this.state.snapshot.status === 'authenticated') {
-            clearTimeout(timeout)
-            resolve()
-          }
-        }
-        const unsub = this.subscribe(() => {
-          check()
-          unsub()
-        })
-      })
-      if (this.state.snapshot.status === 'authenticated') {
-        return
-      }
-    }
+    // Each tab restores its own session with Keycloak's silent check-sso below.
 
     try {
       const initOptions: Record<string, unknown> = {
@@ -179,7 +136,8 @@ export class AuthSession {
         initOptions.silentCheckSsoRedirectUri = `${origin}/silent-check-sso.html`
       }
       const initPromise = this.client.init(initOptions as Parameters<Keycloak['init']>[0])
-      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))
+      // A real callback exchanges the code with Keycloak and may be slow; only the silent check gets 3 s.
+      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), callback ? 30_000 : 3000))
       const authenticated = await Promise.race([initPromise, timeoutPromise])
       if (generation !== this.generation) { this.clearCredentials(); return }
       if (!authenticated || !this.accept()) {
@@ -217,9 +175,10 @@ export class AuthSession {
   register = async (returnUrl?: string) => { await this.enter('register', returnUrl) }
   googleLogin = async (returnUrl?: string) => { await this.enter('google', returnUrl) }
   private enter(kind: 'login' | 'register' | 'google', returnUrl?: string) {
-    if (typeof window !== 'undefined' && returnUrl) {
+    if (typeof window !== 'undefined') {
       try {
-        window.name = JSON.stringify({ swiftdrop_auth_target: returnUrl })
+        // Each attempt replaces any target left by an abandoned login, so it cannot leak into a later sign-in.
+        window.name = returnUrl ? JSON.stringify({ swiftdrop_auth_target: returnUrl, swiftdrop_auth_at: Date.now() }) : ''
       } catch {
         // ignore window.name access issues
       }
@@ -255,7 +214,12 @@ export class AuthSession {
       // Keep ID token hint intact so Keycloak automatically proceeds with RP-Initiated logout
       const pending = this.client.logout({ redirectUri: this.postLogoutRedirectUri, logoutMethod: 'POST' })
       await pending
-    } catch { this.publish(anonymous, 'provider-unavailable') }
+    } catch {
+      // Logout did not reach Keycloak: stay signed out locally, but let the user sign in again without a reload.
+      this.signingOut = false
+      this.logoutPromise = undefined
+      this.publish(anonymous, 'provider-unavailable')
+    }
     finally { this.clearCredentials() }
   }
   destroy = () => {

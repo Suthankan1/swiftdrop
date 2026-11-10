@@ -13,146 +13,7 @@ spring:
           httpclient:
             connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
             response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:5s}
-          routes:
-            - id: communications-service-webhooks
-              uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
-              predicates:
-                - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
-              order: 5
-            - id: accounts-service-staff
-              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-              predicates:
-                - Path=/api/v1/staff, /api/v1/staff/**
-              order: 5
-            - id: pricing-service-admin
-              uri: ${PRICING_SERVICE_URL:http://localhost:8082}
-              predicates:
-                - Path=/api/v1/admin/pricing, /api/v1/admin/pricing/**
-              order: 5
-            - id: accounts-service-users-me
-              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-              predicates:
-                - Path=/api/v1/users/me
-              order: 10
-            - id: accounts-service-merchants
-              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-              predicates:
-                - Path=/api/v1/merchants, /api/v1/merchants/**
-              order: 10
-            - id: accounts-service-admin
-              uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-              predicates:
-                - Path=/api/v1/admin/**
-              order: 10
-            - id: pricing-service-quotes
-              uri: ${PRICING_SERVICE_URL:http://localhost:8082}
-              predicates:
-                - Path=/api/v1/quotes, /api/v1/quotes/**
-              order: 10
-            - id: pricing-service-zones
-              uri: ${PRICING_SERVICE_URL:http://localhost:8082}
-              predicates:
-                - Path=/api/v1/zones, /api/v1/zones/**
-              order: 10
-            - id: delivery-service-tracking
-              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-              predicates:
-                - Path=/api/v1/tracking/**
-              order: 10
-              metadata:
-                response-timeout: -1
-            - id: delivery-service-merchant-parcels
-              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-              predicates:
-                - Path=/api/v1/merchant/parcels, /api/v1/merchant/parcels/**
-              order: 10
-            - id: delivery-service-assignments
-              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-              predicates:
-                - Path=/api/v1/assignments, /api/v1/assignments/**
-              order: 10
-            - id: delivery-service-parcels
-              uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-              predicates:
-                - Path=/api/v1/parcels, /api/v1/parcels/**
-              order: 10
-              metadata:
-                response-timeout: -1
-            - id: graphql-query-service
-              uri: ${GRAPHQL_SERVICE_URL:http://localhost:8085}
-              predicates:
-                - Path=/graphql
-              order: 10
-      routes:
-        - id: communications-service-webhooks
-          uri: ${COMMUNICATIONS_SERVICE_URL:http://localhost:8084}
-          predicates:
-            - Path=/api/v1/merchants/webhooks, /api/v1/merchants/webhooks/**
-          order: 5
-        - id: accounts-service-staff
-          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-          predicates:
-            - Path=/api/v1/staff, /api/v1/staff/**
-          order: 5
-        - id: pricing-service-admin
-          uri: ${PRICING_SERVICE_URL:http://localhost:8082}
-          predicates:
-            - Path=/api/v1/admin/pricing, /api/v1/admin/pricing/**
-          order: 5
-        - id: accounts-service-users-me
-          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-          predicates:
-            - Path=/api/v1/users/me
-          order: 10
-        - id: accounts-service-merchants
-          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-          predicates:
-            - Path=/api/v1/merchants, /api/v1/merchants/**
-          order: 10
-        - id: accounts-service-admin
-          uri: ${ACCOUNTS_SERVICE_URL:http://localhost:8081}
-          predicates:
-            - Path=/api/v1/admin/**
-          order: 10
-        - id: pricing-service-quotes
-          uri: ${PRICING_SERVICE_URL:http://localhost:8082}
-          predicates:
-            - Path=/api/v1/quotes, /api/v1/quotes/**
-          order: 10
-        - id: pricing-service-zones
-          uri: ${PRICING_SERVICE_URL:http://localhost:8082}
-          predicates:
-            - Path=/api/v1/zones, /api/v1/zones/**
-          order: 10
-        - id: delivery-service-tracking
-          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-          predicates:
-            - Path=/api/v1/tracking/**
-          order: 10
-          metadata:
-            response-timeout: -1
-        - id: delivery-service-merchant-parcels
-          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-          predicates:
-            - Path=/api/v1/merchant/parcels, /api/v1/merchant/parcels/**
-          order: 10
-        - id: delivery-service-assignments
-          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-          predicates:
-            - Path=/api/v1/assignments, /api/v1/assignments/**
-          order: 10
-        - id: delivery-service-parcels
-          uri: ${DELIVERY_SERVICE_URL:http://localhost:8083}
-          predicates:
-            - Path=/api/v1/parcels, /api/v1/parcels/**
-          order: 10
-          metadata:
-            response-timeout: -1
-        - id: graphql-query-service
-          uri: ${GRAPHQL_SERVICE_URL:http://localhost:8085}
-          predicates:
-            - Path=/graphql
-          order: 10
+      # Routes are defined once, in GatewayRoutesConfig.java (audit 102); do not add YAML route lists here.
       globalcors:
         cors-configurations:
           '[/**]':
@@ -172,6 +33,8 @@ spring:
               - Origin
               - X-Requested-With
               - Idempotency-Key
+              - Cache-Control
+              - Last-Event-ID
             allow-credentials: true
             max-age: 3600
 
@@ -215,11 +78,13 @@ swiftdrop:
       merchant-burst-capacity: ${RATE_LIMIT_MERCHANT_BURST:20}
       unauthenticated-limit-per-minute: ${RATE_LIMIT_UNAUTH_PER_MIN:10}
       unauthenticated-burst-capacity: ${RATE_LIMIT_UNAUTH_BURST:5}
+      assistant-limit-per-minute: ${RATE_LIMIT_ASSISTANT_PER_MIN:12}
+      assistant-burst-capacity: ${RATE_LIMIT_ASSISTANT_BURST:4}
     payload:
       enabled: ${PAYLOAD_LIMIT_ENABLED:true}
       max-quote-bytes: ${MAX_QUOTE_PAYLOAD_BYTES:65536} # 64 KB
       max-standard-bytes: ${MAX_STANDARD_PAYLOAD_BYTES:262144} # 256 KB
-      max-proof-bytes: ${MAX_PROOF_PAYLOAD_BYTES:5242880} # 5 MB
+      max-proof-bytes: ${MAX_PROOF_PAYLOAD_BYTES:6291456} # 5 MB photo plus multipart overhead
     sse:
       enabled: ${SSE_POLICY_ENABLED:true}
       max-public-connections: ${SSE_MAX_PUBLIC_CONCURRENT:5}

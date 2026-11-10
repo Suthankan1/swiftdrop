@@ -62,16 +62,61 @@ function Badge({ value }: { value: string }) {
 }
 function Users({ api, scope }: { api: AdminManagementApi; scope: AdminScope }) {
   const [page, setPage] = useState(0)
-  const query = useAdminQuery(scope, ['users', page], signal => api.users(page, signal))
+  const [searchInput, setSearchInput] = useState(''), [search, setSearch] = useState('')
+  const [confirmUser, setConfirmUser] = useState<{ profileId: string; enabled: boolean; label: string } | null>(null)
+  const [editUser, setEditUser] = useState<{ profileId: string; label: string; fullName: string; phoneNumber: string; originalName: string } | null>(null)
+  const command = useAdminCommand(scope)
+  const query = useAdminQuery(scope, ['users', page, search], signal => search ? api.users(page, signal, search) : api.users(page, signal))
   return <section aria-label="Accounts users" aria-busy={query.isFetching}>
     <div className="admin-management-toolbar"><h2>Accounts users</h2><Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh users</Button></div>
-    <p className="muted">Accounts exposes paged summaries. User search, account status, roles and user detail are not available from this provider.</p>
+    <form className="admin-management-toolbar" role="search" onSubmit={event => { event.preventDefault(); setPage(0); setSearch(searchInput.trim()) }}>
+      <label htmlFor="admin-user-search">Search by name or email</label>
+      <input id="admin-user-search" type="search" maxLength={100} value={searchInput} onChange={event => setSearchInput(event.target.value)} />
+      <Button type="submit" variant="secondary" size="sm" disabled={query.isFetching}>Search</Button>
+      {search && <Button type="button" variant="secondary" size="sm" onClick={() => { setSearchInput(''); setSearch(''); setPage(0) }}>Clear</Button>}
+    </form>
+    {command.feedback && <p role={command.feedback.error ? 'alert' : 'status'}>{command.feedback.text}</p>}
+    {editUser && <form className="card admin-user-edit" aria-labelledby="admin-user-edit-heading" onSubmit={event => {
+      event.preventDefault()
+      const target = editUser
+      const changes: { fullName?: string; phoneNumber?: string } = {}
+      if (target.fullName.trim() !== target.originalName) changes.fullName = target.fullName
+      if (target.phoneNumber.trim()) changes.phoneNumber = target.phoneNumber
+      if (!api.updateUser || !Object.keys(changes).length) { setEditUser(null); return }
+      void command.run(signal => api.updateUser!(target.profileId, changes, signal), undefined, () => setEditUser(null))
+    }}>
+      <h3 id="admin-user-edit-heading">Edit {editUser.label}</h3>
+      <label htmlFor="admin-user-edit-name">Full name</label>
+      <input id="admin-user-edit-name" maxLength={255} required value={editUser.fullName} disabled={command.pending}
+        onChange={event => setEditUser({ ...editUser, fullName: event.target.value })} />
+      <label htmlFor="admin-user-edit-phone">Phone number (leave empty to keep the current one)</label>
+      <input id="admin-user-edit-phone" type="tel" maxLength={25} value={editUser.phoneNumber} disabled={command.pending}
+        onChange={event => setEditUser({ ...editUser, phoneNumber: event.target.value })} />
+      <p className="muted">Email is managed by the sign-in provider and cannot be changed here.</p>
+      <Button type="button" variant="secondary" size="sm" disabled={command.pending} onClick={() => setEditUser(null)}>Cancel</Button>
+      <Button type="submit" variant="primary" size="sm" disabled={command.pending || !editUser.fullName.trim()}>Save changes</Button>
+    </form>}
+    {confirmUser && <div role="alertdialog" aria-labelledby="admin-user-confirm" className="card">
+      <p id="admin-user-confirm">{confirmUser.enabled ? 'Enable sign-in for' : 'Disable sign-in for'} <strong>{confirmUser.label}</strong>?{!confirmUser.enabled && ' Their active sessions will be ended.'}</p>
+      <Button variant="secondary" size="sm" disabled={command.pending} onClick={() => setConfirmUser(null)}>Cancel</Button>
+      <Button variant="primary" size="sm" disabled={command.pending || !api.setUserEnabled} onClick={() => {
+        const target = confirmUser
+        void command.run(signal => api.setUserEnabled!(target.profileId, target.enabled, signal), undefined, () => setConfirmUser(null))
+      }}>{confirmUser.enabled ? 'Confirm enable' : 'Confirm disable'}</Button>
+    </div>}
     {query.isFetching && <p role="status">Loading users…</p>}
     {query.isError && <ReadError error={query.error} busy={query.isFetching} retry={() => { void query.refetch() }} />}
     {query.data && !query.isError && <>
       {!query.data.content.length ? <p role="status">No users on this page.</p> : <div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Scrollable users table"><table>
-        <caption>Accounts user summaries</caption><thead><tr><th scope="col">Name</th><th scope="col">Account profile ID</th><th scope="col">Email</th><th scope="col">Created</th></tr></thead>
-        <tbody>{query.data.content.map(user => <tr key={user.profileId}><td>{user.fullName ?? 'Not provided'}</td><td>{user.profileId}</td><td>{user.email ?? 'Not provided'}</td><td><time dateTime={user.createdAt}>{user.createdAt}</time></td></tr>)}</tbody>
+        <caption>Accounts user summaries</caption><thead><tr><th scope="col">Name</th><th scope="col">Account profile ID</th><th scope="col">Email</th><th scope="col">Created</th><th scope="col">Sign-in</th><th scope="col">Action</th></tr></thead>
+        <tbody>{query.data.content.map(user => <tr key={user.profileId}><td>{user.fullName ?? 'Not provided'}</td><td>{user.profileId}</td><td>{user.email ?? 'Not provided'}</td><td><time dateTime={user.createdAt}>{user.createdAt}</time></td>
+          <td>{user.enabled === true ? <Badge value="ACTIVE" /> : user.enabled === false ? <Badge value="SUSPENDED" /> : 'Unknown'}</td>
+          <td>{api.setUserEnabled && typeof user.enabled === 'boolean' && <Button variant="secondary" size="sm" disabled={command.pending}
+            onClick={() => setConfirmUser({ profileId: user.profileId, enabled: !user.enabled, label: user.fullName ?? user.email ?? user.profileId })}>
+            {user.enabled ? 'Disable' : 'Enable'}</Button>}
+            {api.updateUser && <Button variant="secondary" size="sm" disabled={command.pending}
+              onClick={() => setEditUser({ profileId: user.profileId, label: user.fullName ?? user.email ?? user.profileId, fullName: user.fullName ?? '', phoneNumber: '', originalName: user.fullName ?? '' })}>
+              Edit</Button>}</td></tr>)}</tbody>
       </table></div>}
       <Pagination data={query.data} busy={query.isFetching} change={setPage} />
     </>}

@@ -36,7 +36,7 @@ export function MerchantApprovalBanner({ rawStatus }: MerchantApprovalBannerProp
           Your business credentials have been verified. Your merchant account is fully active and authorized for operational parcel dispatch.
         </p>
         <p className="approval-notice">
-          Batch order booking, shipping label generation, and webhook tracking will unlock in upcoming delivery milestones.
+          Once approved you can book orders one by one or by CSV, create API keys, and subscribe to webhooks.
         </p>
       </aside>
     )

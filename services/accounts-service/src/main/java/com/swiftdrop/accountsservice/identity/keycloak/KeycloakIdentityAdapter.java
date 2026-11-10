@@ -65,4 +65,19 @@ public interface KeycloakIdentityAdapter {
      * @return ReconciliationResult containing structured outcome and audit evidence.
      */
     ReconciliationResult reconcileRole(String subject, String roleName, boolean shouldHaveRole);
+
+    /**
+     * Stores a single-valued user attribute that a realm protocol mapper can issue as a token claim.
+     */
+    void setUserAttribute(String subject, String attributeName, String value);
+
+    /**
+     * Removes the realm's default role bundle (which carries CUSTOMER) so staff accounts hold only their staff role.
+     */
+    void removeDefaultRoles(String subject);
+
+    /**
+     * Enables or disables sign-in for a user. Disabling also ends the user's active Keycloak sessions.
+     */
+    void setUserEnabled(String subject, boolean enabled);
 }

@@ -160,10 +160,13 @@ public class BookingService {
                     .sorted(Comparator.comparing(BookingFailure.InvalidParameter::field)).toList());
         }
 
-        return transaction.execute(status -> createMerchant(merchantId, callerSub, key, request));
+        // Pricing gRPC runs before the database transaction opens, so no connection is held during the call.
+        QuoteValidation quote = quotes.validateMerchantQuote(request.quoteId(), merchantId, callerSub);
+        return transaction.execute(status -> createMerchant(merchantId, callerSub, key, request, quote));
     }
 
-    private ParcelDetailResponse createMerchant(UUID merchantId, String callerSub, UUID key, MerchantBookParcelRequest request) {
+    private ParcelDetailResponse createMerchant(UUID merchantId, String callerSub, UUID key, MerchantBookParcelRequest request,
+                                                QuoteValidation quote) {
         String digest = digest(json.writeValueAsString(request));
         String principal = "merchant:" + merchantId;
         repository.lock(principal, key);
@@ -178,8 +181,6 @@ public class BookingService {
             }
         }
 
-        // Validate quote via Pricing gRPC with verified merchant tenant delegation
-        QuoteValidation quote = quotes.validateMerchantQuote(request.quoteId(), merchantId, callerSub);
         Instant now = clock.instant();
         validate(quote, request.quoteId(), now);
 
@@ -201,8 +202,8 @@ public class BookingService {
                     merchantId,
                     ParcelStatus.CREATED,
                     1L,
-                    2.50, // default standard package weight
-                    "STANDARD",
+                    quote.weightKg() != null ? quote.weightKg().doubleValue() : 0.0,
+                    quote.dimensionsCm() != null ? quote.dimensionsCm() : "Not recorded",
                     quote.verifiedAmountMinorUnits(),
                     quote.currency(),
                     quote.rateVersion(),
@@ -237,7 +238,7 @@ public class BookingService {
                 payload.put("oldStatus", null);
                 payload.put("newStatus", "CREATED");
                 payload.put("merchantId", merchantId.toString());
-                payload.put("merchantReference", request.merchantReference());
+                payload.put("cityOrZone", quote.pickupZoneName());
                 // Strictly zero customer street address, recipient phone, or PII in Kafka event
 
                 var event = Map.of(

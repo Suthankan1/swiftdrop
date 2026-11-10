@@ -46,10 +46,11 @@ Mutation/Subscription type. Exposed fields:
 | adminDashboard | ADMIN | Pushmitha, #139; Accounts pending review summary (IF-GRPC-06) plus Delivery operational aggregates (IF-GRPC-12) |
 | deliveryStats | DISPATCHER or ADMIN | Pushmitha, #30/#113; preserve PR #213's SDL contract |
 
-**All six production resolvers are deferred.** A permitted root returns sanitized
-GraphQL `UNAVAILABLE` until its owner registers a resolver. Wrong roles receive
-`FORBIDDEN` first. There are no dummy records or zero-valued statistics.
-Contract exposure is not business integration evidence.
+**All six production resolvers are implemented** (customer, merchant, courier, dispatcher and admin dashboards,
+and delivery statistics), each reading authorized data over internal gRPC from Accounts and Delivery. Wrong roles
+receive `FORBIDDEN` first. If a provider is unavailable the root returns sanitized GraphQL `UNAVAILABLE`; there are
+no dummy records or zero-valued statistics. `dispatcherDashboard` also takes an optional `zone` argument that is
+filtered in Delivery's database (a zone-scoped dispatcher is always limited to their own zone).
 
 Issue #119's October 23 amendment explicitly removes `Query.publicTracking`
 from the release SDL. This intentional breaking removal requires domain/Platform

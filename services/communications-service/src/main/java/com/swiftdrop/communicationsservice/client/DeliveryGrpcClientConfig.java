@@ -30,8 +30,7 @@ public class DeliveryGrpcClientConfig {
         SwiftDropGrpcClientInterceptor interceptor =
                 new SwiftDropGrpcClientInterceptor(tokenProvider, deadlineMs);
 
-        return ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
+        return com.swiftdrop.security.grpc.GrpcTransport.channel(host, port)
                 .intercept(interceptor)
                 .build();
     }

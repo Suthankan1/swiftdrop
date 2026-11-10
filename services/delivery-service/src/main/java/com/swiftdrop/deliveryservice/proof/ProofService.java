@@ -258,7 +258,8 @@ public class ProofService {
             return toResponse(saved);
         } catch (RuntimeException e) {
             log.error("Database write failed after proof upload for parcel {}. Triggering compensation.", parcelId);
-            if (newRef != null) {
+            // Inside a transaction the rollback hook already removes the orphan; compensate here only without one.
+            if (newRef != null && !TransactionSynchronizationManager.isSynchronizationActive()) {
                 compensationService.compensateOrphan(newRef, "DB_PERSISTENCE_FAILURE");
             }
             throw e;
@@ -314,12 +315,21 @@ public class ProofService {
             UUID parcelId,
             String actorSub,
             Collection<String> roles) {
+        return getProofMetadata(parcelId, actorSub, roles, null);
+    }
+
+    @Transactional(readOnly = true)
+    public ProofDetailResponse getProofMetadata(
+            UUID parcelId,
+            String actorSub,
+            Collection<String> roles,
+            String merchantTenant) {
 
         Objects.requireNonNull(parcelId, "parcelId cannot be null");
         Objects.requireNonNull(actorSub, "actorSub cannot be null");
 
         Parcel parcel = getParcelOrThrow(parcelId);
-        authorizeActorForRead(parcel, actorSub, roles);
+        authorizeActorForRead(parcel, actorSub, roles, merchantTenant);
 
         ProofOfDelivery proof = proofRepository.findByParcelId(parcelId)
                 .orElseThrow(() -> new ProofNotFoundException(parcelId));
@@ -331,7 +341,8 @@ public class ProofService {
         return new ProofDetailResponse(
                 proof.getProofId(),
                 proof.getParcelId(),
-                proof.getObjectReference(),
+                // Opaque handle only: the private storage path never leaves Delivery Operations.
+                "proof:" + proof.getProofId(),
                 proof.getEvidenceType(),
                 proof.getContentType(),
                 proof.getContentLength(),
@@ -350,12 +361,21 @@ public class ProofService {
             UUID parcelId,
             String actorSub,
             Collection<String> roles) {
+        return getProofContent(parcelId, actorSub, roles, null);
+    }
+
+    @Transactional(readOnly = true)
+    public RetrievedProofObject getProofContent(
+            UUID parcelId,
+            String actorSub,
+            Collection<String> roles,
+            String merchantTenant) {
 
         Objects.requireNonNull(parcelId, "parcelId cannot be null");
         Objects.requireNonNull(actorSub, "actorSub cannot be null");
 
         Parcel parcel = getParcelOrThrow(parcelId);
-        authorizeActorForRead(parcel, actorSub, roles);
+        authorizeActorForRead(parcel, actorSub, roles, merchantTenant);
 
         ProofOfDelivery proof = proofRepository.findByParcelId(parcelId)
                 .orElseThrow(() -> new ProofNotFoundException(parcelId));
@@ -387,12 +407,12 @@ public class ProofService {
         if (courierAssignmentContract != null) {
             boolean isAssigned = courierAssignmentContract.hasActiveAssignment(parcelId, actorSub);
             if (!isAssigned) {
-                throw new ProofAccessDeniedException("Forbidden: Courier " + actorSub + " is not actively assigned to parcel " + parcelId);
+                throw new ProofAccessDeniedException("Forbidden: you are not the courier assigned to this parcel.");
             }
         }
     }
 
-    private void authorizeActorForRead(Parcel parcel, String actorSub, Collection<String> roles) {
+    private void authorizeActorForRead(Parcel parcel, String actorSub, Collection<String> roles, String merchantTenant) {
         // 1. Dispatcher or Admin
         if (roles != null && roles.stream().anyMatch(r ->
                 r.equalsIgnoreCase("DISPATCHER") || r.equalsIgnoreCase("ROLE_DISPATCHER") ||
@@ -405,7 +425,7 @@ public class ProofService {
             return;
         }
 
-        // 3. Assigned courier
+        // 3. Currently assigned courier only; a courier loses access once unassigned.
         if (courierAssignmentContract != null) {
             boolean isAssigned = courierAssignmentContract.hasActiveAssignment(parcel.getParcelId(), actorSub);
             if (isAssigned) {
@@ -413,13 +433,15 @@ public class ProofService {
             }
         }
 
-        // 4. Uploader courier
-        Optional<ProofOfDelivery> proof = proofRepository.findByParcelId(parcel.getParcelId());
-        if (proof.isPresent() && Objects.equals(proof.get().getUploadedBySub(), actorSub)) {
+        // 4. Merchant tenant that owns the order (tenant comes from the verified merchant_id token claim).
+        boolean isMerchant = roles != null && roles.stream()
+                .anyMatch(r -> r.equalsIgnoreCase("MERCHANT") || r.equalsIgnoreCase("ROLE_MERCHANT"));
+        if (isMerchant && merchantTenant != null && parcel.getMerchantId() != null
+                && parcel.getMerchantId().toString().equalsIgnoreCase(merchantTenant.trim())) {
             return;
         }
 
-        throw new ProofAccessDeniedException("Forbidden: Caller " + actorSub + " is not authorized to access proof for parcel " + parcel.getParcelId());
+        throw new ProofAccessDeniedException("Forbidden: you are not authorized to view this proof.");
     }
 
     private void validateLifecycleStageForUpload(Parcel parcel) {

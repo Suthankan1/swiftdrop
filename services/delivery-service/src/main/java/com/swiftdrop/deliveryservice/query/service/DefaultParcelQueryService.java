@@ -151,8 +151,6 @@ public class DefaultParcelQueryService implements ParcelQueryService {
         Page<Parcel> parcels;
         if (roles.contains("ADMIN") || roles.contains("DISPATCHER")) {
             parcels = parcelRepository.findAll(safePageable);
-        } else if (roles.contains("CUSTOMER") && callerSub != null) {
-            parcels = parcelRepository.findBySenderSubOrderByCreatedAtDesc(callerSub, safePageable);
         } else if (roles.contains("MERCHANT")) {
             Object merchantClaim = jwt.getClaim("merchant_id");
             UUID merchantId = null;
@@ -165,16 +163,28 @@ public class DefaultParcelQueryService implements ParcelQueryService {
                 merchantId = merchantTenantResolver.resolveMerchantTenant(callerSub).orElse(null);
             }
 
+            // Merchants were customers first, so they also keep their own personal bookings.
             if (merchantId != null) {
-                parcels = parcelRepository.findByMerchantIdOrderByCreatedAtDesc(merchantId, safePageable);
+                parcels = parcelRepository.findByMerchantIdOrSenderSubOrderByCreatedAtDesc(merchantId, callerSub, safePageable);
+            } else if (callerSub != null) {
+                parcels = parcelRepository.findBySenderSubOrderByCreatedAtDesc(callerSub, safePageable);
             } else {
                 parcels = Page.empty(safePageable);
             }
+        } else if (roles.contains("CUSTOMER") && callerSub != null) {
+            parcels = parcelRepository.findBySenderSubOrderByCreatedAtDesc(callerSub, safePageable);
         } else {
             parcels = Page.empty(safePageable);
         }
 
-        Page<ParcelDetailResponse> dtoPage = parcels.map(this::mapToDetailResponse);
+        // One query for the page's active couriers instead of one per parcel.
+        java.util.Map<UUID, String> activeCouriers = new java.util.HashMap<>();
+        if (!parcels.isEmpty()) {
+            assignmentRepository.findByParcelIdInAndActiveTrue(
+                            parcels.getContent().stream().map(Parcel::getParcelId).toList())
+                    .forEach(a -> activeCouriers.put(a.getParcelId(), a.getCourierSub()));
+        }
+        Page<ParcelDetailResponse> dtoPage = parcels.map(p -> mapToDetailResponse(p, activeCouriers.get(p.getParcelId())));
         return PagedResponse.of(dtoPage);
     }
 
@@ -200,11 +210,16 @@ public class DefaultParcelQueryService implements ParcelQueryService {
     }
 
     private ParcelDetailResponse mapToDetailResponse(Parcel parcel) {
-        String activeCourier = assignmentRepository.findByParcelIdAndActiveTrue(parcel.getParcelId())
+        return mapToDetailResponse(parcel, assignmentRepository.findByParcelIdAndActiveTrue(parcel.getParcelId())
                 .map(DeliveryAssignment::getCourierSub)
-                .orElse(null);
+                .orElse(null));
+    }
 
-        double weight = parcel.getWeightKg() != null ? parcel.getWeightKg().doubleValue() : 0.0;
+    private ParcelDetailResponse mapToDetailResponse(Parcel parcel, String activeCourier) {
+
+        com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcel);
+        java.math.BigDecimal weightKg = parcel.getWeightKg() != null ? parcel.getWeightKg() : route.weightKg();
+        double weight = weightKg != null ? weightKg.doubleValue() : 0.0;
         long amount = parcel.getAmountMinorUnits() != null ? parcel.getAmountMinorUnits() : 0L;
         String currency = parcel.getCurrency() != null ? parcel.getCurrency() : "LKR";
         String rateVersion = parcel.getRateVersion() != null ? parcel.getRateVersion() : "";
@@ -217,7 +232,7 @@ public class DefaultParcelQueryService implements ParcelQueryService {
                 parcel.getStatus(),
                 parcel.getVersion(),
                 weight,
-                "STANDARD", // Non-null dimensions for consumer contract
+                route.dimensionsCm() != null ? route.dimensionsCm() : "Not recorded",
                 amount,
                 currency,
                 rateVersion,

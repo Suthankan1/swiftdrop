@@ -70,7 +70,7 @@ class DeliveryPersistencePostgresIT {
     @DisplayName("Verify clean Flyway V1 migration execution on real PostgreSQL")
     void testFlywayMigrationExecution() {
         var info = flyway.info();
-        assertThat(info.applied()).hasSize(8);
+        assertThat(info.applied()).hasSize(9); // V9 adds history uniqueness and report indexes
         assertThat(info.applied()[0].getDescription()).isEqualTo("create delivery schema");
         assertThat(info.applied()[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(info.applied()[1].getDescription()).isEqualTo("create delivery assignments schema");
@@ -215,5 +215,45 @@ class DeliveryPersistencePostgresIT {
                     "VALUES ('" + UUID.randomUUID() + "', 'SWD-INVALID-STATUS', 'sub', 'INVALID_STATUS', 1, 'LKR');"
             );
         }).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("Unassigned queue zone filter runs in the database on the quote snapshot's zone codes")
+    void unassignedQueueFiltersByZoneCodeInTheDatabase() {
+        String tag = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        String zoneA = "ZA_" + tag, zoneB = "ZB_" + tag, zoneC = "ZC_" + tag;
+        UUID inA = saveWithRoute("SWD-ZONE-A-" + tag, zoneA, zoneB);
+        UUID inC = saveWithRoute("SWD-ZONE-C-" + tag, zoneC, zoneC);
+        UUID noSnapshot = saveWithRoute("SWD-ZONE-N-" + tag, null, null);
+
+        var pageB = parcelRepository.findUnassignedParcelsInZone(zoneB, org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(pageB.getContent()).extracting(Parcel::getParcelId).containsExactly(inA);
+        assertThat(pageB.getTotalElements()).isEqualTo(1);
+        var pageC = parcelRepository.findUnassignedParcelsInZone(zoneC, org.springframework.data.domain.PageRequest.of(0, 10));
+        assertThat(pageC.getContent()).extracting(Parcel::getParcelId).containsExactly(inC);
+        assertThat(parcelRepository.findUnassignedParcelsInZone("NOPE_" + tag, org.springframework.data.domain.PageRequest.of(0, 10)))
+                .isEmpty();
+        // Parcels without a snapshot are never placed in a zone they may not belong to.
+        assertThat(pageB.getContent()).extracting(Parcel::getParcelId).doesNotContain(noSnapshot);
+
+        // An actively assigned parcel leaves the queue.
+        jdbc.update("INSERT INTO delivery_assignments (assignment_id, parcel_id, courier_sub, assigned_by, active) VALUES (?, ?, 'c', 'd', true)",
+                UUID.randomUUID(), inA);
+        assertThat(parcelRepository.findUnassignedParcelsInZone(zoneB, org.springframework.data.domain.PageRequest.of(0, 10))).isEmpty();
+
+        var route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcelRepository.findById(inC).orElseThrow());
+        assertThat(route.pickupZone()).isEqualTo(zoneC);
+        assertThat(route.pickupZoneName()).isEqualTo("Name " + zoneC);
+    }
+
+    private UUID saveWithRoute(String trackingNumber, String pickupZone, String dropoffZone) {
+        Parcel parcel = new Parcel(UUID.randomUUID(), trackingNumber, "sender-" + trackingNumber, null, UUID.randomUUID(),
+                "RATE-1", 1000L, "LKR", new BigDecimal("1.00"));
+        if (pickupZone != null) {
+            parcel.setQuoteSnapshot("{\"pickupZone\":\"" + pickupZone + "\",\"dropoffZone\":\"" + dropoffZone
+                    + "\",\"pickupZoneName\":\"Name " + pickupZone + "\",\"dropoffZoneName\":\"Name " + dropoffZone + "\"}");
+        }
+        parcelRepository.saveAndFlush(parcel);
+        return parcel.getParcelId();
     }
 }
