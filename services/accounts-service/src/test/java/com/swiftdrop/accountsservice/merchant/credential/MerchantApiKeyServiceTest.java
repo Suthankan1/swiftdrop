@@ -114,7 +114,8 @@ class MerchantApiKeyServiceTest {
 
         assertThatThrownBy(() -> service.generateApiKey(merchantIdentity, merchantId, request))
                 .isInstanceOf(InvalidApiKeyScopeException.class)
-                .hasMessageContaining("admin:all");
+                .hasMessageContaining("Unsupported scope")
+                .satisfies(error -> org.assertj.core.api.Assertions.assertThat(error.getMessage()).doesNotContain("admin:all"));
 
         verify(apiKeyRepository, never()).save(any());
     }
