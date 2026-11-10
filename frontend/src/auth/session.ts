@@ -207,6 +207,9 @@ export class AuthSession {
   }
   private async endSession() {
     this.signingOut = true
+    // Opening /logout directly starts sign-out while the adapter is still restoring the session. Wait for that
+    // first, or keycloak-js cannot reach the end-session endpoint and the Keycloak session survives (re-audit F3).
+    await this.initialize()
     this.generation++
     this.broadcast({ type: 'AUTH_SYNC_LOGOUT' })
     this.publish(anonymous)

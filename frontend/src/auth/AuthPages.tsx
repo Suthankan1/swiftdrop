@@ -71,7 +71,7 @@ export function LoginPage() {
         ) : (
           <>
             <p className="muted" style={{ marginBottom: '24px', fontSize: '14px', lineHeight: 1.6 }}>
-              Continue securely with Keycloak identity provider. Tokens are preserved in-memory and synchronized across tabs.
+              Sign in with your SwiftDrop account or Google.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <Button
@@ -179,7 +179,7 @@ export function LogoutPage() {
   return (
     <div className="page-container">
       <FeedbackState title="Signed out">
-        Local session cleared. If the identity provider is unavailable, close its session separately.
+        You are signed out of SwiftDrop on this device.
       </FeedbackState>
       <Link to="/login">Return to sign-in</Link>
     </div>
