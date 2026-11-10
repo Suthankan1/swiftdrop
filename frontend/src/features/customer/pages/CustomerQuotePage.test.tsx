@@ -473,7 +473,7 @@ describe('CustomerQuotePage & Booking Workflow (Issue #118)', () => {
     await user.click(screen.getByRole('button', { name: /confirm & book delivery/i }))
 
     expect(
-      await screen.findByText(/this quote has already been booked or an idempotency conflict occurred/i),
+      await screen.findByText(/this quote has already been used/i),
     ).toBeInTheDocument()
   })
 
