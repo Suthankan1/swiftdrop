@@ -19,8 +19,8 @@ LABEL org.opencontainers.image.title="SwiftDrop AI Assistant" \
       org.opencontainers.image.description="Read-only delivery assistant backed by Gemini function calling" \
       org.opencontainers.image.source="https://github.com/Suthankan1/swiftdrop" \
       org.opencontainers.image.licenses="Apache-2.0"
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+RUN (apt-get update || (sleep 2 && apt-get update)) && \
+    DEBIAN_FRONTEND=noninteractive apt-get --only-upgrade install -y apt libapt-pkg6.0 && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd -g 10001 swiftdrop && \
     useradd -u 10001 -g swiftdrop -d /home/swiftdrop -m -s /sbin/nologin swiftdrop
