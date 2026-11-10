@@ -33,10 +33,10 @@ export function MerchantApprovalBanner({ rawStatus }: MerchantApprovalBannerProp
           <span className="badge badge-approved">Account Approved</span>
         </div>
         <p>
-          Your business credentials have been verified. Your merchant account is fully active and authorized for operational parcel dispatch.
+          Your business details have been verified and your merchant account is active.
         </p>
         <p className="approval-notice">
-          Once approved you can book orders one by one or by CSV, create API keys, and subscribe to webhooks.
+          You can book orders one by one or by CSV, create API keys, and subscribe to webhooks.
         </p>
       </aside>
     )

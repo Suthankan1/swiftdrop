@@ -57,7 +57,7 @@ public class AssistantTools {
                 "Price a delivery between two zone codes. Call list_zones first if the user gives place names instead of zone codes.");
         property(quote, "pickupZone", "STRING", "Pickup zone code, e.g. ZONE_1");
         property(quote, "dropoffZone", "STRING", "Drop-off zone code, e.g. ZONE_2");
-        property(quote, "weightKg", "NUMBER", "Parcel weight in kilograms (0.01 to 50)");
+        property(quote, "weightKg", "NUMBER", "Parcel weight in kilograms (0.01 to 30)");
         property(quote, "lengthCm", "INTEGER", "Length in centimetres (default 20 if unknown)");
         property(quote, "widthCm", "INTEGER", "Width in centimetres (default 15 if unknown)");
         property(quote, "heightCm", "INTEGER", "Height in centimetres (default 10 if unknown)");
@@ -134,7 +134,7 @@ public class AssistantTools {
         if (!ZONE.matcher(pickup).matches() || !ZONE.matcher(dropoff).matches()) {
             return error("Zone codes look like ZONE_1. Use list_zones to find the right codes.");
         }
-        if (!(weight > 0 && weight <= 50)) return error("Weight must be between 0.01 and 50 kg.");
+        if (!(weight > 0 && weight <= 30)) return error("Weight must be between 0.01 and 30 kg.");
         if (length < 1 || length > 300 || width < 1 || width > 300 || height < 1 || height > 300) {
             return error("Each dimension must be between 1 and 300 cm.");
         }

@@ -132,7 +132,7 @@ describe('Merchant role landing and approval-state UI', () => {
     expect(screen.getByRole('status', { name: /approval status: approved/i })).toBeInTheDocument()
     expect(screen.getByText('Account Approved')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Verified merchant account' })).toBeInTheDocument()
-    expect(screen.getByText(/your merchant account is fully active and authorized for operational parcel dispatch/i)).toBeInTheDocument()
+    expect(screen.getByText(/your merchant account is active/i)).toBeInTheDocument()
     expect(screen.getByText('PV-987654')).toBeInTheDocument()
     expect(screen.getByText('merch-approved-02')).toBeInTheDocument()
   })

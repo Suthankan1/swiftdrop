@@ -298,7 +298,7 @@ describe('Courier role landing', () => {
       expect(screen.getByText('1')).toBeInTheDocument()
 
       // Confirms assignment card rendered
-      expect(await screen.findByText(/parcel-wf/i)).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /view parcel details for parcel-w/i })).toBeInTheDocument()
       const viewDetailsBtn = screen.getByRole('button', {
         name: /view parcel details for parcel-w/i,
       })

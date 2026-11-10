@@ -5,6 +5,7 @@
   "displayNameHtml": "<div class=\"kc-logo-text\"><span>SwiftDrop</span></div>",
   "enabled": true,
   "sslRequired": "external",
+  "passwordPolicy": "length(8) and notUsername(undefined) and notEmail(undefined)",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "rememberMe": true,

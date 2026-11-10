@@ -101,6 +101,11 @@ class BookingEntryPointRecoveryPostgresIT {
         assertThat(count("SELECT count(*) FROM parcels WHERE quote_id = ?", quoteId)).isEqualTo(1);
         assertThat(count("SELECT count(*) FROM status_history WHERE parcel_id = ?", first.parcelId())).isEqualTo(1);
         assertThat(count("SELECT count(*) FROM outbox_events WHERE aggregate_id = ?", first.parcelId())).isEqualTo(1);
+        // Merchant bookings store the quoted weight like customer bookings do (re-audit B1).
+        java.math.BigDecimal stored = jdbc.queryForObject("SELECT weight_kg FROM parcels WHERE parcel_id = ?",
+                java.math.BigDecimal.class, first.parcelId());
+        assertThat(stored).isNotNull();
+        assertThat(stored.compareTo(validQuote(quoteId).weightKg())).isZero();
     }
 
     @Test
@@ -136,7 +141,8 @@ class BookingEntryPointRecoveryPostgresIT {
 
     private static QuoteValidation validQuote(UUID quoteId) {
         return new QuoteValidation(true, quoteId, "RATE-164", 50000L, "LKR",
-                Instant.now().plusSeconds(900), "VALID");
+                Instant.now().plusSeconds(900), "VALID", "ZONE_1", "ZONE_2", "Colombo", "Suburbs",
+                new java.math.BigDecimal("1.500"), "SMALL", "20x15x10");
     }
 
     private static BookParcelRequest customerRequest(UUID quoteId) {

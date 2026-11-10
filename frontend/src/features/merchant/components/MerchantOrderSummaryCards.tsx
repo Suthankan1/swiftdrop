@@ -47,7 +47,7 @@ export function MerchantOrderSummaryCards({
       >
         <span className="eyebrow">Delivered</span>
         <span className="metric-value monospace">{deliveredOrdersCount}</span>
-        <span className="muted metric-caption">Authoritatively fulfilled parcels</span>
+        <span className="muted metric-caption">Parcels delivered</span>
       </button>
 
       <button

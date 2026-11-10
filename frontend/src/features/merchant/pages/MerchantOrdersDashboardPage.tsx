@@ -173,7 +173,7 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
     <div className="page-container merchant-page merchant-orders-dashboard-page">
       <header className="page-heading">
         <p className="eyebrow">Merchant space</p>
-        <h1>Commercial Order Dashboard.<br />Authoritative Dispatches.</h1>
+        <h1>Your orders.</h1>
         <p className="muted">
           Review commercial shipments, inspect live milestone states, and track fulfillment across delivery routes.
         </p>

@@ -96,8 +96,10 @@ export function parseDeliveryStats(value: unknown): DeliveryStatsSummary {
     averageDeliveryHours: average === null || average === undefined ? null
       : typeof average === 'number' && Number.isFinite(average) && average >= 0 ? average : invalid(),
   }
-  // Status groups partition the period's parcels (LATER-11 Q1/Q5/Q6), so they cannot exceed the total.
-  if (result.deliveredCount + result.failedCount + result.inTransitCount + result.createdCount > result.totalCount) invalid()
+  // Booked, delivered and failed are activity inside the period, so each is a subset of the period's distinct parcels,
+  // and delivered and failed are exclusive end states. In-progress is a count of parcels now in flight (booked any
+  // time before the period ended), so it is not bounded by the total.
+  if (result.createdCount > result.totalCount || result.deliveredCount + result.failedCount > result.totalCount) invalid()
   if (result.deliveredCount === 0 && result.averageDeliveryHours !== null) invalid()
   return result
 }

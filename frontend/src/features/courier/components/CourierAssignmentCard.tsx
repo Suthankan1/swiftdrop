@@ -62,10 +62,6 @@ export function CourierAssignmentCard({
           <span className="meta-label">Assigned At:</span>
           <span className="meta-value">{formattedDate}</span>
         </div>
-        <div className="assignment-meta-row">
-          <span className="meta-label">Full Parcel ID:</span>
-          <span className="meta-value monospace parcel-id-snippet">{assignment.parcelId}</span>
-        </div>
       </div>
 
       <div className="assignment-card-actions">

@@ -62,7 +62,7 @@ export function CustomerBookingConfirmedPage() {
           <>
             <h1>Booking Confirmed &amp; <br />Scheduled for Dispatch.</h1>
             <p className="muted">
-              Your delivery booking has been successfully committed to Delivery Operations.
+              Your parcel is booked.
             </p>
           </>
         ) : parcelQuery.isError ? (
@@ -78,7 +78,7 @@ export function CustomerBookingConfirmedPage() {
       {parcelQuery.isPending && !parcel && (
         <div className="card loading-confirmation-card" aria-busy="true">
           <span className="btn-spinner large" aria-hidden="true" />
-          <p>Retrieving authoritative booking details...</p>
+          <p>Loading your booking…</p>
         </div>
       )}
 
@@ -130,7 +130,7 @@ export function CustomerBookingConfirmedPage() {
 
             {/* Tracking Reference Hero */}
             <div className="tracking-reference-hero">
-              <span className="eyebrow">Canonical Tracking Number</span>
+              <span className="eyebrow">Tracking number</span>
               <div className="tracking-number-display">
                 <code className="font-mono tracking-code">{parcel.trackingNumber}</code>
                 <Button
@@ -216,7 +216,7 @@ export function CustomerBookingConfirmedPage() {
                 <div className="step-content">
                   <strong>Milestone Tracking</strong>
                   <p className="muted text-sm">
-                    Track parcel transit through Western Province hubs in your Delivery History or public tracking.
+                    Follow each step of the journey in your Delivery History or on the public tracking page.
                   </p>
                 </div>
               </li>
@@ -225,7 +225,7 @@ export function CustomerBookingConfirmedPage() {
                 <div className="step-content">
                   <strong>Official PDF Delivery Receipt</strong>
                   <p className="muted text-sm">
-                    Once marked as DELIVERED, an authorized PDF receipt with tamper-evident fee snapshot is available for download.
+                    Once your parcel is delivered, you can download a PDF receipt.
                   </p>
                 </div>
               </li>

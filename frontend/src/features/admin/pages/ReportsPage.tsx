@@ -67,7 +67,7 @@ function AdminOverview({ api, scope, today, stats }: { api: ReportsApi; scope: A
   const dashboard = useAdminQuery(scope, ['admin-dashboard'], signal => api.adminDashboard(signal))
   const partial = (dashboard.isError && stats.isSuccess) || (dashboard.isSuccess && stats.isError)
   return <section className="report-section" aria-labelledby="overview-heading" aria-busy={dashboard.isFetching}>
-    {partial && <p className="report-partial" role="status">Partial report: some sections could not be retrieved. Only figures returned by a responding provider are shown; nothing is estimated.</p>}
+    {partial && <p className="report-partial" role="status">Some sections could not be loaded. The figures shown are complete; missing ones are not estimated.</p>}
     <div className="admin-management-toolbar">
       <h2 id="overview-heading">Today's operations overview</h2>
       <Button variant="secondary" size="sm" type="button" disabled={dashboard.isFetching} onClick={() => { void dashboard.refetch() }}>Refresh overview</Button>
@@ -86,7 +86,7 @@ function OverviewContent({ data, updatedAt, refreshing }: { data: AdminDashboard
       <Metric label="Parcels today" value={formatCount(data.totalParcelsCount)} caption="Parcels created or active in today's reporting day" />
       <Metric label="Active in the field" value={formatCount(data.activeParcelsCount)} caption="Picked up, in transit or out for delivery" />
       <Metric label="Terminal success rate" value={formatRate(data.terminalSuccessRate)}
-        caption="Delivered ÷ (delivered + failed) today. The provider also reports 0.0% when no parcel has reached a terminal outcome yet." />
+        caption="Delivered ÷ (delivered + failed) today. Shows 0.0% until a parcel is delivered or fails." />
       <Metric label="Merchants awaiting review" value={formatCount(data.pendingMerchantsCount)} caption="Applications with PENDING status" />
     </div>
     <section className="report-section" aria-labelledby="merchant-summary-heading">
@@ -153,7 +153,7 @@ function ReportFilters({ admin, today, applied, onApply }: { admin: boolean; tod
       <Button variant="secondary" size="sm" type="button" onClick={() => preset(30)}>Last 30 days</Button>
     </div>
     {problem && <p id={errorId} role="alert">{problem}</p>}
-    <p className="muted">Up to {MAX_REPORT_DAYS} days ending today. {admin ? 'Leave the zone blank for platform-wide figures.' : 'Figures are limited by the server to your assigned operational zones.'}</p>
+    <p className="muted">Up to {MAX_REPORT_DAYS} days ending today. {admin ? 'Leave the zone blank for platform-wide figures.' : 'Figures cover only your assigned zones.'}</p>
   </section>
 }
 
@@ -170,15 +170,15 @@ function DailyOutcomes({ api, scope, filter, today, stats }: {
       <strong>Reporting period:</strong> {formatReportingDate(filter.startDate)}{dayCount > 1 && <> to {formatReportingDate(filter.endDate)}</>} ({dayCount} {dayCount === 1 ? 'day' : 'days'}) · {REPORTING_TIME_ZONE_LABEL} · {filter.zone ? `Zone ${filter.zone}` : 'All authorized zones'}
     </p>
     {filter.endDate === today && <p className="muted">The period includes today, so today's figures are day to date and can still change.</p>}
-    {stats.isPending && <FeedbackState title="Loading delivery outcomes" tone="loading">Requesting authoritative outcome totals.</FeedbackState>}
+    {stats.isPending && <FeedbackState title="Loading delivery outcomes" tone="loading">Loading the figures for this period.</FeedbackState>}
     {stats.isError && <ReportReadError title="Delivery outcomes unavailable" error={stats.error} busy={stats.isFetching} retry={() => { void stats.refetch() }} />}
     {stats.isSuccess && <>
       <Freshness updatedAt={stats.dataUpdatedAt} refreshing={stats.isFetching} />
       {stats.data.totalCount === 0
-        ? <FeedbackState title="No delivery activity in this period">The reporting service recorded 0 parcels for the selected period and scope.</FeedbackState>
+        ? <FeedbackState title="No delivery activity in this period">No parcels were booked, delivered or failed in this period.</FeedbackState>
         : <OutcomeContent data={stats.data} />}
       {dayCount > MAX_BREAKDOWN_DAYS
-        ? <p className="muted">A day-by-day breakdown is available for periods of up to {MAX_BREAKDOWN_DAYS} days, to keep reporting queries bounded.</p>
+        ? <p className="muted">A day-by-day breakdown is available for periods of up to {MAX_BREAKDOWN_DAYS} days.</p>
         : dayCount > 1 && <DailyBreakdown api={api} scope={scope} filter={filter} />}
     </>}
   </section>
@@ -187,11 +187,10 @@ function DailyOutcomes({ api, scope, filter, today, stats }: {
 function OutcomeContent({ data }: { data: DeliveryStatsSummary }) {
   const { terminal, successRate, failureRate } = outcomeRates(data)
   const noTerminal = 'No delivered or failed parcels in this period'
-  const classified = data.createdCount + data.inTransitCount + data.deliveredCount + data.failedCount
   const share = (value: number) => formatRate(value / data.totalCount)
   return <>
     <div className="courier-summary-grid" role="group" aria-label="Delivery outcome metrics">
-      <Metric label="Total parcels" value={formatCount(data.totalCount)} caption="Distinct parcels with lifecycle activity in the period" />
+      <Metric label="Total parcels" value={formatCount(data.totalCount)} caption="Parcels with any status change in the period" />
       <Metric label="Delivered" value={formatCount(data.deliveredCount)} caption="Delivery completed within the period" />
       <Metric label="Failed" value={formatCount(data.failedCount)} caption="Failure recorded within the period" />
       <Metric label="Success rate" value={formatRate(successRate)} caption={terminal ? `Delivered ÷ ${formatCount(terminal)} terminal outcomes` : noTerminal} />
@@ -202,14 +201,13 @@ function OutcomeContent({ data }: { data: DeliveryStatsSummary }) {
     <ReportCharts data={data} />
     <div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Scrollable status distribution table">
       <table>
-        <caption>Status distribution for the period</caption>
+        <caption>Parcel activity in the period</caption>
         <thead><tr><th scope="col">Status group</th><th scope="col">Parcels</th><th scope="col">Share of total</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Awaiting pickup (created)</th><td>{formatCount(data.createdCount)}</td><td>{share(data.createdCount)}</td></tr>
-          <tr><th scope="row">In progress (picked up, in transit, out for delivery)</th><td>{formatCount(data.inTransitCount)}</td><td>{share(data.inTransitCount)}</td></tr>
+          <tr><th scope="row">Booked in the period</th><td>{formatCount(data.createdCount)}</td><td>{share(data.createdCount)}</td></tr>
           <tr><th scope="row">Delivered</th><td>{formatCount(data.deliveredCount)}</td><td>{share(data.deliveredCount)}</td></tr>
           <tr><th scope="row">Failed</th><td>{formatCount(data.failedCount)}</td><td>{share(data.failedCount)}</td></tr>
-          {classified < data.totalCount && <tr><th scope="row">Not classified by the provider</th><td>{formatCount(data.totalCount - classified)}</td><td>{share(data.totalCount - classified)}</td></tr>}
+          <tr><th scope="row">On the way now (picked up, in transit, out for delivery)</th><td>{formatCount(data.inTransitCount)}</td><td>Current count, includes earlier bookings</td></tr>
         </tbody>
       </table>
     </div>

@@ -105,7 +105,8 @@ class LiveJourneys(unittest.TestCase):
             cls.users[name] = {"username": username, "password": password, "sub": uid}
         cls.tokens = {n: cls.sign_in(n) for n in cls.users}
         for n in cls.users:
-            call("GET", f"{GW}/api/v1/users/me", cls.tokens[n])
+            me = call("GET", f"{GW}/api/v1/users/me", cls.tokens[n])[1] or {}
+            cls.users[n]["profileId"] = me.get("id")
         for n, role in [("admin", "ADMIN"), ("courier", "COURIER"), ("dispatcher", "DISPATCHER")]:
             call("POST", f"{GW}/api/v1/admin/reconciliation/staff/provision", cls.tokens["admin"], {
                 "keycloakSub": cls.users[n]["sub"], "staffId": f"LIVE-{n}-{tag}", "role": role, "department": "OPS"})
@@ -113,7 +114,18 @@ class LiveJourneys(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        for user in getattr(cls, "users", {}).values():
+        # Accounts has no hard delete, so retire what the run created before removing the Keycloak users:
+        # staff profiles become INACTIVE and account profiles lose sign-in, so they never show up as live staff.
+        users = getattr(cls, "users", {})
+        admin_token = getattr(cls, "tokens", {}).get("admin")
+        if admin_token:
+            for name in ("courier", "dispatcher", "customer", "admin"):
+                user = users.get(name, {})
+                if name != "customer":
+                    call("POST", f"{GW}/api/v1/admin/reconciliation/staff/{user.get('sub')}/deactivate", admin_token)
+                if user.get("profileId") and name != "admin":
+                    call("POST", f"{GW}/api/v1/admin/users/{user['profileId']}/disable", admin_token)
+        for user in users.values():
             call("DELETE", f"{cls.realm}/users/{user['sub']}", cls.admin_kc)
         if hasattr(cls, "client"):
             call("PUT", f"{cls.realm}/clients/{cls.client['id']}", cls.admin_kc,

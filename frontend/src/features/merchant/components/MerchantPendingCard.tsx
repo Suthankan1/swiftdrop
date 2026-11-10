@@ -53,7 +53,7 @@ export function MerchantPendingCard({
           <dd className="field-value"><code>{merchant.registrationNumber}</code></dd>
         </div>
         <div className="field">
-          <dt className="field-label">Tenant ID</dt>
+          <dt className="field-label">Merchant reference</dt>
           <dd className="field-value"><small>{merchant.id}</small></dd>
         </div>
         {formattedDate && (
@@ -109,7 +109,7 @@ export function MerchantPendingCard({
           <h3>Need Assistance?</h3>
           <p>
             If you need to provide supplementary legal documentation or dispute this decision, please reach out directly to the SwiftDrop Merchant Onboarding Desk at{' '}
-            <a href="mailto:support@swiftdrop.test">support@swiftdrop.test</a> with your Tenant ID (<code>{merchant.id}</code>).
+            <a href="mailto:support@swiftdrop.test">support@swiftdrop.test</a> with your merchant reference (<code>{merchant.id}</code>).
           </p>
         </div>
       )}

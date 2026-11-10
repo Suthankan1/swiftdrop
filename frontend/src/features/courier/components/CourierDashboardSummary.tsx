@@ -101,7 +101,7 @@ export function CourierDashboardSummary({ apiOverride, refreshToken = 0 }: Couri
       {isLoading && (
         <div className="loading-state card" role="status" aria-label="Loading summary">
           <span className="loading-indicator" aria-hidden="true" />
-          <p className="muted">Retrieving authoritative shift metrics...</p>
+          <p className="muted">Loading today's figures…</p>
         </div>
       )}
 
@@ -129,13 +129,13 @@ export function CourierDashboardSummary({ apiOverride, refreshToken = 0 }: Couri
           <article className="card metric-card" aria-labelledby="metric-delivered-heading">
             <p className="eyebrow" id="metric-delivered-heading">Delivered (Today)</p>
             <div className="metric-value monospace">{summary.todayDeliveredCount}</div>
-            <p className="muted metric-caption">Authoritative completions today</p>
+            <p className="muted metric-caption">Delivered today</p>
           </article>
 
           <article className="card metric-card" aria-labelledby="metric-failed-heading">
             <p className="eyebrow" id="metric-failed-heading">Failed (Today)</p>
             <div className="metric-value monospace">{summary.todayFailedCount}</div>
-            <p className="muted metric-caption">Delivery attempts with logged exceptions</p>
+            <p className="muted metric-caption">Delivery attempts that failed</p>
           </article>
         </div>
       )}

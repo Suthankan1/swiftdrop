@@ -316,6 +316,40 @@ class DeliveryGrpcServiceTest {
     }
 
     @Test
+    @DisplayName("GetDeliveryStatsInternal with a zone counts only that zone's parcels (re-audit B3)")
+    void testGetDeliveryStatsInternal_ZoneFilter() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), dispatcherSub, List.of("DISPATCHER"));
+
+        Instant start = Instant.parse("2026-10-29T00:00:00Z");
+        Instant end = Instant.parse("2026-10-30T00:00:00Z");
+
+        when(parcelRepository.countCreatedBetweenInZone(start, end, "ZONE_2")).thenReturn(3L);
+        when(historyRepository.countDeliveredBetweenInZone(start, end, "ZONE_2")).thenReturn(2L);
+        when(historyRepository.countFailedBetweenInZone(start, end, "ZONE_2")).thenReturn(1L);
+        when(parcelRepository.countInTransitBeforeOrAtInZone(end, "ZONE_2")).thenReturn(4L);
+        when(historyRepository.countDistinctParcelsWithActivityBetweenInZone(start, end, "ZONE_2")).thenReturn(5L);
+
+        GetDeliveryStatsResponse response = stub.getDeliveryStatsInternal(
+                GetDeliveryStatsRequest.newBuilder()
+                        .setStartTime(Timestamp.newBuilder().setSeconds(start.getEpochSecond()).build())
+                        .setEndTime(Timestamp.newBuilder().setSeconds(end.getEpochSecond()).build())
+                        .setZone(" ZONE_2 ")
+                        .build()
+        );
+
+        assertThat(response.getCreatedCount()).isEqualTo(3L);
+        assertThat(response.getDeliveredCount()).isEqualTo(2L);
+        assertThat(response.getFailedCount()).isEqualTo(1L);
+        assertThat(response.getInTransitCount()).isEqualTo(4L);
+        assertThat(response.getTotalCount()).isEqualTo(5L);
+        // The average is only computed platform-wide.
+        assertThat(response.hasAverageDeliveryHours()).isFalse();
+        verify(parcelRepository, never()).countCreatedBetween(any(), any());
+        verify(historyRepository, never()).countDistinctParcelsWithActivityBetween(any(), any());
+    }
+
+    @Test
     @DisplayName("GetDeliveryStatsInternal computes aggregates and average duration")
     void testGetDeliveryStatsInternal_Success() {
         DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =

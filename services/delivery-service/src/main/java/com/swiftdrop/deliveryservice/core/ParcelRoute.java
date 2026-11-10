@@ -46,6 +46,18 @@ public record ParcelRoute(String pickupZoneName, String dropoffZoneName, String 
         return parcel == null ? UNKNOWN : fromSnapshot(parcel.getQuoteSnapshot());
     }
 
+    /** Stored weight, falling back to the quote snapshot for rows booked without one; 0 when neither exists. */
+    public static double weightOf(Parcel parcel) {
+        if (parcel == null) {
+            return 0.0;
+        }
+        if (parcel.getWeightKg() != null) {
+            return parcel.getWeightKg().doubleValue();
+        }
+        BigDecimal fromQuote = of(parcel).weightKg();
+        return fromQuote != null ? fromQuote.doubleValue() : 0.0;
+    }
+
     /** Coarse public location for a lifecycle stage, or null when the route is unknown. */
     public String locationFor(ParcelStatus status) {
         if (status == null) {

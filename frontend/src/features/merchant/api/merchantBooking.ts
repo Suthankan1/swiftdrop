@@ -34,7 +34,7 @@ const PHONE = /^\+?[0-9\s\-()]{7,25}$/
 /** Checks one order against the same limits the services enforce; returns a message or null. */
 export function merchantOrderProblem(order: MerchantOrderInput): string | null {
   if (!order.pickupZone || !order.dropoffZone) return 'Pickup and drop-off zones are required.'
-  if (!Number.isFinite(order.weightKg) || order.weightKg <= 0 || order.weightKg > 50) return 'Weight must be between 0.01 and 50 kg.'
+  if (!Number.isFinite(order.weightKg) || order.weightKg <= 0 || order.weightKg > 30) return 'Weight must be between 0.01 and 30 kg.'
   for (const [name, value] of [['Length', order.lengthCm], ['Width', order.widthCm], ['Height', order.heightCm]] as const) {
     if (!Number.isInteger(value) || value < 1 || value > 300) return `${name} must be a whole number of centimetres between 1 and 300.`
   }

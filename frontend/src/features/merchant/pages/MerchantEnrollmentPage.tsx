@@ -177,7 +177,7 @@ export function MerchantEnrollmentPage() {
             <dt>2. Administrative Review</dt>
             <dd>SwiftDrop administrators verify your commercial standing (1–2 business days).</dd>
             <dt>3. Automated Role Sync</dt>
-            <dd>Upon approval, your Keycloak account is assigned the Merchant realm role.</dd>
+            <dd>Once approved, your account gets access to the merchant tools.</dd>
             <dt>4. API &amp; Dispatch Access</dt>
             <dd>Unlock machine API keys, batch parcel intake, and webhook event delivery.</dd>
           </dl>

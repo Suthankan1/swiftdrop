@@ -24,7 +24,7 @@ export interface AssistantMessage {
 const INITIAL_PROMPTS = [
   'Track parcel SWD-20261026-A1B2C3',
   'Calculate 2.5kg quote from ZONE_1 to ZONE_2',
-  'What are the Western Province delivery zones?',
+  'What delivery zones do you cover?',
   'How do I register as a Merchant?',
 ]
 
@@ -47,7 +47,7 @@ function createErrorMessage(): AssistantMessage {
     sender: 'assistant',
     text: 'I encountered an unexpected issue while querying the backend services. Please verify your connection or try again.',
     timestamp: getCurrentTimeString(),
-    suggestedPrompts: ['What are the Western Province delivery zones?'],
+    suggestedPrompts: ['What delivery zones do you cover?'],
   }
 }
 
@@ -77,10 +77,10 @@ async function processQuery(query: string): Promise<AssistantMessage> {
       return {
         id: `msg-${Date.now()}`,
         sender: 'assistant',
-        text: `Here is the authoritative live status for shipment **${trackingData.trackingNumber}**:`,
+        text: `Here is the latest status for parcel **${trackingData.trackingNumber}**:`,
         timestamp: now,
         trackingData,
-        suggestedPrompts: ['What are the Western Province delivery zones?', 'Calculate 2.5kg quote from ZONE_1 to ZONE_2'],
+        suggestedPrompts: ['What delivery zones do you cover?', 'Calculate 2.5kg quote from ZONE_1 to ZONE_2'],
       }
     } catch {
       return {
@@ -88,7 +88,7 @@ async function processQuery(query: string): Promise<AssistantMessage> {
         sender: 'assistant',
         text: `Parcel **${trackingNumber}** could not be found in Delivery Operations. Ensure the parcel has been booked and dispatched.`,
         timestamp: now,
-        suggestedPrompts: ['Calculate 2.5kg quote from ZONE_1 to ZONE_2', 'What are the Western Province delivery zones?'],
+        suggestedPrompts: ['Calculate 2.5kg quote from ZONE_1 to ZONE_2', 'What delivery zones do you cover?'],
       }
     }
   }
@@ -125,7 +125,7 @@ async function processQuery(query: string): Promise<AssistantMessage> {
         timestamp: now,
         quoteData: quote,
         suggestedPrompts: [
-          'What are the Western Province delivery zones?',
+          'What delivery zones do you cover?',
           'Track parcel SWD-20261026-A1B2C3',
         ],
       }
@@ -135,19 +135,19 @@ async function processQuery(query: string): Promise<AssistantMessage> {
         sender: 'assistant',
         text: 'Unable to calculate quote. Make sure zones are between ZONE_1 and ZONE_5 and weight is positive.',
         timestamp: now,
-        suggestedPrompts: ['What are the Western Province delivery zones?'],
+        suggestedPrompts: ['What delivery zones do you cover?'],
       }
     }
   }
 
-  // 3. Tool execution: Query Western Province Zones
+  // 3. Tool execution: query delivery zones
   if (lower.includes('zone') || lower.includes('coverage') || lower.includes('province') || lower.includes('area')) {
     try {
       const zoneList = await pricingClient.listZones()
       return {
         id: `msg-${Date.now()}`,
         sender: 'assistant',
-        text: `SwiftDrop currently operates across **${zoneList.zones.length} delivery zones** in Western Province under tariff **${zoneList.activeRateVersion}**:`,
+        text: `SwiftDrop currently operates across **${zoneList.zones.length} delivery zones** under tariff **${zoneList.activeRateVersion}**:`,
         timestamp: now,
         zonesData: zoneList.zones,
         suggestedPrompts: [
@@ -174,7 +174,7 @@ async function processQuery(query: string): Promise<AssistantMessage> {
       timestamp: now,
       suggestedPrompts: [
         'Calculate 2.5kg quote from ZONE_1 to ZONE_2',
-        'What are the Western Province delivery zones?',
+        'What delivery zones do you cover?',
       ],
     }
   }
@@ -184,11 +184,11 @@ async function processQuery(query: string): Promise<AssistantMessage> {
     return {
       id: `msg-${Date.now()}`,
       sender: 'assistant',
-      text: 'Couriers receive assigned parcel rosters from dispatchers. At the customer doorstep, couriers capture recipient signatures and tamper-evident photo proof of delivery (POD), which generates SHA-256 integrity hashes and official PDF delivery receipts.',
+      text: 'Couriers receive assigned parcel rosters from dispatchers. At the customer doorstep, couriers capture recipient signatures and a photo as proof of delivery, which generates SHA-256 integrity hashes and official PDF delivery receipts.',
       timestamp: now,
       suggestedPrompts: [
         'Track parcel SWD-20261026-A1B2C3',
-        'What are the Western Province delivery zones?',
+        'What delivery zones do you cover?',
       ],
     }
   }
@@ -217,7 +217,7 @@ export function AiDeliveryAssistant({ assistantApi }: { assistantApi?: Assistant
     {
       id: 'msg-welcome',
       sender: 'assistant',
-      text: 'Hello! I am your SwiftDrop Logistics Assistant. I can track live parcels, calculate guaranteed rate quotes across Western Province zones, or help you navigate our services.',
+      text: 'Hello! I am your SwiftDrop Logistics Assistant. I can track live parcels, give delivery quotes between our zones, or help you navigate our services.',
       timestamp: 'Today',
       suggestedPrompts: INITIAL_PROMPTS,
     },

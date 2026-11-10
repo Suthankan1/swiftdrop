@@ -93,7 +93,7 @@ export function DispatcherOperations() {
     {query.isError && <div role="alert"><p>{query.error instanceof DispatcherError ? query.error.message : 'Operations provider unavailable.'}</p><p>Refresh operations to try again.</p></div>}
     {data && !query.isError && <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} parcels{zoneFilter !== 'ALL' && ` in ${zoneFilter}`}</p>
+        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} {data.pageInfo.totalElements === 1 ? 'parcel' : 'parcels'}{zoneFilter !== 'ALL' && ` in ${zoneFilter}`}</p>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} aria-label="Filter unassigned parcels by zone">
           <span className="muted" style={{ fontSize: '0.85rem' }}>Zone:</span>
           {['ALL', ...zoneCodes].map(z => (
@@ -129,7 +129,7 @@ export function DispatcherOperations() {
       </nav>
       <section className="card" aria-labelledby="courier-workloads-heading">
         <h2 id="courier-workloads-heading" className="section-heading">Courier workloads</h2>
-        <p className="muted">Current active assignments. Eligibility and capacity are supplied by the provider.</p>
+        <p className="muted">Each courier's current assignments and how many they can take.</p>
         {!available.length && <p role="status">No eligible couriers available.</p>}
         <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {data.availableCouriers.map(c => {
@@ -138,7 +138,7 @@ export function DispatcherOperations() {
             return (
               <li key={c.courierSub} style={{ padding: '8px 12px', background: 'var(--sd-surface-card, #fff)', border: '1px solid var(--sd-border, #e0e5d8)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                  <span>{c.fullName} · {c.activeAssignmentsCount} active assignments · Capacity {c.maxCapacity} · {c.eligible ? 'Eligible' : 'Not eligible'}</span>
+                  <span>{c.fullName} · {c.activeAssignmentsCount} active {c.activeAssignmentsCount === 1 ? 'assignment' : 'assignments'} · Capacity {c.maxCapacity} · {c.eligible ? 'Eligible' : 'Not eligible'}</span>
                   <Badge variant={c.eligible ? (isFull ? 'danger' : 'success') : 'neutral'} size="sm">
                     {c.eligible ? (isFull ? 'Capacity Reached' : 'Available') : 'Not Eligible'}
                   </Badge>
