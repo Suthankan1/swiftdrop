@@ -83,6 +83,28 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
     long countInTransitBeforeOrAt(
             @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime);
 
+    /** Zone-scoped variant of {@link #countCreatedBetween}: pickup or drop-off zone from the quote snapshot. */
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT COUNT(*) FROM parcels p
+        WHERE p.created_at >= :startTime AND p.created_at < :endTime
+        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        """, nativeQuery = true)
+    long countCreatedBetweenInZone(
+            @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
+            @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime,
+            @org.springframework.data.repository.query.Param("zone") String zone);
+
+    /** Zone-scoped variant of {@link #countInTransitBeforeOrAt}. */
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT COUNT(*) FROM parcels p
+        WHERE p.status IN ('PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY')
+        AND p.created_at <= :endTime
+        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        """, nativeQuery = true)
+    long countInTransitBeforeOrAtInZone(
+            @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime,
+            @org.springframework.data.repository.query.Param("zone") String zone);
+
     List<Parcel> findBySenderSubAndParcelIdIn(String senderSub, java.util.Collection<UUID> parcelIds);
 
     List<Parcel> findByMerchantIdAndParcelIdIn(UUID merchantId, java.util.Collection<UUID> parcelIds);

@@ -46,6 +46,41 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, UU
             @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
             @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime);
 
+    /** Zone-scoped variant of {@link #countDistinctParcelsWithActivityBetween}: pickup or drop-off zone from the parcel's quote snapshot. */
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT COUNT(DISTINCT s.parcel_id) FROM status_history s JOIN parcels p ON p.parcel_id = s.parcel_id
+        WHERE s.occurred_at >= :startTime AND s.occurred_at < :endTime
+        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        """, nativeQuery = true)
+    long countDistinctParcelsWithActivityBetweenInZone(
+            @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
+            @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime,
+            @org.springframework.data.repository.query.Param("zone") String zone);
+
+    /** Zone-scoped variant of {@link #countDeliveredBetween}: pickup or drop-off zone from the parcel's quote snapshot. */
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT COUNT(DISTINCT s.parcel_id) FROM status_history s JOIN parcels p ON p.parcel_id = s.parcel_id
+        WHERE s.occurred_at >= :startTime AND s.occurred_at < :endTime
+        AND s.new_status = 'DELIVERED'
+        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        """, nativeQuery = true)
+    long countDeliveredBetweenInZone(
+            @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
+            @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime,
+            @org.springframework.data.repository.query.Param("zone") String zone);
+
+    /** Zone-scoped variant of {@link #countFailedBetween}: pickup or drop-off zone from the parcel's quote snapshot. */
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT COUNT(DISTINCT s.parcel_id) FROM status_history s JOIN parcels p ON p.parcel_id = s.parcel_id
+        WHERE s.occurred_at >= :startTime AND s.occurred_at < :endTime
+        AND s.new_status = 'FAILED'
+        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        """, nativeQuery = true)
+    long countFailedBetweenInZone(
+            @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
+            @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime,
+            @org.springframework.data.repository.query.Param("zone") String zone);
+
     @org.springframework.data.jpa.repository.Query("""
         SELECT p.createdAt, MIN(s.occurredAt)
         FROM StatusHistory s, Parcel p
