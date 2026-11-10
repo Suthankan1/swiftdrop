@@ -5,7 +5,7 @@ export const reconciliationOutcomes = ['SUCCESS', 'NO_OP', 'FAILED', 'PENDING_RE
 export type StaffRole = typeof staffRoles[number]
 export type StaffStatus = typeof staffStatuses[number]
 export type ReconciliationOutcome = typeof reconciliationOutcomes[number]
-export interface AdminUser { profileId: string; keycloakSub: string; email: string | null; fullName: string | null; createdAt: string; /** absent when Keycloak could not be read */ enabled?: boolean }
+export interface AdminUser { profileId: string; keycloakSub: string; email: string | null; fullName: string | null; createdAt: string; /** absent when Keycloak could not be read */ enabled?: boolean; /** deleted in Keycloak; the local profile remains */ identityDeleted?: boolean }
 export interface AdminStaff {
   profileId: string; accountProfileId: string | null; staffId: string; keycloakSub: string
   role: StaffRole; department: string; assignedZone: string | null; businessStatus: StaffStatus
@@ -64,7 +64,7 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T { ret
 function integer(value: unknown): number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : invalid() }
 export function parseAdminUser(value: unknown): AdminUser {
   const v = record(value)
-  return { profileId: uuid(v.profileId), keycloakSub: string(v.keycloakSub), email: nullable(v.email, 320), fullName: nullable(v.fullName), createdAt: date(v.createdAt), ...(typeof v.enabled === 'boolean' ? { enabled: v.enabled } : {}) }
+  return { profileId: uuid(v.profileId), keycloakSub: string(v.keycloakSub), email: nullable(v.email, 320), fullName: nullable(v.fullName), createdAt: date(v.createdAt), ...(typeof v.enabled === 'boolean' ? { enabled: v.enabled } : {}), ...(v.identityDeleted === true ? { identityDeleted: true } : {}) }
 }
 export function parseAdminStaff(value: unknown): AdminStaff {
   const v = record(value)

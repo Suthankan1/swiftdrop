@@ -37,7 +37,7 @@ export function ReportCharts({ data }: ReportChartsProps) {
     >
       {/* 1. Volume Bar Chart */}
       <div className="card chart-card" style={{ padding: '16px', background: 'var(--sd-surface-card, #fff)' }}>
-        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>Lifecycle Volume Distribution</h4>
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>Parcels by status</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {bars.map((bar) => {
             const widthPct = Math.round((bar.count / maxVal) * 100)

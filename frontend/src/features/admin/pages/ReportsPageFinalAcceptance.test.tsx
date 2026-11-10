@@ -153,7 +153,7 @@ describe('Dispatcher: zone restriction reflected in UI messaging and request sem
     expect(statsRequests.every((body) => !body.variables?.filter?.zone)).toBe(true)
     // The UI communicates that the server limits the data — not that the UI hides a zone filter.
     expect(
-      screen.getByText(/limited by the server to your assigned operational zones/i),
+      screen.getByText(/figures cover only your assigned zones/i),
     ).toBeInTheDocument()
   })
 
@@ -263,7 +263,7 @@ describe('partial provider failure: one section responds, the other does not', (
     // adminDashboard failed — partial-failure notice
     await waitFor(() =>
       expect(
-        screen.getByText(/partial report: some sections could not be retrieved/i),
+        screen.getByText(/some sections could not be loaded/i),
       ).toBeInTheDocument(),
     )
     // adminDashboard error block visible

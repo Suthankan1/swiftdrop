@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { formatDateTime } from '../../customer/components/customerUiUtils'
 import { Link } from 'react-router'
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
@@ -99,7 +100,7 @@ function Workspace({ api }: { api: PricingApi }) {
       await api.command(command, operation.signal)
       operation.signal.throwIfAborted()
       setConfirmation(null); closeEditor()
-      setFeedback('Pricing confirmed persistence. Canonical server configuration is being refreshed.')
+      setFeedback('Saved. Refreshing the pricing settings.')
       await cache.invalidateQueries({ queryKey: prefix })
     } catch (error) {
       if (operation.signal.aborted) return
@@ -139,7 +140,7 @@ function Workspace({ api }: { api: PricingApi }) {
       </section>
       <section aria-label="Zone management"><div className="admin-management-toolbar"><h2>Zones</h2><Button variant="primary" size="sm" disabled={locked} onClick={() => openEditor({ kind: 'zone' })}>Create zone</Button></div>
         <ReadState query={zones} retry={() => { void zones.refetch() }} />
-        {zones.data && !zones.isError && <><div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Zone table"><table><caption>Server zone configuration</caption><thead><tr>{['Zone', 'Status', 'Transit', 'Revision', 'Actions'].map(s => <th scope="col" key={s}>{s}</th>)}</tr></thead><tbody>{zones.data.items.map(zone => <tr key={zone.id}><td><strong>{zone.zoneCode}</strong><br />{zone.name}<br />{zone.id}<p>{zone.description}</p><small>Updated {zone.updatedAt}</small></td><td>{zone.active ? 'Enabled' : 'Disabled'}</td><td>{zone.standardTransitHours} hours</td><td>{zone.revision}</td><td><Button variant="secondary" size="sm" disabled={locked || zones.isFetching} onClick={() => openEditor({ kind: 'zone', zone })}>Edit {zone.zoneCode}</Button>{zone.active && <Button variant="secondary" size="sm" disabled={locked || zones.isFetching} onClick={() => { setFeedback(null); setConfirmation({ action: 'disable', zone }) }}>Disable {zone.zoneCode}</Button>}</td></tr>)}</tbody></table></div>{!zones.data.items.length && <p>No zones on this page.</p>}<Pagination data={zones.data} busy={locked || zones.isFetching} change={p => { setConfirmation(null); setZonePage(p) }} /></>}
+        {zones.data && !zones.isError && <><div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Zone table"><table><caption>Server zone configuration</caption><thead><tr>{['Zone', 'Status', 'Transit', 'Revision', 'Actions'].map(s => <th scope="col" key={s}>{s}</th>)}</tr></thead><tbody>{zones.data.items.map(zone => <tr key={zone.id}><td><strong>{zone.zoneCode}</strong><br />{zone.name}<br />{zone.id}<p>{zone.description}</p><small>Updated {formatDateTime(zone.updatedAt)}</small></td><td>{zone.active ? 'Enabled' : 'Disabled'}</td><td>{zone.standardTransitHours} hours</td><td>{zone.revision}</td><td><Button variant="secondary" size="sm" disabled={locked || zones.isFetching} onClick={() => openEditor({ kind: 'zone', zone })}>Edit {zone.zoneCode}</Button>{zone.active && <Button variant="secondary" size="sm" disabled={locked || zones.isFetching} onClick={() => { setFeedback(null); setConfirmation({ action: 'disable', zone }) }}>Disable {zone.zoneCode}</Button>}</td></tr>)}</tbody></table></div>{!zones.data.items.length && <p>No zones on this page.</p>}<Pagination data={zones.data} busy={locked || zones.isFetching} change={p => { setConfirmation(null); setZonePage(p) }} /></>}
       </section>
       <section aria-label="Rate cards"><div className="admin-management-toolbar"><h2>Rate cards</h2><Button variant="primary" size="sm" disabled={locked} onClick={() => openEditor({ kind: 'draft' })}>Create draft</Button></div>
         <p>DRAFT is unpublished and does not affect quotes. Only DRAFT rules can be edited. Only SUPERSEDED cards can be archived. Publication is immediate within the configured effective period.</p>

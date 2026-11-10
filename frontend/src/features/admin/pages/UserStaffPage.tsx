@@ -6,6 +6,7 @@ import { adminFailure, canRecover, canSuspend, createAdminManagementApi, isProfi
   type AdminManagementApi, type AdminPage, type AdminStaff, type ProvisionStaff, type StaffCommand, type StaffFilters } from '../api/userStaff'
 import { useAdminCommand, useAdminQuery, type AdminScope } from '../hooks/useAdminManagement'
 import { StaffConfirmation } from '../components/StaffConfirmation'
+import { formatDateTime } from '../../customer/components/customerUiUtils'
 import { Button } from '../../../components/ui/Button'
 import { Badge as UiBadge } from '../../../components/ui/Badge'
 
@@ -109,9 +110,9 @@ function Users({ api, scope }: { api: AdminManagementApi; scope: AdminScope }) {
     {query.data && !query.isError && <>
       {!query.data.content.length ? <p role="status">No users on this page.</p> : <div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Scrollable users table"><table>
         <caption>Accounts user summaries</caption><thead><tr><th scope="col">Name</th><th scope="col">Account profile ID</th><th scope="col">Email</th><th scope="col">Created</th><th scope="col">Sign-in</th><th scope="col">Action</th></tr></thead>
-        <tbody>{query.data.content.map(user => <tr key={user.profileId}><td>{user.fullName ?? 'Not provided'}</td><td>{user.profileId}</td><td>{user.email ?? 'Not provided'}</td><td><time dateTime={user.createdAt}>{user.createdAt}</time></td>
-          <td>{user.enabled === true ? <Badge value="ACTIVE" /> : user.enabled === false ? <Badge value="SUSPENDED" /> : 'Unknown'}</td>
-          <td>{api.setUserEnabled && typeof user.enabled === 'boolean' && <Button variant="secondary" size="sm" disabled={command.pending}
+        <tbody>{query.data.content.map(user => <tr key={user.profileId}><td>{user.fullName ?? 'Not provided'}</td><td>{user.profileId}</td><td>{user.email ?? 'Not provided'}</td><td><time dateTime={user.createdAt}>{formatDateTime(user.createdAt)}</time></td>
+          <td>{user.identityDeleted ? 'Deleted in sign-in provider' : user.enabled === true ? <Badge value="ACTIVE" /> : user.enabled === false ? <Badge value="SUSPENDED" /> : 'Not available right now'}</td>
+          <td>{api.setUserEnabled && !user.identityDeleted && typeof user.enabled === 'boolean' && <Button variant="secondary" size="sm" disabled={command.pending}
             onClick={() => setConfirmUser({ profileId: user.profileId, enabled: !user.enabled, label: user.fullName ?? user.email ?? user.profileId })}>
             {user.enabled ? 'Disable' : 'Enable'}</Button>}
             {api.updateUser && <Button variant="secondary" size="sm" disabled={command.pending}
@@ -144,7 +145,7 @@ function Staff({ api, scope }: { api: AdminManagementApi; scope: AdminScope }) {
       {query.data && !query.isError && <>
         {!query.data.content.length ? <p role="status">No staff match these filters on this page.</p> : <div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Scrollable staff table"><table>
           <caption>Staff business profiles</caption><thead><tr>{['Staff ID', 'Profile ID', 'Role', 'Department', 'Zone', 'Business status', 'Updated', 'Details'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
-          <tbody>{query.data.content.map(staff => <tr key={staff.profileId}><td>{staff.staffId}</td><td>{staff.profileId}</td><td>{staff.role}</td><td>{staff.department}</td><td>{staff.assignedZone ?? 'Not assigned'}</td><td><Badge value={staff.businessStatus} /></td><td><time dateTime={staff.updatedAt}>{staff.updatedAt}</time></td><td><Link to={`/admin/staff/${staff.profileId}`}>View {staff.staffId}</Link></td></tr>)}</tbody>
+          <tbody>{query.data.content.map(staff => <tr key={staff.profileId}><td>{staff.staffId}</td><td>{staff.profileId}</td><td>{staff.role}</td><td>{staff.department}</td><td>{staff.assignedZone ?? 'Not assigned'}</td><td><Badge value={staff.businessStatus} /></td><td><time dateTime={staff.updatedAt}>{formatDateTime(staff.updatedAt)}</time></td><td><Link to={`/admin/staff/${staff.profileId}`}>View {staff.staffId}</Link></td></tr>)}</tbody>
         </table></div>}
         <Pagination data={query.data} busy={query.isFetching} change={setPage} />
       </>}
@@ -192,7 +193,7 @@ function StaffRecord({ staff, refreshing, api, scope }: { staff: AdminStaff; ref
   const actionsAvailable = !busy && !audit.isError
   return <div className="card">
     <h2>{staff.staffId}</h2>
-    <dl className="admin-management-fields"><dt>Staff profile ID</dt><dd>{staff.profileId}</dd><dt>Identity subject</dt><dd>{staff.keycloakSub}</dd><dt>Account profile</dt><dd>{staff.accountProfileId ?? 'Not linked'}</dd><dt>Role</dt><dd>{staff.role}</dd><dt>Department</dt><dd>{staff.department}</dd><dt>Assigned zone</dt><dd>{staff.assignedZone ?? 'Not assigned'}</dd><dt>Business status</dt><dd><Badge value={staff.businessStatus} /></dd><dt>Created</dt><dd>{staff.createdAt}</dd><dt>Updated</dt><dd>{staff.updatedAt}</dd></dl>
+    <dl className="admin-management-fields"><dt>Staff profile ID</dt><dd>{staff.profileId}</dd><dt>Identity subject</dt><dd>{staff.keycloakSub}</dd><dt>Account profile</dt><dd>{staff.accountProfileId ?? 'Not linked'}</dd><dt>Role</dt><dd>{staff.role}</dd><dt>Department</dt><dd>{staff.department}</dd><dt>Assigned zone</dt><dd>{staff.assignedZone ?? 'Not assigned'}</dd><dt>Business status</dt><dd><Badge value={staff.businessStatus} /></dd><dt>Created</dt><dd>{formatDateTime(staff.createdAt)}</dd><dt>Updated</dt><dd>{formatDateTime(staff.updatedAt)}</dd></dl>
     <p>Business status and identity reconciliation are separate. A business profile alone does not confirm current identity synchronization.</p>
     <div className="admin-management-toolbar"><Button variant="secondary" size="sm" disabled={!actionsAvailable || !canSuspend(staff)} onClick={() => setConfirm({ action: 'suspend', staff })}>Suspend staff</Button><Button variant="secondary" size="sm" disabled={!actionsAvailable} onClick={() => setConfirm({ action: 'sync', staff })}>Synchronize identity role</Button></div>
     <p className="muted">Activation and deactivation are awaiting contract-owner approval.</p>
@@ -204,7 +205,7 @@ function StaffRecord({ staff, refreshing, api, scope }: { staff: AdminStaff; ref
       {audit.data.length === 0 ? <p>No staff reconciliation records returned. Identity synchronization is unknown.</p> : <>
         <p>Latest recorded identity outcome: <Badge value={audit.data[0]!.outcome} /></p>
         <ol className="admin-management-audit">{audit.data.map(entry => <li key={entry.id}>
-          <p>{entry.action} · <Badge value={entry.outcome} /> · <time dateTime={entry.updatedAt}>{entry.updatedAt}</time></p><p>Audit ID: {entry.id} · Actor: {entry.initiatedBy} · Attempts: {entry.attemptCount}</p>
+          <p>{entry.action} · <Badge value={entry.outcome} /> · <time dateTime={entry.updatedAt}>{formatDateTime(entry.updatedAt)}</time></p><p>Audit ID: {entry.id} · Actor: {entry.initiatedBy} · Attempts: {entry.attemptCount}</p>
           {(entry.outcome === 'FAILED' || entry.outcome === 'DENIED') && <p>The identity operation did not complete successfully. Review the business profile before recovery.</p>}
           {entry.outcome === 'PENDING_RETRY' && <p>Identity reconciliation is pending. Business access must not be assumed active.</p>}
           {canRecover(entry) && <Button variant="secondary" size="sm" disabled={!actionsAvailable} onClick={() => setConfirm({ action: 'retry', staff, auditId: entry.id })}>Recover audit {entry.id}</Button>}
