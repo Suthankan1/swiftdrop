@@ -162,7 +162,7 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
           <section className="card parcel-detail-header-card" aria-labelledby="order-tracking-heading">
             <div className="section-heading-row">
               <div>
-                <p className="eyebrow">Authoritative Shipment Record</p>
+                <p className="eyebrow">Order details</p>
                 <h2 id="order-tracking-heading" className="tracking-number-heading monospace">
                   {order.trackingNumber}
                 </h2>

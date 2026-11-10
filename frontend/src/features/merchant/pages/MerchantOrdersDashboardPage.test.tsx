@@ -148,7 +148,7 @@ describe('MerchantOrdersDashboardPage', () => {
   it('redirects unauthenticated visitor to the login page', () => {
     renderOrdersDashboard(anonymousAuth)
     expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
-    expect(screen.queryByText(/commercial order dashboard/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/your orders/i)).not.toBeInTheDocument()
   })
 
   it('denies access to a user without the MERCHANT role', () => {
@@ -156,7 +156,7 @@ describe('MerchantOrdersDashboardPage', () => {
     renderOrdersDashboard(customerAuth)
     expect(screen.getByText('Access unavailable')).toBeInTheDocument()
     expect(screen.getByText(/this page is not available for your role/i)).toBeInTheDocument()
-    expect(screen.queryByText(/commercial order dashboard/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/your orders/i)).not.toBeInTheDocument()
   })
 
   it('renders authorized merchant dashboard with real orders and authoritative state counts', async () => {
@@ -176,7 +176,7 @@ describe('MerchantOrdersDashboardPage', () => {
     renderOrdersDashboard(auth)
 
     // Page Heading & Navigation
-    expect(screen.getByRole('heading', { name: /commercial order dashboard/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /your orders/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /orders dashboard/i })).toBeInTheDocument()
 
     // Orders Table Rows (wait for async query resolution)
@@ -185,12 +185,11 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(screen.getByText('SWD-20261027-ALPH3')).toBeInTheDocument()
     expect(screen.getByText('SWD-20261027-ALPH4')).toBeInTheDocument()
 
-    // Scoped Machine API vs Browser Session Banner (AC1)
-    expect(screen.getByText(/browser session jwt/i)).toBeInTheDocument()
-    expect(screen.getByText(/scoped machine api \(api keys\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/tenant id: m-alpha-1111-2222/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /manage api keys ↗/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /webhook endpoints ↗/i })).toBeInTheDocument()
+    // Banner points merchants at API keys and webhooks, without internal identifiers (re-audit U2)
+    expect(screen.queryByText(/browser session jwt/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/tenant id/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /manage api keys/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /manage webhooks/i })).toBeInTheDocument()
 
     // Authoritative State Counts (AC1)
     expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('4')).toBeInTheDocument()

@@ -1,4 +1,5 @@
 import { Button } from '../../../components/ui/Button'
+import { getStatusPresentation } from '../../customer/components/customerUiUtils'
 import { CANONICAL_PARCEL_STATUSES } from './merchantUiUtils'
 
 interface MerchantOrderFilterBarProps {
@@ -77,11 +78,11 @@ export function MerchantOrderFilterBar({
             onChange={(e) => onStatusFilterChange(e.target.value)}
             aria-label="Filter by specific lifecycle status"
           >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">All Active Dispatches</option>
+            <option value="ALL">All statuses</option>
+            <option value="ACTIVE">All active orders</option>
             {CANONICAL_PARCEL_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {getStatusPresentation(status).label}
               </option>
             ))}
           </select>
