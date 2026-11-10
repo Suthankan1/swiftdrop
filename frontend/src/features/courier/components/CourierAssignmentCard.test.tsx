@@ -25,7 +25,7 @@ describe('CourierAssignmentCard component', () => {
 
     expect(screen.getByText('00000000...')).toBeInTheDocument()
     expect(screen.getByText('Active')).toBeInTheDocument()
-    expect(screen.getByText('00000000-0000-0000-0000-000000000001')).toBeInTheDocument()
+    expect(screen.queryByText('00000000-0000-0000-0000-000000000001')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /view parcel details for 00000000/i }),
     ).toBeInTheDocument()

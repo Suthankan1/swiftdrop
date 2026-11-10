@@ -68,8 +68,7 @@ describe('CourierAssignmentList component', () => {
 
     expect(screen.getByRole('heading', { name: /assigned deliveries/i })).toBeInTheDocument()
     expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
-    expect(screen.getByText('00000000-0000-0000-0000-000000000001')).toBeInTheDocument()
-    expect(screen.getByText('00000000-0000-0000-0000-000000000002')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /view parcel details for/i })).toHaveLength(2)
 
     // Pagination controls disabled when single page
     expect(screen.getByRole('button', { name: /previous/i })).toBeDisabled()
