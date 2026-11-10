@@ -17,6 +17,11 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 COMPOSE_DIR = REPO_ROOT / "platform" / "compose"
 COMPOSE_FILE = COMPOSE_DIR / "compose.yaml"
+REQUIRED_SECRETS = (
+    "ACCOUNTS_DB_PASSWORD", "PRICING_DB_PASSWORD", "DELIVERY_DB_PASSWORD", "COMMUNICATIONS_DB_PASSWORD",
+    "KEYCLOAK_DB_PASSWORD", "KEYCLOAK_ADMIN_PASSWORD", "MINIO_ROOT_PASSWORD",
+    "DELIVERY_CLIENT_SECRET", "COMMUNICATIONS_CLIENT_SECRET", "GRAPHQL_CLIENT_SECRET",
+)
 ENV_EXAMPLE = COMPOSE_DIR / ".env.example"
 
 APPROVED_APP_SERVICES = {
@@ -207,9 +212,19 @@ class TestComposeRuntimeSpec(unittest.TestCase):
             self.assertNotIn("volume prune", content, f"Destructive 'volume prune' in {script_name}")
             self.assertNotIn("system prune", content, f"Destructive 'system prune' in {script_name}")
 
+    def test_secrets_have_no_committed_fallbacks(self):
+        """Passwords and client secrets must come from .env; a missing value fails instead of using a known default."""
+        content = COMPOSE_FILE.read_text(encoding="utf-8")
+        for name in REQUIRED_SECRETS:
+            self.assertNotRegex(content, r"\$\{" + name + r":-", f"{name} has a committed fallback value")
+            self.assertRegex(content, r"\$\{" + name + r":\?", f"{name} is not marked required")
+
     def test_docker_compose_config_validation(self):
         """Runs docker compose config to validate merged schema integrity."""
         env = dict(os.environ, WEBHOOK_ENCRYPTION_KEY="0" * 64)
+        # Secrets have no committed fallbacks (re-audit S1), so supply throwaway values for the schema check.
+        for name in REQUIRED_SECRETS:
+            env.setdefault(name, "compose-config-check-only")
         res = subprocess.run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "config"],
             cwd=str(REPO_ROOT),
