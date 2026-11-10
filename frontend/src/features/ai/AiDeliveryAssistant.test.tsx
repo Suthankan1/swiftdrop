@@ -94,7 +94,7 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
     await user.click(screen.getByRole('button', { name: 'Send' }))
 
     await waitFor(() => {
-      expect(screen.getByText(/authoritative live status for shipment/i)).toBeInTheDocument()
+      expect(screen.getByText(/latest status for parcel/i)).toBeInTheDocument()
     })
 
     expect(screen.getByText('IN_TRANSIT')).toBeInTheDocument()
@@ -170,7 +170,7 @@ describe('AiDeliveryAssistant (Bonus Feature B02)', () => {
     renderAssistant()
     await user.click(screen.getByRole('button', { name: /open help assistant/i }))
 
-    await user.click(screen.getByRole('button', { name: /what are the western province delivery zones\?/i }))
+    await user.click(screen.getByRole('button', { name: /what delivery zones do you cover\?/i }))
 
     await waitFor(() => {
       expect(screen.getByText(/operates across/i)).toBeInTheDocument()
