@@ -242,6 +242,8 @@ class TestComposeRuntimeSpec(unittest.TestCase):
     def test_compose_refuses_to_run_without_webhook_key(self):
         """The webhook master key has no built-in fallback; Compose must fail fast without it."""
         env = {k: v for k, v in os.environ.items() if k != "WEBHOOK_ENCRYPTION_KEY"}
+        for name in REQUIRED_SECRETS:
+            env.setdefault(name, "compose-config-check-only")
         res = subprocess.run(
             ["docker", "compose", "-f", str(COMPOSE_FILE), "config"],
             cwd=str(REPO_ROOT),
