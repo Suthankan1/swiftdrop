@@ -67,7 +67,7 @@ describe('Pricing access and session isolation', () => {
     const api = provider(), pending = deferred<void>(); api.command.mockReturnValue(pending.promise)
     const view = setup(api); await loaded(); await view.user.click(screen.getByRole('button', { name: 'Disable ZONE_1' })); await confirm(view.user)
     const signal = api.command.mock.calls[0]![1]; view.session(anonymousAuth); expect(signal.aborted).toBe(true)
-    await act(async () => pending.resolve()); expect(screen.queryByText(/Pricing confirmed persistence/)).not.toBeInTheDocument()
+    await act(async () => pending.resolve()); expect(screen.queryByText(/Saved\. Refreshing the pricing settings/)).not.toBeInTheDocument()
   })
   it('uses the real token adapter instead of restricted self-profile fetching', async () => {
     const current = auth(), fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async input => new Response(JSON.stringify(String(input).includes('/zones?') ? pricingPage([zone]) : pricingPage([active, draft], 0, 2, String(input).includes('size=50') ? 50 : 20))))
@@ -104,7 +104,7 @@ describe('Zone management', () => {
   })
   it('creates only after explicit confirmation and preserves trimmed fields', async () => {
     const view = setup(); await loaded(); await zoneForm(view.user); await view.user.click(screen.getByRole('button', { name: 'Review changes' })); expect(view.api.command).not.toHaveBeenCalled(); await confirm(view.user)
-    await waitFor(() => expect(screen.getByText(/Pricing confirmed persistence/)).toBeInTheDocument()); expect(view.api.command).toHaveBeenCalledWith({ action: 'create-zone', input: { zoneCode: 'ZONE_NEW', name: 'New district', description: '', standardTransitHours: 24 } }, expect.any(AbortSignal))
+    await waitFor(() => expect(screen.getByText(/Saved\. Refreshing the pricing settings/)).toBeInTheDocument()); expect(view.api.command).toHaveBeenCalledWith({ action: 'create-zone', input: { zoneCode: 'ZONE_NEW', name: 'New district', description: '', standardTransitHours: 24 } }, expect.any(AbortSignal))
     expect(view.api.zones.mock.calls.length).toBeGreaterThan(1)
   })
   it('cancel editing never mutates', async () => { const view = setup(); await loaded(); await zoneForm(view.user); await view.user.click(screen.getByRole('button', { name: 'Cancel editing' })); expect(view.api.command).not.toHaveBeenCalled(); expect(screen.queryByLabelText('Zone name')).not.toBeInTheDocument() })
@@ -128,7 +128,7 @@ describe('Zone management', () => {
   it('disables with the server revision', async () => { const view = setup(); await loaded(); await view.user.click(screen.getByRole('button', { name: 'Disable ZONE_1' })); await confirm(view.user); expect(view.api.command).toHaveBeenCalledWith({ action: 'disable', zone }, expect.any(AbortSignal)) })
   it('shows backend disable denial without success', async () => {
     const api = provider(); api.command.mockRejectedValue(new PricingError('validation', 'ZONE_REFERENCED')); const view = setup(api); await loaded(); await view.user.click(screen.getByRole('button', { name: 'Disable ZONE_1' })); await confirm(view.user)
-    expect(await screen.findByText(/cannot be disabled while referenced/)).toBeInTheDocument(); expect(screen.queryByText(/Pricing confirmed persistence/)).not.toBeInTheDocument(); expect(api.command).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText(/cannot be disabled while referenced/)).toBeInTheDocument(); expect(screen.queryByText(/Saved\. Refreshing the pricing settings/)).not.toBeInTheDocument(); expect(api.command).toHaveBeenCalledTimes(1)
   })
   it('does not offer disable for an already disabled zone', async () => { const api = provider(); api.zones.mockResolvedValue(pricingPage([{ ...zone, active: false }])); setup(api); await loaded(); expect(screen.queryByRole('button', { name: 'Disable ZONE_1' })).not.toBeInTheDocument(); expect(screen.getByText('Disabled')).toBeInTheDocument() })
 })
@@ -158,10 +158,10 @@ describe('Versioned rate management', () => {
   })
   it('reviews publication, names the superseded version and preserves snapshots', async () => {
     const view = setup(); await loaded(); await view.user.click(screen.getByRole('button', { name: `Review publication ${draft.versionCode}` })); const dialog = await screen.findByRole('dialog'); expect(dialog).toHaveTextContent(`ACTIVE ${active.versionCode}`); expect(dialog).toHaveTextContent('will be superseded'); expect(dialog).toHaveTextContent('booking and receipt snapshots retain their original prices'); expect(view.api.command).not.toHaveBeenCalled(); await confirm(view.user)
-    expect(view.api.command).toHaveBeenCalledWith({ action: 'activate', card: draft, active }, expect.any(AbortSignal)); expect(await screen.findByText(/Pricing confirmed persistence/)).toBeInTheDocument()
+    expect(view.api.command).toHaveBeenCalledWith({ action: 'activate', card: draft, active }, expect.any(AbortSignal)); expect(await screen.findByText(/Saved\. Refreshing the pricing settings/)).toBeInTheDocument()
   })
   it('keeps server publication denial separate from success', async () => {
-    const api = provider(); api.command.mockRejectedValue(new PricingError('validation', 'INCOMPLETE_RATE_CARD')); const view = setup(api); await loaded(); await view.user.click(screen.getByRole('button', { name: `Review publication ${draft.versionCode}` })); await screen.findByRole('dialog'); await confirm(view.user); expect(await screen.findByText(/Publication requires complete/)).toBeInTheDocument(); expect(screen.queryByText(/Pricing confirmed persistence/)).not.toBeInTheDocument()
+    const api = provider(); api.command.mockRejectedValue(new PricingError('validation', 'INCOMPLETE_RATE_CARD')); const view = setup(api); await loaded(); await view.user.click(screen.getByRole('button', { name: `Review publication ${draft.versionCode}` })); await screen.findByRole('dialog'); await confirm(view.user); expect(await screen.findByText(/Publication requires complete/)).toBeInTheDocument(); expect(screen.queryByText(/Saved\. Refreshing the pricing settings/)).not.toBeInTheDocument()
   })
   it('does not publish empty drafts', async () => {
     const api = provider(); api.rules.mockResolvedValue(pricingPage([])); const view = setup(api); await loaded(); await view.user.click(screen.getByRole('button', { name: `Review publication ${draft.versionCode}` })); expect(await screen.findByText(/Publication requires complete/)).toBeInTheDocument(); expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(api.command).not.toHaveBeenCalled()
@@ -181,7 +181,7 @@ describe('Concurrency and uncertain writes', () => {
     expect(api.command.mock.calls[1]![0]).toMatchObject({ action: 'update-zone', zone: { revision: 4 }, input: { name: 'My pending name' } })
   })
   it('preserves recoverable validation inputs without success', async () => {
-    const api = provider(); api.command.mockRejectedValue(new PricingError('validation', 'DUPLICATE_ZONE_CODE')); const view = setup(api); await loaded(); await zoneForm(view.user); await view.user.click(screen.getByRole('button', { name: 'Review changes' })); await confirm(view.user); expect(await screen.findByText('This zone code already exists.')).toBeInTheDocument(); expect(screen.getByLabelText('Zone code')).toHaveValue('ZONE_NEW'); expect(screen.queryByText(/Pricing confirmed persistence/)).not.toBeInTheDocument()
+    const api = provider(); api.command.mockRejectedValue(new PricingError('validation', 'DUPLICATE_ZONE_CODE')); const view = setup(api); await loaded(); await zoneForm(view.user); await view.user.click(screen.getByRole('button', { name: 'Review changes' })); await confirm(view.user); expect(await screen.findByText('This zone code already exists.')).toBeInTheDocument(); expect(screen.getByLabelText('Zone code')).toHaveValue('ZONE_NEW'); expect(screen.queryByText(/Saved\. Refreshing the pricing settings/)).not.toBeInTheDocument()
   })
   it('rejects a draft changed during publication preflight without opening confirmation', async () => {
     const api = provider(); const view = setup(api); await loaded(); api.review.mockResolvedValue([active, { ...draft, revision: 8 }]); await view.user.click(screen.getByRole('button', { name: `Review publication ${draft.versionCode}` })); expect(await screen.findByText(/Configuration changed or conflicts/)).toBeInTheDocument(); expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(api.command).not.toHaveBeenCalled()

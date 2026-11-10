@@ -222,6 +222,7 @@ public class BookingService {
                     quote.rateVersion(),
                     quote.verifiedAmountMinorUnits(),
                     quote.currency(),
+                    quote.weightKg(),
                     request.merchantReference(),
                     request.pickupAddress(),
                     request.dropoffAddress(),

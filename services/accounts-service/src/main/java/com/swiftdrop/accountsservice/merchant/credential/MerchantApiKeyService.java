@@ -202,7 +202,7 @@ public class MerchantApiKeyService implements MerchantApiKeyValidator {
         for (String scope : request.scopes()) {
             if (scope == null || !ALLOWED_SCOPES.contains(scope.trim())) {
                 throw new InvalidApiKeyScopeException(
-                        "Invalid scope: '" + scope + "'. Allowed scopes: " + ALLOWED_SCOPES
+                        "Unsupported scope. Allowed scopes: " + ALLOWED_SCOPES.stream().sorted().toList()
                 );
             }
         }

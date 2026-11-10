@@ -41,4 +41,19 @@ class ParcelRouteTest {
         assertThat(ParcelRoute.UNKNOWN.locationFor(ParcelStatus.CREATED)).isNull();
         assertThat(ParcelRoute.UNKNOWN.locationFor("NOT_A_STATUS")).isNull();
     }
+
+    @Test
+    void weightOfPrefersStoredWeightThenSnapshotThenZero() {
+        Parcel stored = new Parcel();
+        stored.setWeightKg(new BigDecimal("2.250"));
+        stored.setQuoteSnapshot("{\"weightKg\": 9}");
+        assertThat(ParcelRoute.weightOf(stored)).isEqualTo(2.25);
+
+        Parcel snapshotOnly = new Parcel();
+        snapshotOnly.setQuoteSnapshot("{\"weightKg\": 1.5}");
+        assertThat(ParcelRoute.weightOf(snapshotOnly)).isEqualTo(1.5);
+
+        assertThat(ParcelRoute.weightOf(new Parcel())).isZero();
+        assertThat(ParcelRoute.weightOf(null)).isZero();
+    }
 }

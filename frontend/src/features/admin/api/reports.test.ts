@@ -98,7 +98,8 @@ describe('reporting GraphQL adapter', () => {
     ['fractional count', graphqlData('deliveryStats', deliveryStatsFixture({ totalCount: 40.5 }))],
     ['Int32 overflow', graphqlData('deliveryStats', deliveryStatsFixture({ totalCount: 2_147_483_648 }))],
     ['string count', graphqlData('deliveryStats', { ...deliveryStatsFixture(), deliveredCount: '18' })],
-    ['status groups exceeding the total', graphqlData('deliveryStats', deliveryStatsFixture({ totalCount: 39 }))],
+    ['delivered and failed exceeding the total', graphqlData('deliveryStats', deliveryStatsFixture({ totalCount: 19 }))],
+    ['bookings exceeding the total', graphqlData('deliveryStats', deliveryStatsFixture({ totalCount: 30, deliveredCount: 1, failedCount: 0, createdCount: 31, averageDeliveryHours: 1 }))],
     ['average hours without deliveries', graphqlData('deliveryStats', deliveryStatsFixture({ deliveredCount: 0, averageDeliveryHours: 3 }))],
     ['negative average hours', graphqlData('deliveryStats', deliveryStatsFixture({ averageDeliveryHours: -1 }))],
   ])('rejects an invalid deliveryStats response: %s', async (_label, response) => {
@@ -144,5 +145,15 @@ describe('outcome rate calculation', () => {
   it('excludes in-progress and created parcels from the rate denominator', () => {
     const stats = parseDeliveryStats(deliveryStatsFixture({ totalCount: 100, deliveredCount: 3, failedCount: 1, inTransitCount: 50, createdCount: 46 }))
     expect(outcomeRates(stats).successRate).toBe(0.75)
+  })
+})
+
+describe('deliveryStats overlap rules (re-audit B2)', () => {
+  it('accepts in-progress counts larger than the period total, because they include earlier bookings', () => {
+    const stats = parseDeliveryStats(deliveryStatsFixture({ totalCount: 5, deliveredCount: 2, failedCount: 1, createdCount: 3, inTransitCount: 40 }))
+    expect(stats.inTransitCount).toBe(40)
+  })
+  it('accepts booked, delivered and failed counts that overlap within the total', () => {
+    expect(parseDeliveryStats(deliveryStatsFixture({ totalCount: 4, deliveredCount: 3, failedCount: 1, createdCount: 4, inTransitCount: 0 })).totalCount).toBe(4)
   })
 })

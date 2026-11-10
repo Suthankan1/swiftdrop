@@ -80,6 +80,7 @@ public class BookingRepository {
                                         String rateVersion,
                                         long amountMinorUnits,
                                         String currency,
+                                        java.math.BigDecimal weightKg,
                                         String merchantReference,
                                         String pickupAddress,
                                         String dropoffAddress,
@@ -92,18 +93,18 @@ public class BookingRepository {
         return jdbc.update("""
                 INSERT INTO parcels (
                     parcel_id, tracking_number, sender_sub, merchant_id, quote_id,
-                    rate_version, amount_minor_units, currency, status, version,
+                    rate_version, amount_minor_units, currency, weight_kg, status, version,
                     merchant_reference, pickup_address, dropoff_address, recipient_name,
                     recipient_phone, delivery_notes, quote_snapshot, created_at, updated_at
                 ) VALUES (
                     ?, ?, ?, ?, ?,
-                    ?, ?, ?, 'CREATED', 1,
+                    ?, ?, ?, ?, 'CREATED', 1,
                     ?, ?, ?, ?,
                     ?, ?, ?::jsonb, ?, ?
                 ) ON CONFLICT DO NOTHING
                 """,
                 parcelId, trackingNumber, senderSub, merchantId, quoteId,
-                rateVersion, amountMinorUnits, currency,
+                rateVersion, amountMinorUnits, currency, weightKg,
                 merchantReference, pickupAddress, dropoffAddress, recipientName,
                 recipientPhone, deliveryNotes, snapshot, ts, ts
         ) == 1;

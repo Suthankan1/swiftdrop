@@ -134,17 +134,19 @@ public class AdminReadService {
 
     private AdminUserSummaryResponse toUser(AccountProfile profile) {
         Boolean enabled = null;
+        boolean deleted = false;
         if (identityAdapter != null) {
             try {
-                enabled = identityAdapter.getUserIdentity(profile.getKeycloakSub())
-                        .map(com.swiftdrop.accountsservice.identity.keycloak.KeycloakUserIdentity::enabled)
-                        .orElse(null);
+                var identity = identityAdapter.getUserIdentity(profile.getKeycloakSub());
+                enabled = identity.map(com.swiftdrop.accountsservice.identity.keycloak.KeycloakUserIdentity::enabled)
+                        .orElse(false);
+                deleted = identity.isEmpty();
             } catch (RuntimeException ignored) {
                 // The listing still works when Keycloak is unreachable; the state shows as unknown.
             }
         }
         return new AdminUserSummaryResponse(profile.getId(), profile.getKeycloakSub(), profile.getEmail(),
-                profile.getFullName(), profile.getCreatedAt(), enabled);
+                profile.getFullName(), profile.getCreatedAt(), enabled, deleted);
     }
 
     private AdminStaffSummaryResponse toStaff(StaffProfile profile) {

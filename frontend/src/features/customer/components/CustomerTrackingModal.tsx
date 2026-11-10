@@ -209,7 +209,7 @@ export function CustomerTrackingModal({
           {query.isPending && !parcel && (
             <div className="tracking-loading-state" aria-busy="true">
               <span className="btn-spinner large" aria-hidden="true" />
-              <p>Fetching authoritative parcel state...</p>
+              <p>Loading parcel details…</p>
             </div>
           )}
 
@@ -297,8 +297,9 @@ export function CustomerTrackingModal({
                         <li key={item.historyId}>
                           <strong>{getStatusPresentation(item.newStatus).label}</strong>
                           {' · '}<time dateTime={item.occurredAt}>{formatDateTime(item.occurredAt)}</time>
-                          {item.reason && <p>Reason: {item.reason.replaceAll('_', ' ').toLowerCase()}</p>}
-                          {item.note && <p>Note: {item.note}</p>}
+                          {/* Reasons and notes on the booking entry are internal bookkeeping; customers see failure reasons and courier notes. */}
+                          {item.reason && item.newStatus === 'FAILED' && <p>Reason: {item.reason.replaceAll('_', ' ').toLowerCase()}</p>}
+                          {item.note && item.newStatus !== 'CREATED' && <p>Note: {item.note}</p>}
                         </li>
                       ))}
                   </ol>

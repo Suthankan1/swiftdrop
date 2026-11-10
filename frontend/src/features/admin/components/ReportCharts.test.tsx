@@ -15,7 +15,7 @@ describe('ReportCharts', () => {
 
   it('renders volume distribution bars and SLA donut chart', () => {
     render(<ReportCharts data={sampleStats} />)
-    expect(screen.getByText('Lifecycle Volume Distribution')).toBeInTheDocument()
+    expect(screen.getByText('Parcels by status')).toBeInTheDocument()
     expect(screen.getByText('Awaiting Pickup')).toBeInTheDocument()
     expect(screen.getByText('Terminal SLA Outcomes')).toBeInTheDocument()
     expect(screen.getByText(/Delivered: 90.0%/)).toBeInTheDocument()

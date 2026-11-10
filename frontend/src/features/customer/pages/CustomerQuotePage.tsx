@@ -57,6 +57,7 @@ export function CustomerQuotePage() {
 
   // Only zones confirmed by the pricing service are offered; there is no hardcoded fallback.
   const availableZones = useMemo<readonly ZoneItem[]>(() => zonesQuery.data ?? [], [zonesQuery.data])
+  const zoneName = (code: string) => availableZones.find(zone => zone.zoneCode === code)?.name ?? code
   const zonesUnavailable = zonesQuery.isError || (zonesQuery.isSuccess && availableZones.length === 0)
 
   // Quote calculation parameters
@@ -324,7 +325,7 @@ export function CustomerQuotePage() {
     } catch (err) {
       if (err instanceof DeliveryError) {
         if (err.kind === 'conflict') {
-          setBookingError('This quote has already been booked or an idempotency conflict occurred. Please calculate a new quote.')
+          setBookingError('This quote has already been used. Get a new quote to book again.')
         } else if (err.kind === 'expired') {
           setBookingError('This quote has expired. Please recalculate your quote before booking.')
         } else if (err.kind === 'validation-error') {
@@ -357,7 +358,7 @@ export function CustomerQuotePage() {
         <p className="eyebrow">Customer space</p>
         <h1>Delivery Quote &amp; <br />Booking Dispatch.</h1>
         <p className="muted">
-          Calculate an authoritative, time-guaranteed delivery rate and book your shipment with confidence.
+          Get a fixed delivery price, then book your parcel.
         </p>
       </header>
 
@@ -649,19 +650,19 @@ export function CustomerQuotePage() {
         <div className="quote-result-column">
           {!quote && !isCalculating && (
             <aside className="card quote-info-card" aria-labelledby="pricing-info-heading">
-              <h2 id="pricing-info-heading">Authoritative Pricing Model</h2>
+              <h2 id="pricing-info-heading">How pricing works</h2>
               <p>
-                SwiftDrop guarantees delivery rates through backend calculation. Once calculated, your quote is fixed for 15 minutes.
+                Your price is fixed for 15 minutes after you get a quote.
               </p>
               <ul className="pricing-benefit-list">
                 <li>
-                  <strong>Chargeable Weight:</strong> Higher of physical and volumetric weight is billed transparently.
+                  <strong>Weight:</strong> we charge for the actual weight or the size-based weight, whichever is higher.
                 </li>
                 <li>
-                  <strong>Zone Matrix:</strong> Intra-city and inter-province rates adhere to active tariff tables.
+                  <strong>Zones:</strong> the price depends on the pickup and drop-off zones.
                 </li>
                 <li>
-                  <strong>Idempotent Commitment:</strong> Your booking is safely protected against double submission.
+                  <strong>No double bookings:</strong> pressing Book twice still books one parcel.
                 </li>
               </ul>
             </aside>
@@ -670,7 +671,7 @@ export function CustomerQuotePage() {
           {isCalculating && (
             <div className="card loading-quote-card" aria-busy="true">
               <span className="btn-spinner large" aria-hidden="true" />
-              <p>Computing authoritative pricing against active rate tables...</p>
+              <p>Working out your price…</p>
             </div>
           )}
 
@@ -691,9 +692,6 @@ export function CustomerQuotePage() {
                 <div className="quote-price-hero">
                   <div className="quote-amount font-numeric">
                     {formatCurrency(quote.totalAmountMinorUnits, quote.currency)}
-                  </div>
-                  <div className="quote-rate-version">
-                    Rate: <code>{quote.rateVersion}</code>
                   </div>
                 </div>
 
@@ -762,11 +760,7 @@ export function CustomerQuotePage() {
                   </div>
                   <div className="breakdown-row">
                     <dt>Route</dt>
-                    <dd>{quote.pickupZone} → {quote.dropoffZone}</dd>
-                  </div>
-                  <div className="breakdown-row">
-                    <dt>Quote Reference</dt>
-                    <dd className="font-mono text-xs">{quote.quoteId}</dd>
+                    <dd>{zoneName(quote.pickupZone)} → {zoneName(quote.dropoffZone)}</dd>
                   </div>
                 </dl>
               </div>
@@ -927,12 +921,12 @@ export function CustomerQuotePage() {
                         fullWidth
                         disabled={isBooking || isQuoteExpired}
                         isLoading={isBooking}
-                        loadingText="Booking Dispatch In Progress..."
+                        loadingText="Booking…"
                       >
                         Confirm &amp; Book Delivery — {formatCurrency(quote.totalAmountMinorUnits, quote.currency)}
                       </Button>
                       <p className="muted text-xs secure-notice">
-                        🔒 Secured by Keycloak customer authentication and transactional idempotency.
+                        🔒 Pressing Book more than once still books only one parcel.
                       </p>
                     </div>
                   </form>

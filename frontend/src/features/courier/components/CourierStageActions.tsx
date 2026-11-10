@@ -143,7 +143,7 @@ export function CourierStageActions({
         setIsLocked(false)
         setPreparedFailure(null)
         setNote('')
-        announce('success', `${ACTION_LABEL[attemptedStatus]} was confirmed by the authoritative parcel state.`)
+        announce('success', `${ACTION_LABEL[attemptedStatus]} was saved.`)
         return
       }
       if (current.currentStatus === 'DELIVERED' || current.currentStatus === 'FAILED') {
@@ -271,7 +271,7 @@ export function CourierStageActions({
       const current = await reconcile()
       if (!current) return
       setIsLocked(current.currentStatus === 'DELIVERED' || current.currentStatus === 'FAILED')
-      announce('notice', 'Authoritative parcel status refreshed. Review the available actions before submitting.')
+      announce('notice', 'Parcel status refreshed. Check the available actions before you continue.')
     } catch (error) {
       if (error instanceof CourierProofError && (error.kind === 'forbidden' || error.kind === 'not-found')) {
         onAssignmentLost('Access to this parcel was revoked or reassigned. The route queue has been refreshed.')
@@ -298,7 +298,7 @@ export function CourierStageActions({
           <p className="eyebrow">Parcel lifecycle</p>
           <h3 id="courier-stage-actions-heading">Stage and operational notes</h3>
         </div>
-        <span className="badge badge-version">Authoritative version {parcel.version}</span>
+        <span className="badge badge-version">Update {parcel.version}</span>
       </div>
 
       {message && (

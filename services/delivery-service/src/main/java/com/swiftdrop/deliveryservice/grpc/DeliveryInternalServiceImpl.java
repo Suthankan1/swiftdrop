@@ -454,7 +454,7 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                         .setVersion(parcel.getVersion() != null ? parcel.getVersion() : 1L)
                         .setCurrency(parcel.getCurrency() != null ? parcel.getCurrency() : "LKR")
                         .setAmountMinorUnits(parcel.getAmountMinorUnits() != null ? parcel.getAmountMinorUnits() : 0L)
-                        .setWeightKg(parcel.getWeightKg() != null ? parcel.getWeightKg().doubleValue() : 0.0);
+                        .setWeightKg(com.swiftdrop.deliveryservice.core.ParcelRoute.weightOf(parcel));
 
                 // Route facts the dispatcher needs; parcels booked before snapshots existed report UNKNOWN.
                 com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcel);
@@ -575,20 +575,19 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 return;
             }
 
-            // If a specific zone is requested, since Delivery does not yet track zone,
-            // return zero counts to avoid fabricating numbers.
-            if (request.getZone() != null && !request.getZone().isBlank()) {
-                GetDeliveryStatsResponse response = GetDeliveryStatsResponse.newBuilder()
-                        .setTotalCount(0L)
-                        .setDeliveredCount(0L)
-                        .setFailedCount(0L)
-                        .setInTransitCount(0L)
-                        .setCreatedCount(0L)
-                        .build();
-                responseObserver.onNext(response);
-                responseObserver.onCompleted();
-                return;
-            }
+            // Zone filter: parcels whose pickup or drop-off zone (from the booking quote snapshot) matches.
+            String zone = request.getZone() != null ? request.getZone().trim() : "";
+            boolean zoned = !zone.isEmpty();
+            final Instant from = startInstant;
+            final Instant to = endInstant;
+            java.util.function.LongSupplier created = () -> zoned
+                    ? parcelRepository.countCreatedBetweenInZone(from, to, zone) : parcelRepository.countCreatedBetween(from, to);
+            java.util.function.LongSupplier delivered = () -> zoned
+                    ? historyRepository.countDeliveredBetweenInZone(from, to, zone) : historyRepository.countDeliveredBetween(from, to);
+            java.util.function.LongSupplier failed = () -> zoned
+                    ? historyRepository.countFailedBetweenInZone(from, to, zone) : historyRepository.countFailedBetween(from, to);
+            java.util.function.LongSupplier inTransit = () -> zoned
+                    ? parcelRepository.countInTransitBeforeOrAtInZone(to, zone) : parcelRepository.countInTransitBeforeOrAt(to);
 
             String statusFilter = request.getStatus() != null ? request.getStatus().trim() : "";
 
@@ -599,29 +598,30 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
             Double avgDeliveryHours = null;
 
             if (statusFilter.isEmpty()) {
-                createdCount = parcelRepository.countCreatedBetween(startInstant, endInstant);
-                deliveredCount = historyRepository.countDeliveredBetween(startInstant, endInstant);
-                failedCount = historyRepository.countFailedBetween(startInstant, endInstant);
-                inTransitCount = parcelRepository.countInTransitBeforeOrAt(endInstant);
+                createdCount = created.getAsLong();
+                deliveredCount = delivered.getAsLong();
+                failedCount = failed.getAsLong();
+                inTransitCount = inTransit.getAsLong();
             } else if ("CREATED".equalsIgnoreCase(statusFilter)) {
-                createdCount = parcelRepository.countCreatedBetween(startInstant, endInstant);
+                createdCount = created.getAsLong();
             } else if ("DELIVERED".equalsIgnoreCase(statusFilter)) {
-                deliveredCount = historyRepository.countDeliveredBetween(startInstant, endInstant);
+                deliveredCount = delivered.getAsLong();
             } else if ("FAILED".equalsIgnoreCase(statusFilter)) {
-                failedCount = historyRepository.countFailedBetween(startInstant, endInstant);
+                failedCount = failed.getAsLong();
             } else if ("IN_TRANSIT".equalsIgnoreCase(statusFilter)
                     || "PICKED_UP".equalsIgnoreCase(statusFilter)
                     || "OUT_FOR_DELIVERY".equalsIgnoreCase(statusFilter)) {
-                inTransitCount = parcelRepository.countInTransitBeforeOrAt(endInstant);
+                inTransitCount = inTransit.getAsLong();
             }
 
             // Each parcel counts once however many transitions it had in the window.
             long totalCount = statusFilter.isEmpty()
-                    ? historyRepository.countDistinctParcelsWithActivityBetween(startInstant, endInstant)
+                    ? (zoned ? historyRepository.countDistinctParcelsWithActivityBetweenInZone(from, to, zone)
+                        : historyRepository.countDistinctParcelsWithActivityBetween(from, to))
                     : createdCount + deliveredCount + failedCount + inTransitCount;
 
-            // Calculate average delivery duration from creation to first DELIVERED transition
-            if (deliveredCount > 0) {
+            // Average delivery duration from creation to first DELIVERED transition (all zones only).
+            if (deliveredCount > 0 && !zoned) {
                 List<Object[]> rows = historyRepository.findDeliveredParcelDurations(startInstant, endInstant);
                 if (!rows.isEmpty()) {
                     double totalHours = 0.0;
@@ -1269,7 +1269,7 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 .setParcelId(p.getParcelId().toString())
                 .setTrackingNumber(p.getTrackingNumber())
                 .setCurrentStatus(p.getStatus().name())
-                .setWeightKg(p.getWeightKg() != null ? p.getWeightKg().doubleValue() : 0.0)
+                .setWeightKg(com.swiftdrop.deliveryservice.core.ParcelRoute.weightOf(p))
                 .setFeeMinorUnits(p.getAmountMinorUnits() != null ? p.getAmountMinorUnits() : 0L)
                 .setCurrency(p.getCurrency() != null ? p.getCurrency() : "LKR")
                 .setCreatedAt(toTimestamp(createdAt))

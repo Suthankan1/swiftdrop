@@ -261,7 +261,7 @@ describe('CourierStageActions', () => {
 
     await user.click(screen.getByRole('button', { name: 'Mark Out for Delivery' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/confirmed by the authoritative parcel state/i)
+    expect(await screen.findByRole('status')).toHaveTextContent(/was saved/i)
     expect(updateStatus).toHaveBeenCalledOnce()
   })
 

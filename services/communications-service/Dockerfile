@@ -37,8 +37,8 @@ LABEL org.opencontainers.image.title="SwiftDrop Communications Service" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 # Non-root execution and base OS security hardening (remediates CVE-2026-109518 in apt/libapt-pkg6.0)
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+RUN (apt-get update || (sleep 2 && apt-get update)) && \
+    DEBIAN_FRONTEND=noninteractive apt-get --only-upgrade install -y apt libapt-pkg6.0 && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd -g 10001 swiftdrop && \
     useradd -u 10001 -g swiftdrop -d /home/swiftdrop -m -s /sbin/nologin swiftdrop

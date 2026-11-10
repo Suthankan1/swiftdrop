@@ -331,8 +331,8 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       expect(await screen.findByText('SWD-20261028-A101')).toBeInTheDocument()
 
       // 1. Dashboard Heading & Organization Branding
-      expect(screen.getByRole('heading', { name: /commercial order dashboard/i })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: /Authenticated Portal View · Alpha Logistics PLC/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /your orders/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /Alpha Logistics PLC/i })).toBeInTheDocument()
 
       // 2. Summary Metric Cards
       expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('4')).toBeInTheDocument()
@@ -1074,7 +1074,7 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
 
       // Should be redirected to /login
       expect(await screen.findByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: /commercial order dashboard/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /your orders/i })).not.toBeInTheDocument()
     })
   })
 })

@@ -20,7 +20,7 @@ services:
     environment:
       POSTGRES_DB: accounts_db
       POSTGRES_USER: ${ACCOUNTS_DB_USERNAME:-accounts_app}
-      POSTGRES_PASSWORD: ${ACCOUNTS_DB_PASSWORD:-accounts_dev_password}
+      POSTGRES_PASSWORD: ${ACCOUNTS_DB_PASSWORD:?set ACCOUNTS_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
     ports:
       - "127.0.0.1:${ACCOUNTS_DB_PORT:-5438}:5432"
     volumes:
@@ -44,7 +44,7 @@ services:
     environment:
       POSTGRES_DB: keycloak_db
       POSTGRES_USER: ${KEYCLOAK_DB_USERNAME:-keycloak}
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_dev_password}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
     ports:
       - "127.0.0.1:${KEYCLOAK_DB_PORT:-5437}:5432"
     volumes:
@@ -93,16 +93,16 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak_db
       KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_dev_password}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:8090}
       KC_HTTP_PORT: 8080
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       JAVA_OPTS_APPEND: "-Dkeycloak.migration.replace-placeholders=true -Xms192m -Xmx384m"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:-communications_dev_secret}
-      GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:-graphql_dev_secret}
-      DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:-delivery_dev_secret}
+      COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:?set COMMUNICATIONS_CLIENT_SECRET in platform/compose/.env (run start.sh or copy .env.example)}
+      GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:?set GRAPHQL_CLIENT_SECRET in platform/compose/.env (run start.sh or copy .env.example)}
+      DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:?set DELIVERY_CLIENT_SECRET in platform/compose/.env (run start.sh or copy .env.example)}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     ports:
       - "127.0.0.1:${KEYCLOAK_PORT:-8090}:8080"
@@ -172,13 +172,13 @@ services:
       ACCOUNTS_GRPC_PORT: 9081
       ACCOUNTS_DB_URL: jdbc:postgresql://accounts-postgres:5432/accounts_db
       ACCOUNTS_DB_USERNAME: ${ACCOUNTS_DB_USERNAME:-accounts_app}
-      ACCOUNTS_DB_PASSWORD: ${ACCOUNTS_DB_PASSWORD:-accounts_dev_password}
+      ACCOUNTS_DB_PASSWORD: ${ACCOUNTS_DB_PASSWORD:?set ACCOUNTS_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
       SWIFTDROP_KEYCLOAK_ADMIN_SERVERURL: http://keycloak:8080
       SWIFTDROP_KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
-      SWIFTDROP_KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_local_dev}
+      SWIFTDROP_KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
     volumes:
       - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
@@ -218,7 +218,7 @@ services:
       PRICING_GRPC_PORT: 9083
       PRICING_DB_URL: jdbc:postgresql://business-postgres:5432/pricing_db
       PRICING_DB_USERNAME: ${PRICING_DB_USERNAME:-pricing_app}
-      PRICING_DB_PASSWORD: ${PRICING_DB_PASSWORD:-pricing_dev_password}
+      PRICING_DB_PASSWORD: ${PRICING_DB_PASSWORD:?set PRICING_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
@@ -261,7 +261,7 @@ services:
       DELIVERY_GRPC_PORT: 9082
       DELIVERY_DB_URL: jdbc:postgresql://business-postgres:5432/delivery_db
       DELIVERY_DB_USERNAME: ${DELIVERY_DB_USERNAME:-delivery_app}
-      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD:-delivery_dev_password}
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD:?set DELIVERY_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
@@ -271,12 +271,12 @@ services:
       SWIFTDROP_STORAGE_BUCKET: ${SWIFTDROP_STORAGE_BUCKET:-swiftdrop-pod}
       SWIFTDROP_STORAGE_REGION: us-east-1
       SWIFTDROP_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-swiftdrop_storage_admin}
-      SWIFTDROP_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio_dev_password}
+      SWIFTDROP_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       PRICING_GRPC_HOST: pricing-service
       PRICING_GRPC_PORT: 9083
       ACCOUNTS_GRPC_HOST: accounts-service
       ACCOUNTS_GRPC_PORT: 9081
-      SWIFTDROP_DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:-delivery_dev_secret}
+      SWIFTDROP_DELIVERY_CLIENT_SECRET: ${DELIVERY_CLIENT_SECRET:?set DELIVERY_CLIENT_SECRET in platform/compose/.env (run start.sh or copy .env.example)}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
     volumes:
       - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro
@@ -319,7 +319,7 @@ services:
       SERVER_PORT: 8084
       COMMUNICATIONS_DB_URL: jdbc:postgresql://business-postgres:5432/communications_db
       COMMUNICATIONS_DB_USERNAME: ${COMMUNICATIONS_DB_USERNAME:-communications_app}
-      COMMUNICATIONS_DB_PASSWORD: ${COMMUNICATIONS_DB_PASSWORD:-communications_dev_password}
+      COMMUNICATIONS_DB_PASSWORD: ${COMMUNICATIONS_DB_PASSWORD:?set COMMUNICATIONS_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       ACCOUNTS_GRPC_HOST: accounts-service
       ACCOUNTS_GRPC_PORT: 9081
       DELIVERY_GRPC_HOST: delivery-service
@@ -330,7 +330,7 @@ services:
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
-      SWIFTDROP_COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:-communications_dev_secret}
+      SWIFTDROP_COMMUNICATIONS_CLIENT_SECRET: ${COMMUNICATIONS_CLIENT_SECRET:?set COMMUNICATIONS_CLIENT_SECRET in platform/compose/.env (run start.sh or copy .env.example)}
       # Required: encrypts stored webhook signing secrets. start.sh generates one in .env.
       WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:?Set WEBHOOK_ENCRYPTION_KEY (64 hex characters); start.sh generates one}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
@@ -378,7 +378,7 @@ services:
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/swiftdrop/protocol/openid-connect/certs
       JWT_AUDIENCE: swiftdrop-api
-      SWIFTDROP_GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:-graphql_dev_secret}
+      SWIFTDROP_GRAPHQL_CLIENT_SECRET: ${GRAPHQL_CLIENT_SECRET:?set GRAPHQL_CLIENT_SECRET in platform/compose/.env (run start.sh or copy .env.example)}
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
     volumes:
       - swiftdrop-grpc-tls:/etc/swiftdrop/grpc-tls:ro

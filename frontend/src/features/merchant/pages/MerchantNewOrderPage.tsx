@@ -89,7 +89,7 @@ export function MerchantNewOrderPage() {
       <label htmlFor={`new-order-${name}`}>{label}</label>
       <select id={`new-order-${name}`} className="form-control" value={form[name]} onChange={set(name)} disabled={submitting || !zoneOptions.length} required>
         <option value="">Select a zone</option>
-        {zoneOptions.map(zone => <option key={zone.zoneCode} value={zone.zoneCode}>{zone.name} ({zone.zoneCode})</option>)}
+        {zoneOptions.map(zone => <option key={zone.zoneCode} value={zone.zoneCode}>{zone.name}</option>)}
       </select>
     </div>
   )
@@ -126,7 +126,7 @@ export function MerchantNewOrderPage() {
             <legend>Parcel</legend>
             {zoneSelect('Pickup zone', 'pickupZone')}
             {zoneSelect('Drop-off zone', 'dropoffZone')}
-            {field('Weight (kg)', 'weightKg', { type: 'number', min: 0.01, max: 50, step: 0.01, inputMode: 'decimal' })}
+            {field('Weight (kg)', 'weightKg', { type: 'number', min: 0.01, max: 30, step: 0.01, inputMode: 'decimal' })}
             {field('Length (cm)', 'lengthCm', { type: 'number', min: 1, max: 300, step: 1 })}
             {field('Width (cm)', 'widthCm', { type: 'number', min: 1, max: 300, step: 1 })}
             {field('Height (cm)', 'heightCm', { type: 'number', min: 1, max: 300, step: 1 })}
