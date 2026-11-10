@@ -70,7 +70,7 @@ class DeliveryPersistencePostgresIT {
     @DisplayName("Verify clean Flyway V1 migration execution on real PostgreSQL")
     void testFlywayMigrationExecution() {
         var info = flyway.info();
-        assertThat(info.applied()).hasSize(9); // V9 adds history uniqueness and report indexes
+        assertThat(info.applied()).hasSize(10); // V10 backfills merchant parcel weight from the quote snapshot
         assertThat(info.applied()[0].getDescription()).isEqualTo("create delivery schema");
         assertThat(info.applied()[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(info.applied()[1].getDescription()).isEqualTo("create delivery assignments schema");

@@ -207,7 +207,7 @@ class BookingCorrelationTest {
         var result = service.bookMerchant(merchantId, merchantSub, idempotencyKey, merchantReq);
 
         assertThat(result).isEqualTo(existingResponse);
-        verify(repository, never()).insertMerchantParcel(any(), any(), any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(repository, never()).insertMerchantParcel(any(), any(), any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(repository, never()).finishMerchant(any(), any(), any(), any(), any(), any(), any(), any(), any());
         // Pricing is consulted before the transaction opens; a replay still returns the stored booking unchanged.
     }
