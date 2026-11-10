@@ -28,7 +28,9 @@ export function DispatcherPage() {
             Review unassigned parcels and eligible courier workloads before confirming an assignment.
           </p>
           <p className="muted">Assigning a courier does not change the parcel lifecycle status.</p>
-          <p><Link to="/dispatcher/reports">View daily outcomes for your zones</Link></p>
+          <p>{actsAsAdmin
+            ? <Link to="/admin/reports">View daily outcomes and reports</Link>
+            : <Link to="/dispatcher/reports">View daily outcomes for your zones</Link>}</p>
           <Button variant="secondary" type="button" onClick={() => { void auth.logout() }}>
             Sign out
           </Button>
