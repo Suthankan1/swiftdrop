@@ -4,6 +4,9 @@
 >
 > **Upgrading an existing Keycloak volume:** Keycloak imports the realm only on first start, so the `communications-service` and `graphql-query-service` clients and the `http://localhost:3000` web origin are not added to an existing `swiftdrop-keycloak-postgres-data` volume. Add them in the admin console or start with a fresh volume.
 
+For opt-in shared team PostgreSQL, see the [Supabase setup and read-only checks](SUPABASE.md).
+The default startup continues to use local PostgreSQL.
+
 **Issue:** [#141](https://github.com/Suthankan1/swiftdrop/issues/141) · **Owner:** @Suthankan1 · **Priority:** P0  
 **Target Integration Branch:** `test` · **Feature Branch:** `feat/n10-p06-full-stack-compose-runtime`  
 **Independent Reviewers:** @Harithkeshan, @Vibhushan-2003  

@@ -10,7 +10,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_DIR="${REPO_ROOT}/platform/compose"
 COMPOSE_FILE="${COMPOSE_DIR}/compose.yaml"
-ENV_FILE="${COMPOSE_DIR}/.env"
+if [ "${1:-}" = "--local" ]; then
+  shift
+  ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env.local-postgres}"
+  if [ ! -f "${ENV_FILE}" ]; then
+    ENV_FILE="${COMPOSE_DIR}/.env"
+  fi
+  docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" stop
+  exit 0
+fi
+if [ "${1:-}" = "--supabase" ]; then shift; fi
+exec docker compose --env-file "${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env}" \
+  -f "${COMPOSE_FILE}" -f "${COMPOSE_DIR}/compose.supabase.yaml" stop
 
 echo "=============================================================================="
 echo " SwiftDrop Platform — Stopping Full-Stack Runtime"

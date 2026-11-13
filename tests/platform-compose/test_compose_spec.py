@@ -226,7 +226,7 @@ class TestComposeRuntimeSpec(unittest.TestCase):
         for name in REQUIRED_SECRETS:
             env.setdefault(name, "compose-config-check-only")
         res = subprocess.run(
-            ["docker", "compose", "-f", str(COMPOSE_FILE), "config"],
+            ["docker", "compose", "--env-file", "/dev/null", "-f", str(COMPOSE_FILE), "config"],
             cwd=str(REPO_ROOT),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -245,7 +245,7 @@ class TestComposeRuntimeSpec(unittest.TestCase):
         for name in REQUIRED_SECRETS:
             env.setdefault(name, "compose-config-check-only")
         res = subprocess.run(
-            ["docker", "compose", "-f", str(COMPOSE_FILE), "config"],
+            ["docker", "compose", "--env-file", "/dev/null", "-f", str(COMPOSE_FILE), "config"],
             cwd=str(REPO_ROOT),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

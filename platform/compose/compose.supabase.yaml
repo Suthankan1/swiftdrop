@@ -1,0 +1,99 @@
+# Opt-in shared development PostgreSQL. Select through start.sh --supabase,
+# which validates credentials, permissions and existing schema before startup.
+# Requires Docker Compose >= 2.24.4 for !override. Never enable local-postgres
+# alongside this file; the local PostgreSQL volumes remain untouched.
+services:
+  accounts-postgres:
+    profiles: [local-postgres]
+  keycloak-postgres:
+    profiles: [local-postgres]
+  business-postgres:
+    profiles: [local-postgres]
+
+  keycloak:
+    command:
+      - start-dev
+      - --spi-connections-jpa--quarkus--migration-strategy=validate
+      - --spi-connections-jpa--quarkus--initialize-empty=false
+    labels:
+      com.swiftdrop.database-mode: supabase
+    environment:
+      KC_DB_URL: ${KEYCLOAK_DB_URL:?set KEYCLOAK_DB_URL in the ignored platform/compose/.env}
+      KC_DB_POOL_INITIAL_SIZE: "0"
+      KC_DB_POOL_MIN_SIZE: "0"
+      KC_DB_POOL_MAX_SIZE: "2"
+    depends_on: !override
+      mailpit:
+        condition: service_healthy
+
+  accounts-service:
+    labels:
+      com.swiftdrop.database-mode: supabase
+    environment:
+      ACCOUNTS_DB_URL: ${ACCOUNTS_DB_URL:?set ACCOUNTS_DB_URL in the ignored platform/compose/.env}
+      SPRING_FLYWAY_ENABLED: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
+      SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    depends_on: !override
+      grpc-certs:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+
+  pricing-service:
+    labels:
+      com.swiftdrop.database-mode: supabase
+    environment:
+      PRICING_DB_URL: ${PRICING_DB_URL:?set PRICING_DB_URL in the ignored platform/compose/.env}
+      SPRING_FLYWAY_ENABLED: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
+      SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    depends_on: !override
+      grpc-certs:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+
+  delivery-service:
+    labels:
+      com.swiftdrop.database-mode: supabase
+    environment:
+      DELIVERY_DB_URL: ${DELIVERY_DB_URL:?set DELIVERY_DB_URL in the ignored platform/compose/.env}
+      SPRING_FLYWAY_ENABLED: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
+      SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    depends_on: !override
+      grpc-certs:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+
+  communications-service:
+    labels:
+      com.swiftdrop.database-mode: supabase
+    environment:
+      COMMUNICATIONS_DB_URL: ${COMMUNICATIONS_DB_URL:?set COMMUNICATIONS_DB_URL in the ignored platform/compose/.env}
+      SPRING_FLYWAY_ENABLED: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
+      SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    depends_on: !override
+      grpc-certs:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
