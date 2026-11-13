@@ -1,7 +1,7 @@
 function Pandoc(doc)
   local sections, figures, tables = {}, {}, {}
   local function entry(list, label, target)
-    list[#list + 1] = pandoc.Plain{pandoc.Link(label, "#" .. target)}
+    list[#list + 1] = pandoc.Para{pandoc.Link(label, "#" .. target)}
   end
   for _, block in ipairs(doc.blocks) do
     if block.t == "Header" and block.level == 1 then
@@ -22,7 +22,7 @@ function Pandoc(doc)
   for _, block in ipairs(doc.blocks) do
     if block.t == "Header" and block.identifier == "abstract" then
       for _, index in ipairs{{"Contents", sections}, {"List of Figures", figures}, {"List of Tables", tables}} do
-        result:insert(pandoc.Header(1, index[1], pandoc.Attr("", {"unnumbered"})))
+        result:insert(pandoc.Header(1, index[1], pandoc.Attr(index[1]:lower():gsub(" ", "-"), {"unnumbered"})))
         result:insert(pandoc.Div(index[2], pandoc.Attr("", {"submission-index"})))
       end
     end

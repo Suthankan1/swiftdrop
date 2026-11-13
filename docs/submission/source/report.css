@@ -50,6 +50,8 @@ body.compact table { table-layout: auto; }
 h1 { break-before: auto; page-break-before: auto; margin-top: 1.4rem; }
 header#title-block-header { min-height: 44vh; }
 nav#TOC { break-after: auto; page-break-after: auto; }
+h1#contents { break-before: page; page-break-before: always; }
 @page { @bottom-center { content: counter(page); color: #5a6476; font-size: 9pt; } }
 .submission-index { line-height: 1.25; }
+.submission-index p { margin: 0 0 0.2rem; }
 .submission-index + h1 { margin-top: 1rem; }

@@ -54,7 +54,7 @@ The November 1 submission contained the full design package and an initial code 
 
 ## Structure of this report
 
-Chapter 2 maps every requirement of the brief to the delivered system. Chapter 3 summarises the final design; the full design is in the accompanying *Design Documentation* PDF. Chapter 4 describes the implementation of each part of the system. Chapter 5 shows the system in use with screenshots for every role. Chapter 6 presents testing and evaluation results. Chapter 7 sets out the demonstration plan. Chapter 8 concludes with achievements, problems, limitations and further work. The appendices give each member's contribution, instructions for running the system and the main API endpoints.
+The report maps the requirements to the delivered system and summarises its design and implementation. The accompanying *Design Documentation* PDF provides the full design. The walkthrough illustrates the available application flows. The report then presents testing, the demonstration plan, and the project's achievements and limitations. The appendices record team contributions, setup instructions and the main API endpoints.
 
 # Requirement Coverage
 
@@ -202,13 +202,93 @@ Local verification uses the Compose PostgreSQL containers. The opt-in shared dev
 
 # The System in Use
 
-The isolated local PostgreSQL stack was prepared for a five-role walkthrough. Keycloak did not become available during startup of the release images on the Apple Silicon test host, so demo-account sign-in and authenticated screen capture remain pending. The demonstration plan lists the intended walkthrough.
+These browser captures show SwiftDrop running with the frontend from the release source, locally built service images and an isolated PostgreSQL database. Each role signed in with a separate demo account. Parcel and account details are synthetic, and each image is cropped to the relevant part of the application.
+
+## Public entry and tracking
+
+![SwiftDrop public landing page](screenshots/01_landing.png){width=6in}
+
+![SwiftDrop sign-in entry](screenshots/02_login.png){width=6in}
+
+![Keycloak sign-in screen](screenshots/03_keycloak_login.png){width=3.7448in}
+
+![Public tracking for an in-transit parcel](screenshots/04_public_tracking.png){width=6in}
+
+![In-transit parcel tracking on a mobile viewport](screenshots/24_mobile_tracking.png){width=2.97805in}
+
+## Customer
+
+The walkthrough shows a delivery quote, booking confirmation, delivery history and a completed parcel with its status timeline. The delivered fixture also returned a downloadable receipt.
+
+![Customer dashboard](screenshots/05_customer_dashboard.png){width=6in}
+
+![Guaranteed price for a Standard delivery quote](screenshots/06_customer_quote.png){width=6in}
+
+![Parcel booking confirmation](screenshots/07_customer_booking_confirmed.png){width=6in}
+
+![Customer delivery history](screenshots/08_customer_history.png){width=6in}
+
+![Delivered parcel timeline and receipt download](screenshots/09_customer_tracking.png){width=5.86667in}
+
+## Merchant
+
+The merchant portal shows the order list and details, the order form, API key management and the webhook subscription settings.
+
+![Merchant dashboard](screenshots/10_merchant_dashboard.png){width=6in}
+
+![Merchant order list](screenshots/11_merchant_orders.png){width=6in}
+
+![Merchant order creation form](screenshots/12_merchant_new_order.png){width=6in}
+
+![Merchant API key management](screenshots/13_merchant_api_keys.png){width=6in}
+
+![Merchant webhook subscription settings](screenshots/14_merchant_webhooks.png){width=6in}
+
+![Merchant order details](screenshots/25_merchant_order_details.png){width=6in}
+
+## Dispatcher
+
+The dispatcher overview shows the queue of unassigned parcels and the capacity available for the demo courier.
+
+![Dispatcher assignment console](screenshots/15_dispatcher_console.png){width=6in}
+
+![Unassigned parcel queue and courier workloads](screenshots/26_dispatcher_workloads.png){width=6in}
+
+## Courier
+
+The courier workspace shows assigned deliveries and the next status action for a parcel that has been picked up.
+
+![Courier delivery assignments](screenshots/16_courier_assignments.png){width=6in}
+
+![Courier parcel status and failed delivery controls](screenshots/17_courier_parcel_detail.png){width=6in}
+
+## Administrator
+
+The administration workspace shows delivery outcomes, user and staff management, delivery zones, pricing and merchant review.
+
+![Administrator dashboard](screenshots/18_admin_console.png){width=6in}
+
+![Administrator delivery reports](screenshots/19_admin_reports.png){width=6in}
+
+![Administrator account management](screenshots/20_admin_users.png){width=6in}
+
+![Administrator zones and pricing](screenshots/21_admin_pricing.png){width=6in}
+
+![Administrator merchant review](screenshots/22_admin_merchants.png){width=6in}
+
+![Administrator staff directory](screenshots/27_admin_staff.png){width=6in}
+
+## Delivery notifications
+
+The local Mailpit inbox received the delivered status notification for the synthetic parcel.
+
+![Delivered status notification in Mailpit](screenshots/23_mailpit.png){width=6in}
 
 # Testing and Evaluation
 
 The release source for this report is [GitHub test commit 9768726](https://github.com/Suthankan1/swiftdrop/commit/97687263a69655b841dbd659cd68ae34dcfaeb84). The [13 November GitHub Actions run](https://github.com/Suthankan1/swiftdrop/actions/runs/43369431149) completed successfully, including frontend quality and build, all Java service jobs, policy and contract checks, security scans, and the required CI gate. See the separate test report for the run scope and local verification results.
 
-The baseline and repository test report describe earlier evaluation. This report bases final-release claims on the linked commit and current evidence. Google sign-in, external email delivery, live provider responses and deployment to Azure require separate environment-specific evidence.
+The browser walkthrough documents a separate local run with demo accounts for all five roles. The screenshots record what appeared in each workspace, including the local delivered notification and the receipt for the delivered parcel. The automated results above come from the linked GitHub run. Google sign-in, external email delivery, live provider responses and deployment to Azure require separate environment-specific evidence.
 
 # Demonstration Plan
 
