@@ -9,7 +9,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_DIR="${REPO_ROOT}/platform/compose"
-ENV_FILE="${COMPOSE_DIR}/.env"
+ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env}"
+if [ -z "${SWIFTDROP_COMPOSE_ENV_FILE:-}" ] && [ -f "${COMPOSE_DIR}/.env.local-postgres" ]; then
+  ENV_FILE="${COMPOSE_DIR}/.env.local-postgres"
+fi
+if [ "${1:-}" = "--supabase" ] || [ -n "$(docker ps --filter label=com.docker.compose.project=swiftdrop --filter label=com.swiftdrop.database-mode=supabase --format '{{.ID}}' 2>/dev/null || true)" ]; then
+  echo "ERROR: This suite targets local PostgreSQL. Use python3 platform/compose/supabase.py check for shared databases."
+  exit 1
+fi
 
 echo "=============================================================================="
 echo " SwiftDrop Platform — Automated Runtime Verification Suite"

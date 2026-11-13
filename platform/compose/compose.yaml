@@ -91,7 +91,7 @@ services:
     command: start-dev --import-realm
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak_db
+      KC_DB_URL: ${KEYCLOAK_DB_URL:-jdbc:postgresql://keycloak-postgres:5432/keycloak_db}
       KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:8090}
@@ -170,7 +170,7 @@ services:
       SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8081
       ACCOUNTS_GRPC_PORT: 9081
-      ACCOUNTS_DB_URL: jdbc:postgresql://accounts-postgres:5432/accounts_db
+      ACCOUNTS_DB_URL: ${ACCOUNTS_DB_URL:-jdbc:postgresql://accounts-postgres:5432/accounts_db}
       ACCOUNTS_DB_USERNAME: ${ACCOUNTS_DB_USERNAME:-accounts_app}
       ACCOUNTS_DB_PASSWORD: ${ACCOUNTS_DB_PASSWORD:?set ACCOUNTS_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
@@ -216,7 +216,7 @@ services:
       SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8082
       PRICING_GRPC_PORT: 9083
-      PRICING_DB_URL: jdbc:postgresql://business-postgres:5432/pricing_db
+      PRICING_DB_URL: ${PRICING_DB_URL:-jdbc:postgresql://business-postgres:5432/pricing_db}
       PRICING_DB_USERNAME: ${PRICING_DB_USERNAME:-pricing_app}
       PRICING_DB_PASSWORD: ${PRICING_DB_PASSWORD:?set PRICING_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
@@ -259,7 +259,7 @@ services:
       SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8083
       DELIVERY_GRPC_PORT: 9082
-      DELIVERY_DB_URL: jdbc:postgresql://business-postgres:5432/delivery_db
+      DELIVERY_DB_URL: ${DELIVERY_DB_URL:-jdbc:postgresql://business-postgres:5432/delivery_db}
       DELIVERY_DB_USERNAME: ${DELIVERY_DB_USERNAME:-delivery_app}
       DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD:?set DELIVERY_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -317,7 +317,7 @@ services:
       SWIFTDROP_GRPC_TLS_KEY: /etc/swiftdrop/grpc-tls/server.key
       SWIFTDROP_GRPC_TLS_CA: /etc/swiftdrop/grpc-tls/ca.crt
       SERVER_PORT: 8084
-      COMMUNICATIONS_DB_URL: jdbc:postgresql://business-postgres:5432/communications_db
+      COMMUNICATIONS_DB_URL: ${COMMUNICATIONS_DB_URL:-jdbc:postgresql://business-postgres:5432/communications_db}
       COMMUNICATIONS_DB_USERNAME: ${COMMUNICATIONS_DB_USERNAME:-communications_app}
       COMMUNICATIONS_DB_PASSWORD: ${COMMUNICATIONS_DB_PASSWORD:?set COMMUNICATIONS_DB_PASSWORD in platform/compose/.env (run start.sh or copy .env.example)}
       ACCOUNTS_GRPC_HOST: accounts-service
