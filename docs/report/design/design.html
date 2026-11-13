@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SwiftDrop — Design Documentation</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --ink:#1b2b26; --muted:#5b6a64; --line:#d7dfdb; --accent:#1f6f5c; --soft:#eef4f1; --warn:#8a5a00; }
+  * { box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); font-size: 10.2pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 26pt; margin: 0 0 6mm; letter-spacing: -0.01em; }
+  h2 { font-size: 16pt; color: var(--accent); margin: 0 0 4mm; padding-bottom: 2mm; border-bottom: 1.5px solid var(--accent); break-before: page; }
+  h3 { font-size: 12pt; margin: 6mm 0 2mm; }
+  h4 { font-size: 10.5pt; margin: 4mm 0 1.5mm; }
+  p { margin: 0 0 2.5mm; }
+  ul { margin: 0 0 3mm; padding-left: 5mm; }
+  li { margin-bottom: 1mm; }
+  code { font-family: Menlo, Consolas, monospace; font-size: 8.6pt; background: var(--soft); padding: 0 1mm; border-radius: 2px; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.9pt; break-inside: auto; }
+  th, td { border: 1px solid var(--line); padding: 1.4mm 2mm; text-align: left; vertical-align: top; }
+  th { background: var(--soft); font-weight: 600; }
+  tr { break-inside: avoid; }
+  figure { margin: 3mm 0 5mm; break-inside: avoid; text-align: center; }
+  figure img { max-width: 100%; max-height: 205mm; border: 1px solid var(--line); }
+  figcaption { font-size: 8.8pt; color: var(--muted); margin-top: 1.5mm; }
+  .note { border-left: 3px solid var(--accent); background: var(--soft); padding: 2mm 3mm; margin: 2mm 0 4mm; font-size: 9.3pt; }
+  .muted { color: var(--muted); }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .cover .brand { font-size: 11pt; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .cover .sub { font-size: 13pt; color: var(--muted); margin-bottom: 8mm; }
+  .cover dl { display: grid; grid-template-columns: 38mm 1fr; gap: 1.5mm 4mm; font-size: 10pt; }
+  .cover dt { color: var(--muted); }
+  .toc { columns: 2; column-gap: 10mm; font-size: 10pt; }
+  .toc div { break-inside: avoid; margin-bottom: 1.2mm; }
+  /* Hand-drawn container diagrams */
+  .diagram { border: 1px solid var(--line); padding: 4mm; margin: 3mm 0 2mm; break-inside: avoid; font-size: 8.4pt; }
+  .tier { display: grid; gap: 2.5mm; margin-bottom: 2.5mm; }
+  .tier-label { font-size: 7.6pt; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 1mm; }
+  .box { border: 1.2px solid var(--accent); border-radius: 2mm; padding: 1.8mm 2mm; background: #fff; }
+  .box b { display: block; font-size: 8.8pt; }
+  .box.data { border-color: #6b7f99; background: #f3f6fa; }
+  .box.ext { border-style: dashed; border-color: #8a7a55; background: #fbf8f1; }
+  .box.edge { background: var(--soft); }
+  .arrow { text-align: center; color: var(--muted); font-size: 8pt; margin: 0.5mm 0 1.5mm; }
+  .cols-1 { grid-template-columns: 1fr; } .cols-2 { grid-template-columns: repeat(2, 1fr); } .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-4 { grid-template-columns: repeat(4, 1fr); } .cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .tick { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div>
+    <div class="brand">SwiftDrop</div>
+    <h1>Design Documentation</h1>
+    <div class="sub">Parcel Delivery &amp; Courier Management System — Enterprise Application Development group assignment</div>
+    <dl>
+      <dt>Document</dt><dd>Design documentation (assignment requirement 1, 20 marks)</dd>
+      <dt>Team</dt><dd>Nine members (team size approved by the lecturer): Suthankan1 (Platform &amp; cross-module lead), Gajanthan, Sinthuha (Customer), Eric, Thuvarahan (Merchant), Abhinaya, Vibhushan (Courier), Pushmitha, HarithKeshan (Dispatcher/Admin)</dd>
+      <dt>Repository</dt><dd>github.com/Suthankan1/swiftdrop (branch <code>main</code>)</dd>
+      <dt>Version</dt><dd>Architecture v1.3, document revision of 11 November 2026</dd>
+    </dl>
+  </div>
+  <div class="note">
+    Figures 01–20 are the team's design package (editable sources in <code>docs/diagrams/editable</code>). Their footers read
+    “proposed design” because they were drawn before implementation; each section states what is implemented in the current code.
+    Figures A and B were added for the containers and AI assistant that exist in the final system.
+  </div>
+</section>
+
+<h2>Contents</h2>
+<div class="toc">
+  <div>1. Scenario, scope and requirement map</div>
+  <div>2. Use cases (Figures 01–04)</div>
+  <div>3. Data design and ER diagrams (Figures 14–17)</div>
+  <div>4. Architecture proposal and justification (Figures 05, 06, A)</div>
+  <div>5. Integration design (Figure 18)</div>
+  <div>6. Key flows: sequence and activity diagrams (Figures 07–13)</div>
+  <div>7. Security and personal-data design</div>
+  <div>8. Design patterns and principles</div>
+  <div>9. Deployment: Docker Compose and Kubernetes (Figures 19, 20)</div>
+  <div>10. AI delivery assistant and MCP (Figure B)</div>
+  <div>11. Architecture decisions (ADR summary)</div>
+  <div>Appendix: team responsibilities</div>
+</div>
+
+<h3>Requirement map</h3>
+<table>
+  <tr><th style="width:42%">Brief requirement (Design documentation)</th><th>Where it is answered</th></tr>
+  <tr><td>Use case diagrams for customer, merchant, courier and dispatcher</td><td>Section 2, Figures 01–04</td></tr>
+  <tr><td>ER diagram: users, roles, merchants, parcels, status history, couriers, zones, pricing</td><td>Section 3, Figures 14–16 and the entity table</td></tr>
+  <tr><td>Architecture proposal with justification; presentation, business and data layers</td><td>Section 4, Figures 05, 06 and A</td></tr>
+  <tr><td>Integration design: patterns used and why</td><td>Section 5, Figure 18 and the pattern table</td></tr>
+  <tr><td>Sequence/activity diagrams: create delivery, merchant API order, courier status → notifications, OAuth 2.0 login</td><td>Section 6, Figures 07–13</td></tr>
+  <tr><td>Design patterns and principles (SOLID, DRY, Repository, Strategy, Observer)</td><td>Section 8</td></tr>
+</table>
+
+<h2>1. Scenario, scope and actors</h2>
+<p>SwiftDrop is an island-wide courier company that today takes bookings by phone and spreadsheet. Customers cannot see where their parcels are, and partner online stores (merchants) want to create delivery orders automatically from their own e-commerce systems. The new platform lets customers and merchants send and track parcels, lets dispatchers assign deliveries, lets couriers update progress in real time, and integrates with external systems through APIs, webhooks and events.</p>
+<table>
+  <tr><th style="width:18%">Actor</th><th>Main goals in the system</th></tr>
+  <tr><td>Customer</td><td>Sign up or log in (including Google), get a fixed-price quote (Standard or Same Day), book a parcel, follow it live, see history, download a PDF receipt, track publicly by number on a phone.</td></tr>
+  <tr><td>Merchant</td><td>Register a business (admin approval required), create orders one by one, by CSV, or from their own system with a scoped API key, receive signed webhooks on status changes, see an orders dashboard.</td></tr>
+  <tr><td>Courier</td><td>See today's assignments, move parcels through Picked Up → In Transit → Out for Delivery → Delivered, upload photo proof, record a failure with a reason.</td></tr>
+  <tr><td>Dispatcher</td><td>See unassigned parcels, assign an eligible courier, reassign or unassign before pickup, watch courier workloads, read daily reports for assigned zones.</td></tr>
+  <tr><td>Admin</td><td>Approve merchants, manage users and staff, manage zones and versioned rate cards, read platform reports; can also run dispatch.</td></tr>
+  <tr><td>External systems</td><td>Google (OpenID Connect via Keycloak), merchant e-commerce systems (REST + webhooks), e-mail (SMTP; Mailpit locally), Google Gemini (AI assistant).</td></tr>
+</table>
+<h3>Implementation status</h3>
+<p>All functional requirements in the brief are implemented: customer, merchant, courier, dispatcher and admin functions; real-time tracking over SSE; Kafka status events with an e-mail notification consumer and merchant webhooks with retry; Dockerised services with Docker Compose; and both bonus items (Kubernetes with a Helm chart, and an AI delivery assistant exposing MCP tools). Merchants authenticate machine calls with scoped API keys, which the brief allows as an alternative to OAuth 2.0 client credentials.</p>
+
+<h2>2. Use cases</h2>
+<p>One diagram per actor group. Each use case maps to implemented screens in the React application and to versioned REST, GraphQL or SSE endpoints behind the API gateway.</p>
+<figure><img src="../../diagrams/rendered/01_customer_use_cases.svg" alt="Customer use cases"><figcaption>Figure 01 — Customer use cases.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/02_merchant_use_cases.svg" alt="Merchant use cases"><figcaption>Figure 02 — Merchant use cases.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/03_courier_use_cases.svg" alt="Courier use cases"><figcaption>Figure 03 — Courier use cases.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/04_dispatcher_admin_use_cases.svg" alt="Dispatcher and admin use cases"><figcaption>Figure 04 — Dispatcher and admin use cases.</figcaption></figure>
+<h3>Use cases added during implementation</h3>
+<ul>
+  <li><b>Customer:</b> edit own name and phone number (used for SMS updates); choose Same Day delivery with a surcharge, shown on the confirmation, tracking and courier screens.</li>
+  <li><b>Merchant:</b> bulk CSV import with a row-by-row preview; rotate a webhook signing secret; read webhook delivery logs.</li>
+  <li><b>Dispatcher:</b> reassign or unassign a parcel before pickup from the Active assignments panel; zone filter on the queue.</li>
+  <li><b>Admin:</b> disable and re-enable a user's sign-in (enforced at the gateway within 20 seconds); “Make staff” from the user list.</li>
+  <li><b>Everyone:</b> AI help assistant that answers tracking and pricing questions from live data.</li>
+</ul>
+
+<h2>3. Data design</h2>
+<p>Each business service owns its own PostgreSQL database, schema migrations (Flyway), credentials and transactions. Identifiers that cross service boundaries (Keycloak subject, merchant ID, courier subject, quote ID) are stored as opaque values and resolved through the owning service's API, never through cross-database foreign keys. Keycloak keeps users, password hashes and role mappings; business services keep profiles keyed by the Keycloak subject.</p>
+<h3>Required entities and where they live</h3>
+<table>
+  <tr><th style="width:20%">Brief entity</th><th style="width:22%">Owner</th><th>Tables</th></tr>
+  <tr><td>Users</td><td>Keycloak + Accounts</td><td>Keycloak realm users (credentials, hashed passwords); <code>account_profiles</code> (subject, e-mail, name, phone, sign-in disabled flag)</td></tr>
+  <tr><td>Roles</td><td>Keycloak + Accounts</td><td>Realm roles CUSTOMER, MERCHANT, COURIER, DISPATCHER, ADMIN; <code>staff_profiles</code> (staff role, department, assigned zone, status); <code>identity_reconciliation_audit</code></td></tr>
+  <tr><td>Merchants</td><td>Accounts</td><td><code>merchants</code>, <code>merchant_business_audit</code>, <code>merchant_api_keys</code> (hashed, scoped, expiring keys)</td></tr>
+  <tr><td>Parcels</td><td>Delivery</td><td><code>parcels</code> (tracking number, sender, merchant, quote snapshot incl. weight, zones and service tier, version), <code>idempotency_records</code>, <code>proof_of_deliveries</code>, <code>proof_cleanup_tasks</code></td></tr>
+  <tr><td>Status history</td><td>Delivery</td><td><code>status_history</code> (append-only, one row per transition with reason, note, proof and resulting version); <code>outbox_events</code></td></tr>
+  <tr><td>Couriers / assignments</td><td>Accounts + Delivery</td><td>Courier identity in <code>staff_profiles</code>; <code>delivery_assignments</code> (one active per parcel) and <code>delivery_assignment_audits</code></td></tr>
+  <tr><td>Zones</td><td>Pricing</td><td><code>pricing_zones</code> (code, name, transit hours, active)</td></tr>
+  <tr><td>Pricing</td><td>Pricing</td><td><code>pricing_rate_versions</code>, <code>pricing_rate_rules</code> (zone pair, size band, fees), <code>pricing_quotes</code> (15-minute fixed quotes), <code>pricing_admin_audit</code></td></tr>
+  <tr><td>Notifications &amp; webhooks</td><td>Communications</td><td><code>notifications</code>, <code>notification_attempts</code>, <code>webhook_subscriptions</code>, <code>webhook_deliveries</code>, <code>webhook_attempts</code>, <code>consumed_events</code>, <code>poison_event_quarantine</code></td></tr>
+</table>
+<figure><img src="../../diagrams/rendered/14_delivery_erd.svg" alt="Delivery ERD"><figcaption>Figure 14 — Delivery Operations logical ERD: parcels, status history, assignments, proof, outbox.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/15_accounts_pricing_erd.svg" alt="Accounts and Pricing ERD"><figcaption>Figure 15 — Accounts and Pricing logical ERD: profiles, staff, merchants, API keys, zones, rate versions, rules, quotes.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/16_communications_erd.svg" alt="Communications ERD"><figcaption>Figure 16 — Communications logical ERD: notifications, webhook subscriptions, deliveries and attempts.</figcaption></figure>
+<h3>Parcel lifecycle</h3>
+<p>A parcel moves CREATED → PICKED_UP → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED, and may move to FAILED from any non-final stage with a reason allowed for that stage (for example PARCEL_DAMAGED in transit, RECIPIENT_UNAVAILABLE out for delivery). DELIVERED requires an uploaded photo proof. Every change uses optimistic locking (expected version) and writes history and an outbox event in the same transaction. Assigning a courier is not a status change.</p>
+<figure><img src="../../diagrams/rendered/17_parcel_state_machine.svg" alt="Parcel state machine"><figcaption>Figure 17 — Parcel lifecycle state diagram.</figcaption></figure>
+
+<h2>4. Architecture proposal</h2>
+<h3>Proposal: microservices with an API gateway and a read-only GraphQL query service</h3>
+<p>The system is split into four business services by business capability, plus an edge gateway, a read-only GraphQL query service and an optional AI assistant service. Each business service is a Spring Boot 4.1 / Java 21 application with its own database. The browser application is a React 19 + TypeScript single-page application served by nginx.</p>
+<h3>Justification</h3>
+<ul>
+  <li><b>Clear ownership for a nine-person team.</b> Each pair owns features inside a service with its own schema, so work proceeds in parallel without shared-table conflicts.</li>
+  <li><b>The brief needs both synchronous and asynchronous integration.</b> Status changes must fan out to e-mail, merchant webhooks and live tracking without slowing the courier's request; independent services with Kafka make that natural.</li>
+  <li><b>Different load and failure profiles.</b> Webhook retries to slow merchant systems must not affect booking or tracking; isolating Communications contains that.</li>
+  <li><b>Security boundaries.</b> Personal data (addresses, phone numbers) stays in the owning service; events and dashboards carry only what they need.</li>
+  <li><b>Trade-off considered.</b> A modular monolith would be simpler to run. We accepted more operational work (Compose and Helm for eight containers plus infrastructure) for independent deployability and to demonstrate enterprise integration patterns, which the brief assesses directly.</li>
+</ul>
+<h3>Layers</h3>
+<table>
+  <tr><th style="width:18%">Layer</th><th>Components</th><th style="width:34%">Responsibility</th></tr>
+  <tr><td>Presentation</td><td>React SPA (customer, merchant, courier, dispatcher, admin spaces; public tracking page); Spring Cloud Gateway (WebFlux) as the single entry point</td><td>UI, routing, JWT validation, CORS, rate limits, disabled-account check, problem-details errors</td></tr>
+  <tr><td>Business logic</td><td>Accounts &amp; Partners, Pricing &amp; Zones, Delivery Operations, Communications; GraphQL Query API (composition); AI assistant</td><td>Domain rules, authorization of every resource, state transitions, pricing, notifications and webhooks</td></tr>
+  <tr><td>Data</td><td>PostgreSQL 16 (one logical database and role per service), Keycloak's own PostgreSQL, MinIO (private proof photos), Kafka 4.2 (event log)</td><td>Durable state, private object storage, retained status events</td></tr>
+</table>
+<figure><img src="../../diagrams/rendered/05_system_context.svg" alt="System context"><figcaption>Figure 05 — System context.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/06_logical_architecture.svg" alt="Logical architecture"><figcaption>Figure 06 — Logical container architecture.</figcaption></figure>
+
+<h3>Figure A — Implemented containers</h3>
+<div class="diagram">
+  <div class="tier-label">Presentation</div>
+  <div class="tier cols-3">
+    <div class="box edge"><b>React SPA (nginx) :3000</b>React 19, TypeScript, TanStack Query, keycloak-js (PKCE)</div>
+    <div class="box ext"><b>Merchant system</b>REST with <code>X-API-Key</code>; receives signed webhooks</div>
+    <div class="box ext"><b>Keycloak 26 :8090</b>OIDC, Google broker, realm roles</div>
+  </div>
+  <div class="arrow">HTTPS REST · GraphQL · SSE (Bearer JWT or API key) ↓</div>
+  <div class="tier cols-1"><div class="box edge"><b>Spring Cloud Gateway :8080</b>JWT validation, API-key filter, routing, CORS, rate limits, disabled-account check, Problem Details</div></div>
+  <div class="arrow">REST / GraphQL ↓ &nbsp;&nbsp;&nbsp; gRPC (mutual service identity, deadlines) between services</div>
+  <div class="tier-label">Business logic</div>
+  <div class="tier cols-3">
+    <div class="box"><b>Accounts &amp; Partners :8081</b>profiles, staff, merchants, API keys, courier eligibility</div>
+    <div class="box"><b>Pricing &amp; Zones :8082</b>zones, versioned rate cards, quotes (Strategy)</div>
+    <div class="box"><b>Delivery Operations :8083</b>booking, assignments, lifecycle, proof, receipts, outbox, SSE</div>
+    <div class="box"><b>Communications :8084</b>Kafka consumers, e-mail/SMS, webhooks with retry</div>
+    <div class="box"><b>GraphQL Query API :8085</b>read-only dashboards over gRPC</div>
+    <div class="box"><b>AI assistant :8086</b>Gemini function calling, MCP endpoint</div>
+  </div>
+  <div class="arrow">↓ own data only</div>
+  <div class="tier-label">Data and messaging</div>
+  <div class="tier cols-5">
+    <div class="box data"><b>Accounts DB</b>PostgreSQL 16</div>
+    <div class="box data"><b>Business DB server</b>pricing_db, delivery_db, communications_db (separate roles)</div>
+    <div class="box data"><b>Kafka 4.2</b><code>parcel.lifecycle.v1</code> + DLT</div>
+    <div class="box data"><b>MinIO</b>private proof-of-delivery photos</div>
+    <div class="box data"><b>Mailpit</b>SMTP sink (local)</div>
+  </div>
+</div>
+<p class="muted" style="font-size:8.6pt">Figure A — Containers as run by <code>platform/compose/start.sh</code>. Ports are the local loopback ports.</p>
+
+<h3>Technology choices</h3>
+<table>
+  <tr><th style="width:22%">Concern</th><th>Choice</th><th style="width:40%">Reason</th></tr>
+  <tr><td>Frontend</td><td>React 19, TypeScript 6, Vite 8, TanStack Query, React Router</td><td>Typed, testable SPA; query caching and refetch for dashboards</td></tr>
+  <tr><td>Backend</td><td>Spring Boot 4.1, Java 21, Spring Security resource servers, Spring Data JPA, Flyway</td><td>Mature security and persistence; versioned migrations</td></tr>
+  <tr><td>Identity</td><td>Keycloak 26 with Google identity provider; Authorization Code + PKCE</td><td>Standards-based OAuth 2.0 / OIDC with social login, no passwords in our services</td></tr>
+  <tr><td>Internal calls</td><td>gRPC with Protobuf contracts and service tokens</td><td>Typed contracts, deadlines, efficient service-to-service reads</td></tr>
+  <tr><td>Events</td><td>Apache Kafka with a transactional outbox</td><td>Durable, replayable fan-out to independent consumers</td></tr>
+  <tr><td>Real time</td><td>Server-sent events</td><td>One-way status push is all tracking needs; works through the gateway with a bearer token</td></tr>
+  <tr><td>Containers</td><td>Docker, Docker Compose; Kubernetes with Helm (bonus)</td><td>Reproducible local run and a cluster deployment path</td></tr>
+</table>
+
+<h2>5. Integration design</h2>
+<table>
+  <tr><th style="width:21%">Pattern</th><th style="width:33%">Where it is used</th><th>Why</th></tr>
+  <tr><td>Request/reply (REST)</td><td>Browser and merchant systems → gateway → services: quotes, bookings, status updates, assignments, receipts, public tracking</td><td>Commands need an immediate, validated answer; REST is universal for browsers and merchant integrations. All paths are versioned under <code>/api/v1</code>.</td></tr>
+  <tr><td>Request/reply (gRPC)</td><td>Delivery → Pricing (validate quote), Delivery → Accounts (courier eligibility, merchant approval), GraphQL → all services, gateway → Accounts (API key validation)</td><td>Typed Protobuf contracts and deadlines for internal checks that must complete inside a request.</td></tr>
+  <tr><td>API gateway</td><td>Spring Cloud Gateway in front of all services</td><td>One entry point for authentication, CORS, rate limiting and routing; services stay off the public network.</td></tr>
+  <tr><td>Query composition</td><td>GraphQL Query API for customer, merchant, dispatcher and admin dashboards</td><td>One round trip for a dashboard that spans several services; strictly read-only and never touches databases directly.</td></tr>
+  <tr><td>Publish/subscribe via a message broker</td><td>Delivery publishes <code>parcel.status.changed.v1</code> to Kafka; Communications (notifications, webhooks) and Delivery's tracking relay subscribe in separate consumer groups</td><td>Status changes trigger several independent reactions without the courier's request waiting for them; consumers can fail and catch up.</td></tr>
+  <tr><td>Transactional outbox</td><td>Delivery writes the parcel change, history and an outbox row in one transaction; a relay publishes to Kafka</td><td>No lost or phantom events when the database or broker fails between the two writes.</td></tr>
+  <tr><td>Idempotent receiver</td><td><code>Idempotency-Key</code> on bookings; <code>consumed_events</code> in Communications</td><td>Safe retries: at-least-once delivery never books twice or e-mails twice.</td></tr>
+  <tr><td>Dead letter channel</td><td><code>parcel.lifecycle.v1.dlt</code> and a poison-event quarantine with admin replay</td><td>Bad messages are parked and inspected instead of blocking the partition.</td></tr>
+  <tr><td>Webhook callback with retry</td><td>Communications → merchant HTTPS endpoint, HMAC-SHA256 signed, up to 5 attempts with exponential backoff, then EXHAUSTED</td><td>Push updates to merchants who cannot poll; signatures and timestamps prevent forgery and replay.</td></tr>
+  <tr><td>Server push (SSE)</td><td>Delivery → browser through the gateway for live tracking</td><td>Simple one-way stream; on reconnect the client refreshes from REST so it never shows stale state.</td></tr>
+</table>
+<figure><img src="../../diagrams/rendered/18_kafka_sse_topology.svg" alt="Kafka and SSE topology"><figcaption>Figure 18 — Kafka reliability (outbox, consumer groups, DLT) and SSE fan-out.</figcaption></figure>
+<div class="note">Events carry identifiers, statuses and coarse zone names only. Street addresses, recipient names and phone numbers never enter Kafka; Communications fetches allowed contact details from Accounts over gRPC when it needs to notify someone.</div>
+
+<h2>6. Key flows</h2>
+<h3>6.1 Creating a delivery</h3>
+<p>The customer gets a quote from Pricing (fixed for 15 minutes, Standard or Same Day). On booking, Delivery validates the quote over gRPC, then in one transaction stores the parcel with a price snapshot, the first history row, an idempotency record and an outbox event, and returns a tracking number. Repeating the same <code>Idempotency-Key</code> returns the original booking; a used quote is refused with 409.</p>
+<figure><img src="../../diagrams/rendered/07_quote_booking_activity.svg" alt="Quote and booking activity"><figcaption>Figure 07 — Customer quote and booking activity.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/10_customer_delivery_sequence.svg" alt="Customer delivery sequence"><figcaption>Figure 10 — Customer delivery booking sequence.</figcaption></figure>
+<h3>6.2 Merchant API order creation</h3>
+<p>The merchant system sends <code>X-API-Key</code>. The gateway validates the key with Accounts (hash lookup, scope, expiry, approved merchant), then forwards the request with the merchant tenant. The merchant prices the order and books it with an <code>Idempotency-Key</code>; the order appears in the merchant dashboard and status changes are pushed back by webhook (6.3).</p>
+<figure><img src="../../diagrams/rendered/11_merchant_order_sequence.svg" alt="Merchant order sequence"><figcaption>Figure 11 — Merchant order API sequence.</figcaption></figure>
+<h3>6.3 Courier status update triggering notifications</h3>
+<p>The courier's update is checked against their active assignment, the allowed transition and the expected version; DELIVERED needs a stored proof photo. The change and its outbox event commit together. Kafka then delivers the event to the notification consumer (e-mail, mock SMS), the webhook consumer (signed callbacks with retry) and the tracking relay (SSE to open browsers).</p>
+<figure><img src="../../diagrams/rendered/09_status_event_activity.svg" alt="Status event activity"><figcaption>Figure 09 — Courier status, Kafka and notifications activity.</figcaption></figure>
+<figure><img src="../../diagrams/rendered/12_courier_status_sequence.svg" alt="Courier status sequence"><figcaption>Figure 12 — Courier status update and webhook sequence.</figcaption></figure>
+<h3>6.4 OAuth 2.0 / OpenID Connect login</h3>
+<p>The SPA starts Authorization Code with PKCE at Keycloak; “Continue with Google” adds the Google identity-provider hint, and Keycloak brokers the Google login. Keycloak returns a code to the SPA callback, which exchanges it for short-lived tokens kept in memory only. Every API call sends the access token; the gateway and each service validate issuer, signature, audience, expiry and roles, and services also check resource ownership.</p>
+<figure><img src="../../diagrams/rendered/13_google_oidc_sequence.svg" alt="Google OIDC sequence"><figcaption>Figure 13 — Google login via Keycloak sequence.</figcaption></figure>
+<h3>6.5 Dispatcher assignment</h3>
+<p>The dispatcher selects an unassigned parcel and an eligible courier (checked with Accounts). One active assignment per parcel is enforced by the database. Before pickup the dispatcher can reassign or unassign; each change is audited.</p>
+<figure><img src="../../diagrams/rendered/08_assignment_activity.svg" alt="Assignment activity"><figcaption>Figure 08 — Dispatcher courier assignment activity.</figcaption></figure>
+
+<h2>7. Security and personal-data design</h2>
+<h3>Authentication and authorization</h3>
+<ul>
+  <li>Keycloak issues JWTs; the SPA is a public client using PKCE, state and nonce, with tokens in memory only (no local storage).</li>
+  <li>Defence in depth: the gateway checks the token and role per route; each service validates the token again and enforces ownership (a customer sees only their parcels, a courier only assigned parcels, a merchant only its tenant).</li>
+  <li>Service-to-service gRPC calls carry a service token plus the delegated user, so a service cannot be used to bypass user permissions.</li>
+  <li>An admin can disable a user; the gateway refuses that user's still-valid tokens within 20 seconds.</li>
+</ul>
+<h3>Role-based access (summary)</h3>
+<table>
+  <tr><th style="width:16%">Role</th><th>Allowed</th></tr>
+  <tr><td>Public</td><td>Public tracking by number (no addresses), zone list, price quotes, AI assistant (public tools only)</td></tr>
+  <tr><td>Customer</td><td>Own profile, bookings, history, receipts, live tracking stream</td></tr>
+  <tr><td>Merchant</td><td>Own merchant profile, API keys, webhooks, orders, dashboard (approved merchants only for orders and keys)</td></tr>
+  <tr><td>Courier</td><td>Own assignments, status updates and proof upload on assigned parcels only</td></tr>
+  <tr><td>Dispatcher</td><td>Unassigned queue, assign/reassign/unassign, courier workloads, reports for assigned zones</td></tr>
+  <tr><td>Admin</td><td>Everything a dispatcher can do, plus users, staff, merchant approval, zones and pricing, platform reports</td></tr>
+</table>
+<h3>Personal data and secrets</h3>
+<ul>
+  <li>Input validation on every request DTO (Bean Validation) and in the UI; errors use RFC 9457 Problem Details and never echo input or internal details.</li>
+  <li>Passwords are hashed by Keycloak and never handled by our services; merchant API keys are stored as hashes and shown once.</li>
+  <li>No addresses or phone numbers in logs or Kafka events; public tracking shows coarse zone names only; proof photos are private objects in MinIO.</li>
+  <li>Webhooks: HTTPS only, SSRF checks (no loopback or private addresses), HMAC signatures with timestamps, secrets encrypted at rest and rotatable.</li>
+  <li>All secrets come from environment variables; the Compose file refuses to start without them and has no built-in fallback values.</li>
+</ul>
+
+<h2>8. Design patterns and principles</h2>
+<table>
+  <tr><th style="width:22%">Pattern / principle</th><th>Where in the code</th></tr>
+  <tr><td>Repository</td><td>Spring Data repositories per aggregate, e.g. <code>ParcelRepository</code>, <code>DeliveryAssignmentRepository</code>, <code>WebhookSubscriptionRepository</code>; services never share repositories across databases.</td></tr>
+  <tr><td>Strategy (pricing)</td><td><code>PricingStrategy</code> interface with <code>TieredWeightPricingStrategy</code>, selected in <code>PricingConfiguration</code> and used by <code>PricingCalculationService</code>; a new tariff model is a new strategy, not an edit.</td></tr>
+  <tr><td>Observer / publish-subscribe</td><td>Kafka consumers <code>ParcelLifecycleKafkaConsumer</code> and <code>WebhookLifecycleKafkaConsumer</code> react to status events; <code>ParcelSseConnectionManager</code> notifies open browser streams.</td></tr>
+  <tr><td>Transactional outbox</td><td><code>OutboxEventFactory</code> and <code>KafkaOutboxRelay</code> in Delivery.</td></tr>
+  <tr><td>Adapter / ports and adapters</td><td><code>KeycloakIdentityAdapter</code> (Keycloak admin API), gRPC clients such as <code>GrpcCourierEligibilityClient</code>, proof storage adapter for MinIO.</td></tr>
+  <tr><td>Facade</td><td>The GraphQL Query API hides several gRPC calls behind one dashboard query; the gateway is the single facade for clients.</td></tr>
+  <tr><td>State machine</td><td><code>ParcelLifecycleTransitionContract</code> defines allowed transitions and stage-specific failure reasons.</td></tr>
+  <tr><td>Retry with exponential backoff</td><td>Webhook dispatcher (<code>WebhookDispatchProperties</code>, response classification for retryable failures).</td></tr>
+  <tr><td>Centralised error handling</td><td><code>@RestControllerAdvice</code> handlers returning Problem Details in every service and at the gateway.</td></tr>
+  <tr><td>SOLID</td><td>Single responsibility per service and per class (controllers translate, services decide, repositories persist); open/closed via strategies and validators; dependency inversion through constructor-injected interfaces, which is what makes the services unit-testable with mocks.</td></tr>
+  <tr><td>DRY</td><td>Shared <code>security-adapter</code> library for JWT, service identity and gRPC security across services; shared Protobuf contracts in <code>contracts/grpc</code>; shared UI components and API clients in the frontend.</td></tr>
+  <tr><td>Optimistic concurrency</td><td>Expected-version checks on status changes and assignments; stale writes get 409.</td></tr>
+</table>
+
+<h2>9. Deployment</h2>
+<h3>Docker Compose (local)</h3>
+<p>Every service has a Dockerfile; <code>platform/compose/compose.yaml</code> runs the whole system, including the PostgreSQL servers, Kafka, MinIO, Mailpit and Keycloak. <code>start.sh</code> checks capacity and ports, generates per-installation secrets, starts infrastructure first, imports the Keycloak realm, then starts the services and waits for health checks. All ports bind to loopback only.</p>
+<figure><img src="../../diagrams/rendered/20_compose_target.svg" alt="Compose target"><figcaption>Figure 20 — Docker Compose topology.</figcaption></figure>
+<h3>Kubernetes (bonus)</h3>
+<p>A Helm chart in <code>platform/kubernetes/helm/swiftdrop</code> deploys the frontend, all services, the databases and Kafka with ConfigMaps, Secrets, Services, an Ingress, NetworkPolicies, PodDisruptionBudgets and service accounts. A gated Azure K3s path (Terraform) and a local k3d path are documented.</p>
+<figure><img src="../../diagrams/rendered/19_kubernetes_bonus.svg" alt="Kubernetes deployment"><figcaption>Figure 19 — Kubernetes deployment.</figcaption></figure>
+
+<h2>10. AI delivery assistant and MCP</h2>
+<p>The assistant answers questions such as “Where is my parcel?” or “How much to send 2 kg to Kandy?” by calling the same backend APIs as the application. It runs as its own service behind the gateway, uses Google Gemini with function calling, and exposes the same tools over the Model Context Protocol (JSON-RPC) for other AI clients.</p>
+<h3>Figure B — Assistant request flow</h3>
+<div class="diagram">
+  <div class="tier cols-4">
+    <div class="box edge"><b>Help Assistant panel</b>React; sends the conversation and, if signed in, the user's token</div>
+    <div class="box edge"><b>Gateway</b><code>/api/v1/assistant/chat</code>, rate limited, 60 s route timeout</div>
+    <div class="box"><b>AI assistant service</b>builds the prompt, offers allowed tools, loops tool calls (max 4 rounds)</div>
+    <div class="box ext"><b>Google Gemini</b>chooses tools and writes the answer</div>
+  </div>
+  <div class="arrow">tools called by the assistant service with the caller's own token ↓</div>
+  <div class="tier cols-4">
+    <div class="box"><b>track_parcel</b>public tracking (Delivery)</div>
+    <div class="box"><b>get_quote</b>quote (Pricing), 0.01–30 kg, Standard or Same Day</div>
+    <div class="box"><b>list_zones</b>active zones (Pricing)</div>
+    <div class="box"><b>list_my_parcels</b>signed-in users only; addresses removed before the model sees results</div>
+  </div>
+  <div class="arrow">same tools also served at <code>/api/v1/assistant/mcp</code> (MCP JSON-RPC) for external AI clients</div>
+</div>
+<ul>
+  <li>Read-only by design: the assistant cannot book, cancel or change anything.</li>
+  <li>Anonymous users get public tools only; personal tools use the caller's own token, so normal authorization applies.</li>
+  <li>If Gemini is not configured or unreachable, the panel falls back to keyword answers; if Gemini is rate-limited, it says so.</li>
+</ul>
+
+<h2>11. Architecture decisions (ADR summary)</h2>
+<table>
+  <tr><th style="width:12%">ADR</th><th style="width:36%">Decision</th><th>Consequence</th></tr>
+  <tr><td>0001</td><td>Independent business services in one monorepo</td><td>Separate deployables and databases; shared contracts and tooling in one place</td></tr>
+  <tr><td>0002</td><td>React SPA with Keycloak identity</td><td>Standards-based login incl. Google; no password handling in our code</td></tr>
+  <tr><td>0003</td><td>Hybrid edge: REST commands plus read-only GraphQL</td><td>Simple commands, efficient dashboards; GraphQL has no mutations</td></tr>
+  <tr><td>0004</td><td>gRPC for internal synchronous calls</td><td>Typed contracts with deadlines; not exposed to browsers</td></tr>
+  <tr><td>0005</td><td>Kafka for asynchronous parcel events</td><td>Independent consumers for notifications, webhooks and tracking</td></tr>
+  <tr><td>0006</td><td>Service-owned PostgreSQL with a transactional outbox</td><td>No cross-service joins; reliable event publication</td></tr>
+  <tr><td>0007</td><td>SSE for status-only real-time tracking</td><td>Simple push; REST refresh on reconnect</td></tr>
+  <tr><td>0008</td><td>Bonus scope after the login milestone</td><td>Both bonuses were delivered later (Kubernetes/Helm and the AI assistant)</td></tr>
+  <tr><td>0009</td><td>No custom e-mail OTP codes</td><td>Keycloak's signed e-mail verification links and optional authenticator-app TOTP are used instead</td></tr>
+  <tr><td>0010</td><td>Merchant machine-credential lifecycle</td><td>Hashed, scoped, expiring, revocable API keys bound to an approved merchant</td></tr>
+  <tr><td>0011</td><td>Zero-cost hosting and an Azure allowlist</td><td>Cloud deployment is gated and opt-in</td></tr>
+  <tr><td>0012</td><td>Database recovery targets for local hosting</td><td>Documented RPO/RTO and backup approach</td></tr>
+</table>
+
+<h2>Appendix: team responsibilities</h2>
+<p>The lecturer approved a nine-member team. Ownership is by feature pair; services are shared across pairs, and cross-pair changes go through the owning pair's review.</p>
+<table>
+  <tr><th style="width:20%">Team</th><th style="width:25%">Members</th><th>Primary responsibilities</th></tr>
+  <tr><td>Customer</td><td>Gajanthan, Sinthuha</td><td>Customer profile and landing, quote and booking, history and tracking screens; Accounts business profiles and schema</td></tr>
+  <tr><td>Merchant</td><td>Eric, Thuvarahan</td><td>Merchant registration and approval, order API, dashboard, webhook configuration</td></tr>
+  <tr><td>Courier</td><td>Abhinaya, Vibhushan</td><td>Assigned deliveries, status changes, failure reasons, proof capture; independent security verification (Vibhushan)</td></tr>
+  <tr><td>Dispatcher / Admin</td><td>Pushmitha, HarithKeshan</td><td>Unassigned queue, assignments and workloads, zone and pricing admin, approvals and reports; staff read models</td></tr>
+  <tr><td>Platform &amp; cross-module</td><td>Suthankan1</td><td>Authentication end to end (Keycloak, Google, SPA session, gateway and service JWT security), platform and containers, integration across services, CI, Kubernetes and AI assistant bonuses</td></tr>
+</table>
+<p class="muted">Detailed per-PR evidence is in <code>docs/team/CONTRIBUTION_LOG.csv</code>; ownership rules are in <code>docs/team/OWNERSHIP.md</code>.</p>
+
+</body>
+</html>
