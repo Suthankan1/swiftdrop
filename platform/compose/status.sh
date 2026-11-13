@@ -9,7 +9,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_DIR="${REPO_ROOT}/platform/compose"
 COMPOSE_FILE="${COMPOSE_DIR}/compose.yaml"
-ENV_FILE="${COMPOSE_DIR}/.env"
+MODE="supabase"
+if [ "${1:-}" = "--local" ]; then
+  shift
+  MODE="local"
+  ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env.local-postgres}"
+  if [ ! -f "${ENV_FILE}" ]; then
+    ENV_FILE="${COMPOSE_DIR}/.env"
+  fi
+  compose() {
+    docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" "$@"
+  }
+elif [ "${1:-}" = "--check" ]; then
+  shift
+  exec python3 "${SCRIPT_DIR}/supabase.py" check "$@"
+else
+  if [ "${1:-}" = "--supabase" ]; then shift; fi
+  ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env}"
+  compose() {
+    docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_DIR}/compose.supabase.yaml" --env-file "${ENV_FILE}" "$@"
+  }
+fi
 
 echo "=============================================================================="
 echo " SwiftDrop Platform — Runtime Status & Health Audit"
@@ -26,7 +46,7 @@ echo "--------------------------------------------------------------------------
 echo " Container Memory & Resource Consumption (Host Ceiling: ~4.06 GiB)"
 echo "------------------------------------------------------------------------------"
 docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}" \
-  $(docker compose -f "${COMPOSE_FILE}" ps -q 2>/dev/null) 2>/dev/null || echo "No running containers found."
+  $(compose ps -q 2>/dev/null) 2>/dev/null || echo "No running containers found."
 
 echo ""
 echo "------------------------------------------------------------------------------"
@@ -59,7 +79,7 @@ echo "--------------------------------------------------------------------------
 container_for() {
   local service="$1"
   local id
-  id="$(docker compose -f "${COMPOSE_FILE}" ps -q "${service}" 2>/dev/null | head -n 1)"
+  id="$(compose ps -q "${service}" 2>/dev/null | head -n 1)"
   if [ -n "${id}" ]; then
     docker inspect -f '{{.Name}}' "${id}" | sed 's#^/##'
   else
@@ -80,11 +100,15 @@ probe_db() {
   fi
 }
 
-probe_db "Accounts Database" "accounts-postgres" "accounts_app" "accounts_db"
-probe_db "Keycloak Database" "keycloak-postgres" "keycloak" "keycloak_db"
-probe_db "Pricing Database" "business-postgres" "pricing_app" "pricing_db"
-probe_db "Delivery Database" "business-postgres" "delivery_app" "delivery_db"
-probe_db "Communications Database" "business-postgres" "communications_app" "communications_db"
+if [ "${MODE}" = "supabase" ]; then
+  python3 "${SCRIPT_DIR}/supabase.py" check
+else
+  probe_db "Accounts Database" "accounts-postgres" "accounts_app" "accounts_db"
+  probe_db "Keycloak Database" "keycloak-postgres" "keycloak" "keycloak_db"
+  probe_db "Pricing Database" "business-postgres" "pricing_app" "pricing_db"
+  probe_db "Delivery Database" "business-postgres" "delivery_app" "delivery_db"
+  probe_db "Communications Database" "business-postgres" "communications_app" "communications_db"
+fi
 
 if docker exec "$(container_for kafka)" /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1; then
   printf "  %-32s : [PASS] Broker responsive (PLAINTEXT://kafka:29092)\n" "Kafka KRaft Broker"

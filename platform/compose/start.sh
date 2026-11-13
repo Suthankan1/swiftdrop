@@ -10,7 +10,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_DIR="${REPO_ROOT}/platform/compose"
 COMPOSE_FILE="${COMPOSE_DIR}/compose.yaml"
-ENV_FILE="${COMPOSE_DIR}/.env"
+if [ "${1:-}" = "--local" ]; then
+  shift
+  ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env.local-postgres}"
+  if [ ! -f "${ENV_FILE}" ]; then
+    ENV_FILE="${COMPOSE_DIR}/.env"
+  fi
+else
+  # Default mode: Supabase shared databases
+  if [ "${1:-}" = "--supabase" ]; then shift; fi
+  exec python3 "${SCRIPT_DIR}/supabase.py" start "$@"
+fi
 
 echo "=============================================================================="
 echo " SwiftDrop Platform — Full-Stack Compose Runtime Startup"
@@ -69,6 +79,7 @@ if [ ! -f "${ENV_FILE}" ]; then
     sed -i 's/replace_with_local_minio_password/minio_dev_password/' "${ENV_FILE}"
   echo "  [OK] Local .env template configured."
 fi
+chmod 600 "${ENV_FILE}"
 
 # Generate per-installation secrets instead of shipping fixed values (also upgrades an older .env).
 ensure_generated_secret() {
@@ -92,6 +103,23 @@ set -a
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 set +a
+
+# External PostgreSQL requires the guarded opt-in path, never the local DB bootstrap.
+require_local_database_url() {
+  local name="$1" value="$2" expected="$3"
+  case "${value}" in
+    ""|"${expected}"|"${expected}"\?*) ;;
+    *)
+      echo "ERROR: ${name} targets an external database. Use ./platform/compose/start.sh --supabase. Nothing was started."
+      exit 1
+      ;;
+  esac
+}
+require_local_database_url ACCOUNTS_DB_URL "${ACCOUNTS_DB_URL:-}" jdbc:postgresql://accounts-postgres:5432/accounts_db
+require_local_database_url PRICING_DB_URL "${PRICING_DB_URL:-}" jdbc:postgresql://business-postgres:5432/pricing_db
+require_local_database_url DELIVERY_DB_URL "${DELIVERY_DB_URL:-}" jdbc:postgresql://business-postgres:5432/delivery_db
+require_local_database_url COMMUNICATIONS_DB_URL "${COMMUNICATIONS_DB_URL:-}" jdbc:postgresql://business-postgres:5432/communications_db
+require_local_database_url KEYCLOAK_DB_URL "${KEYCLOAK_DB_URL:-}" jdbc:postgresql://keycloak-postgres:5432/keycloak_db
 
 IMAGE_TAG="${SWIFTDROP_IMAGE_TAG:-local}"
 BUILD_FLAG=""
