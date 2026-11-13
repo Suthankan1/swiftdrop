@@ -10,6 +10,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_DIR="${REPO_ROOT}/platform/compose"
 COMPOSE_FILE="${COMPOSE_DIR}/compose.yaml"
+
+# Ensure strict owner-only permissions on Unix systems before invocation
+if [ -f "${COMPOSE_DIR}/.env" ]; then
+  chmod 600 "${COMPOSE_DIR}/.env" 2>/dev/null || true
+fi
+if [ -f "${COMPOSE_DIR}/.env.local-postgres" ]; then
+  chmod 600 "${COMPOSE_DIR}/.env.local-postgres" 2>/dev/null || true
+fi
 if [ "${1:-}" = "--local" ]; then
   shift
   ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env.local-postgres}"
