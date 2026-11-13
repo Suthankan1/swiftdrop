@@ -33,7 +33,7 @@ class CheckError(Exception):
 
 
 def read_env(path):
-    if stat.S_IMODE(path.stat().st_mode) != 0o600:
+    if os.name != "nt" and stat.S_IMODE(path.stat().st_mode) != 0o600:
         raise CheckError("Environment file must have permissions 600.")
     values = {}
     for number, line in enumerate(path.read_text().splitlines(), 1):
