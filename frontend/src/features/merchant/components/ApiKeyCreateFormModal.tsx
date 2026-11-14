@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useMerchantDialog } from './useMerchantDialog'
 import { Button } from '../../../components/ui/Button'
 import type { ApiKeyScope, CreateApiKeyRequest } from '../api/credentialsContracts'
 import { PERMITTED_API_KEY_SCOPES } from '../api/credentials'
@@ -24,6 +25,7 @@ export function ApiKeyCreateFormModal({
   onClose,
   onSubmit,
 }: ApiKeyCreateFormModalProps) {
+  const dialog = useMerchantDialog(isOpen, onClose, isSubmitting)
   const [name, setName] = useState('')
   const [scopes, setScopes] = useState<ApiKeyScope[]>(['parcels:create', 'parcels:read'])
   const [expiresInDays, setExpiresInDays] = useState<number>(90)
@@ -71,6 +73,8 @@ export function ApiKeyCreateFormModal({
       <div
         className="modal-panel"
         role="dialog"
+        ref={dialog}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="create-key-modal-heading"
         onClick={(e) => e.stopPropagation()}

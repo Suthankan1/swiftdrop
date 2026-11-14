@@ -2543,6 +2543,8 @@ ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }
 .merchant-nav-tab { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
 .merchant-order-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: 8px 0; }
 .merchant-order-detail-page .spec-value { overflow-wrap: anywhere; }
+.merchant-page .modal-actions, .merchant-modal-footer { flex-wrap: wrap; gap: 12px; }
+.merchant-page .modal-panel { min-width: 0; max-width: calc(100vw - 24px); }
 @media (max-width: 600px) {
   .merchant-sub-nav { gap: 4px; }
   .merchant-nav-tab { flex: 1 1 140px; padding: 12px 10px; }

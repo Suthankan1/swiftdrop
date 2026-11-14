@@ -301,7 +301,7 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
+        <div className="merchant-modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
           <Button type="button" variant="ghost" size="sm" onClick={handleDownloadSample}>
             📥 Download Sample Template
           </Button>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useMerchantDialog } from './useMerchantDialog'
 import type {
   WebhookDeliveryItem,
   WebhookDeliveryLogListResponse,
@@ -10,7 +11,7 @@ import { Button } from '../../../components/ui/Button'
 interface WebhookDeliveryLogsModalProps {
   subscription: WebhookSubscription
   onClose: () => void
-  fetchDeliveries: (subscriptionId: string) => Promise<WebhookDeliveryLogListResponse>
+  fetchDeliveries: (subscriptionId: string, signal?: AbortSignal) => Promise<WebhookDeliveryLogListResponse>
 }
 
 export function WebhookDeliveryLogsModal({
@@ -18,9 +19,11 @@ export function WebhookDeliveryLogsModal({
   onClose,
   fetchDeliveries,
 }: WebhookDeliveryLogsModalProps) {
+  const dialog = useMerchantDialog(true, onClose)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deliveries, setDeliveries] = useState<WebhookDeliveryItem[]>([])
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -30,13 +33,13 @@ export function WebhookDeliveryLogsModal({
       setLoading(true)
       setError(null)
       try {
-        const response = await fetchDeliveries(subscription.subscriptionId)
+        const response = await fetchDeliveries(subscription.subscriptionId, controller.signal)
         if (active) {
           setDeliveries(response.deliveries)
         }
-      } catch (err) {
+      } catch {
         if (active) {
-          setError(err instanceof Error ? err.message : 'Failed to retrieve delivery execution logs.')
+          setError('Delivery logs could not be retrieved. Please retry.')
         }
       } finally {
         if (active) setLoading(false)
@@ -49,7 +52,7 @@ export function WebhookDeliveryLogsModal({
       active = false
       controller.abort()
     }
-  }, [subscription.subscriptionId, fetchDeliveries])
+  }, [subscription.subscriptionId, fetchDeliveries, attempt])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -83,6 +86,8 @@ export function WebhookDeliveryLogsModal({
       <div
         className="modal-panel modal-panel-wide"
         role="dialog"
+        ref={dialog}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="delivery-logs-title"
       >
@@ -117,14 +122,8 @@ export function WebhookDeliveryLogsModal({
             <p><strong>Failed to load delivery logs:</strong> {error}</p>
             <Button
               variant="secondary"
-              onClick={() => {
-                setLoading(true)
-                setError(null)
-                fetchDeliveries(subscription.subscriptionId)
-                  .then((res) => setDeliveries(res.deliveries))
-                  .catch((err) => setError(err instanceof Error ? err.message : 'Retry failed.'))
-                  .finally(() => setLoading(false))
-              }}
+              disabled={loading}
+              onClick={() => { if (!loading) setAttempt(value => value + 1) }}
             >
               Retry Loading
             </Button>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { merchantReadRetry } from '../api/merchantReadRetry'
 import { useAuth } from '../../../auth/context'
@@ -43,9 +43,9 @@ export function MerchantWebhooksPage() {
   const isApproved = approvalStatus === 'APPROVED'
 
   // 2. Query registered webhook subscriptions from Communications Service
-  const commsApi = createCommunicationsApi({
+  const commsApi = useMemo(() => createCommunicationsApi({
     getAccessToken: auth.getAccessToken,
-  })
+  }), [auth.getAccessToken])
 
   const subscriptionsQuery = useQuery({
     queryKey: ['private', 'merchant', 'webhooks', subject, merchantProfile?.merchantId],
@@ -109,9 +109,8 @@ export function MerchantWebhooksPage() {
     }
   }
 
-  async function handleFetchDeliveries(subscriptionId: string): Promise<WebhookDeliveryLogListResponse> {
-    return commsApi.listDeliveries(subscriptionId, 0, 20)
-  }
+  const handleFetchDeliveries = useCallback((subscriptionId: string, signal?: AbortSignal): Promise<WebhookDeliveryLogListResponse> =>
+    commsApi.listDeliveries(subscriptionId, 0, 20, signal), [commsApi])
 
   // 5. Auth / Role Fallbacks
   if (auth.snapshot.status !== 'authenticated') {
