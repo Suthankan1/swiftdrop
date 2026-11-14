@@ -89,7 +89,7 @@ export function MerchantNewOrderPage() {
       setUncertain(false)
     } catch (error) {
       const definite = error instanceof PricingError ||
-        (error instanceof DeliveryError && ['validation-error', 'forbidden', 'expired', 'conflict'].includes(error.kind))
+        (error instanceof DeliveryError && ['validation-error', 'forbidden', 'expired'].includes(error.kind))
       if (definite) { attempt.current = null; setQuote(null) }
       setUncertain(!definite && !!quote)
       setProblem(definite ? 'The request was rejected. Check the form and review a fresh quote.'

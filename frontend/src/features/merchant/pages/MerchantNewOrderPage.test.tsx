@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TestProviders, anonymousAuth } from '../../../test/authFixture'
 import { MerchantNewOrderPage } from './MerchantNewOrderPage'
+import { DeliveryError } from '../../customer/api/delivery'
 
 const api = vi.hoisted(() => ({ listZones: vi.fn(), calculateQuote: vi.fn(), bookParcel: vi.fn() }))
 vi.mock('../../customer/api/pricing', async importOriginal => ({
@@ -45,8 +46,11 @@ describe('merchant quote confirmation', () => {
     expect(api.bookParcel).not.toHaveBeenCalled()
   })
 
-  it('books only on confirmation and reuses the quote and key after an uncertain outcome', async () => {
-    api.bookParcel.mockRejectedValueOnce(new Error('network'))
+  it.each([
+    ['a lost response', new Error('network')],
+    ['an in-progress conflict', new DeliveryError('conflict', 'Request is still being processed')],
+  ])('books only on confirmation and keeps the quote/key after %s', async (_label, error) => {
+    api.bookParcel.mockRejectedValueOnce(error)
     const user = await fillOrder()
     await user.click(screen.getByRole('button', { name: 'Review price' }))
     await user.click(await screen.findByRole('button', { name: 'Confirm and book order' }))

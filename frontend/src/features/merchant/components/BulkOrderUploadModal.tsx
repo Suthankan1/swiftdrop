@@ -109,7 +109,7 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
         booked++
         setOutcomes((current) => ({ ...current, [row.rowNumber]: { state: 'booked', trackingNumber: parcel.trackingNumber } }))
       } catch (error) {
-        const definite = error instanceof DeliveryError && ['validation-error', 'forbidden', 'expired', 'conflict'].includes(error.kind)
+        const definite = error instanceof DeliveryError && ['validation-error', 'forbidden', 'expired'].includes(error.kind)
         if (definite) attempts.current.delete(orderKey) // fresh quote only after a definite rejection
         const message = error instanceof Error && error.message ? error.message : 'Booking failed.'
         setOutcomes((current) => ({
