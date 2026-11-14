@@ -396,4 +396,75 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(screen.queryByText('SWD-20261027-ALPH1')).not.toBeInTheDocument()
     expect(screen.queryByText(/Alpha Wholesale Ltd/i)).not.toBeInTheDocument()
   })
+
+  it('automatically loads orders on landing without requiring manual button click and keeps summary cards and search in sync', async () => {
+    const emptyGraphQLData: MerchantDashboardData = {
+      merchantId: 'm-alpha-1111-2222',
+      businessName: 'Alpha Wholesale Ltd',
+      status: 'APPROVED',
+      totalOrdersCount: 0,
+      activeOrdersCount: 0,
+      deliveredOrdersCount: 0,
+      failedOrdersCount: 0,
+      recentOrders: [],
+    }
+
+    const mockParcelsResponse = {
+      items: [
+        {
+          parcelId: 'parcel-auto-1',
+          trackingNumber: 'SWD-20261114-AUTO1',
+          currentStatus: 'DELIVERED',
+          weightKg: 5.0,
+          amountMinorUnits: 140250,
+          currency: 'LKR',
+          createdAt: '2026-11-14T06:55:21Z',
+          updatedAt: '2026-11-14T07:15:00Z',
+        },
+      ],
+      currentPage: 0,
+      pageSize: 100,
+      totalElements: 1,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+    }
+
+    const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+      const urlStr = url.toString()
+      if (urlStr.includes('/graphql')) {
+        return new Response(JSON.stringify({ data: { merchantDashboard: emptyGraphQLData } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (urlStr.includes('/api/v1/parcels')) {
+        return new Response(JSON.stringify(mockParcelsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response(null, { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const auth = authenticatedMerchant(merchantA)
+    renderOrdersDashboard(auth)
+
+    // Package appears automatically without clicking "Load all orders"
+    expect(await screen.findByText('SWD-20261114-AUTO1')).toBeInTheDocument()
+    expect(screen.getByText('5.00 kg')).toBeInTheDocument()
+
+    // Summary cards reflect the loaded order
+    expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('1')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /^delivered/i })).getByText('1')).toBeInTheDocument()
+
+    // Status line shows all orders loaded
+    expect(screen.getByText(/showing all 1 orders/i)).toBeInTheDocument()
+
+    // Search bar works immediately on auto-loaded orders
+    const searchInput = screen.getByRole('searchbox', { name: /search orders/i })
+    await userEvent.setup().type(searchInput, 'AUTO1')
+    expect(screen.getByText('SWD-20261114-AUTO1')).toBeInTheDocument()
+  })
 })
