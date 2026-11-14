@@ -105,6 +105,18 @@ public class DefaultParcelQueryService implements ParcelQueryService {
         return mapToDetailResponse(parcel);
     }
 
+    public ParcelDetailResponse getHistoricalCourierParcelDetail(UUID parcelId, Jwt jwt) {
+        Objects.requireNonNull(parcelId, "parcelId cannot be null");
+        Objects.requireNonNull(jwt, "jwt cannot be null");
+
+        Parcel parcel = parcelRepository.findById(parcelId)
+                .orElseThrow(() -> new ParcelNotFoundException(parcelId));
+        if (!authorizationService.isAuthorizedToReadHistoricalCourier(jwt, parcel)) {
+            throw new ParcelAccessDeniedException(parcelId);
+        }
+        return mapToDetailResponse(parcel, null);
+    }
+
     /**
      * Retrieves append-only status transition history for a parcel in deterministic version order.
      * Enforces identical object-level authorization before returning historical records.

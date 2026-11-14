@@ -32,6 +32,8 @@ export interface AssignmentResponse {
   assignedAt: string
   assignedBy: string
   newParcelVersion?: number | null
+  endedAt?: string | null
+  reason?: string | null
 }
 
 export interface ParcelDetailResponse {
