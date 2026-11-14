@@ -181,4 +181,37 @@ describe('in-memory Keycloak session', () => {
     tab1.destroy()
     tab2.destroy()
   })
+
+  it('configures silentCheckSsoFallback: false and 10s message timeout to prevent page reload redirects', async () => {
+    const { session, client } = fixture()
+    await session.initialize()
+    expect(client.init).toHaveBeenCalledWith(
+      expect.objectContaining({
+        silentCheckSsoFallback: false,
+        messageReceiveTimeout: 10000,
+        flow: 'standard',
+        pkceMethod: 'S256',
+        useNonce: true,
+        logoutMethod: 'POST',
+      }),
+    )
+    session.destroy()
+  })
+
+  it('ignores cross-tab AUTH_SYNC_LOGIN while session initialization is in-flight (loading state)', async () => {
+    const { session, client } = fixture(false)
+    // session is created but not yet initialized, status is 'loading'
+    expect(session.getState().snapshot.status).toBe('loading')
+
+    const spy = new BroadcastChannel('swiftdrop_auth_channel')
+    spy.postMessage({ type: 'AUTH_SYNC_LOGIN', subject: 'other-user' })
+    await new Promise((r) => setTimeout(r, 20))
+
+    // Must NOT trigger client.login because tab was still in loading state
+    expect(client.login).not.toHaveBeenCalled()
+    expect(session.getState().snapshot.status).toBe('loading')
+
+    spy.close()
+    session.destroy()
+  })
 })

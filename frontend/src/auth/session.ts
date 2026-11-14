@@ -73,6 +73,7 @@ export class AuthSession {
   }
   private handleChannelMessage(data: AuthSyncMessage) {
     if (!data || typeof data !== 'object') return
+    if (this.state.snapshot.status === 'loading') return
     if (data.type === 'AUTH_SYNC_LOGIN') {
       if (this.signingOut || this.state.snapshot.subject === data.subject) return
       // Another tab signed in: sign this tab in silently through Keycloak's SSO session (no prompt).
@@ -81,7 +82,7 @@ export class AuthSession {
       if (typeof login !== 'function') return
       // Never let a cross-tab sign-in attempt surface as an unhandled error; this tab stays signed out instead.
       Promise.resolve()
-        .then(() => this.client.login({ prompt: 'none', redirectUri: window.location.href }))
+        .then(() => this.client.login({ prompt: 'none', redirectUri: this.redirectUri }))
         .catch(() => undefined)
     } else if (data.type === 'AUTH_SYNC_LOGOUT') {
       this.clearCredentials()
@@ -129,15 +130,16 @@ export class AuthSession {
       const initOptions: Record<string, unknown> = {
         flow: 'standard', pkceMethod: 'S256', responseMode: 'query', useNonce: true,
         checkLoginIframe: false, enableLogging: false, logoutMethod: 'POST',
-        redirectUri: this.redirectUri, messageReceiveTimeout: 5000,
+        redirectUri: this.redirectUri, messageReceiveTimeout: 10000,
+        silentCheckSsoFallback: false,
       }
       if (!isTestEnv && !callback) {
         initOptions.onLoad = 'check-sso'
         initOptions.silentCheckSsoRedirectUri = `${origin}/silent-check-sso.html`
       }
       const initPromise = this.client.init(initOptions as Parameters<Keycloak['init']>[0])
-      // A real callback exchanges the code with Keycloak and may be slow; only the silent check gets 3 s.
-      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), callback ? 30_000 : 3000))
+      // A real callback exchanges the code with Keycloak and may be slow; silent check gets 10 s.
+      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), callback ? 30_000 : 10_000))
       const authenticated = await Promise.race([initPromise, timeoutPromise])
       if (generation !== this.generation) { this.clearCredentials(); return }
       if (!authenticated || !this.accept()) {
