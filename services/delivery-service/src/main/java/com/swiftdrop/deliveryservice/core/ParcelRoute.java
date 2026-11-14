@@ -34,9 +34,27 @@ public record ParcelRoute(String pickupZoneName, String dropoffZoneName, String 
             if (w != null && !w.isNull() && !w.asText().isBlank()) {
                 weight = new BigDecimal(w.asText());
             }
-            return new ParcelRoute(text(node, "pickupZoneName"), text(node, "dropoffZoneName"),
+            String pickupZone = text(node, "pickupZone");
+            String dropoffZone = text(node, "dropoffZone");
+            String pickupZoneName = text(node, "pickupZoneName");
+            String dropoffZoneName = text(node, "dropoffZoneName");
+
+            if (pickupZone == null && pickupZoneName != null) {
+                String upper = pickupZoneName.toUpperCase(java.util.Locale.ROOT);
+                if (upper.contains("COLOMBO")) pickupZone = "ZONE_1";
+                else if (upper.contains("WESTERN")) pickupZone = "ZONE_2";
+                else if (upper.contains("NATIONAL") || upper.contains("ISLAND")) pickupZone = "ZONE_3";
+            }
+            if (dropoffZone == null && dropoffZoneName != null) {
+                String upper = dropoffZoneName.toUpperCase(java.util.Locale.ROOT);
+                if (upper.contains("COLOMBO")) dropoffZone = "ZONE_1";
+                else if (upper.contains("WESTERN")) dropoffZone = "ZONE_2";
+                else if (upper.contains("NATIONAL") || upper.contains("ISLAND")) dropoffZone = "ZONE_3";
+            }
+
+            return new ParcelRoute(pickupZoneName, dropoffZoneName,
                     text(node, "sizeCategory"), weight, text(node, "dimensionsCm"),
-                    text(node, "pickupZone"), text(node, "dropoffZone"));
+                    pickupZone, dropoffZone);
         } catch (RuntimeException ex) {
             return UNKNOWN;
         }

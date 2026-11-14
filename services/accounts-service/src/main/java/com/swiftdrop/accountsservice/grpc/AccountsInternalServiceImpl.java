@@ -466,6 +466,12 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
         List<StaffProfile> couriers;
         if (!zoneFilter.isBlank()) {
             couriers = staffProfiles.findByRoleAndAssignedZone(StaffRole.COURIER, zoneFilter);
+            if (couriers.isEmpty()) {
+                List<StaffProfile> allCouriers = staffProfiles.findByRole(StaffRole.COURIER);
+                couriers = allCouriers.stream()
+                        .filter(c -> isZoneMatch(c.getAssignedZone(), zoneFilter))
+                        .toList();
+            }
         } else {
             couriers = staffProfiles.findByRole(StaffRole.COURIER);
         }
@@ -796,5 +802,22 @@ public class AccountsInternalServiceImpl extends AccountsInternalServiceGrpc.Acc
                 .setRejectionReason(rejectionReason)
                 .build());
         responseObserver.onCompleted();
+    }
+
+    private static boolean isZoneMatch(String courierZone, String filterZone) {
+        if (courierZone == null || filterZone == null) return false;
+        if (courierZone.equalsIgnoreCase(filterZone)) return true;
+        String c = canonicalZone(courierZone);
+        String f = canonicalZone(filterZone);
+        return !c.isEmpty() && c.equalsIgnoreCase(f);
+    }
+
+    private static String canonicalZone(String zone) {
+        if (zone == null || zone.isBlank()) return "";
+        String upper = zone.trim().toUpperCase(java.util.Locale.ROOT);
+        if (upper.equals("ZONE_1") || upper.equals("ZONE-1") || upper.contains("COLOMBO") || upper.contains("CMB")) return "ZONE_1";
+        if (upper.equals("ZONE_2") || upper.equals("ZONE-2") || upper.contains("WESTERN")) return "ZONE_2";
+        if (upper.equals("ZONE_3") || upper.equals("ZONE-3") || upper.contains("NATIONAL") || upper.contains("ISLAND")) return "ZONE_3";
+        return upper;
     }
 }
