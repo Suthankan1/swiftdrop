@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { merchantReadRetry } from '../api/merchantReadRetry'
 import { useAuth } from '../../../auth/context'
 import { AccountsError, createAccountsApi, normalizeApprovalStatus } from '../api/merchant'
 import { createCommunicationsApi, CommunicationsError } from '../api/webhooks'
@@ -32,6 +33,8 @@ export function MerchantWebhooksPage() {
       if (signal.aborted || profile.keycloakSub !== subject) throw new AccountsError('forbidden')
       return profile
     },
+    retry: merchantReadRetry,
+    retryDelay: attempt => 250 * 2 ** attempt,
     gcTime: 0,
   })
 
@@ -45,8 +48,11 @@ export function MerchantWebhooksPage() {
   })
 
   const subscriptionsQuery = useQuery({
-    queryKey: ['merchant', 'webhooks', merchantProfile?.merchantId],
+    queryKey: ['private', 'merchant', 'webhooks', subject, merchantProfile?.merchantId],
     enabled: isApproved && Boolean(merchantProfile?.merchantId),
+    retry: merchantReadRetry,
+    retryDelay: attempt => 250 * 2 ** attempt,
+    gcTime: 0,
     queryFn: async ({ signal }) => {
       return commsApi.listSubscriptions(signal)
     },
@@ -65,6 +71,7 @@ export function MerchantWebhooksPage() {
 
   // 4. Mutation Handlers
   async function handleCreateSubscription(request: CreateWebhookSubscriptionRequest) {
+    if (formSubmitting) return
     setFormSubmitting(true)
     setFormApiError(null)
     try {
@@ -74,7 +81,7 @@ export function MerchantWebhooksPage() {
         endpointUrl: created.httpsUrl,
       })
       setShowForm(false)
-      await queryClient.invalidateQueries({ queryKey: ['merchant', 'webhooks', merchantProfile?.merchantId] })
+      await queryClient.invalidateQueries({ queryKey: ['private', 'merchant', 'webhooks', subject, merchantProfile?.merchantId] })
     } catch (err) {
       if (err instanceof CommunicationsError) {
         setFormApiError(err.message)
@@ -87,13 +94,13 @@ export function MerchantWebhooksPage() {
   }
 
   async function handleConfirmDelete() {
-    if (!deletingSub) return
+    if (!deletingSub || isDeleting) return
     setIsDeleting(true)
     setActionError(null)
     try {
       await commsApi.deleteSubscription(deletingSub.subscriptionId)
       setDeletingSub(null)
-      await queryClient.invalidateQueries({ queryKey: ['merchant', 'webhooks', merchantProfile?.merchantId] })
+      await queryClient.invalidateQueries({ queryKey: ['private', 'merchant', 'webhooks', subject, merchantProfile?.merchantId] })
     } catch (err) {
       setDeletingSub(null)
       setActionError(err instanceof Error ? err.message : 'Failed to deactivate subscription.')
@@ -153,8 +160,18 @@ export function MerchantWebhooksPage() {
         </FeedbackState>
       )}
 
+      {profileQuery.isError && (
+        <FeedbackState title="Merchant account unavailable" tone="error">
+          <p>{profileQuery.error instanceof AccountsError && profileQuery.error.kind === 'auth-required'
+            ? 'Your session has expired. Please sign in again.'
+            : 'Your merchant approval could not be checked. Please retry.'}</p>
+          <button type="button" disabled={profileQuery.isFetching} onClick={() => {
+            if (!profileQuery.isFetching) void profileQuery.refetch({ cancelRefetch: false })
+          }}>Retry account</button>
+        </FeedbackState>
+      )}
       {/* Approval Status Restriction */}
-      {!profileQuery.isPending && !isApproved && (
+      {!profileQuery.isPending && !profileQuery.isError && !isApproved && (
         <div className="approval-restriction-container">
           <MerchantApprovalBanner rawStatus={merchantProfile?.status} />
           <aside className="card locked-webhooks-notice" role="status">
@@ -202,7 +219,7 @@ export function MerchantWebhooksPage() {
                   ? subscriptionsQuery.error.message
                   : 'The webhook service is unreachable right now. Please try again shortly.'
               }
-              onRetry={() => { void subscriptionsQuery.refetch() }}
+              onRetry={() => { if (!subscriptionsQuery.isFetching) void subscriptionsQuery.refetch({ cancelRefetch: false }) }}
               onInspectDeliveries={(sub) => setInspectingSub(sub)}
               onDeleteSubscription={(sub) => setDeletingSub(sub)}
               onOpenRegisterForm={() => { setShowForm(true); setFormApiError(null) }}

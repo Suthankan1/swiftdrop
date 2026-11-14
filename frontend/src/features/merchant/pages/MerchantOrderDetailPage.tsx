@@ -6,7 +6,7 @@ import {
   createMerchantOrdersApi,
   DeliveryError,
 } from '../api/merchantOrders'
-import { createDeliveryApi } from '../../customer/api/delivery'
+import { createDeliveryApi, triggerBlobDownload } from '../../customer/api/delivery'
 import { MerchantNav } from '../components/MerchantNav'
 import {
   formatCurrency,
@@ -26,6 +26,8 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
   const isMerchant = auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('MERCHANT')
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
 
+  const [receiptLoading, setReceiptLoading] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [copiedTracking, setCopiedCopiedTracking] = useState(false)
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false)
 
@@ -72,13 +74,14 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
 
   const handleCopyTracking = async (trackingNum: string) => {
     try {
+      if (!navigator.clipboard) throw new Error()
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(trackingNum)
         setCopiedCopiedTracking(true)
         setTimeout(() => setCopiedCopiedTracking(false), 2000)
       }
     } catch {
-      // Ignore copy error in headless tests
+      setActionError('The tracking number could not be copied. Select and copy it manually.')
     }
   }
 
@@ -144,17 +147,21 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
         <div className="card state-panel state-panel-error" role="alert">
           <h2>Unable to Load Order</h2>
           <p>
-            {detailQuery.error.message || 'A service or network issue occurred while loading order details.'}
+            {detailQuery.error instanceof DeliveryError && detailQuery.error.kind === 'auth-required'
+              ? 'Your session has expired. Please sign in again.'
+              : 'Order details could not be loaded. Please retry.'}
           </p>
           <Button
             variant="secondary"
-            onClick={() => void detailQuery.refetch()}
+            disabled={detailQuery.isFetching}
+            onClick={() => { if (!detailQuery.isFetching) void detailQuery.refetch({ cancelRefetch: false }) }}
           >
             Retry Order
           </Button>
         </div>
       )}
 
+      {actionError && <p role="alert">{actionError}</p>}
       {/* Authorized Order Detail Body */}
       {order && statusInfo && (
         <div className="courier-parcel-detail-view merchant-order-detail-view">
@@ -251,7 +258,9 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
             <div className="courier-assignment-status">
               <span className="muted">Assigned Courier:</span>
               <span className="font-semibold">
-                {order.activeCourierSub ? order.activeCourierSub : 'Pending Dispatch Assignment'}
+                {order.activeCourierSub ?? (order.currentStatus === 'CREATED'
+                  ? 'Awaiting dispatch assignment'
+                  : 'Courier assignment information unavailable')}
               </span>
             </div>
           </section>
@@ -267,6 +276,9 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
               <p className="muted text-small" role="status">Loading transition audit trail...</p>
             )}
 
+            {historyQuery.isError && <div role="alert">Order history could not be loaded.
+              <Button disabled={historyQuery.isFetching} onClick={() => { if (!historyQuery.isFetching) void historyQuery.refetch({ cancelRefetch: false }) }}>Retry history</Button>
+            </div>}
             {historyQuery.data && historyQuery.data.items.length > 0 ? (
               <div className="table-responsive-wrapper">
                 <table className="delivery-log-table" aria-label="Order status history">
@@ -306,7 +318,7 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
                 </table>
               </div>
             ) : (
-              !historyQuery.isPending && (
+              !historyQuery.isPending && !historyQuery.isError && (
                 <p className="muted text-small">No lifecycle transitions recorded yet.</p>
               )
             )}
@@ -316,13 +328,24 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
 
       {/* Safe Tracking Modal Dialog */}
       <CustomerTrackingModal
+        formatTimestamp={formatDateTime}
         parcelId={order?.parcelId ?? null}
         trackingNumber={order?.trackingNumber}
         isOpen={isTrackingModalOpen}
         onClose={() => setIsTrackingModalOpen(false)}
         deliveryApi={deliveryApi}
-        onDownloadReceipt={async () => {}}
-        isDownloadingReceipt={false}
+        onDownloadReceipt={async (id) => {
+          if (receiptLoading) return
+          setReceiptLoading(true)
+          setActionError(null)
+          try {
+            const { blob, filename } = await deliveryApi.downloadReceipt(id)
+            triggerBlobDownload(blob, filename)
+          } catch {
+            setActionError('The receipt could not be downloaded. Please retry.')
+          } finally { setReceiptLoading(false) }
+        }}
+        isDownloadingReceipt={receiptLoading}
       />
     </div>
   )

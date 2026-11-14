@@ -2536,3 +2536,15 @@ ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }
   border-radius: 8px;
   background: var(--sd-surface-card, #ffffff);
 }
+
+/* Wrap merchant navigation; keep wide-table scrolling inside its container. */
+.merchant-page, .merchant-dashboard-content-section, .merchant-orders-table-container { min-width: 0; max-width: 100%; }
+.merchant-sub-nav { flex-wrap: wrap; min-width: 0; }
+.merchant-nav-tab { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+.merchant-order-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: 8px 0; }
+.merchant-order-detail-page .spec-value { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .merchant-sub-nav { gap: 4px; }
+  .merchant-nav-tab { flex: 1 1 140px; padding: 12px 10px; }
+  .merchant-order-actions > button { flex: 1 1 140px; }
+}

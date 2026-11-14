@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
@@ -15,7 +15,8 @@ import { MerchantOrderFilterBar } from '../components/MerchantOrderFilterBar'
 import { MerchantOrderTable } from '../components/MerchantOrderTable'
 import { BulkOrderUploadModal } from '../components/BulkOrderUploadModal'
 import { CustomerTrackingModal } from '../../customer/components/CustomerTrackingModal'
-import { ACTIVE_STATUSES, csvField } from '../components/merchantUiUtils'
+import { ACTIVE_STATUSES, formatDateTime, merchantOrdersCsv } from '../components/merchantUiUtils'
+import { merchantReadRetry } from '../api/merchantReadRetry'
 
 const MAX_ORDER_PAGES = 50
 
@@ -36,8 +37,6 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
 
   // Tracking modal inspection state
   const [inspect, setInspect] = useState<{ parcelId: string; trackingNumber: string } | null>(null)
-  const [allOrders, setAllOrders] = useState<MerchantOrderSummaryItem[] | null>(null)
-  const [allOrdersState, setAllOrdersState] = useState<{ loading: boolean; error: string | null; truncated: boolean }>({ loading: false, error: null, truncated: false })
   const [receiptState, setReceiptState] = useState<{ parcelId: string | null; error: string | null }>({ parcelId: null, error: null })
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false)
@@ -66,7 +65,6 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
     setStatusFilter('ALL')
     setSearchQuery('')
     setCurrentPage(0)
-    setAllOrders(null)
   }
 
   const query = useQuery({
@@ -77,65 +75,58 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
     },
     gcTime: 0,
     staleTime: 15_000,
+    retry: merchantReadRetry,
+    retryDelay: attempt => 250 * 2 ** attempt,
   })
 
-  // Automatically load all orders once dashboard loads so full orders and search work immediately
-  useEffect(() => {
-    let cancelled = false
-    if (query.data && !allOrders && !allOrdersState.loading) {
-      void (async () => {
-        setAllOrdersState({ loading: true, error: null, truncated: false })
-        try {
-          const collected: MerchantOrderSummaryItem[] = []
-          let page = 0
-          let hasNext = true
-          while (hasNext && page < MAX_ORDER_PAGES && !cancelled) {
-            const result = await deliveryApi.getCustomerDeliveries({ page, size: 100 })
-            if (cancelled) return
-            for (const item of result.items) {
-              collected.push({
-                parcelId: item.parcelId,
-                trackingNumber: item.trackingNumber,
-                currentStatus: item.currentStatus as MerchantOrderSummaryItem['currentStatus'],
-                weightKg: typeof item.weightKg === 'number' ? item.weightKg : Number.NaN,
-                feeMinorUnits: item.amountMinorUnits,
-                currency: item.currency,
-                createdAt: item.createdAt,
-                lastStatusUpdate: item.updatedAt ?? item.createdAt,
-              })
-            }
-            hasNext = result.hasNext
-            page += 1
-          }
-          if (!cancelled) {
-            setAllOrders(collected)
-            setCurrentPage(0)
-            setAllOrdersState({ loading: false, error: null, truncated: hasNext })
-          }
-        } catch {
-          if (!cancelled) {
-            setAllOrdersState({ loading: false, error: null, truncated: false })
-          }
+  // Query owns cancellation and deduplication, including subject changes and unmount.
+  const allOrdersQuery = useQuery({
+    queryKey: ['private', 'merchant-all-orders', subject],
+    enabled: isMerchant && !!subject && !!query.data,
+    queryFn: async ({ signal }) => {
+      const collected: MerchantOrderSummaryItem[] = []
+      let page = 0
+      let hasNext = true
+      while (hasNext && page < MAX_ORDER_PAGES) {
+        const result = await deliveryApi.getCustomerDeliveries({ page, size: 100 }, signal)
+        signal.throwIfAborted()
+        for (const item of result.items) {
+          collected.push({
+              parcelId: item.parcelId, trackingNumber: item.trackingNumber,
+              currentStatus: item.currentStatus, weightKg: item.weightKg ?? Number.NaN,
+              feeMinorUnits: item.amountMinorUnits, currency: item.currency,
+              createdAt: item.createdAt, lastStatusUpdate: item.updatedAt ?? '',
+          })
         }
-      })()
-    }
-    return () => {
-      cancelled = true
-    }
-  }, [deliveryApi, query.data, allOrders, allOrdersState.loading])
+        hasNext = result.hasNext
+        page++
+      }
+      return { orders: collected, truncated: hasNext }
+    },
+    retry: merchantReadRetry,
+    retryDelay: attempt => 250 * 2 ** attempt,
+    gcTime: 0,
+    staleTime: 15_000,
+  })
+  const allOrders = allOrdersQuery.data?.orders ?? null
+  const allOrdersState = {
+    loading: allOrdersQuery.isFetching,
+    error: allOrdersQuery.isError ? 'All orders could not be loaded. Previously loaded orders remain visible. Retry loading all orders.' : null,
+    truncated: allOrdersQuery.data?.truncated ?? false,
+  }
 
   const recentOrders = allOrders ?? query.data?.recentOrders
 
   const summaryCounts = useMemo(() => {
-    if (allOrders && allOrders.length > 0) {
+    if (allOrders && !allOrdersState.truncated) {
       const active = allOrders.filter(o => ACTIVE_STATUSES.includes(o.currentStatus)).length
       const delivered = allOrders.filter(o => o.currentStatus === 'DELIVERED').length
       const failed = allOrders.filter(o => o.currentStatus === 'FAILED').length
       return {
-        total: Math.max(allOrders.length, query.data?.totalOrdersCount ?? 0),
-        active: Math.max(active, query.data?.activeOrdersCount ?? 0),
-        delivered: Math.max(delivered, query.data?.deliveredOrdersCount ?? 0),
-        failed: Math.max(failed, query.data?.failedOrdersCount ?? 0),
+        total: allOrders.length,
+        active: active,
+        delivered: delivered,
+        failed: failed,
       }
     }
     return {
@@ -144,38 +135,17 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
       delivered: query.data?.deliveredOrdersCount ?? 0,
       failed: query.data?.failedOrdersCount ?? 0,
     }
-  }, [allOrders, query.data])
+  }, [allOrders, allOrdersState.truncated, query.data])
 
-  /** Pages through every order this merchant can see (GET /parcels), replacing the recent-orders sample. */
-  async function loadAllOrders() {
-    setAllOrdersState({ loading: true, error: null, truncated: false })
-    try {
-      const collected: MerchantOrderSummaryItem[] = []
-      let page = 0
-      let hasNext = true
-      while (hasNext && page < MAX_ORDER_PAGES) {
-        const result = await deliveryApi.getCustomerDeliveries({ page, size: 100 })
-        for (const item of result.items) {
-          collected.push({
-            parcelId: item.parcelId,
-            trackingNumber: item.trackingNumber,
-            currentStatus: item.currentStatus as MerchantOrderSummaryItem['currentStatus'],
-            weightKg: typeof item.weightKg === 'number' ? item.weightKg : Number.NaN,
-            feeMinorUnits: item.amountMinorUnits,
-            currency: item.currency,
-            createdAt: item.createdAt,
-            lastStatusUpdate: item.updatedAt ?? item.createdAt,
-          })
-        }
-        hasNext = result.hasNext
-        page += 1
-      }
-      setAllOrders(collected)
-      setCurrentPage(0)
-      setAllOrdersState({ loading: false, error: null, truncated: hasNext })
-    } catch {
-      setAllOrdersState({ loading: false, error: 'All orders could not be loaded. The recent orders are still shown.', truncated: false })
-    }
+  function loadAllOrders() {
+    if (!allOrdersQuery.isFetching) void allOrdersQuery.refetch({ cancelRefetch: false })
+  }
+
+  function refreshOrders() {
+    if (query.isFetching || allOrdersQuery.isFetching) return
+    setCurrentPage(0)
+    void query.refetch({ cancelRefetch: false })
+    void allOrdersQuery.refetch({ cancelRefetch: false })
   }
 
   async function handleDownloadReceipt(parcelId: string) {
@@ -274,7 +244,8 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void query.refetch()}
+            disabled={query.isFetching}
+            onClick={() => { if (!query.isFetching) void query.refetch({ cancelRefetch: false }) }}
           >
             Retry Dashboard
           </Button>
@@ -297,12 +268,12 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
           {/* Quick Actions Toolbar */}
           <p className="muted" role="status">
             {allOrders
-              ? `Showing all ${allOrders.length} orders${allOrdersState.truncated ? ' (first 5,000 only)' : ''}. Search and export cover all of them.`
-              : `Showing the ${query.data.recentOrders.length} most recent orders. Search and export cover all of them.`}
+              ? `Showing ${allOrders.length} loaded orders${allOrdersState.truncated ? ' (first 5,000 only)' : ' (complete history)'}. Search applies to these orders; CSV exports the filtered results.`
+              : `Showing the ${query.data.recentOrders.length} most recent orders. Search applies to these orders; CSV exports the filtered results.`}
           </p>
           {allOrdersState.error && <p role="alert">{allOrdersState.error}</p>}
           {receiptState.error && <p role="alert">{receiptState.error}</p>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', margin: '8px 0' }}>
+          <div className="merchant-order-actions">
             {!allOrders && !allOrdersState.loading && (
               <Button type="button" variant="secondary" size="sm" isLoading={allOrdersState.loading}
                 disabled={allOrdersState.loading} onClick={() => void loadAllOrders()}>
@@ -315,18 +286,7 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
               size="sm"
               disabled={filteredOrders.length === 0}
               onClick={() => {
-                const headers = ['Tracking Number', 'Parcel ID', 'Status', 'Weight (kg)', 'Fee (LKR)', 'Created At', 'Last Update']
-                const rows = filteredOrders.map(o => [
-                  o.trackingNumber,
-                  o.parcelId,
-                  o.currentStatus,
-                  Number.isFinite(o.weightKg) ? o.weightKg : '',
-                  (o.feeMinorUnits / 100).toFixed(2),
-                  o.createdAt,
-                  o.lastStatusUpdate,
-                ])
-                const csvContent = [headers.map(csvField).join(','), ...rows.map(r => r.map(csvField).join(','))].join('\r\n')
-                const blob = new Blob([csvContent], { type: 'text/csv' })
+                const blob = new Blob([merchantOrdersCsv(filteredOrders)], { type: 'text/csv;charset=utf-8' })
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = url
@@ -355,8 +315,8 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
             onSearchQueryChange={handleSearchQueryChange}
             totalCount={recentOrders?.length ?? 0}
             filteredCount={filteredOrders.length}
-            onRefresh={() => { if (allOrders) void loadAllOrders(); void query.refetch() }}
-            isRefreshing={query.isFetching}
+            onRefresh={refreshOrders}
+            isRefreshing={query.isFetching || allOrdersState.loading}
           />
 
           {/* Orders Table */}
@@ -379,12 +339,13 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
         isOpen={showBulkUploadModal}
         onClose={() => setShowBulkUploadModal(false)}
         onImportComplete={() => {
-          void query.refetch()
+          refreshOrders()
         }}
       />
 
       {/* Safe Tracking Modal Dialog */}
       <CustomerTrackingModal
+        formatTimestamp={formatDateTime}
         parcelId={inspect?.parcelId ?? null}
         trackingNumber={inspect?.trackingNumber}
         isOpen={isModalOpen}

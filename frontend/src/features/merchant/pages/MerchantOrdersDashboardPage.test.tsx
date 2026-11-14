@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,6 +8,7 @@ import type { SwiftDropRole } from '../../../auth/contracts'
 import { anonymousAuth, TestProviders } from '../../../test/authFixture'
 import { merchantFixture } from '../../../test/fixtures'
 import type { MerchantDashboardData } from '../api/merchantDashboardContracts'
+import { formatDateTime } from '../components/merchantUiUtils'
 
 // Merchant A (Primary)
 const merchantA = {
@@ -135,6 +136,27 @@ function renderOrdersDashboard(auth: AuthContextValue, route = '/merchant/orders
 }
 
 describe('MerchantOrdersDashboardPage', () => {
+  it('preserves the authoritative update when recent orders switch to full history', async () => {
+    const recent = mockMerchantADashboardData.recentOrders[2]!
+    let complete!: (response: Response) => void
+    const full = new Promise<Response>(resolve => { complete = resolve })
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('/graphql')) return new Response(JSON.stringify({ data: { merchantDashboard: {
+        ...mockMerchantADashboardData, recentOrders: [recent],
+      } } }))
+      return full
+    }))
+    renderOrdersDashboard(authenticatedMerchant())
+    expect(await screen.findByText(formatDateTime(recent.lastStatusUpdate))).toBeInTheDocument()
+    await act(async () => complete(new Response(JSON.stringify({
+      items: [{ ...recent, amountMinorUnits: recent.feeMinorUnits, updatedAt: recent.lastStatusUpdate }], totalElements: 1,
+      totalPages: 1, currentPage: 0, pageSize: 100, hasNext: false, hasPrevious: false,
+    }))))
+    expect(await screen.findByText(/showing 1 loaded orders/i)).toBeInTheDocument()
+    const row = screen.getByText(recent.trackingNumber).closest('tr')!
+    expect(within(row).getByText(formatDateTime(recent.lastStatusUpdate))).toBeInTheDocument()
+    expect(within(row).getByText(formatDateTime(recent.createdAt))).toBeInTheDocument()
+  })
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
@@ -324,8 +346,7 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/access restricted\. your merchant account is pending review/i)
   })
 
-  it('handles provider failure with working retry button', async () => {
-    const user = userEvent.setup()
+  it('recovers automatically after one transient provider failure', async () => {
     let attempt = 0
     const fetchMock = vi.fn(async () => {
       attempt++
@@ -341,11 +362,6 @@ describe('MerchantOrdersDashboardPage', () => {
 
     const auth = authenticatedMerchant(merchantA)
     renderOrdersDashboard(auth)
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to load merchant dashboard/i)
-
-    const retryBtn = screen.getByRole('button', { name: /retry dashboard/i })
-    await user.click(retryBtn)
 
     expect(await screen.findByText('SWD-20261027-ALPH1')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -460,7 +476,7 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(within(screen.getByRole('button', { name: /^delivered/i })).getByText('1')).toBeInTheDocument()
 
     // Status line shows all orders loaded
-    expect(screen.getByText(/showing all 1 orders/i)).toBeInTheDocument()
+    expect(screen.getByText(/showing 1 loaded orders/i)).toBeInTheDocument()
 
     // Search bar works immediately on auto-loaded orders
     const searchInput = screen.getByRole('searchbox', { name: /search orders/i })

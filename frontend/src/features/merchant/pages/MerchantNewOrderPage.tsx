@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button'
 import { createDeliveryApi, DeliveryError } from '../../customer/api/delivery'
 import { createPricingApi, PricingError } from '../../customer/api/pricing'
 import type { ParcelDetailResponse } from '../../customer/api/deliveryContracts'
+import type { QuoteResponse } from '../../customer/api/pricingContracts'
 import { formatCurrency } from '../../customer/components/customerUiUtils'
 import { MerchantNav } from '../components/MerchantNav'
 import {
@@ -38,10 +39,14 @@ export function MerchantNewOrderPage() {
   const [problem, setProblem] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [booked, setBooked] = useState<ParcelDetailResponse | null>(null)
+  const [quote, setQuote] = useState<QuoteResponse | null>(null)
   const attempt = useRef<BookingAttempt | null>(null)
+  const busy = useRef(false)
+  const [uncertain, setUncertain] = useState(false)
 
   const set = (field: keyof typeof EMPTY) => (event: { target: { value: string } }) => {
     attempt.current = null // a changed order needs a fresh quote and idempotency key
+    setQuote(null)
     setForm(current => ({ ...current, [field]: event.target.value }))
   }
 
@@ -55,24 +60,43 @@ export function MerchantNewOrderPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (submitting) return
+    if (busy.current) return
     const invalid = merchantOrderProblem(order)
     if (invalid) { setProblem(invalid); return }
     setProblem(null)
+    busy.current = true
     setSubmitting(true)
-    attempt.current ??= newBookingAttempt()
     try {
+      if (!quote) {
+        const priced = await apis.pricing.calculateQuote({
+          pickupZone: order.pickupZone, dropoffZone: order.dropoffZone, weightKg: order.weightKg,
+          lengthCm: order.lengthCm, widthCm: order.widthCm, heightCm: order.heightCm,
+          serviceTier: order.serviceTier,
+        })
+        setQuote(priced)
+        attempt.current = { ...newBookingAttempt(), quoteId: priced.quoteId }
+        return
+      }
+      if (!uncertain && (quote.isExpired || Date.parse(quote.expiresAt) <= Date.now())) {
+        setQuote(null)
+        attempt.current = null
+        setProblem('This quote has expired. Review a fresh price before booking.')
+        return
+      }
+      attempt.current ??= { ...newBookingAttempt(), quoteId: quote.quoteId }
       setBooked(await bookMerchantOrder(apis, order, attempt.current))
       attempt.current = null
+      setUncertain(false)
     } catch (error) {
       const definite = error instanceof PricingError ||
         (error instanceof DeliveryError && ['validation-error', 'forbidden', 'expired', 'conflict'].includes(error.kind))
-      if (definite) attempt.current = null
-      setProblem(error instanceof Error && error.message
-        ? `${error.message}${definite ? '' : ' Submitting again is safe: it will not book twice.'}`
-        : 'The order could not be booked.')
+      if (definite) { attempt.current = null; setQuote(null) }
+      setUncertain(!definite && !!quote)
+      setProblem(definite ? 'The request was rejected. Check the form and review a fresh quote.'
+        : 'The request outcome could not be confirmed. Retry with the same order to avoid duplicates.')
       if (error instanceof DeliveryError && error.kind === 'auth-required') await auth.handleSessionExpiry()
     } finally {
+      busy.current = false
       setSubmitting(false)
     }
   }
@@ -122,7 +146,7 @@ export function MerchantNewOrderPage() {
             </div>
           )}
           {problem && <p className="form-error-banner" role="alert">{problem}</p>}
-          <fieldset disabled={submitting}>
+          <fieldset disabled={submitting || !!quote}>
             <legend>Parcel</legend>
             {zoneSelect('Pickup zone', 'pickupZone')}
             {zoneSelect('Drop-off zone', 'dropoffZone')}
@@ -138,7 +162,7 @@ export function MerchantNewOrderPage() {
               </select>
             </div>
           </fieldset>
-          <fieldset disabled={submitting}>
+          <fieldset disabled={submitting || !!quote}>
             <legend>Addresses and recipient</legend>
             {field('Pickup address', 'pickupAddress', { maxLength: 2000, required: true })}
             {field('Drop-off address', 'dropoffAddress', { maxLength: 2000, required: true })}
@@ -147,8 +171,17 @@ export function MerchantNewOrderPage() {
             {field('Your order reference', 'merchantReference', { maxLength: 255, required: true })}
             {field('Delivery notes (optional)', 'deliveryNotes', { maxLength: 2000 })}
           </fieldset>
+          {quote && <section aria-label="Confirm order price" role="status">
+            <h2>Review your quote</h2>
+            <p>Total: <strong>{formatCurrency(quote.totalAmountMinorUnits, quote.currency)}</strong></p>
+            <p>Valid until {new Date(quote.expiresAt).toLocaleString('en-GB', { timeZone: 'Asia/Colombo' })} (Asia/Colombo).</p>
+            <p>Your order is created only when you confirm.</p>
+            <Button type="button" variant="secondary" disabled={submitting || uncertain} onClick={() => {
+              setQuote(null); attempt.current = null; setProblem(null)
+            }}>Cancel quote and edit</Button>
+          </section>}
           <Button type="submit" variant="primary" isLoading={submitting} disabled={submitting || !zoneOptions.length}>
-            Price and book order
+            {quote ? (uncertain ? 'Retry confirmed order' : 'Confirm and book order') : 'Review price'}
           </Button>
         </form>
       )}

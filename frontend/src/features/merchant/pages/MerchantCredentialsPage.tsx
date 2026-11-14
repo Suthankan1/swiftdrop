@@ -19,6 +19,7 @@ import { ApiKeyCreatedModal } from '../components/ApiKeyCreatedModal'
 import { ApiKeyRevokeConfirmModal } from '../components/ApiKeyRevokeConfirmModal'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
 import { Button } from '../../../components/ui/Button'
+import { merchantReadRetry } from '../api/merchantReadRetry'
 
 export function MerchantCredentialsPage() {
   const auth = useAuth()
@@ -36,6 +37,8 @@ export function MerchantCredentialsPage() {
       return profile
     },
     gcTime: 0,
+    retry: merchantReadRetry,
+    retryDelay: attempt => 250 * 2 ** attempt,
   })
 
   const merchantProfile = profileQuery.data?.merchantProfile
@@ -48,8 +51,11 @@ export function MerchantCredentialsPage() {
   })
 
   const keysQuery = useQuery({
-    queryKey: ['merchant', 'api-keys', merchantProfile?.merchantId],
+    queryKey: ['private', 'merchant', 'api-keys', subject, merchantProfile?.merchantId],
     enabled: isApproved && Boolean(merchantProfile?.merchantId),
+    gcTime: 0,
+    retry: merchantReadRetry,
+    retryDelay: attempt => 250 * 2 ** attempt,
     queryFn: async ({ signal }) => {
       return credentialsApi.listApiKeys(merchantProfile!.merchantId, signal)
     },
@@ -70,7 +76,7 @@ export function MerchantCredentialsPage() {
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null)
 
   async function handleCreateApiKey(request: CreateApiKeyRequest) {
-    if (!merchantProfile?.merchantId) return
+    if (!merchantProfile?.merchantId || isSubmitting) return
 
     setIsSubmitting(true)
     setCreateApiError(null)
@@ -81,7 +87,7 @@ export function MerchantCredentialsPage() {
       // Open one-time reveal dialog
       setCreatedKeyResponse(result)
       setActionSuccessMessage(`Machine key "${result.name}" issued successfully.`)
-      void queryClient.invalidateQueries({ queryKey: ['merchant', 'api-keys', merchantProfile.merchantId] })
+      void queryClient.invalidateQueries({ queryKey: ['private', 'merchant', 'api-keys', subject, merchantProfile.merchantId] })
     } catch (err) {
       if (err instanceof MerchantCredentialsError) {
         setCreateApiError(err.message)
@@ -94,7 +100,7 @@ export function MerchantCredentialsPage() {
   }
 
   async function handleConfirmRevoke(keyId: string) {
-    if (!merchantProfile?.merchantId) return
+    if (!merchantProfile?.merchantId || isRevoking) return
 
     setIsRevoking(true)
     try {
@@ -102,7 +108,7 @@ export function MerchantCredentialsPage() {
       const revokedName = keyToRevoke?.name || 'API Key'
       setKeyToRevoke(null)
       setActionSuccessMessage(`API Key "${revokedName}" was durably revoked.`)
-      void queryClient.invalidateQueries({ queryKey: ['merchant', 'api-keys', merchantProfile.merchantId] })
+      void queryClient.invalidateQueries({ queryKey: ['private', 'merchant', 'api-keys', subject, merchantProfile.merchantId] })
     } catch (err) {
       setKeyToRevoke(null)
       setActionErrorMessage(err instanceof MerchantCredentialsError ? err.message : 'Failed to revoke API key.')
@@ -169,10 +175,13 @@ export function MerchantCredentialsPage() {
         </aside>
       )}
 
-      {/* Approval status banner */}
-      <MerchantApprovalBanner rawStatus={merchantProfile?.status} />
+      {profileQuery.isPending && <FeedbackState title="Checking merchant account" tone="loading">Loading approval status...</FeedbackState>}
+      {profileQuery.isError && <FeedbackState title="Merchant account unavailable" tone="error" action={
+        <Button disabled={profileQuery.isFetching} onClick={() => { if (!profileQuery.isFetching) void profileQuery.refetch({ cancelRefetch: false }) }}>Retry account</Button>
+      }>Your approval status could not be checked. Please retry.</FeedbackState>}
+      {!profileQuery.isPending && !profileQuery.isError && <MerchantApprovalBanner rawStatus={merchantProfile?.status} />}
 
-      {!isApproved ? (
+      {!profileQuery.isPending && !profileQuery.isError && (!isApproved ? (
         <section className="card credential-locked-card" aria-labelledby="locked-heading">
           <h2 id="locked-heading">Credential Settings Restricted</h2>
           <p className="muted">
@@ -198,7 +207,7 @@ export function MerchantCredentialsPage() {
           isLoading={keysQuery.isPending}
           isError={keysQuery.isError}
           errorMessage={keysQuery.error instanceof Error ? keysQuery.error.message : null}
-          onRetry={() => { void keysQuery.refetch() }}
+          onRetry={() => { if (!keysQuery.isFetching) void keysQuery.refetch({ cancelRefetch: false }) }}
           onOpenGenerateModal={() => {
             setCreateApiError(null)
             setShowCreateModal(true)
@@ -206,7 +215,7 @@ export function MerchantCredentialsPage() {
           onInitiateRevoke={(keyItem) => setKeyToRevoke(keyItem)}
           canGenerate={isApproved}
         />
-      )}
+      ))}
 
       {/* Generate API Key Form Modal */}
       <ApiKeyCreateFormModal
