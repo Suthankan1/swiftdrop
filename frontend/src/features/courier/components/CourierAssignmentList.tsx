@@ -15,6 +15,16 @@ export interface CourierAssignmentListProps {
   onSelectParcel: (parcelId: string) => void
   apiOverride?: ReturnType<typeof createCourierAssignmentsApi>
   onOpenHistory?: () => void
+  persistedState?: CourierAssignmentListState
+  onStateChange?: (state: CourierAssignmentListState) => void
+}
+
+export interface CourierAssignmentListState {
+  currentPage: number
+  todayOnly: boolean
+  searchInput: string
+  search: string
+  status: CourierActiveStatus | ''
 }
 
 const PAGE_SIZE = 20
@@ -30,6 +40,8 @@ export function CourierAssignmentList({
   onSelectParcel,
   apiOverride,
   onOpenHistory,
+  persistedState,
+  onStateChange,
 }: CourierAssignmentListProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -43,19 +55,23 @@ export function CourierAssignmentList({
     [apiOverride, auth.getAccessToken],
   )
 
-  const [currentPage, setCurrentPage] = useState(0)
+  const [currentPage, setCurrentPage] = useState(persistedState?.currentPage ?? 0)
   const [pagedData, setPagedData] = useState<PagedAssignmentsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [todayOnly, setTodayOnly] = useState(false)
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<CourierActiveStatus | ''>('')
+  const [todayOnly, setTodayOnly] = useState(persistedState?.todayOnly ?? false)
+  const [searchInput, setSearchInput] = useState(persistedState?.searchInput ?? '')
+  const [search, setSearch] = useState(persistedState?.search ?? '')
+  const [status, setStatus] = useState<CourierActiveStatus | ''>(persistedState?.status ?? '')
   const [parcels, setParcels] = useState<Record<string, ParcelDetailResponse>>({})
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const requestIdRef = useRef(0)
   const [retryCount, setRetryCount] = useState(0)
+
+  useEffect(() => {
+    onStateChange?.({ currentPage, todayOnly, searchInput, search, status })
+  }, [currentPage, onStateChange, search, searchInput, status, todayOnly])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -73,6 +89,10 @@ export function CourierAssignmentList({
     setPagedData(null)
     setParcels({})
     setError(null)
+    setTodayOnly(false)
+    setSearchInput('')
+    setSearch('')
+    setStatus('')
   }
 
   useEffect(() => {

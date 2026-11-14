@@ -10,6 +10,14 @@ interface CourierDeliveryHistoryProps {
   initialStatus?: CourierHistoryStatus
   onBack: () => void
   onSelectParcel: (parcelId: string) => void
+  persistedState?: CourierHistoryState
+  onStateChange?: (state: CourierHistoryState) => void
+}
+
+export interface CourierHistoryState {
+  status: CourierHistoryStatus | ''
+  todayOnly: boolean
+  page: number
 }
 
 function todayBounds(): { since: Date; until: Date } {
@@ -25,6 +33,8 @@ export function CourierDeliveryHistory({
   initialStatus,
   onBack,
   onSelectParcel,
+  persistedState,
+  onStateChange,
 }: CourierDeliveryHistoryProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -32,14 +42,18 @@ export function CourierDeliveryHistory({
     () => apiOverride || createCourierAssignmentsApi({ getAccessToken: auth.getAccessToken }),
     [apiOverride, auth.getAccessToken],
   )
-  const [status, setStatus] = useState<CourierHistoryStatus | ''>(initialStatus ?? '')
-  const [todayOnly, setTodayOnly] = useState(false)
-  const [page, setPage] = useState(0)
+  const [status, setStatus] = useState<CourierHistoryStatus | ''>(persistedState?.status ?? initialStatus ?? '')
+  const [todayOnly, setTodayOnly] = useState(persistedState?.todayOnly ?? false)
+  const [page, setPage] = useState(persistedState?.page ?? 0)
   const [data, setData] = useState<PagedAssignmentsResponse | null>(null)
   const [parcels, setParcels] = useState<Record<string, ParcelDetailResponse>>({})
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [retry, setRetry] = useState(0)
+
+  useEffect(() => {
+    onStateChange?.({ status, todayOnly, page })
+  }, [onStateChange, page, status, todayOnly])
 
   useEffect(() => {
     if (!subject) return

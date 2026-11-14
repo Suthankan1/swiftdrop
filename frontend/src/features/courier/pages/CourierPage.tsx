@@ -8,6 +8,8 @@ import { CourierAssignmentList } from '../components/CourierAssignmentList'
 import { CourierParcelDetails } from '../components/CourierParcelDetails'
 import { CourierDeliveryHistory } from '../components/CourierDeliveryHistory'
 import { CourierHistoricalDetails } from '../components/CourierHistoricalDetails'
+import type { CourierAssignmentListState } from '../components/CourierAssignmentList'
+import type { CourierHistoryState } from '../components/CourierDeliveryHistory'
 import type { CourierHistoryStatus } from '../api/courierContracts'
 import type { createCourierDashboardApi } from '../api/courierDashboard'
 import type { createCourierAssignmentsApi } from '../api/courierAssignments'
@@ -43,6 +45,18 @@ export function CourierPage({
   const [summaryRefresh, setSummaryRefresh] = useState(0)
   const [workspace, setWorkspace] = useState<'active' | 'history'>('active')
   const [historyStatus, setHistoryStatus] = useState<CourierHistoryStatus | undefined>()
+  const [assignmentState, setAssignmentState] = useState<CourierAssignmentListState>({
+    currentPage: 0,
+    todayOnly: false,
+    searchInput: '',
+    search: '',
+    status: '',
+  })
+  const [historyState, setHistoryState] = useState<CourierHistoryState>({
+    status: '',
+    todayOnly: false,
+    page: 0,
+  })
   const [selectedHistoryParcelId, setSelectedHistoryParcelId] = useState<string | null>(null)
 
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -53,6 +67,8 @@ export function CourierPage({
     setSelectedHistoryParcelId(null)
     setWorkspace('active')
     setAssignmentNotice(null)
+    setAssignmentState({ currentPage: 0, todayOnly: false, searchInput: '', search: '', status: '' })
+    setHistoryState({ status: '', todayOnly: false, page: 0 })
   }
 
   return (
@@ -96,7 +112,13 @@ export function CourierPage({
             apiOverride={summaryApiOverride}
             refreshToken={summaryRefresh}
             onOpenActive={() => { setWorkspace('active'); setSelectedHistoryParcelId(null) }}
-            onOpenHistory={(status) => { setHistoryStatus(status); setWorkspace('history'); setSelectedParcelId(null); setSelectedHistoryParcelId(null) }}
+            onOpenHistory={(status) => {
+              setHistoryStatus(status)
+              setHistoryState({ status: status ?? '', todayOnly: status !== undefined, page: 0 })
+              setWorkspace('history')
+              setSelectedParcelId(null)
+              setSelectedHistoryParcelId(null)
+            }}
           />
 
           {workspace === 'active' && selectedParcelId ? (
@@ -124,8 +146,15 @@ export function CourierPage({
                 setAssignmentNotice(null)
                 setSelectedParcelId(id)
               }}
-              onOpenHistory={() => { setWorkspace('history'); setSelectedParcelId(null) }}
+              onOpenHistory={() => {
+                setHistoryStatus(undefined)
+                setHistoryState({ status: '', todayOnly: false, page: 0 })
+                setWorkspace('history')
+                setSelectedParcelId(null)
+              }}
               apiOverride={assignmentsApiOverride}
+              persistedState={assignmentState}
+              onStateChange={setAssignmentState}
             />
           ) : selectedHistoryParcelId ? (
             <CourierHistoricalDetails
@@ -137,6 +166,8 @@ export function CourierPage({
             <CourierDeliveryHistory
               apiOverride={assignmentsApiOverride}
               initialStatus={historyStatus}
+              persistedState={historyState}
+              onStateChange={setHistoryState}
               onBack={() => { setWorkspace('active'); setHistoryStatus(undefined) }}
               onSelectParcel={(id) => setSelectedHistoryParcelId(id)}
             />

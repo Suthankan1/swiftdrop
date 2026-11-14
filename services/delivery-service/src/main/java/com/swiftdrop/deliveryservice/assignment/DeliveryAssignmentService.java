@@ -143,7 +143,8 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
             String trackingNumber,
             ParcelStatus status,
             Pageable pageable) {
-        if ((trackingNumber == null || trackingNumber.isBlank()) && status == null) {
+        String normalizedTrackingNumber = trackingNumber == null ? null : trackingNumber.trim();
+        if ((normalizedTrackingNumber == null || normalizedTrackingNumber.isBlank()) && status == null) {
             return getMyAssignments(courierSub, roles, activeOnly, assignedSince, pageable);
         }
         requireCourierRead(courierSub, roles);
@@ -153,7 +154,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         Page<DeliveryAssignment> page = assignmentRepository.findFilteredActiveByCourierSub(
                 courierSub.trim(),
                 assignedSince,
-                trackingNumber.trim(),
+                normalizedTrackingNumber.isBlank() ? null : normalizedTrackingNumber,
                 status,
                 safePageable(pageable)
         );

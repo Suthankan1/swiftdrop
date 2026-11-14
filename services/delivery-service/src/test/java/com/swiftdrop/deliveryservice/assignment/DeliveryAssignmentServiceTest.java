@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -250,6 +252,113 @@ class DeliveryAssignmentServiceTest {
 
         when(assignmentRepository.countByCourierSubAndActiveTrue(courierSub)).thenReturn(3);
         assertThat(service.getActiveCourierWorkload(courierSub)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("Status-only active assignment filtering does not trim a null tracking number")
+    void statusOnlyFilteringPassesNullTrackingNumber() {
+        when(assignmentRepository.findFilteredActiveByCourierSub(
+                eq(courierSub), isNull(), isNull(), eq(ParcelStatus.OUT_FOR_DELIVERY), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.getMyAssignments(
+                courierSub,
+                List.of("COURIER"),
+                true,
+                null,
+                null,
+                ParcelStatus.OUT_FOR_DELIVERY,
+                PageRequest.of(0, 20)
+        );
+
+        verify(assignmentRepository).findFilteredActiveByCourierSub(
+                eq(courierSub), isNull(), isNull(), eq(ParcelStatus.OUT_FOR_DELIVERY), any(PageRequest.class));
+    }
+
+    @Test
+    @DisplayName("Tracking-only filtering passes the normalized tracking number")
+    void trackingOnlyFilteringPassesTrackingNumber() {
+        when(assignmentRepository.findFilteredActiveByCourierSub(
+                eq(courierSub), isNull(), eq(trackingNumber), isNull(), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.getMyAssignments(
+                courierSub,
+                List.of("COURIER"),
+                true,
+                null,
+                " " + trackingNumber + " ",
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        verify(assignmentRepository).findFilteredActiveByCourierSub(
+                eq(courierSub), isNull(), eq(trackingNumber), isNull(), any(PageRequest.class));
+    }
+
+    @Test
+    @DisplayName("Combined tracking and status filtering passes both predicates")
+    void combinedFilteringPassesBothPredicates() {
+        when(assignmentRepository.findFilteredActiveByCourierSub(
+                eq(courierSub), isNull(), eq(trackingNumber), eq(ParcelStatus.OUT_FOR_DELIVERY), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.getMyAssignments(
+                courierSub,
+                List.of("COURIER"),
+                true,
+                null,
+                trackingNumber,
+                ParcelStatus.OUT_FOR_DELIVERY,
+                PageRequest.of(0, 20)
+        );
+
+        verify(assignmentRepository).findFilteredActiveByCourierSub(
+                eq(courierSub), isNull(), eq(trackingNumber), eq(ParcelStatus.OUT_FOR_DELIVERY), any(PageRequest.class));
+    }
+
+    @Test
+    @DisplayName("Blank tracking input with no status uses the unfiltered assignment query")
+    void blankTrackingInputUsesUnfilteredQuery() {
+        when(assignmentRepository.findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
+                eq(courierSub), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.getMyAssignments(
+                courierSub,
+                List.of("COURIER"),
+                true,
+                null,
+                "   ",
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        verify(assignmentRepository).findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
+                eq(courierSub), any(PageRequest.class));
+        verify(assignmentRepository, never()).findFilteredActiveByCourierSub(
+                any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("No-filter assignment retrieval preserves the active query")
+    void noFilterUsesActiveAssignmentQuery() {
+        when(assignmentRepository.findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
+                eq(courierSub), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.getMyAssignments(
+                courierSub,
+                List.of("COURIER"),
+                true,
+                null,
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        verify(assignmentRepository).findByCourierSubAndActiveTrueOrderByAssignedAtDesc(
+                eq(courierSub), any(PageRequest.class));
     }
 
     // --- Reassignment Tests (Issue #125) ---
