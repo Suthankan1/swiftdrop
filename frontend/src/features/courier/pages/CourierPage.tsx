@@ -57,6 +57,7 @@ export function CourierPage({
     todayOnly: false,
     page: 0,
   })
+  const [historyNavigationRevision, setHistoryNavigationRevision] = useState(0)
   const [selectedHistoryParcelId, setSelectedHistoryParcelId] = useState<string | null>(null)
 
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -115,6 +116,7 @@ export function CourierPage({
             onOpenHistory={(status) => {
               setHistoryStatus(status)
               setHistoryState({ status: status ?? '', todayOnly: status !== undefined, page: 0 })
+              setHistoryNavigationRevision((value) => value + 1)
               setWorkspace('history')
               setSelectedParcelId(null)
               setSelectedHistoryParcelId(null)
@@ -149,6 +151,7 @@ export function CourierPage({
               onOpenHistory={() => {
                 setHistoryStatus(undefined)
                 setHistoryState({ status: '', todayOnly: false, page: 0 })
+                setHistoryNavigationRevision((value) => value + 1)
                 setWorkspace('history')
                 setSelectedParcelId(null)
               }}
@@ -164,6 +167,7 @@ export function CourierPage({
             />
           ) : (
             <CourierDeliveryHistory
+              key={`history-${subject}-${historyNavigationRevision}`}
               apiOverride={assignmentsApiOverride}
               initialStatus={historyStatus}
               persistedState={historyState}

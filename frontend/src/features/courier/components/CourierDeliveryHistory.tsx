@@ -3,6 +3,7 @@ import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
 import { CourierApiError, type CourierHistoryStatus, type PagedAssignmentsResponse, type ParcelDetailResponse } from '../api/courierContracts'
 import { createCourierAssignmentsApi } from '../api/courierAssignments'
+import { colomboTodayBounds } from '../utils/historyDateBounds'
 import { CourierAssignmentCard } from './CourierAssignmentCard'
 
 interface CourierDeliveryHistoryProps {
@@ -18,14 +19,6 @@ export interface CourierHistoryState {
   status: CourierHistoryStatus | ''
   todayOnly: boolean
   page: number
-}
-
-function todayBounds(): { since: Date; until: Date } {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 1)
-  return { since: start, until: end }
 }
 
 export function CourierDeliveryHistory({
@@ -63,7 +56,7 @@ export function CourierDeliveryHistory({
       try {
         setLoading(true)
         setError(null)
-        const bounds = todayOnly ? todayBounds() : undefined
+        const bounds = todayOnly ? colomboTodayBounds() : undefined
         const response = await api.getHistoryPaged({
           page,
           size: 20,
