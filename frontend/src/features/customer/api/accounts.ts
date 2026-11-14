@@ -82,5 +82,51 @@ export function createAccountsApi({
       if (!isCurrentUserProfile(profile)) throw new AccountsError('invalid-response')
       return profile
     },
+
+    async updateCurrentUser(
+      data: { fullName?: string; phoneNumber?: string },
+      signal?: AbortSignal,
+    ): Promise<CurrentUserProfile> {
+      let token: string | null
+      try {
+        token = await getAccessToken()
+      } catch {
+        throw new AccountsError('auth-required')
+      }
+      if (!token?.trim()) throw new AccountsError('auth-required')
+
+      let response: Response
+      try {
+        response = await fetchRequest(`${gatewayUrl.replace(/\/$/, '')}/api/v1/users/me`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+          credentials: 'omit',
+          cache: 'no-store',
+          redirect: 'error',
+          signal,
+        })
+      } catch (error) {
+        if (signal?.aborted) throw error
+        throw new AccountsError('unavailable')
+      }
+
+      if (response.status === 401) throw new AccountsError('auth-required')
+      if (response.status === 403 || response.status === 404) throw new AccountsError('forbidden')
+      if (!response.ok) throw new AccountsError('unavailable')
+
+      let profile: unknown
+      try {
+        profile = await response.json()
+      } catch {
+        throw new AccountsError('invalid-response')
+      }
+      if (!isCurrentUserProfile(profile)) throw new AccountsError('invalid-response')
+      return profile
+    },
   }
 }

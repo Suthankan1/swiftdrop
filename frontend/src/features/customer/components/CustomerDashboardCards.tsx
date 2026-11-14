@@ -107,9 +107,12 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
       {data && (
         <>
           <div className="customer-summary-grid">
-            <div className="card metric-card">
-              <span className="spec-label">Active Deliveries</span>
-              <span className="metric-value">{data.activeDeliveriesCount}</span>
+            <div className="card metric-card metric-card--active">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>🚚</span>
+                <span className="spec-label">Active Deliveries</span>
+              </div>
+              <span className="metric-value metric-value--active">{data.activeDeliveriesCount}</span>
               <p className="metric-caption muted">Parcels in transit or out for delivery</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (
@@ -124,9 +127,12 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
               </div>
             </div>
 
-            <div className="card metric-card">
-              <span className="spec-label">Completed Deliveries</span>
-              <span className="metric-value">{data.completedDeliveriesCount}</span>
+            <div className="card metric-card metric-card--completed">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>✅</span>
+                <span className="spec-label">Completed Deliveries</span>
+              </div>
+              <span className="metric-value metric-value--completed">{data.completedDeliveriesCount}</span>
               <p className="metric-caption muted">Delivered parcels with official receipts</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (
@@ -141,9 +147,12 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
               </div>
             </div>
 
-            <div className="card metric-card">
-              <span className="spec-label">Total Shipments</span>
-              <span className="metric-value">{totalBookings}</span>
+            <div className="card metric-card metric-card--total">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>📦</span>
+                <span className="spec-label">Total Shipments</span>
+              </div>
+              <span className="metric-value metric-value--total">{totalBookings}</span>
               <p className="metric-caption muted">Total dispatches booked with SwiftDrop</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (

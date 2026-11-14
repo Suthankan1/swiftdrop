@@ -2294,3 +2294,176 @@ main:focus { outline: none; }
 
 /* The delivery stepper is an ordered list for screen readers; keep its visual layout (audit 96). */
 ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }
+
+/* ---------------------------------------------------------------------------
+   UI/UX Enhancement & Design System Remediation
+   --------------------------------------------------------------------------- */
+
+/* Back button component */
+.sd-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--sd-surface-card, #ffffff);
+  border: 1px solid var(--sd-border, #e2e8f0);
+  color: var(--sd-text, #1e293b);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.sd-back-button:hover {
+  background: var(--sd-surface-hover, #f8fafc);
+  border-color: var(--color-teal, #0d9488);
+  color: var(--color-primary, #0f172a);
+  transform: translateX(-2px);
+}
+.sd-back-button:focus-visible {
+  outline: 2px solid var(--color-teal, #0d9488);
+  outline-offset: 2px;
+}
+.sd-back-button-icon {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.sd-back-button:hover .sd-back-button-icon {
+  transform: translateX(-2px);
+}
+
+/* Table Action Button Alignment */
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.action-buttons-cell {
+  white-space: nowrap;
+}
+
+/* Metric cards color differentiation */
+.metric-card--active {
+  border-top: 4px solid #3b82f6 !important;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.04) 0%, #ffffff 60%);
+}
+.metric-value--active {
+  color: #1d4ed8 !important;
+}
+
+.metric-card--completed {
+  border-top: 4px solid #10b981 !important;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, #ffffff 60%);
+}
+.metric-value--completed {
+  color: #047857 !important;
+}
+
+.metric-card--total {
+  border-top: 4px solid #6366f1 !important;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.04) 0%, #ffffff 60%);
+}
+.metric-value--total {
+  color: #4338ca !important;
+}
+
+/* Profile details tiles */
+.profile-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-block: 20px 0;
+}
+.profile-details .field {
+  background: var(--sd-surface-card, #f8fafc);
+  border: 1px solid var(--sd-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.15s ease;
+}
+.profile-details .field:hover {
+  border-color: #cbd5e1;
+}
+.profile-details .field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted, #64748b);
+  margin-bottom: 2px;
+}
+.profile-details .field-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sd-text, #0f172a);
+  margin: 0;
+  word-break: break-word;
+}
+
+/* Customer quick actions */
+.customer-quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+.customer-quick-actions .button {
+  width: 100%;
+  justify-content: center;
+  font-weight: 600;
+}
+
+/* Role Workspace Visual Differentiation */
+.admin-page .staff-heading {
+  border-left: 4px solid #1e293b;
+  padding-left: 18px;
+}
+.admin-page .staff-heading .eyebrow {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.dispatcher-page .staff-heading {
+  border-left: 4px solid #0d9488;
+  padding-left: 18px;
+}
+.dispatcher-page .staff-heading .eyebrow {
+  color: #0d9488;
+  font-weight: 700;
+}
+
+.courier-page .page-heading {
+  border-left: 4px solid #f59e0b;
+  padding-left: 18px;
+}
+.courier-page .page-heading .eyebrow {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.merchant-page .page-heading {
+  border-left: 4px solid #059669;
+  padding-left: 18px;
+}
+.merchant-page .page-heading .eyebrow {
+  color: #047857;
+  font-weight: 700;
+}
+
+.customer-page .page-heading {
+  border-left: 4px solid #10b981;
+  padding-left: 18px;
+}
+.customer-page .page-heading .eyebrow {
+  color: #059669;
+  font-weight: 700;
+}

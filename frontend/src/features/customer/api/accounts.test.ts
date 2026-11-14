@@ -108,4 +108,36 @@ describe('Accounts API adapter', () => {
 
     await expect(api.getCurrentUser()).rejects.toMatchObject({ kind: 'invalid-response' })
   })
+
+  describe('updateCurrentUser', () => {
+    it('patches user details to /api/v1/users/me with json body', async () => {
+      const updated = { ...customerFixture, fullName: 'Alice Updated', phoneNumber: '+94 77 999 8888' }
+      const { api, request } = createTestApi(Response.json(updated))
+
+      const result = await api.updateCurrentUser({ fullName: 'Alice Updated', phoneNumber: '+94 77 999 8888' })
+
+      expect(result).toEqual(updated)
+      expect(request).toHaveBeenCalledWith('http://localhost:8080/api/v1/users/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${testOnlyAccessToken}`,
+        },
+        body: JSON.stringify({ fullName: 'Alice Updated', phoneNumber: '+94 77 999 8888' }),
+        credentials: 'omit',
+        cache: 'no-store',
+        redirect: 'error',
+        signal: undefined,
+      })
+    })
+
+    it('rejects update when unauthenticated', async () => {
+      const request = vi.fn<typeof fetch>()
+      const api = createAccountsApi({ getAccessToken: async () => null, fetch: request })
+
+      await expect(api.updateCurrentUser({ fullName: 'Alice' })).rejects.toMatchObject({ kind: 'auth-required' })
+      expect(request).not.toHaveBeenCalled()
+    })
+  })
 })

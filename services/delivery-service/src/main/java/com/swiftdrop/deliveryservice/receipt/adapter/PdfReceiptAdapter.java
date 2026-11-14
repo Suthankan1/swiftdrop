@@ -174,12 +174,15 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
         stream.showText("OFFICIAL PARCEL DELIVERY RECEIPT");
         stream.endText();
 
-        // Right aligned receipt label
+        // Right aligned receipt label - dynamically compute width to align against right margin
+        String receiptLabel = "RECEIPT: " + sanitizeText(data.receiptId());
+        float receiptLabelWidth = boldFont.getStringWidth(receiptLabel) / 1000f * 11f;
+        float receiptX = (PAGE_WIDTH - PAGE_MARGIN) - receiptLabelWidth;
         stream.beginText();
-        stream.setFont(boldFont, 12);
+        stream.setFont(boldFont, 11);
         stream.setNonStrokingColor(BRAND_NAVY);
-        stream.newLineAtOffset(PAGE_WIDTH - PAGE_MARGIN - 170, y - 20);
-        stream.showText("RECEIPT: " + sanitizeText(data.receiptId()));
+        stream.newLineAtOffset(receiptX, y - 20);
+        stream.showText(receiptLabel);
         stream.endText();
 
         // Divider Line
@@ -191,22 +194,22 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
     private float drawMetaGrid(PDPageContentStream stream, PDType1Font boldFont, PDType1Font regularFont, ReceiptData data, float y) throws IOException {
         float startY = y;
         float col1 = PAGE_MARGIN;
-        float col2 = PAGE_MARGIN + (CONTENT_WIDTH / 2);
+        float col2 = PAGE_MARGIN + 250;
 
-        // Left Column: Tracking and Parcel IDs
-        drawLabelAndValue(stream, boldFont, regularFont, col1, y, "Tracking Number:", data.trackingNumber());
+        // Left Column: Tracking, Parcel ID, Rate Version
+        drawLabelAndValue(stream, boldFont, regularFont, col1, y, "Tracking Number:", data.trackingNumber(), 9f, 9f);
         y -= 16;
-        drawLabelAndValue(stream, boldFont, regularFont, col1, y, "Parcel Reference:", data.parcelId().toString());
+        drawLabelAndValue(stream, boldFont, regularFont, col1, y, "Parcel Reference:", data.parcelId().toString(), 9f, 7.5f);
         y -= 16;
-        drawLabelAndValue(stream, boldFont, regularFont, col1, y, "Rate Version:", data.rateVersion());
+        drawLabelAndValue(stream, boldFont, regularFont, col1, y, "Rate Version:", data.rateVersion(), 9f, 9f);
 
         // Right Column: Dates and Status
         float rightY = startY;
-        drawLabelAndValue(stream, boldFont, regularFont, col2, rightY, "Date Issued:", UTC_FORMATTER.format(data.issuedAt()));
+        drawLabelAndValue(stream, boldFont, regularFont, col2, rightY, "Date Issued:", UTC_FORMATTER.format(data.issuedAt()), 9f, 8.5f);
         rightY -= 16;
-        drawLabelAndValue(stream, boldFont, regularFont, col2, rightY, "Date Completed:", UTC_FORMATTER.format(data.deliveryCompletedAt()));
+        drawLabelAndValue(stream, boldFont, regularFont, col2, rightY, "Date Completed:", UTC_FORMATTER.format(data.deliveryCompletedAt()), 9f, 8.5f);
         rightY -= 16;
-        drawLabelAndValue(stream, boldFont, regularFont, col2, rightY, "Delivery Status:", data.deliveryStatus() + " (CONFIRMED)");
+        drawLabelAndValue(stream, boldFont, regularFont, col2, rightY, "Delivery Status:", data.deliveryStatus() + " (CONFIRMED)", 9f, 8.5f);
 
         y = Math.min(y, rightY) - 15;
         drawLine(stream, PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y, LINE_COLOR, 0.8f);
@@ -215,7 +218,7 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
 
     private float drawPartiesSection(PDPageContentStream stream, PDType1Font boldFont, PDType1Font regularFont, ReceiptData data, float y) throws IOException {
         float col1 = PAGE_MARGIN;
-        float col2 = PAGE_MARGIN + (CONTENT_WIDTH / 2);
+        float col2 = PAGE_MARGIN + 250;
 
         // Section Title Left: Sender
         stream.beginText();
@@ -235,20 +238,20 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
 
         y -= 18;
         float senderY = y;
-        drawLabelAndValue(stream, boldFont, regularFont, col1, senderY, "Creator Subject:", truncateText(data.createdBySub(), 30));
+        drawLabelAndValue(stream, boldFont, regularFont, col1, senderY, "Creator Subject:", truncateText(data.createdBySub(), 26), 9f, 8.5f);
         senderY -= 14;
         if (data.merchantId() != null) {
-            drawLabelAndValue(stream, boldFont, regularFont, col1, senderY, "Merchant Tenant:", data.merchantId().toString());
+            drawLabelAndValue(stream, boldFont, regularFont, col1, senderY, "Merchant Tenant:", data.merchantId().toString(), 9f, 7.5f);
             senderY -= 14;
         }
-        drawLabelAndValue(stream, boldFont, regularFont, col1, senderY, "Pickup Location:", truncateText(data.pickupAddress(), 36));
+        drawLabelAndValue(stream, boldFont, regularFont, col1, senderY, "Pickup Location:", truncateText(data.pickupAddress(), 28), 9f, 8.5f);
 
         float recipientY = y;
-        drawLabelAndValue(stream, boldFont, regularFont, col2, recipientY, "Recipient Name:", data.recipientName());
+        drawLabelAndValue(stream, boldFont, regularFont, col2, recipientY, "Recipient Name:", truncateText(data.recipientName(), 26), 9f, 8.5f);
         recipientY -= 14;
-        drawLabelAndValue(stream, boldFont, regularFont, col2, recipientY, "Recipient Phone:", data.recipientPhone());
+        drawLabelAndValue(stream, boldFont, regularFont, col2, recipientY, "Recipient Phone:", truncateText(data.recipientPhone(), 22), 9f, 8.5f);
         recipientY -= 14;
-        drawLabelAndValue(stream, boldFont, regularFont, col2, recipientY, "Delivery Address:", truncateText(data.dropoffAddress(), 36));
+        drawLabelAndValue(stream, boldFont, regularFont, col2, recipientY, "Delivery Address:", truncateText(data.dropoffAddress(), 28), 9f, 8.5f);
 
         y = Math.min(senderY, recipientY) - 15;
         drawLine(stream, PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y, LINE_COLOR, 0.8f);
@@ -265,16 +268,32 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
         drawLine(stream, PAGE_MARGIN, y, PAGE_WIDTH - PAGE_MARGIN, y, BRAND_NAVY, 1.2f);
         drawLine(stream, PAGE_MARGIN, y - 22, PAGE_WIDTH - PAGE_MARGIN, y - 22, BRAND_NAVY, 1.2f);
 
+        float colDesc = PAGE_MARGIN + 10;
+        float colCurr = PAGE_MARGIN + 310;
+        float colAmountRight = PAGE_WIDTH - PAGE_MARGIN - 12;
+
         // Header Text
         stream.beginText();
         stream.setFont(boldFont, 10);
         stream.setNonStrokingColor(BRAND_NAVY);
-        stream.newLineAtOffset(PAGE_MARGIN + 10, y - 15);
+        stream.newLineAtOffset(colDesc, y - 15);
         stream.showText("DESCRIPTION");
-        stream.newLineAtOffset(CONTENT_WIDTH - 220, 0);
+        stream.endText();
+
+        stream.beginText();
+        stream.setFont(boldFont, 10);
+        stream.setNonStrokingColor(BRAND_NAVY);
+        stream.newLineAtOffset(colCurr, y - 15);
         stream.showText("CURRENCY");
-        stream.newLineAtOffset(110, 0);
-        stream.showText("AMOUNT");
+        stream.endText();
+
+        String amtHeader = "AMOUNT";
+        float amtHeaderWidth = boldFont.getStringWidth(amtHeader) / 1000f * 10f;
+        stream.beginText();
+        stream.setFont(boldFont, 10);
+        stream.setNonStrokingColor(BRAND_NAVY);
+        stream.newLineAtOffset(colAmountRight - amtHeaderWidth, y - 15);
+        stream.showText(amtHeader);
         stream.endText();
 
         y -= 34;
@@ -282,15 +301,27 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
         // Line Items
         for (ReceiptLineItem item : data.lineItems()) {
             String formattedAmount = formatCurrency(item.amountMinorUnits());
+            String desc = truncateText(sanitizeText(item.description()), 48);
 
             stream.beginText();
             stream.setFont(regularFont, 10);
             stream.setNonStrokingColor(TEXT_DARK);
-            stream.newLineAtOffset(PAGE_MARGIN + 10, y);
-            stream.showText(sanitizeText(item.description()));
-            stream.newLineAtOffset(CONTENT_WIDTH - 220, 0);
+            stream.newLineAtOffset(colDesc, y);
+            stream.showText(desc);
+            stream.endText();
+
+            stream.beginText();
+            stream.setFont(regularFont, 10);
+            stream.setNonStrokingColor(TEXT_DARK);
+            stream.newLineAtOffset(colCurr, y);
             stream.showText(item.currency());
-            stream.newLineAtOffset(110, 0);
+            stream.endText();
+
+            float amtWidth = regularFont.getStringWidth(formattedAmount) / 1000f * 10f;
+            stream.beginText();
+            stream.setFont(regularFont, 10);
+            stream.setNonStrokingColor(TEXT_DARK);
+            stream.newLineAtOffset(colAmountRight - amtWidth, y);
             stream.showText(formattedAmount);
             stream.endText();
 
@@ -305,11 +336,22 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
         stream.beginText();
         stream.setFont(boldFont, 11);
         stream.setNonStrokingColor(BRAND_NAVY);
-        stream.newLineAtOffset(PAGE_MARGIN + 10, y);
+        stream.newLineAtOffset(colDesc, y);
         stream.showText("TOTAL PAID");
-        stream.newLineAtOffset(CONTENT_WIDTH - 220, 0);
+        stream.endText();
+
+        stream.beginText();
+        stream.setFont(boldFont, 11);
+        stream.setNonStrokingColor(BRAND_NAVY);
+        stream.newLineAtOffset(colCurr, y);
         stream.showText(data.currency());
-        stream.newLineAtOffset(110, 0);
+        stream.endText();
+
+        float totalWidth = boldFont.getStringWidth(totalFormatted) / 1000f * 11f;
+        stream.beginText();
+        stream.setFont(boldFont, 11);
+        stream.setNonStrokingColor(BRAND_NAVY);
+        stream.newLineAtOffset(colAmountRight - totalWidth, y);
         stream.showText(totalFormatted);
         stream.endText();
 
@@ -321,8 +363,8 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
         stream.beginText();
         stream.setFont(regularFont, 9);
         stream.setNonStrokingColor(TEXT_MUTED);
-        stream.newLineAtOffset(PAGE_MARGIN + 10, y);
-        stream.showText("Payment Reference: " + sanitizeText(data.paymentReference()) + "  |  Status: PAID (Confirmed)");
+        stream.newLineAtOffset(colDesc, y);
+        stream.showText("Payment Reference: " + truncateText(sanitizeText(data.paymentReference()), 30) + "  |  Status: PAID (Confirmed)");
         stream.endText();
 
         return y - 20;
@@ -348,16 +390,25 @@ public class PdfReceiptAdapter implements ReceiptRendererPort {
     }
 
     private void drawLabelAndValue(PDPageContentStream stream, PDType1Font boldFont, PDType1Font regularFont,
-                                  float x, float y, String label, String value) throws IOException {
+                                  float x, float y, String label, String value, float labelFontSize, float valueFontSize) throws IOException {
         stream.beginText();
-        stream.setFont(boldFont, 9);
+        stream.setFont(boldFont, labelFontSize);
         stream.setNonStrokingColor(TEXT_DARK);
         stream.newLineAtOffset(x, y);
         stream.showText(label);
-        stream.setFont(regularFont, 9);
-        stream.newLineAtOffset(85, 0);
+        stream.endText();
+
+        stream.beginText();
+        stream.setFont(regularFont, valueFontSize);
+        stream.setNonStrokingColor(TEXT_DARK);
+        stream.newLineAtOffset(x + 92, y);
         stream.showText(sanitizeText(value));
         stream.endText();
+    }
+
+    private void drawLabelAndValue(PDPageContentStream stream, PDType1Font boldFont, PDType1Font regularFont,
+                                  float x, float y, String label, String value) throws IOException {
+        drawLabelAndValue(stream, boldFont, regularFont, x, y, label, value, 9f, 9f);
     }
 
     private void drawLine(PDPageContentStream stream, float x1, float y1, float x2, float y2, Color color, float width) throws IOException {

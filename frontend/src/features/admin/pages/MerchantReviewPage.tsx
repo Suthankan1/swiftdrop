@@ -1,9 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
+import { BackButton } from '../../../components/ui/BackButton'
 import {
   createMerchantReviewApi, isAmbiguousCommandFailure, merchantReasonProblem, merchantReviewFailure, MerchantReviewError,
   type MerchantReviewApi, type MerchantReviewAction, type MerchantReviewDetail, type MerchantReviewFilter,
@@ -37,7 +37,9 @@ export function MerchantReviewPage({ api }: { api?: MerchantReviewApi | null } =
   const effectiveApi = api === null ? undefined : api ?? defaultApi
 
   return <div className="page-container merchant-review-page">
-    <Link to="/admin">Back to administration</Link>
+    <div style={{ marginBottom: '16px' }}>
+      <BackButton to="/admin" label="Back to administration" />
+    </div>
     <header className="staff-heading"><p className="eyebrow">Admin space</p>
       <h1 className="page-heading">Merchant review</h1>
       <p className="muted">Review business enrollment and the actions available for each merchant.</p>

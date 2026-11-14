@@ -4,6 +4,7 @@ import { useQueries, useQueryClient, type UseQueryResult } from '@tanstack/react
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
+import { BackButton } from '../../../components/ui/BackButton'
 import { ReportCharts } from '../components/ReportCharts'
 import { useAdminQuery, type AdminScope } from '../hooks/useAdminManagement'
 import { createReportsApi, formatCount, formatRate, outcomeRates, reportFailure, ZONE_PATTERN,
@@ -41,7 +42,9 @@ function ReportsWorkspace({ audience, api, now }: { audience: ReportAudience; ap
   } }
   const admin = audience === 'ADMIN'
   return <div className="page-container admin-management reports-page">
-    <Link to={admin ? '/admin' : '/dispatcher'}>{admin ? 'Back to administration' : 'Back to dispatch'}</Link>
+    <div style={{ marginBottom: '16px' }}>
+      <BackButton to={admin ? '/admin' : '/dispatcher'} label={admin ? 'Back to administration' : 'Back to dispatch'} />
+    </div>
     <header className="staff-heading">
       <p className="eyebrow">{admin ? 'Admin space' : 'Dispatcher space'}</p>
       <h1 className="page-heading">{admin ? 'Daily outcomes and admin reports' : 'Daily outcomes'}</h1>

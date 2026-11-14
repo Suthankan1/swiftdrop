@@ -50,4 +50,18 @@ public class CurrentUserProfileService {
         return new CurrentUserProfile(profile.getId(), profile.getKeycloakSub(), profile.getEmail(),
                 profile.getFullName(), profile.getPhoneNumber(), identity.roles(), merchantProfile, profile.getCreatedAt());
     }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public CurrentUserProfile updateContactDetails(TrustedIdentity identity, String fullName, String phoneNumber) {
+        Objects.requireNonNull(identity, "Trusted identity is required");
+        getOrCreate(identity);
+        var profile = profiles.findByKeycloakSub(identity.subject())
+                .orElseThrow(() -> new IllegalStateException("Profile not found"));
+
+        String name = fullName == null ? profile.getFullName() : fullName.trim();
+        String phone = phoneNumber == null ? profile.getPhoneNumber() : phoneNumber.trim();
+
+        profiles.updateContactDetails(profile.getId(), name, phone.isEmpty() ? null : phone);
+        return getOrCreate(identity);
+    }
 }
