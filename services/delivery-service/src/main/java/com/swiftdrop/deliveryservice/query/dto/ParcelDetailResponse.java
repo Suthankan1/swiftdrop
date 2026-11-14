@@ -24,6 +24,16 @@ public record ParcelDetailResponse(
         String pickupAddress,
         String dropoffAddress,
         String activeCourierSub,
-        Instant createdAt
+        Instant createdAt,
+        Instant updatedAt
 ) {
+    /** Compatibility for command snapshots and older internal producers without update metadata. */
+    public ParcelDetailResponse(UUID parcelId, String trackingNumber, String createdBySub, UUID merchantId,
+            ParcelStatus currentStatus, Long version, Double weightKg, String dimensions,
+            Long amountMinorUnits, String currency, String rateVersion, String pickupAddress,
+            String dropoffAddress, String activeCourierSub, Instant createdAt) {
+        this(parcelId, trackingNumber, createdBySub, merchantId, currentStatus, version, weightKg,
+                dimensions, amountMinorUnits, currency, rateVersion, pickupAddress, dropoffAddress,
+                activeCourierSub, createdAt, null);
+    }
 }
