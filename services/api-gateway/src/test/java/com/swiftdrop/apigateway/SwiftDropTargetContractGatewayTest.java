@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -123,6 +124,13 @@ public class SwiftDropTargetContractGatewayTest {
         registry.add("KEYCLOAK_ISSUER_URI", () -> swiftDropIssuerUrl);
         registry.add("JWT_AUDIENCE", () -> "swiftdrop-api");
         registry.add("ACCOUNTS_SERVICE_URL", () -> accountsServer.url("").toString().replaceAll("/$", ""));
+    }
+
+    @BeforeEach
+    void drainAccountsServer() throws Exception {
+        while (accountsServer.takeRequest(10, TimeUnit.MILLISECONDS) != null) {
+            // drain leftover requests from previous tests
+        }
     }
 
     private String createToken(String issuer, String audience, boolean expired, RSAKey signingKey) throws Exception {
