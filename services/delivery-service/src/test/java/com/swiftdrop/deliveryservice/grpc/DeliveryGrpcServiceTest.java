@@ -512,6 +512,29 @@ class DeliveryGrpcServiceTest {
         assertThat(item.getTrackingNumber()).isEqualTo("SWD-2026-CUST-01");
         assertThat(item.getCurrentStatus()).isEqualTo("CREATED");
         assertThat(item.getAmountMinorUnits()).isEqualTo(120000L);
+        assertThat(item.getRecipientCity()).isEqualTo("Not recorded");
+    }
+
+    @Test
+    @DisplayName("ListCustomerParcels: populates recipientCity from quoteSnapshot dropoffZoneName")
+    void testListCustomerParcels_PopulatesRecipientCityFromQuoteSnapshot() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), customerSub, List.of("CUSTOMER"));
+
+        UUID parcelId = UUID.randomUUID();
+        Parcel parcel = new Parcel(parcelId, "SWD-2026-CUST-02", customerSub, null, null, "v1", 120000L, "LKR", new BigDecimal("2.5"));
+        parcel.setQuoteSnapshot("{\"pickupZoneName\":\"Colombo Municipal District\",\"dropoffZoneName\":\"Western Province Suburbs\"}");
+
+        when(parcelRepository.countActiveBySenderSub(customerSub)).thenReturn(1);
+        when(parcelRepository.countCompletedBySenderSub(customerSub)).thenReturn(0);
+        when(parcelRepository.findBySenderSubOrderByCreatedAtDesc(eq(customerSub), any()))
+                .thenReturn(new PageImpl<>(List.of(parcel), PageRequest.of(0, 20), 1));
+
+        ListCustomerParcelsResponse response = stub.listCustomerParcels(
+                ListCustomerParcelsRequest.newBuilder().setPage(0).setPageSize(20).build()
+        );
+
+        assertThat(response.getParcels(0).getRecipientCity()).isEqualTo("Western Province Suburbs");
     }
 
     @Test

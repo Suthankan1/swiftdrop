@@ -16,6 +16,8 @@ interface CustomerHistoryTableProps {
   onDownloadReceipt: (parcelId: string) => Promise<void>
   downloadingParcelId: string | null
   isLoading?: boolean
+  emptyTitle?: string
+  emptyDescription?: string
 }
 
 export function CustomerHistoryTable({
@@ -30,6 +32,8 @@ export function CustomerHistoryTable({
   onDownloadReceipt,
   downloadingParcelId,
   isLoading = false,
+  emptyTitle = 'No delivery history yet',
+  emptyDescription = 'Your booked deliveries, live journey milestones, and official PDF receipts will be recorded here.',
 }: CustomerHistoryTableProps) {
   if (deliveries.length === 0) {
     return (
@@ -39,9 +43,9 @@ export function CustomerHistoryTable({
             <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
         </div>
-        <h3>No delivery history yet</h3>
+        <h3>{emptyTitle}</h3>
         <p className="muted">
-          Your booked deliveries, live journey milestones, and official PDF receipts will be recorded here.
+          {emptyDescription}
         </p>
         <a className="button button-primary button-sm" href="/customer/quote">Book your first delivery</a>
       </div>

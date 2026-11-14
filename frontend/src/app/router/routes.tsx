@@ -36,7 +36,9 @@ export function AppRoutes() {
           <Route path="customer" element={<CustomerPage />} />
           <Route path="customer/quote" element={<CustomerQuotePage />} />
           <Route path="customer/booking/confirmed/:parcelId" element={<CustomerBookingConfirmedPage />} />
-          <Route path="customer/history" element={<CustomerHistoryPage />} />
+          <Route path="customer/active" element={<CustomerHistoryPage mode="active" />} />
+          <Route path="customer/completed" element={<CustomerHistoryPage mode="completed" />} />
+          <Route path="customer/history" element={<CustomerHistoryPage mode="all" />} />
         </Route>
         <Route element={<ProtectedRoute />}>
           <Route path="merchant/enroll" element={<MerchantEnrollmentPage />} />

@@ -1247,6 +1247,9 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
     private CustomerParcelSummary toCustomerParcelSummary(Parcel p) {
         Instant createdAt = p.getCreatedAt() != null ? p.getCreatedAt() : Instant.now();
         Instant updatedAt = p.getUpdatedAt() != null ? p.getUpdatedAt() : createdAt;
+        com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(p);
+        String recipientCity = route.dropoffZoneName() != null ? route.dropoffZoneName()
+                : (route.dropoffZone() != null ? route.dropoffZone() : "Not recorded");
 
         return CustomerParcelSummary.newBuilder()
                 .setParcelId(p.getParcelId().toString())
@@ -1254,7 +1257,7 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
                 .setCurrentStatus(p.getStatus().name())
                 .setAmountMinorUnits(p.getAmountMinorUnits() != null ? p.getAmountMinorUnits() : 0L)
                 .setCurrency(p.getCurrency() != null ? p.getCurrency() : "LKR")
-                .setRecipientCity("")
+                .setRecipientCity(recipientCity)
                 .setCreatedAt(toTimestamp(createdAt))
                 .setUpdatedAt(toTimestamp(updatedAt))
                 .setVersion(p.getVersion() != null ? p.getVersion() : 1L)

@@ -349,6 +349,37 @@ describe('CustomerQuotePage & Booking Workflow (Issue #118)', () => {
     )
   })
 
+  it('rejects recipient phone numbers that do not match +94 followed by 9 digits', async () => {
+    const user = userEvent.setup({ delay: null })
+    render(
+      <TestProviders auth={customerAuth}>
+        <MemoryRouter initialEntries={['/customer/quote']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </TestProviders>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /calculate delivery quote/i }))
+    await screen.findByRole('heading', { name: /complete booking information/i })
+
+    await user.type(screen.getByLabelText(/pickup street address/i), '123 Galle Road, Colombo 03')
+    await user.type(screen.getByLabelText(/dropoff street address/i), '45 Kandy Road, Gampaha')
+    await user.type(screen.getByLabelText(/recipient full name/i), 'Nimal Perera')
+    const phoneInput = screen.getByLabelText(/recipient phone number/i)
+    await user.type(phoneInput, '0704174456')
+
+    await user.click(screen.getByRole('button', { name: /confirm & book delivery/i }))
+
+    expect(
+      screen.getByText(/phone number must be in \+94xxxxxxxxx format \(e\.g\. \+94704174456\)\./i),
+    ).toBeInTheDocument()
+    expect(phoneInput).toHaveAttribute('aria-invalid', 'true')
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/parcels'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
   it('associates booking errors with fields and focuses the first invalid address', async () => {
     const user = userEvent.setup({ delay: null })
     render(
