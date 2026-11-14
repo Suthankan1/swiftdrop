@@ -2467,3 +2467,72 @@ ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }
   color: #059669;
   font-weight: 700;
 }
+
+/* Dispatcher & Admin Queue, Filter and Empty-state Controls */
+.queue-search-input {
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--sd-border, #d1d5db);
+  background: var(--sd-surface-card, #ffffff);
+  color: var(--color-foreground, #111827);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.queue-search-input:focus {
+  outline: none;
+  border-color: var(--color-teal, #1b6355);
+  box-shadow: 0 0 0 3px rgba(27, 99, 85, 0.15);
+}
+
+.queue-sort-select {
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--sd-border, #d1d5db);
+  background: var(--sd-surface-card, #ffffff);
+  color: var(--color-foreground, #111827);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.queue-sort-select:focus {
+  outline: none;
+  border-color: var(--color-teal, #1b6355);
+  box-shadow: 0 0 0 3px rgba(27, 99, 85, 0.15);
+}
+
+.queue-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 36px 20px;
+  margin: 16px 0;
+  border: 1px dashed var(--sd-border, #d1d5db);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.empty-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(27, 99, 85, 0.08);
+  color: var(--color-teal, #1b6355);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.pagination-pill {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-foreground, #374151);
+}
+
+.merchant-review-header-bar {
+  border: 1px solid var(--sd-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--sd-surface-card, #ffffff);
+}

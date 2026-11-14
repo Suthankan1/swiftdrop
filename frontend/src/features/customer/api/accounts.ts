@@ -5,8 +5,8 @@ export type ProfileFailure = 'auth-required' | 'forbidden' | 'unavailable' | 'in
 export class AccountsError extends Error {
   readonly kind: ProfileFailure
 
-  constructor(kind: ProfileFailure) {
-    super('The account profile could not be loaded.')
+  constructor(kind: ProfileFailure, message?: string) {
+    super(message || 'The account profile could not be loaded.')
     this.name = 'AccountsError'
     this.kind = kind
   }
@@ -31,9 +31,10 @@ function isMerchantProfile(value: unknown): value is MerchantProfile {
 
 function isCurrentUserProfile(value: unknown): value is CurrentUserProfile {
   return isRecord(value) &&
-    ['id', 'keycloakSub', 'email', 'fullName', 'phoneNumber', 'createdAt'].every(
+    ['id', 'keycloakSub', 'email', 'fullName', 'createdAt'].every(
       (key) => typeof value[key] === 'string',
     ) &&
+    (value.phoneNumber === null || typeof value.phoneNumber === 'string') &&
     Array.isArray(value.roles) && value.roles.every((role) => typeof role === 'string') &&
     (value.merchantProfile === null || isMerchantProfile(value.merchantProfile))
 }

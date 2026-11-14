@@ -41,10 +41,11 @@ function CourierParcelsExpanded({ courierSub, api }: { courierSub: string; api: 
         {query.data.map(item => {
           const p = item.parcel as Record<string, unknown> | null
           const trackingNumber = (typeof p?.trackingNumber === 'string' && p.trackingNumber) || `Parcel ${item.parcelId.slice(0, 8)}…`
-          const status = (typeof p?.currentStatus === 'string' && p.currentStatus) || (item.active ? 'IN_TRANSIT' : 'COMPLETED')
-          const pickup = typeof p?.pickupZone === 'string' ? p.pickupZone : null
-          const dropoff = typeof p?.dropoffZone === 'string' ? p.dropoffZone : null
-          const route = pickup && dropoff ? `${pickup} → ${dropoff}` : null
+          const status = (typeof p?.currentStatus === 'string' && p.currentStatus) || (item.active ? 'ASSIGNED' : 'COMPLETED')
+          const pickup = typeof p?.pickupZone === 'string' ? p.pickupZone : (typeof p?.pickupAddress === 'string' ? p.pickupAddress : null)
+          const dropoff = typeof p?.dropoffZone === 'string' ? p.dropoffZone : (typeof p?.dropoffAddress === 'string' ? p.dropoffAddress : null)
+          const route = pickup && dropoff ? `${pickup} → ${dropoff}` : (pickup || dropoff || null)
+          const weight = typeof p?.weightKg === 'number' ? `${p.weightKg} kg` : null
 
           return (
             <div
@@ -55,21 +56,23 @@ function CourierParcelsExpanded({ courierSub, api }: { courierSub: string; api: 
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 gap: '8px',
-                padding: '6px 12px',
+                padding: '8px 12px',
                 background: 'rgba(0,0,0,0.02)',
                 borderRadius: '6px',
                 fontSize: '0.82rem',
+                border: '1px solid rgba(0,0,0,0.04)',
               }}
             >
               <div>
                 <strong>{trackingNumber}</strong>
+                {weight && <span className="muted" style={{ marginLeft: '6px', fontSize: '0.78rem' }}>({weight})</span>}
                 {route && <span className="muted" style={{ marginLeft: '8px', fontSize: '0.78rem' }}>{route}</span>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="muted" style={{ fontSize: '0.75rem' }}>
                   Assigned {new Date(item.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                <Badge variant={status === 'DELIVERED' ? 'success' : 'primary'} size="sm">
+                <Badge variant={status === 'DELIVERED' ? 'success' : status === 'FAILED' ? 'danger' : 'primary'} size="sm">
                   {status}
                 </Badge>
               </div>
@@ -200,38 +203,42 @@ export function DispatcherOperations() {
     {query.isFetching && <p role="status">Loading queue and courier workloads…</p>}
     {query.isError && <div role="alert"><p>{query.error instanceof DispatcherError ? query.error.message : 'Operations provider unavailable.'}</p><p>Refresh operations to try again.</p></div>}
     {data && !query.isError && <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-        <p style={{ margin: 0 }}>Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} {data.pageInfo.totalElements === 1 ? 'parcel' : 'parcels'}{zoneFilter !== 'ALL' && ` in ${zoneFilter}`}</p>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            type="search"
-            placeholder="Search tracking #..."
-            aria-label="Search unassigned parcels"
-            value={queueSearch}
-            onChange={e => setQueueSearch(e.target.value)}
-            style={{ fontSize: '0.8rem', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--sd-border, #ccc)' }}
-          />
-          <select
-            aria-label="Sort unassigned parcels"
-            value={queueSort}
-            onChange={e => setQueueSort(e.target.value as 'default' | 'weight-desc' | 'weight-asc' | 'newest')}
-            style={{ fontSize: '0.8rem', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--sd-border, #ccc)' }}
-          >
-            <option value="default">Default order</option>
-            <option value="weight-desc">Heaviest first</option>
-            <option value="weight-asc">Lightest first</option>
-            <option value="newest">Newest first</option>
-          </select>
+      <div className="dispatcher-queue-controls card" style={{ marginBottom: '16px', padding: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+          <p style={{ margin: 0, fontWeight: 500, fontSize: '0.88rem' }}>
+            Page {data.pageInfo.currentPage + 1} · {data.pageInfo.pageSize} per page · {data.pageInfo.totalElements} {data.pageInfo.totalElements === 1 ? 'parcel' : 'parcels'}{zoneFilter !== 'ALL' && ` in ${zoneFilter}`}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="search"
+              placeholder="Search tracking #..."
+              aria-label="Search unassigned parcels"
+              value={queueSearch}
+              onChange={e => setQueueSearch(e.target.value)}
+              className="queue-search-input"
+            />
+            <select
+              aria-label="Sort unassigned parcels"
+              value={queueSort}
+              onChange={e => setQueueSort(e.target.value as 'default' | 'weight-desc' | 'weight-asc' | 'newest')}
+              className="queue-sort-select"
+            >
+              <option value="default">Default order</option>
+              <option value="weight-desc">Heaviest first</option>
+              <option value="weight-asc">Lightest first</option>
+              <option value="newest">Newest first</option>
+            </select>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} aria-label="Filter unassigned parcels by zone">
-          <span className="muted" style={{ fontSize: '0.85rem' }}>Zone:</span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--sd-border, #e0e5d8)' }} aria-label="Filter unassigned parcels by zone">
+          <span className="muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Zone:</span>
           {['ALL', ...zoneCodes].map(z => (
             <Button
               key={z}
               size="sm"
               variant={zoneFilter === z ? 'primary' : 'tonal'}
               aria-pressed={zoneFilter === z}
-              style={{ minHeight: '28px', padding: '2px 8px', fontSize: '0.78rem' }}
+              style={{ minHeight: '28px', padding: '2px 10px', fontSize: '0.78rem', borderRadius: '16px' }}
               onClick={() => { setZoneFilter(z); setPage(0); clear() }}
             >
               {/* Selected state is shown by a check mark and aria-pressed, not colour alone (audit 97). */}
@@ -241,9 +248,42 @@ export function DispatcherOperations() {
           ))}
         </div>
       </div>
-      {!data.unassignedParcels.length ? <p role="status">No unassigned parcels on this page.</p> :
-        !displayedParcels.length ? <p role="status">No parcels match zone {zoneFilter}.</p> :
-        !filteredParcels.length ? <p role="status">No parcels match search criteria.</p> :
+      {!data.unassignedParcels.length ? (
+        <div className="queue-empty-card card" role="status">
+          <div className="empty-icon-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 600 }}>Queue is clear</h3>
+          <p style={{ margin: '0 0 4px 0' }}>No unassigned parcels on this page.</p>
+          <span className="muted" style={{ fontSize: '0.82rem' }}>All booked deliveries have been dispatched to active couriers. New bookings will appear here automatically.</span>
+        </div>
+      ) : !displayedParcels.length ? (
+        <div className="queue-empty-card card" role="status">
+          <div className="empty-icon-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+          </div>
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 600 }}>No zone matches</h3>
+          <p style={{ margin: '0 0 4px 0' }}>No parcels match zone {zoneFilter}.</p>
+          <span className="muted" style={{ fontSize: '0.82rem' }}>Select &ldquo;All Zones&rdquo; to view unassigned deliveries in other zones.</span>
+        </div>
+      ) : !filteredParcels.length ? (
+        <div className="queue-empty-card card" role="status">
+          <div className="empty-icon-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 600 }}>No search results</h3>
+          <p style={{ margin: '0 0 4px 0' }}>No parcels match search criteria.</p>
+          <span className="muted" style={{ fontSize: '0.82rem' }}>Check tracking number spelling or clear the search filter.</span>
+        </div>
+      ) : (
         <div className="dispatcher-table-scroll"><table className="dispatcher-table">
           <caption>Unassigned parcel queue</caption>
           <thead><tr>{['Tracking number', 'Pickup zone', 'Dropoff zone', 'Weight', 'Size', 'Created', 'Version', 'Action'].map(h => <th scope="col" key={h}>{h}</th>)}</tr></thead>
@@ -252,7 +292,8 @@ export function DispatcherOperations() {
             <td data-label="Weight">{parcel.weightKg} kg</td><td data-label="Size">{parcel.sizeCategory}</td><td data-label="Created"><time dateTime={parcel.createdAt}>{new Date(parcel.createdAt).toLocaleString()}</time></td><td data-label="Version">{parcel.version}</td>
             <td data-label="Action"><Button variant="secondary" size="sm" disabled={pending || query.isFetching} onClick={() => { setSelected(parcel); setCourierSub(''); setFeedback(null) }} aria-label={`Select ${parcel.trackingNumber}`}>Select</Button></td>
           </tr>)}</tbody>
-        </table></div>}
+        </table></div>
+      )}
       <nav aria-label="Queue pagination" className="dispatcher-toolbar">
         <Button variant="secondary" size="sm" disabled={page === 0 || pending || query.isFetching} onClick={() => { clear(); setPage(p => p - 1) }}>Previous page</Button>
         <Button variant="secondary" size="sm" disabled={!data.pageInfo.hasNext || pending || query.isFetching} onClick={() => { clear(); setPage(p => p + 1) }}>Next page</Button>

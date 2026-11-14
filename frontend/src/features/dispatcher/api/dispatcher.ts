@@ -141,7 +141,7 @@ export function createDispatcherApi({ getAccessToken, gatewayUrl = import.meta.e
       const token = await getAccessToken()
       if (!token?.trim()) throw new DispatcherError('auth-required')
       try {
-        const response = await request(`${gatewayUrl.replace(/\/$/, '')}/api/v1/courier/assignments?activeOnly=true&size=100`, {
+        const response = await request(`${gatewayUrl.replace(/\/$/, '')}/api/v1/assignments?activeOnly=true&size=100`, {
           method: 'GET',
           headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
           credentials: 'omit',
@@ -151,7 +151,9 @@ export function createDispatcherApi({ getAccessToken, gatewayUrl = import.meta.e
         })
         if (!response.ok) return []
         const data = await response.json()
-        const items = isRecord(data) && Array.isArray(data.content) ? data.content : []
+        const items = isRecord(data) && Array.isArray(data.items)
+          ? data.items
+          : (isRecord(data) && Array.isArray(data.content) ? data.content : [])
         return items.filter((a: unknown): a is { assignmentId: string; parcelId: string; courierSub: string; active: boolean; assignedAt: string } =>
           isRecord(a) && a.courierSub === courierSub && a.active === true && typeof a.parcelId === 'string'
         )

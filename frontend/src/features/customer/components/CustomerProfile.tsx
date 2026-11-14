@@ -64,7 +64,7 @@ export function CustomerProfile({ state, onProfileUpdated }: { state: ProfileSta
     setPending(true)
     setError(null)
     try {
-      const api = createAccountsApi({ getAccessToken: auth.getAccessToken, fetch: auth.profileFetch })
+      const api = createAccountsApi({ getAccessToken: auth.getAccessToken, fetch: globalThis.fetch })
       await api.updateCurrentUser({ fullName: fullName.trim(), phoneNumber: phone.trim() })
       setSuccess('Profile updated successfully!')
       setEditing(false)
