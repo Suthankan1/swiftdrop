@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -125,6 +126,13 @@ public class SwiftDropTargetContractGatewayTest {
         registry.add("ACCOUNTS_SERVICE_URL", () -> accountsServer.url("").toString().replaceAll("/$", ""));
         // This test asserts exact upstream request queues; the disabled-account check has its own test.
         registry.add("swiftdrop.gateway.disabled-account-check.enabled", () -> "false");
+    }
+
+    @BeforeEach
+    void drainAccountsServer() throws Exception {
+        while (accountsServer.takeRequest(10, TimeUnit.MILLISECONDS) != null) {
+            // drain leftover requests from previous tests
+        }
     }
 
     private String createToken(String issuer, String audience, boolean expired, RSAKey signingKey) throws Exception {

@@ -6,6 +6,8 @@ import com.swiftdrop.accountsservice.identity.keycloak.KeycloakIdentityAdapter;
 import com.swiftdrop.accountsservice.identity.keycloak.ReconciliationOutcome;
 import com.swiftdrop.accountsservice.identity.keycloak.ReconciliationResult;
 import com.swiftdrop.accountsservice.identity.keycloak.RoleMutationResult;
+import com.swiftdrop.accountsservice.profile.AccountProfile;
+import com.swiftdrop.accountsservice.profile.AccountProfileRepository;
 import com.swiftdrop.accountsservice.staff.ProvisionStaffCommand;
 import com.swiftdrop.accountsservice.staff.StaffAccessDeniedException;
 import com.swiftdrop.accountsservice.staff.StaffProfile;
@@ -35,6 +37,7 @@ class StaffRoleReconciliationServiceTest {
     private StaffProfileRepository staffProfiles;
     private KeycloakIdentityAdapter identityAdapter;
     private ReconciliationAuditService auditService;
+    private AccountProfileRepository accountProfiles;
     private StaffRoleReconciliationService service;
 
     private final String adminSub = "admin-sub-001";
@@ -51,7 +54,8 @@ class StaffRoleReconciliationServiceTest {
         staffProfiles = mock(StaffProfileRepository.class);
         identityAdapter = mock(KeycloakIdentityAdapter.class);
         auditService = mock(ReconciliationAuditService.class);
-        service = new StaffRoleReconciliationService(staffProfiles, identityAdapter, auditService);
+        accountProfiles = mock(AccountProfileRepository.class);
+        service = new StaffRoleReconciliationService(staffProfiles, identityAdapter, auditService, accountProfiles);
     }
 
     @Test
@@ -77,6 +81,37 @@ class StaffRoleReconciliationServiceTest {
 
         verify(identityAdapter).grantRole(courierSub, "COURIER");
         verify(auditService).recordAudit(eq(courierSub), eq("COURIER"), eq("PROVISION_STAFF"),
+                eq("NONE"), eq("ACTIVE"), eq(ReconciliationOutcome.SUCCESS), eq(adminSub), any(), any());
+    }
+
+    @Test
+    @DisplayName("provisionStaff automatically resolves Keycloak sub when AccountProfile ID is provided in keycloakSub")
+    void provisionStaff_resolvesAccountProfileIdWhenSubmittedAsSub() {
+        UUID profileId = UUID.randomUUID();
+        ProvisionStaffCommand command = new ProvisionStaffCommand(
+                profileId.toString(), "STF-2026-0043", StaffRole.DISPATCHER, "DISPATCH", "ZONE-1", null
+        );
+
+        AccountProfile mockAccount = mock(AccountProfile.class);
+        when(mockAccount.getKeycloakSub()).thenReturn(courierSub);
+        when(accountProfiles.findById(profileId)).thenReturn(Optional.of(mockAccount));
+        when(identityAdapter.identityExists(profileId.toString())).thenReturn(false);
+        when(identityAdapter.identityExists(courierSub)).thenReturn(true);
+        when(staffProfiles.findByKeycloakSub(courierSub)).thenReturn(Optional.empty());
+        when(staffProfiles.existsByStaffId("STF-2026-0043")).thenReturn(false);
+        when(staffProfiles.save(any(StaffProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(identityAdapter.grantRole(courierSub, "DISPATCHER"))
+                .thenReturn(new RoleMutationResult(true, "DISPATCHER", Set.of("DISPATCHER")));
+
+        StaffProfileResponse response = service.provisionStaff(adminIdentity, command);
+
+        assertThat(response.keycloakSub()).isEqualTo(courierSub);
+        assertThat(response.staffId()).isEqualTo("STF-2026-0043");
+        assertThat(response.role()).isEqualTo(StaffRole.DISPATCHER);
+        assertThat(response.status()).isEqualTo(StaffStatus.ACTIVE);
+
+        verify(identityAdapter).grantRole(courierSub, "DISPATCHER");
+        verify(auditService).recordAudit(eq(courierSub), eq("DISPATCHER"), eq("PROVISION_STAFF"),
                 eq("NONE"), eq("ACTIVE"), eq(ReconciliationOutcome.SUCCESS), eq(adminSub), any(), any());
     }
 

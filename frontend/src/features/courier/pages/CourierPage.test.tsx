@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -317,6 +317,98 @@ describe('Courier role landing', () => {
 
       // Confirms returned to assignment list
       expect(await screen.findByRole('heading', { name: /assigned deliveries/i })).toBeInTheDocument()
+    })
+
+    it('returns to the refreshed queue with success feedback after confirmed delivery closes the assignment', async () => {
+      const user = userEvent.setup()
+      const auth = authenticated(['COURIER'], 'courier-test-subject')
+      let delivered = false
+      let parcelReads = 0
+
+      const proofRecord = {
+        proofId: 'proof-wf-101',
+        parcelId: sampleParcel.parcelId,
+        objectReference: 'private/internal/proof.jpg',
+        evidenceType: 'PHOTO',
+        contentType: 'image/jpeg',
+        contentLength: 512,
+        recipientName: 'Recipient',
+        deliveryNote: null,
+        uploadedBySub: 'courier-test-subject',
+        uploadedAt: '2026-11-14T08:30:00Z',
+      }
+
+      const requestMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = url.toString()
+        if (urlStr.includes('/graphql')) {
+          return new Response(
+            JSON.stringify({
+              data: {
+                courierDashboard: {
+                  ...sampleSummary,
+                  activeAssignedCount: delivered ? 0 : 1,
+                  todayDeliveredCount: delivered ? 9 : 8,
+                },
+              },
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.includes('/api/v1/assignments/my')) {
+          const items = delivered ? [] : [sampleAssignment]
+          return new Response(
+            JSON.stringify({
+              items,
+              currentPage: 0,
+              pageSize: 20,
+              totalElements: items.length,
+              totalPages: items.length ? 1 : 0,
+              hasNext: false,
+              hasPrevious: false,
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.endsWith(`/api/v1/parcels/${sampleParcel.parcelId}/proof`)) {
+          return new Response(JSON.stringify(proofRecord), { status: 200 })
+        }
+        if (urlStr.endsWith(`/api/v1/parcels/${sampleParcel.parcelId}/status`) && init?.method === 'PATCH') {
+          delivered = true
+          return new Response(
+            JSON.stringify({
+              parcelId: sampleParcel.parcelId,
+              trackingNumber: sampleParcel.trackingNumber,
+              previousStatus: 'OUT_FOR_DELIVERY',
+              currentStatus: 'DELIVERED',
+              stateVersion: 3,
+              updatedParcelVersion: 3,
+              occurredAt: '2026-11-14T08:45:00Z',
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.endsWith(`/api/v1/parcels/${sampleParcel.parcelId}`)) {
+          parcelReads++
+          return delivered
+            ? new Response(null, { status: 403 })
+            : new Response(JSON.stringify(sampleParcel), { status: 200 })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      vi.stubGlobal('fetch', requestMock)
+      renderCourier(auth)
+
+      await user.click(await screen.findByRole('button', { name: /view parcel details for parcel-w/i }))
+      expect(await screen.findByRole('button', { name: 'Complete Delivery' })).toBeEnabled()
+      const parcelReadsBeforeCompletion = parcelReads
+      await user.click(screen.getByRole('button', { name: 'Complete Delivery' }))
+
+      expect(await screen.findByText(/complete delivery confirmed.*delivered/i)).toBeInTheDocument()
+      expect(screen.queryByText(/access to this parcel.*revoked/i)).not.toBeInTheDocument()
+      expect(await screen.findByText(/no active delivery assignments found/i)).toBeInTheDocument()
+      expect(parcelReads).toBe(parcelReadsBeforeCompletion + 1)
+      await waitFor(() => expect(screen.getByText('9')).toBeInTheDocument())
     })
   })
 })

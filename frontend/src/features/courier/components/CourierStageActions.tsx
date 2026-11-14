@@ -57,6 +57,7 @@ export interface CourierStageActionsProps {
   onParcelRefresh: (parcel: ParcelDetailResponse) => void
   onProofRefresh: (proof: ProofDetailResponse | null, status: ProofLookupStatus) => void
   onAssignmentLost: (message: string) => void
+  onTerminalSuccess?: (message: string) => void
 }
 
 export function CourierStageActions({
@@ -69,6 +70,7 @@ export function CourierStageActions({
   onParcelRefresh,
   onProofRefresh,
   onAssignmentLost,
+  onTerminalSuccess,
 }: CourierStageActionsProps) {
   const [note, setNote] = useState('')
   const [preparedFailure, setPreparedFailure] = useState<PreparedFailure | null>(null)
@@ -209,6 +211,27 @@ export function CourierStageActions({
         },
         controller.signal,
       )
+
+      if (
+        (target === 'DELIVERED' || target === 'FAILED') &&
+        response.currentStatus === target &&
+        response.previousStatus === current.currentStatus &&
+        response.trackingNumber === current.trackingNumber &&
+        response.updatedParcelVersion > current.version
+      ) {
+        const successMessage = `${ACTION_LABEL[target]} confirmed. Parcel is now ${getStatusPresentation(response.currentStatus).label}.`
+        onParcelRefresh({
+          ...current,
+          currentStatus: response.currentStatus,
+          version: response.updatedParcelVersion,
+          activeCourierSub: null,
+        })
+        setNote('')
+        setPreparedFailure(null)
+        announce('success', successMessage)
+        onTerminalSuccess?.(successMessage)
+        return
+      }
 
       const confirmed = await reconcile(controller.signal)
       if (!confirmed) return
