@@ -32,14 +32,10 @@ else
 fi
 
 echo "=============================================================================="
-echo " SwiftDrop Platform — Runtime Status & Health Audit"
+echo " SwiftDrop Platform — Runtime Status & Health Audit (Mode: ${MODE})"
 echo "=============================================================================="
 
-if [ -f "${ENV_FILE}" ]; then
-  docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" ps -a
-else
-  docker compose -f "${COMPOSE_FILE}" ps -a
-fi
+compose ps -a
 
 echo ""
 echo "------------------------------------------------------------------------------"

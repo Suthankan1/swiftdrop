@@ -1,11 +1,12 @@
 # SwiftDrop — Full-Stack Persistent Docker Compose Runtime (Issue #141)
 
+> **Database Runtime Modes:**
+> - **Shared Supabase Development Mode (Default):** `./platform/compose/start.sh` or `./platform/compose/start.sh --supabase`. Connects to team-provisioned Supabase PostgreSQL using `compose.yaml` and `compose.supabase.yaml` overlay. Requires team credentials in `platform/compose/.env`. See [SUPABASE.md](SUPABASE.md).
+> - **Local PostgreSQL Development Mode:** `./platform/compose/start.sh --local`. Starts dedicated containerized PostgreSQL instances (`accounts-postgres`, `keycloak-postgres`, `business-postgres`) using `compose.yaml` and auto-initializes `platform/compose/.env.local-postgres`.
+>
 > **Default image source:** `SWIFTDROP_IMAGE_TAG=local` builds every image from this checkout, and `start.sh` adds `--build`. Set a commit SHA tag to run that published release instead; the `b8ac497` table below describes the last published set. An older `.env` keeps its old tag until you change it.
 >
 > **Upgrading an existing Keycloak volume:** Keycloak imports the realm only on first start, so the `communications-service` and `graphql-query-service` clients and the `http://localhost:3000` web origin are not added to an existing `swiftdrop-keycloak-postgres-data` volume. Add them in the admin console or start with a fresh volume.
-
-For opt-in shared team PostgreSQL, see the [Supabase setup and read-only checks](SUPABASE.md).
-The default startup continues to use local PostgreSQL.
 
 **Issue:** [#141](https://github.com/Suthankan1/swiftdrop/issues/141) · **Owner:** @Suthankan1 · **Priority:** P0  
 **Target Integration Branch:** `test` · **Feature Branch:** `feat/n10-p06-full-stack-compose-runtime`  
@@ -111,25 +112,60 @@ Per `docs/architecture/DATA_OWNERSHIP.md`, every business service strictly owns 
 
 ## 5. Operator Commands
 
-All lifecycle scripts are located in `platform/compose/` and are fully non-destructive:
+All lifecycle scripts are located in `platform/compose/` and are fully non-destructive.
+They support two database modes:
+- **Shared Supabase Mode (Default):** `./platform/compose/start.sh` or `./platform/compose/start.sh --supabase`
+- **Local PostgreSQL Mode:** `./platform/compose/start.sh --local`
 
-### 5.1 Start Runtime
+### 5.1 Operating System Compatibility & Shell Execution
+- **macOS (Apple Silicon & Intel):**
+  ```bash
+  ./platform/compose/start.sh [--supabase | --local]
+  ./platform/compose/status.sh [--supabase | --local]
+  ./platform/compose/stop.sh [--supabase | --local]
+  ```
+- **Linux (Ubuntu, Debian, Fedora, Arch):**
+  ```bash
+  ./platform/compose/start.sh [--supabase | --local]
+  ./platform/compose/status.sh [--supabase | --local]
+  ./platform/compose/stop.sh [--supabase | --local]
+  ```
+- **Windows 11 / Windows 10 (WSL2 recommended):**
+  ```bash
+  wsl bash ./platform/compose/start.sh [--supabase | --local]
+  wsl bash ./platform/compose/status.sh [--supabase | --local]
+  wsl bash ./platform/compose/stop.sh [--supabase | --local]
+  ```
+- **Windows (Git Bash):**
+  ```bash
+  bash ./platform/compose/start.sh [--supabase | --local]
+  bash ./platform/compose/status.sh [--supabase | --local]
+  bash ./platform/compose/stop.sh [--supabase | --local]
+  ```
+> **Windows PowerShell Note:** Shell scripts (`.sh`) cannot be run directly as PowerShell commands. Run them via WSL2 Ubuntu or Git Bash.
+
+### 5.2 Start Runtime
 ```bash
+# Default: connects to shared team Supabase
 ./platform/compose/start.sh
+
+# Local mode: starts local PostgreSQL containers
+./platform/compose/start.sh --local
 ```
 - Performs host capacity and prerequisite checks.
-- Auto-initializes local `.env` from `.env.example` if absent.
+- Auto-initializes environment configuration from template if absent.
 - Checks loopback ports for collisions.
 - Stages startup: (1) Databases/Kafka/MinIO -> (2) Keycloak -> (3) Java microservices, Gateway & Frontend.
 - Waits for real readiness gates on all services.
 
-### 5.2 Inspect Runtime Status
+### 5.3 Inspect Runtime Status
 ```bash
-./platform/compose/status.sh
+./platform/compose/status.sh          # Default (Supabase)
+./platform/compose/status.sh --local  # Local mode
 ```
 - Displays container status, CPU usage, memory RSS, and active health probe results.
 
-### 5.3 Run Automated Invariant Verification
+### 5.4 Run Automated Invariant Verification
 ```bash
 ./platform/compose/verify.sh
 ```
@@ -139,7 +175,7 @@ All lifecycle scripts are located in `platform/compose/` and are fully non-destr
 - Verifies MinIO private bucket permissions (anonymous GET returns HTTP 403).
 - Verifies Keycloak OIDC issuer consistency and Spring Cloud Gateway routes.
 
-### 5.4 Run Integration Smoke Tests
+### 5.5 Run Integration Smoke Tests
 ```bash
 ./platform/compose/smoke.sh
 ```
@@ -149,9 +185,10 @@ All lifecycle scripts are located in `platform/compose/` and are fully non-destr
 - Evaluates Delivery booking readiness (accurately reporting `[BLOCKED]` per Issue #20 / #114).
 - Tests stop/restart persistence by inserting a durable record, restarting the database container, and verifying record survival.
 
-### 5.5 Stop Runtime (Data Preserved)
+### 5.6 Stop Runtime (Data Preserved)
 ```bash
-./platform/compose/stop.sh
+./platform/compose/stop.sh          # Default (Supabase)
+./platform/compose/stop.sh --local  # Local mode
 ```
 - Gracefully stops all containers without destroying persistent volumes.
 

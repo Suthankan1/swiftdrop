@@ -49,52 +49,20 @@ export function CourierPage({
       <header className="page-heading">
         <p className="eyebrow">Courier space</p>
         <h1>
-          Ready for your
-          <br /> next route.
+          Ready for your next route.
+          <br />
+          <span className="page-heading-subtitle" style={{ fontSize: '0.85em', fontWeight: 600, color: 'var(--color-teal)' }}>
+            Courier Operations Dashboard
+          </span>
         </h1>
         <p className="muted">
           Your assigned parcels, stage updates and proof of delivery in one place.
         </p>
       </header>
 
-      <div className="profile-grid">
-        <StaffProfile
-          state={state}
-          onRetry={() => {
-            void refetch()
-          }}
-        />
-
-        <aside className="card courier-note" aria-labelledby="courier-next-heading">
-          <h2 id="courier-next-heading">Your active delivery workflow.</h2>
-          <p className="muted">
-            Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
-          </p>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => {
-              void auth.logout()
-            }}
-          >
-            Sign out
-          </Button>
-          {query.isError && (
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => {
-                void refetch()
-              }}
-            >
-              Retry profile
-            </Button>
-          )}
-        </aside>
-      </div>
-
+      {/* Primary operational panel visible first for operational couriers */}
       {isOperationalCourier && (
-        <div className="courier-dashboard-container" aria-label="Courier Operations Dashboard">
+        <section className="courier-dashboard-container" aria-label="Courier Operations Dashboard">
           {assignmentNotice && (
             <div className="feedback-banner is-error" role="alert">
               <span>{assignmentNotice}</span>
@@ -138,7 +106,75 @@ export function CourierPage({
               apiOverride={assignmentsApiOverride}
             />
           )}
-        </div>
+        </section>
+      )}
+
+      {/* When profile is not ready (loading, unprovisioned, suspended), show profile state immediately */}
+      {!isOperationalCourier && (
+        <section className="profile-grid" aria-label="Staff Profile Status">
+          <StaffProfile
+            state={state}
+            onRetry={() => {
+              void refetch()
+            }}
+          />
+
+          <aside className="card courier-note" aria-labelledby="courier-next-heading">
+            <h2 id="courier-next-heading">Your active delivery workflow.</h2>
+            <p className="muted">
+              Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
+            </p>
+            {query.isError && (
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => {
+                  void refetch()
+                }}
+              >
+                Retry profile
+              </Button>
+            )}
+          </aside>
+        </section>
+      )}
+
+      {/* Secondary section for operational couriers: profile information moved below operations */}
+      {isOperationalCourier && (
+        <section className="profile-section secondary-section" aria-label="Courier Profile & Staff Information" style={{ marginTop: '2.5rem' }}>
+          <div className="section-heading-row" style={{ marginBottom: '1rem' }}>
+            <div>
+              <p className="eyebrow">Staff Account</p>
+              <h2>Courier Profile Details</h2>
+            </div>
+          </div>
+          <div className="profile-grid">
+            <StaffProfile
+              state={state}
+              onRetry={() => {
+                void refetch()
+              }}
+            />
+
+            <aside className="card courier-note" aria-labelledby="courier-next-heading">
+              <h2 id="courier-next-heading">Your active delivery workflow.</h2>
+              <p className="muted">
+                Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
+              </p>
+              {query.isError && (
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => {
+                    void refetch()
+                  }}
+                >
+                  Retry profile
+                </Button>
+              )}
+            </aside>
+          </div>
+        </section>
       )}
     </div>
   )

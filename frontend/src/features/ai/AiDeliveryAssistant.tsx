@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { createDeliveryApi, isValidTrackingNumber } from '../customer/api/delivery'
@@ -227,6 +227,14 @@ export function AiDeliveryAssistant({ assistantApi }: { assistantApi?: Assistant
   const inputRef = useRef<HTMLInputElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
 
+  const location = useLocation()
+  const isOperationalPage =
+    location.pathname.startsWith('/courier') ||
+    location.pathname.startsWith('/dispatcher') ||
+    location.pathname.startsWith('/admin')
+
+  const [isCollapsed, setIsCollapsed] = useState(isOperationalPage)
+
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' })
@@ -306,16 +314,29 @@ export function AiDeliveryAssistant({ assistantApi }: { assistantApi?: Assistant
   return (
     <>
       {/* Floating launcher trigger */}
-      <button
-        type="button"
-        className="ai-assistant-launcher"
-        onClick={() => setIsOpen((prev) => !prev)}
-        aria-label={isOpen ? 'Close Help Assistant' : 'Open Help Assistant'}
-        aria-expanded={isOpen}
-      >
-        <span className="ai-launcher-icon" aria-hidden="true">✨</span>
-        <span className="ai-launcher-text">Help Assistant</span>
-      </button>
+      <div className={`ai-assistant-launcher-group${isCollapsed ? ' is-collapsed' : ''}`}>
+        <button
+          type="button"
+          className={`ai-assistant-launcher${isCollapsed ? ' is-collapsed' : ''}`}
+          onClick={() => setIsOpen((prev) => !prev)}
+          aria-label={isOpen ? 'Close Help Assistant' : 'Open Help Assistant'}
+          aria-expanded={isOpen}
+        >
+          <span className="ai-launcher-icon" aria-hidden="true">✨</span>
+          <span className="ai-launcher-text">Help Assistant</span>
+        </button>
+        {!isOpen && (
+          <button
+            type="button"
+            className="ai-launcher-collapse-toggle"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            aria-label={isCollapsed ? 'Expand Help Assistant button' : 'Collapse Help Assistant button'}
+            title={isCollapsed ? 'Expand Help Assistant' : 'Collapse Help Assistant'}
+          >
+            <span aria-hidden="true">{isCollapsed ? '◀' : '✕'}</span>
+          </button>
+        )}
+      </div>
 
       {/* Slide-over Drawer */}
       {isOpen && (

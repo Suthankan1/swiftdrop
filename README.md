@@ -255,10 +255,16 @@ The full Compose runtime is resource-intensive. Its operator guide recommends ap
 
 The repository includes a persistent local integration profile that brings up the approved application/identity images and their supporting databases, Kafka, MinIO and Mailpit.
 
+SwiftDrop supports two database runtime modes:
+- **Shared Supabase Mode (Team Default):** `./platform/compose/start.sh` (or `./platform/compose/start.sh --supabase`) connects to team-provisioned Supabase PostgreSQL.
+- **Local PostgreSQL Mode:** `./platform/compose/start.sh --local` starts dedicated local containerized PostgreSQL databases.
+
 From the repository root:
 
 ~~~bash
+# Start runtime (Supabase mode by default; use --local for local PostgreSQL)
 ./platform/compose/start.sh
+
 ./platform/compose/status.sh
 ./platform/compose/verify.sh
 ./platform/compose/smoke.sh
@@ -268,7 +274,12 @@ To stop the containers while preserving their named data volumes:
 
 ~~~bash
 ./platform/compose/stop.sh
+# or for local mode: ./platform/compose/stop.sh --local
 ~~~
+
+**Platform execution:**
+- **macOS / Linux:** `./platform/compose/start.sh [--supabase | --local]`
+- **Windows 11 / 10:** Run via WSL2 Ubuntu (`wsl bash ./platform/compose/start.sh`) or Git Bash. Do not run `.sh` files directly in PowerShell.
 
 The startup script initializes a local `platform/compose/.env` from the example when needed. Review the generated local configuration, keep credentials local, and never commit `.env` files. The runtime scripts are designed to preserve existing volumes; do not replace them with destructive database or volume-reset commands.
 

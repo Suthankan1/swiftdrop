@@ -75,7 +75,7 @@ describe('shared application routes', () => {
     const user = userEvent.setup()
     renderRoute()
 
-    await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /customer/i }))
+    await user.click(within(screen.getByRole('main')).getByRole('link', { name: /explore your customer space/i }))
     expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
 
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /^home$/i }))
@@ -110,7 +110,7 @@ describe('shared application routes', () => {
     expect(toggle).toHaveFocus()
 
     await user.click(toggle)
-    await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /customer/i }))
+    await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /sign in/i }))
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
   })
@@ -156,31 +156,46 @@ describe('shared application routes', () => {
     { roles: [] }, { roles: ['CUSTOMER'] }, { roles: ['MERCHANT'] }, { roles: ['COURIER'] },
     { roles: ['DISPATCHER'] }, { roles: ['ADMIN'] }, { roles: ['DISPATCHER', 'ADMIN'] },
     { roles: ['CUSTOMER', 'MERCHANT', 'COURIER', 'DISPATCHER', 'ADMIN'] },
-  ])('scopes both staff navigation entries to authenticated roles $roles', ({ roles }) => {
+  ])('scopes staff navigation entries to authorized workspaces $roles', async ({ roles }) => {
+    const user = userEvent.setup()
     const auth: AuthContextValue = {
       ...anonymousAuth,
       snapshot: { status: 'authenticated', subject: 'synthetic-navigation-subject', roles },
     }
     renderRoute('/login', auth)
     const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))
+
+    const switcher = nav.queryByRole('button', { name: /switch workspace/i })
+    if (switcher) {
+      await user.click(switcher)
+    }
+
     for (const [role, label, path] of [
       ['DISPATCHER', 'Dispatcher space', '/dispatcher'], ['ADMIN', 'Admin space', '/admin'],
     ] as const) {
-      // Admins may also run dispatch, so ADMIN alone shows the Dispatcher entry.
       const visible = roles.includes(role) || (role === 'DISPATCHER' && roles.includes('ADMIN'))
-      if (visible) expect(nav.getByRole('link', { name: new RegExp(label) })).toHaveAttribute('href', path)
-      else expect(nav.queryByRole('link', { name: new RegExp(label) })).not.toBeInTheDocument()
+      const item = nav.queryByRole('link', { name: new RegExp(label) }) || nav.queryByRole('menuitem', { name: new RegExp(label) })
+      if (visible) expect(item).toHaveAttribute('href', path)
+      else expect(item).not.toBeInTheDocument()
     }
   })
 
   it.each<{ roles: readonly SwiftDropRole[]; visible: boolean }>([
     { roles: ['CUSTOMER'], visible: true }, { roles: ['COURIER'], visible: false },
     { roles: ['DISPATCHER', 'ADMIN'], visible: false }, { roles: ['MERCHANT', 'CUSTOMER'], visible: true },
-  ])('shows Customer space only to customers ($roles)', ({ roles, visible }) => {
+  ])('shows Customer space only to authorized customer accounts ($roles)', async ({ roles, visible }) => {
+    const user = userEvent.setup()
     renderRoute('/login', { ...anonymousAuth, snapshot: { status: 'authenticated', subject: 'nav-subject', roles } })
     const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))
-    if (visible) expect(nav.getByRole('link', { name: /customer space/i })).toBeInTheDocument()
-    else expect(nav.queryByRole('link', { name: /customer space/i })).not.toBeInTheDocument()
+
+    const switcher = nav.queryByRole('button', { name: /switch workspace/i })
+    if (switcher) {
+      await user.click(switcher)
+    }
+
+    const item = nav.queryByRole('link', { name: /customer space/i }) || nav.queryByRole('menuitem', { name: /customer space/i })
+    if (visible) expect(item).toBeInTheDocument()
+    else expect(item).not.toBeInTheDocument()
   })
 
   it.each(['unauthenticated', 'loading'] as const)('hides both staff navigation entries while %s', (status) => {
@@ -190,7 +205,7 @@ describe('shared application routes', () => {
     expect(nav.queryByRole('link', { name: /admin space/i })).not.toBeInTheDocument()
   })
 
-  it('keeps both genuine staff roles navigable through the existing mobile menu', async () => {
+  it('keeps both genuine staff roles navigable through the existing mobile menu and workspace switcher', async () => {
     const user = userEvent.setup()
     renderRoute('/login', {
       ...anonymousAuth,
@@ -202,12 +217,19 @@ describe('shared application routes', () => {
     expect(toggle).toHaveFocus()
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
 
-    for (const [label, heading] of [['Dispatcher space', 'Dispatcher workspace'], ['Admin space', 'Administration workspace']] as const) {
-      await user.click(toggle)
-      await user.click(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('link', { name: new RegExp(label) }))
-      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
-      expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    }
+    // Navigate to Admin workspace (primary)
+    await user.click(toggle)
+    await user.click(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('link', { name: /admin space/i }))
+    expect(screen.getByRole('heading', { name: 'Administration workspace' })).toBeInTheDocument()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    // Switch to Dispatcher workspace via Switch Workspace menu
+    await user.click(toggle)
+    const switcher = within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', { name: /switch workspace/i })
+    await user.click(switcher)
+    await user.click(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('menuitem', { name: /dispatcher space/i }))
+    expect(screen.getByRole('heading', { name: 'Dispatcher workspace' })).toBeInTheDocument()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('protects /merchant/enroll for authenticated users and redirects unauthenticated to login', async () => {

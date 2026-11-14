@@ -36,9 +36,6 @@ export function AdminPage() {
             <p><Link to="/admin/reports" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>View daily outcomes and admin reports</span> <span aria-hidden="true">→</span></Link></p>
             <p><Link to="/dispatcher" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Open the dispatch console</span> <span aria-hidden="true">→</span></Link></p>
           </>}
-          <Button variant="secondary" type="button" onClick={() => { void auth.logout() }}>
-            Sign out
-          </Button>
           {query.isError && (
             <Button
               variant="secondary"
