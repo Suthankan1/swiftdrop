@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../../auth/context'
 import {
+  type CourierActiveStatus,
   type PagedAssignmentsResponse,
   type ParcelDetailResponse,
   CourierApiError,
@@ -13,6 +14,7 @@ export interface CourierAssignmentListProps {
   selectedParcelId: string | null
   onSelectParcel: (parcelId: string) => void
   apiOverride?: ReturnType<typeof createCourierAssignmentsApi>
+  onOpenHistory?: () => void
 }
 
 const PAGE_SIZE = 20
@@ -27,6 +29,7 @@ export function CourierAssignmentList({
   selectedParcelId,
   onSelectParcel,
   apiOverride,
+  onOpenHistory,
 }: CourierAssignmentListProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -45,10 +48,22 @@ export function CourierAssignmentList({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [todayOnly, setTodayOnly] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<CourierActiveStatus | ''>('')
   const [parcels, setParcels] = useState<Record<string, ParcelDetailResponse>>({})
 
   const abortControllerRef = useRef<AbortController | null>(null)
+  const requestIdRef = useRef(0)
   const [retryCount, setRetryCount] = useState(0)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearch(searchInput.trim())
+      setCurrentPage(0)
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [searchInput])
 
   // Subject change: clear assignments, reset parcels and reset pagination
   const [prevSubject, setPrevSubject] = useState(subject)
@@ -64,6 +79,7 @@ export function CourierAssignmentList({
     if (!subject) return
 
     let active = true
+    const requestId = ++requestIdRef.current
     const controller = new AbortController()
     abortControllerRef.current = controller
 
@@ -78,9 +94,11 @@ export function CourierAssignmentList({
           size: PAGE_SIZE,
           signal: controller.signal,
           ...(todayOnly ? { assignedSince: startOfToday() } : {}),
+          ...(search ? { trackingNumber: search } : {}),
+          ...(status ? { status } : {}),
         })
 
-        if (!active || controller.signal.aborted) return
+        if (!active || controller.signal.aborted || requestId !== requestIdRef.current) return
         setPagedData(response)
 
         // Enrich cards with tracking number, status and route (best effort; cards still work without it).
@@ -91,7 +109,7 @@ export function CourierAssignmentList({
             ),
           )
 
-          if (!active || controller.signal.aborted) return
+          if (!active || controller.signal.aborted || requestId !== requestIdRef.current) return
 
           const next: Record<string, ParcelDetailResponse> = {}
           details.forEach((result) => {
@@ -123,12 +141,18 @@ export function CourierAssignmentList({
       active = false
       controller.abort()
     }
-  }, [api, currentPage, subject, todayOnly, retryCount])
+  }, [api, currentPage, subject, todayOnly, retryCount, search, status])
 
   const handleRetry = () => {
     if (!subject) return
     abortControllerRef.current?.abort()
     setRetryCount((c) => c + 1)
+  }
+
+  const changePage = (nextPage: number) => {
+    abortControllerRef.current?.abort()
+    requestIdRef.current += 1
+    setCurrentPage(Math.max(0, nextPage))
   }
 
   const items = pagedData?.items ?? []
@@ -147,9 +171,49 @@ export function CourierAssignmentList({
           <p className="eyebrow">Active Route Queue</p>
           <h2 id="assignment-list-heading">Assigned Deliveries</h2>
         </div>
-        <span className="badge badge-approved">
-          {totalElements} {totalElements === 1 ? 'Assignment' : 'Assignments'}
-        </span>
+        <div className="assignment-list-actions">
+          <Button type="button" variant="secondary" size="sm" onClick={handleRetry} disabled={isLoading} aria-label="Refresh assignments">
+            {isLoading ? 'Refreshing…' : 'Refresh'}
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={onOpenHistory}>
+            Delivery History
+          </Button>
+          <span className="badge badge-approved">
+            {totalElements} {totalElements === 1 ? 'Assignment' : 'Assignments'}
+          </span>
+        </div>
+      </div>
+
+      <div className="assignment-filters" aria-label="Assignment filters">
+        <label>
+          <span>Search tracking number</span>
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="e.g. SWD-2026"
+            aria-label="Search active assignments by tracking number"
+          />
+        </label>
+        {searchInput && (
+          <Button type="button" variant="tonal" size="sm" onClick={() => setSearchInput('')}>
+            Clear search
+          </Button>
+        )}
+        <label>
+          <span>Active status</span>
+          <select value={status} onChange={(event) => { setStatus(event.target.value as CourierActiveStatus | ''); setCurrentPage(0) }}>
+            <option value="">All active</option>
+            <option value="CREATED">Created</option>
+            <option value="PICKED_UP">Picked up</option>
+            <option value="IN_TRANSIT">In transit</option>
+            <option value="OUT_FOR_DELIVERY">Out for delivery</option>
+          </select>
+        </label>
+        <label className="assignment-today-filter">
+          <input type="checkbox" checked={todayOnly} onChange={(event) => { setTodayOnly(event.target.checked); setCurrentPage(0) }} />
+          Assigned today only
+        </label>
       </div>
 
       {isLoading && (
@@ -172,24 +236,21 @@ export function CourierAssignmentList({
         </div>
       )}
 
-      {!isLoading && !error && items.length === 0 && todayOnly && (
-        <p className="muted" role="status">No parcels have been assigned to you today.</p>
+      {!isLoading && !error && items.length === 0 && (todayOnly || search || status) && (
+        <p className="muted" role="status">
+          {todayOnly && !search && !status
+            ? 'No parcels have been assigned to you today.'
+            : 'No active assignments match the selected search and filters.'}
+        </p>
       )}
 
-      {!isLoading && !error && items.length === 0 && !todayOnly && (
+      {!isLoading && !error && items.length === 0 && !todayOnly && !search && !status && (
         <div className="empty-state" role="status">
           <p className="muted">
             No active delivery assignments found for your courier profile.
             When dispatchers assign parcels to your route, they will appear here for handover and proof capture.
           </p>
         </div>
-      )}
-
-      {!isLoading && !error && (items.length > 0 || todayOnly) && (
-        <label className="assignment-today-filter">
-          <input type="checkbox" checked={todayOnly} onChange={(event) => { setTodayOnly(event.target.checked); setCurrentPage(0) }} />
-          {' '}Assigned today only
-        </label>
       )}
 
       {!isLoading && !error && items.length > 0 && (
@@ -214,7 +275,7 @@ export function CourierAssignmentList({
               variant="secondary"
               size="sm"
               disabled={!hasPrevious || isLoading}
-              onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+              onClick={() => changePage(currentPage - 1)}
               aria-label="Go to previous page of assignments"
             >
               Previous
@@ -226,7 +287,7 @@ export function CourierAssignmentList({
               variant="secondary"
               size="sm"
               disabled={!hasNext || isLoading}
-              onClick={() => setCurrentPage((p) => p + 1)}
+              onClick={() => changePage(currentPage + 1)}
               aria-label="Go to next page of assignments"
             >
               Next

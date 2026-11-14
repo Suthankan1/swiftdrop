@@ -19,6 +19,9 @@ export interface PagedAssignmentsResponse {
   hasPrevious: boolean
 }
 
+export type CourierActiveStatus = 'CREATED' | 'PICKED_UP' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY'
+export type CourierHistoryStatus = 'DELIVERED' | 'FAILED'
+
 export type CourierFailureKind =
   | 'auth-required'
   | 'forbidden'

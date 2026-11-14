@@ -6,6 +6,9 @@ import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 import { CourierDashboardSummary } from '../components/CourierDashboardSummary'
 import { CourierAssignmentList } from '../components/CourierAssignmentList'
 import { CourierParcelDetails } from '../components/CourierParcelDetails'
+import { CourierDeliveryHistory } from '../components/CourierDeliveryHistory'
+import { CourierHistoricalDetails } from '../components/CourierHistoricalDetails'
+import type { CourierHistoryStatus } from '../api/courierContracts'
 import type { createCourierDashboardApi } from '../api/courierDashboard'
 import type { createCourierAssignmentsApi } from '../api/courierAssignments'
 import type { createCourierProofApi } from '../api/proof'
@@ -38,12 +41,17 @@ export function CourierPage({
     message: string
   } | null>(null)
   const [summaryRefresh, setSummaryRefresh] = useState(0)
+  const [workspace, setWorkspace] = useState<'active' | 'history'>('active')
+  const [historyStatus, setHistoryStatus] = useState<CourierHistoryStatus | undefined>()
+  const [selectedHistoryParcelId, setSelectedHistoryParcelId] = useState<string | null>(null)
 
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
   const [prevSubject, setPrevSubject] = useState(subject)
   if (subject !== prevSubject) {
     setPrevSubject(subject)
     setSelectedParcelId(null)
+    setSelectedHistoryParcelId(null)
+    setWorkspace('active')
     setAssignmentNotice(null)
   }
 
@@ -87,9 +95,11 @@ export function CourierPage({
             key={`summary-${subject}`}
             apiOverride={summaryApiOverride}
             refreshToken={summaryRefresh}
+            onOpenActive={() => { setWorkspace('active'); setSelectedHistoryParcelId(null) }}
+            onOpenHistory={(status) => { setHistoryStatus(status); setWorkspace('history'); setSelectedParcelId(null); setSelectedHistoryParcelId(null) }}
           />
 
-          {selectedParcelId ? (
+          {workspace === 'active' && selectedParcelId ? (
             <CourierParcelDetails
               key={`parcel-${subject}-${selectedParcelId}`}
               parcelId={selectedParcelId}
@@ -106,7 +116,7 @@ export function CourierPage({
                 setSelectedParcelId(null)
               }}
             />
-          ) : (
+          ) : workspace === 'active' ? (
             <CourierAssignmentList
               key={`assignments-${subject}`}
               selectedParcelId={selectedParcelId}
@@ -114,7 +124,21 @@ export function CourierPage({
                 setAssignmentNotice(null)
                 setSelectedParcelId(id)
               }}
+              onOpenHistory={() => { setWorkspace('history'); setSelectedParcelId(null) }}
               apiOverride={assignmentsApiOverride}
+            />
+          ) : selectedHistoryParcelId ? (
+            <CourierHistoricalDetails
+              parcelId={selectedHistoryParcelId}
+              apiOverride={assignmentsApiOverride}
+              onBack={() => setSelectedHistoryParcelId(null)}
+            />
+          ) : (
+            <CourierDeliveryHistory
+              apiOverride={assignmentsApiOverride}
+              initialStatus={historyStatus}
+              onBack={() => { setWorkspace('active'); setHistoryStatus(undefined) }}
+              onSelectParcel={(id) => setSelectedHistoryParcelId(id)}
             />
           )}
         </section>
