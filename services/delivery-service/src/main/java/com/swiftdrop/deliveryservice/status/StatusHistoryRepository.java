@@ -50,7 +50,32 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, UU
     @org.springframework.data.jpa.repository.Query(value = """
         SELECT COUNT(DISTINCT s.parcel_id) FROM status_history s JOIN parcels p ON p.parcel_id = s.parcel_id
         WHERE s.occurred_at >= :startTime AND s.occurred_at < :endTime
-        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND (
+            UPPER(p.quote_snapshot ->> 'pickupZone') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZone') = UPPER(:zone)
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'pickupZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'dropoffZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(p.quote_snapshot ->> 'pickupZoneName') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZoneName') = UPPER(:zone)
+            OR (UPPER(:zone) LIKE '%COLOMBO%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%COLOMBO%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%COLOMBO%'
+            ))
+            OR (UPPER(:zone) LIKE '%WESTERN%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%WESTERN%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%WESTERN%'
+            ))
+            OR ((UPPER(:zone) LIKE '%NATIONAL%' OR UPPER(:zone) LIKE '%ISLAND%') AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%ISLAND%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%ISLAND%'
+            ))
+        )
         """, nativeQuery = true)
     long countDistinctParcelsWithActivityBetweenInZone(
             @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
@@ -62,7 +87,32 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, UU
         SELECT COUNT(DISTINCT s.parcel_id) FROM status_history s JOIN parcels p ON p.parcel_id = s.parcel_id
         WHERE s.occurred_at >= :startTime AND s.occurred_at < :endTime
         AND s.new_status = 'DELIVERED'
-        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND (
+            UPPER(p.quote_snapshot ->> 'pickupZone') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZone') = UPPER(:zone)
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'pickupZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'dropoffZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(p.quote_snapshot ->> 'pickupZoneName') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZoneName') = UPPER(:zone)
+            OR (UPPER(:zone) LIKE '%COLOMBO%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%COLOMBO%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%COLOMBO%'
+            ))
+            OR (UPPER(:zone) LIKE '%WESTERN%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%WESTERN%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%WESTERN%'
+            ))
+            OR ((UPPER(:zone) LIKE '%NATIONAL%' OR UPPER(:zone) LIKE '%ISLAND%') AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%ISLAND%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%ISLAND%'
+            ))
+        )
         """, nativeQuery = true)
     long countDeliveredBetweenInZone(
             @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
@@ -74,7 +124,32 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, UU
         SELECT COUNT(DISTINCT s.parcel_id) FROM status_history s JOIN parcels p ON p.parcel_id = s.parcel_id
         WHERE s.occurred_at >= :startTime AND s.occurred_at < :endTime
         AND s.new_status = 'FAILED'
-        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND (
+            UPPER(p.quote_snapshot ->> 'pickupZone') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZone') = UPPER(:zone)
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'pickupZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'dropoffZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(p.quote_snapshot ->> 'pickupZoneName') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZoneName') = UPPER(:zone)
+            OR (UPPER(:zone) LIKE '%COLOMBO%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%COLOMBO%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%COLOMBO%'
+            ))
+            OR (UPPER(:zone) LIKE '%WESTERN%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%WESTERN%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%WESTERN%'
+            ))
+            OR ((UPPER(:zone) LIKE '%NATIONAL%' OR UPPER(:zone) LIKE '%ISLAND%') AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%ISLAND%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%ISLAND%'
+            ))
+        )
         """, nativeQuery = true)
     long countFailedBetweenInZone(
             @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,

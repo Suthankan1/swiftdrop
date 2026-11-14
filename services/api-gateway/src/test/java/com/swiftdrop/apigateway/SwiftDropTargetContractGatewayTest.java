@@ -124,6 +124,8 @@ public class SwiftDropTargetContractGatewayTest {
         registry.add("KEYCLOAK_ISSUER_URI", () -> swiftDropIssuerUrl);
         registry.add("JWT_AUDIENCE", () -> "swiftdrop-api");
         registry.add("ACCOUNTS_SERVICE_URL", () -> accountsServer.url("").toString().replaceAll("/$", ""));
+        // This test asserts exact upstream request queues; the disabled-account check has its own test.
+        registry.add("swiftdrop.gateway.disabled-account-check.enabled", () -> "false");
     }
 
     @BeforeEach

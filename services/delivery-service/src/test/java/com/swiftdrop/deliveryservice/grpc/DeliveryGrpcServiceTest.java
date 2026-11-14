@@ -197,6 +197,63 @@ class DeliveryGrpcServiceTest {
     }
 
     @Test
+    @DisplayName("ListUnassignedParcels with zone filter succeeds and calls findUnassignedParcelsInZone")
+    void testListUnassignedParcels_WithZoneFilter_Success() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), dispatcherSub, List.of("DISPATCHER"));
+
+        UUID parcelId = UUID.randomUUID();
+        Parcel parcel = new Parcel(
+                parcelId, "SWD-2026-000102", "sender-1", null, null, "v1", 150000L, "LKR", new BigDecimal("2.500")
+        );
+        parcel.setCreatedAt(Instant.parse("2026-10-29T10:00:00Z"));
+        parcel.setQuoteSnapshot("{\"pickupZone\":\"ZONE_1\",\"dropoffZone\":\"ZONE_2\",\"weightKg\":\"2.50\"}");
+
+        when(parcelRepository.findUnassignedParcelsInZone(eq("ZONE_1"), any()))
+                .thenReturn(new PageImpl<>(List.of(parcel), PageRequest.of(0, 20), 1));
+
+        ListUnassignedParcelsResponse response = stub.listUnassignedParcels(
+                ListUnassignedParcelsRequest.newBuilder().setPage(0).setPageSize(20).setZone("ZONE_1").build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getItemsCount()).isEqualTo(1);
+        assertThat(response.getItems(0).getParcelId()).isEqualTo(parcelId.toString());
+        assertThat(response.getItems(0).getPickupZone()).isEqualTo("ZONE_1");
+        assertThat(response.getItems(0).getDropoffZone()).isEqualTo("ZONE_2");
+    }
+
+    @Test
+    @DisplayName("ListUnassignedParcels with zone name with spaces succeeds and passes validation")
+    void testListUnassignedParcels_WithZoneName_Success() {
+        DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.GRAPHQL_QUERY_SERVICE.getServiceName(), dispatcherSub, List.of("DISPATCHER"));
+
+        UUID parcelId = UUID.randomUUID();
+        Parcel parcel = new Parcel(
+                parcelId, "SWD-2026-000103", "sender-1", null, null, "v1", 150000L, "LKR", new BigDecimal("1.500")
+        );
+        parcel.setCreatedAt(Instant.parse("2026-10-29T10:00:00Z"));
+        parcel.setQuoteSnapshot("{\"pickupZoneName\":\"Colombo Municipal District\",\"dropoffZoneName\":\"Western Province Suburbs\",\"weightKg\":\"1.50\"}");
+
+        when(parcelRepository.findUnassignedParcelsInZone(eq("Colombo Municipal District"), any()))
+                .thenReturn(new PageImpl<>(List.of(parcel), PageRequest.of(0, 20), 1));
+
+        ListUnassignedParcelsResponse response = stub.listUnassignedParcels(
+                ListUnassignedParcelsRequest.newBuilder().setPage(0).setPageSize(20).setZone("Colombo Municipal District").build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getItemsCount()).isEqualTo(1);
+        assertThat(response.getItems(0).getParcelId()).isEqualTo(parcelId.toString());
+        // Zone code inferred from Colombo Municipal District name
+        assertThat(response.getItems(0).getPickupZone()).isEqualTo("ZONE_1");
+        assertThat(response.getItems(0).getDropoffZone()).isEqualTo("ZONE_2");
+    }
+
+    @Test
     @DisplayName("ListUnassignedParcels rejected if service token is missing")
     void testListUnassignedParcels_MissingServiceToken() {
         DeliveryInternalServiceGrpc.DeliveryInternalServiceBlockingStub stub =

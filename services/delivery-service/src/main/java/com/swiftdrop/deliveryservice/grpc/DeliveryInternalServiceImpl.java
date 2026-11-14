@@ -431,7 +431,7 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
             // Zone codes come from the verified quote snapshot captured at booking; the filter runs in the
             // database so a zone-scoped dispatcher gets complete, correctly paged results.
             String zone = request.getZone() == null ? "" : request.getZone().trim();
-            if (!zone.isEmpty() && !zone.matches("[A-Za-z0-9_]{1,32}")) {
+            if (!zone.isEmpty() && !zone.matches("[A-Za-z0-9_ -]{1,64}")) {
                 responseObserver.onError(Status.INVALID_ARGUMENT
                         .withDescription("zone must be a zone code")
                         .asRuntimeException());
@@ -458,8 +458,10 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
 
                 // Route facts the dispatcher needs; parcels booked before snapshots existed report UNKNOWN.
                 com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(parcel);
-                summaryBuilder.setPickupZone(route.pickupZone() != null ? route.pickupZone() : "UNKNOWN");
-                summaryBuilder.setDropoffZone(route.dropoffZone() != null ? route.dropoffZone() : "UNKNOWN");
+                String pz = route.pickupZone() != null ? route.pickupZone() : (route.pickupZoneName() != null ? route.pickupZoneName() : "UNKNOWN");
+                String dz = route.dropoffZone() != null ? route.dropoffZone() : (route.dropoffZoneName() != null ? route.dropoffZoneName() : "UNKNOWN");
+                summaryBuilder.setPickupZone(pz);
+                summaryBuilder.setDropoffZone(dz);
                 if (route.sizeCategory() != null) summaryBuilder.setSizeCategory(route.sizeCategory());
 
                 if (parcel.getCreatedAt() != null) {
