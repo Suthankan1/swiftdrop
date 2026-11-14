@@ -51,6 +51,9 @@ public class MerchantApiKeyService implements MerchantApiKeyValidator {
         // Validate request parameters
         validateCreateRequest(request);
 
+        // Lock the tenant row before counting; simultaneous creates cannot both claim the final slot.
+        merchantRepository.findByIdForUpdate(merchantId);
+
         // Enforce maximum active key rotation limit (DEC-MER-04)
         Instant now = Instant.now();
         long activeKeysCount = apiKeyRepository.countActiveKeys(merchantId, now);
