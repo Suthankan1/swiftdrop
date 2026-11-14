@@ -20,8 +20,12 @@ describe('ProofPreview component', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders image preview and metadata correctly', () => {
-    const file = new File([new Uint8Array(1024)], 'courier-photo.jpg', { type: 'image/jpeg' })
+  it.each([
+    ['courier-photo.jpg', 'image/jpeg'],
+    ['courier-photo.png', 'image/png'],
+    ['courier-photo.webp', 'image/webp'],
+  ])('renders a selected %s preview through its browser object URL', (fileName, mimeType) => {
+    const file = new File([new Uint8Array(1024)], fileName, { type: mimeType })
 
     render(
       <ProofPreview
@@ -34,9 +38,28 @@ describe('ProofPreview component', () => {
     expect(screen.getByRole('heading', { name: 'Delivery Proof Preview' })).toBeInTheDocument()
     const img = screen.getByRole('img', { name: 'Handover image for parcel' })
     expect(img).toHaveAttribute('src', 'blob:http://localhost:5173/synthetic-blob-uuid')
-    expect(screen.getByText('courier-photo.jpg')).toBeInTheDocument()
+    expect(screen.getByText(fileName)).toBeInTheDocument()
     expect(screen.getByText('1.0 KB')).toBeInTheDocument()
-    expect(screen.getByText('image/jpeg')).toBeInTheDocument()
+    expect(screen.getByText(mimeType)).toBeInTheDocument()
+  })
+
+  it('renders an authorized stored-proof Blob without exposing a storage URL', () => {
+    const blob = new Blob([new Uint8Array(256)], { type: 'image/webp' })
+
+    render(
+      <ProofPreview
+        source={blob}
+        title="Stored Proof Evidence (Private Stream)"
+        fileName="stored-proof.webp"
+      />,
+    )
+
+    expect(screen.getByRole('img', { name: /captured proof of delivery photo/i })).toHaveAttribute(
+      'src',
+      'blob:http://localhost:5173/synthetic-blob-uuid',
+    )
+    expect(screen.getByText('stored-proof.webp')).toBeInTheDocument()
+    expect(screen.getByText('image/webp')).toBeInTheDocument()
   })
 
   it('revokes the created object URL when the component unmounts to prevent memory leaks', () => {

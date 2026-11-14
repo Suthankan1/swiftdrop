@@ -33,7 +33,10 @@ export function CourierPage({
     state.profile.role === 'COURIER'
 
   const [selectedParcelId, setSelectedParcelId] = useState<string | null>(null)
-  const [assignmentNotice, setAssignmentNotice] = useState<string | null>(null)
+  const [assignmentNotice, setAssignmentNotice] = useState<{
+    kind: 'success' | 'error'
+    message: string
+  } | null>(null)
   const [summaryRefresh, setSummaryRefresh] = useState(0)
 
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -96,8 +99,12 @@ export function CourierPage({
       {isOperationalCourier && (
         <div className="courier-dashboard-container" aria-label="Courier Operations Dashboard">
           {assignmentNotice && (
-            <div className="feedback-banner is-error" role="alert">
-              <span>{assignmentNotice}</span>
+            <div
+              className={`feedback-banner ${assignmentNotice.kind === 'success' ? 'is-success' : 'is-error'}`}
+              role={assignmentNotice.kind === 'success' ? 'status' : 'alert'}
+              aria-live="polite"
+            >
+              <span>{assignmentNotice.message}</span>
               <Button
                 type="button"
                 variant="secondary"
@@ -123,7 +130,11 @@ export function CourierPage({
               apiOverride={proofApiOverride}
               statusApiOverride={statusApiOverride}
               onAssignmentLost={(message) => {
-                setAssignmentNotice(message)
+                setAssignmentNotice({ kind: 'error', message })
+                setSelectedParcelId(null)
+              }}
+              onTerminalSuccess={(message) => {
+                setAssignmentNotice({ kind: 'success', message })
                 setSelectedParcelId(null)
               }}
             />
