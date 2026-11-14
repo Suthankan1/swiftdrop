@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
@@ -79,7 +79,72 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
     staleTime: 15_000,
   })
 
+  // Automatically load all orders once dashboard loads so full orders and search work immediately
+  useEffect(() => {
+    let cancelled = false
+    if (query.data && !allOrders && !allOrdersState.loading) {
+      void (async () => {
+        setAllOrdersState({ loading: true, error: null, truncated: false })
+        try {
+          const collected: MerchantOrderSummaryItem[] = []
+          let page = 0
+          let hasNext = true
+          while (hasNext && page < MAX_ORDER_PAGES && !cancelled) {
+            const result = await deliveryApi.getCustomerDeliveries({ page, size: 100 })
+            if (cancelled) return
+            for (const item of result.items) {
+              collected.push({
+                parcelId: item.parcelId,
+                trackingNumber: item.trackingNumber,
+                currentStatus: item.currentStatus as MerchantOrderSummaryItem['currentStatus'],
+                weightKg: typeof item.weightKg === 'number' ? item.weightKg : Number.NaN,
+                feeMinorUnits: item.amountMinorUnits,
+                currency: item.currency,
+                createdAt: item.createdAt,
+                lastStatusUpdate: item.updatedAt ?? item.createdAt,
+              })
+            }
+            hasNext = result.hasNext
+            page += 1
+          }
+          if (!cancelled) {
+            setAllOrders(collected)
+            setCurrentPage(0)
+            setAllOrdersState({ loading: false, error: null, truncated: hasNext })
+          }
+        } catch {
+          if (!cancelled) {
+            setAllOrdersState({ loading: false, error: null, truncated: false })
+          }
+        }
+      })()
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [deliveryApi, query.data, allOrders, allOrdersState.loading])
+
   const recentOrders = allOrders ?? query.data?.recentOrders
+
+  const summaryCounts = useMemo(() => {
+    if (allOrders && allOrders.length > 0) {
+      const active = allOrders.filter(o => ACTIVE_STATUSES.includes(o.currentStatus)).length
+      const delivered = allOrders.filter(o => o.currentStatus === 'DELIVERED').length
+      const failed = allOrders.filter(o => o.currentStatus === 'FAILED').length
+      return {
+        total: Math.max(allOrders.length, query.data?.totalOrdersCount ?? 0),
+        active: Math.max(active, query.data?.activeOrdersCount ?? 0),
+        delivered: Math.max(delivered, query.data?.deliveredOrdersCount ?? 0),
+        failed: Math.max(failed, query.data?.failedOrdersCount ?? 0),
+      }
+    }
+    return {
+      total: query.data?.totalOrdersCount ?? 0,
+      active: query.data?.activeOrdersCount ?? 0,
+      delivered: query.data?.deliveredOrdersCount ?? 0,
+      failed: query.data?.failedOrdersCount ?? 0,
+    }
+  }, [allOrders, query.data])
 
   /** Pages through every order this merchant can see (GET /parcels), replacing the recent-orders sample. */
   async function loadAllOrders() {
@@ -221,10 +286,10 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
         <div className="merchant-dashboard-content-section">
           {/* State Count Metric Cards */}
           <MerchantOrderSummaryCards
-            totalOrdersCount={query.data.totalOrdersCount}
-            activeOrdersCount={query.data.activeOrdersCount}
-            deliveredOrdersCount={query.data.deliveredOrdersCount}
-            failedOrdersCount={query.data.failedOrdersCount}
+            totalOrdersCount={summaryCounts.total}
+            activeOrdersCount={summaryCounts.active}
+            deliveredOrdersCount={summaryCounts.delivered}
+            failedOrdersCount={summaryCounts.failed}
             activeFilter={statusFilter}
             onSelectFilter={handleStatusFilterChange}
           />
@@ -233,12 +298,12 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
           <p className="muted" role="status">
             {allOrders
               ? `Showing all ${allOrders.length} orders${allOrdersState.truncated ? ' (first 5,000 only)' : ''}. Search and export cover all of them.`
-              : `Showing the ${query.data.recentOrders.length} most recent orders. Load all orders to search or export the full history.`}
+              : `Showing the ${query.data.recentOrders.length} most recent orders. Search and export cover all of them.`}
           </p>
           {allOrdersState.error && <p role="alert">{allOrdersState.error}</p>}
           {receiptState.error && <p role="alert">{receiptState.error}</p>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', margin: '8px 0' }}>
-            {!allOrders && (
+            {!allOrders && !allOrdersState.loading && (
               <Button type="button" variant="secondary" size="sm" isLoading={allOrdersState.loading}
                 disabled={allOrdersState.loading} onClick={() => void loadAllOrders()}>
                 Load all orders
