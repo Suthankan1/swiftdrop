@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../../auth/context'
 import {
   type PagedAssignmentsResponse,
@@ -47,12 +47,16 @@ export function CourierAssignmentList({
   const [todayOnly, setTodayOnly] = useState(false)
   const [parcels, setParcels] = useState<Record<string, ParcelDetailResponse>>({})
 
-  // Subject change: clear assignments and reset pagination
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+
+  // Subject change: clear assignments, reset parcels and reset pagination
   const [prevSubject, setPrevSubject] = useState(subject)
   if (subject !== prevSubject) {
     setPrevSubject(subject)
     setCurrentPage(0)
     setPagedData(null)
+    setParcels({})
     setError(null)
   }
 
@@ -61,11 +65,13 @@ export function CourierAssignmentList({
 
     let active = true
     const controller = new AbortController()
+    abortControllerRef.current = controller
 
     void (async () => {
       try {
         setIsLoading(true)
         setError(null)
+
         const response = await api.getMyAssignmentsPaged({
           activeOnly: true,
           page: currentPage,
@@ -73,33 +79,41 @@ export function CourierAssignmentList({
           signal: controller.signal,
           ...(todayOnly ? { assignedSince: startOfToday() } : {}),
         })
-        if (active) {
-          setPagedData(response)
-        }
+
+        if (!active || controller.signal.aborted) return
+        setPagedData(response)
+
         // Enrich cards with tracking number, status and route (best effort; cards still work without it).
-        if (typeof api.getParcel === 'function') {
+        if (typeof api.getParcel === 'function' && response.items.length > 0) {
           const details = await Promise.allSettled(
-            response.items.map((item) => Promise.resolve().then(() => api.getParcel(item.parcelId, controller.signal))),
+            response.items.map((item) =>
+              Promise.resolve().then(() => api.getParcel(item.parcelId, controller.signal)),
+            ),
           )
-          if (active) {
-            const next: Record<string, ParcelDetailResponse> = {}
-            details.forEach((result) => {
-              if (result.status === 'fulfilled' && result.value?.parcelId && result.value.trackingNumber) {
-                next[result.value.parcelId] = result.value
-              }
-            })
-            setParcels(next)
-          }
+
+          if (!active || controller.signal.aborted) return
+
+          const next: Record<string, ParcelDetailResponse> = {}
+          details.forEach((result) => {
+            if (result.status === 'fulfilled' && result.value?.parcelId && result.value.trackingNumber) {
+              next[result.value.parcelId] = result.value
+            }
+          })
+          setParcels(next)
+        } else if (response.items.length === 0) {
+          setParcels({})
         }
       } catch (err) {
         if (!active || controller.signal.aborted) return
         if (err instanceof CourierApiError) {
           setError(err.message)
+        } else if (err instanceof Error) {
+          setError(err.message)
         } else {
           setError('Unable to load assignments from Delivery service.')
         }
       } finally {
-        if (active) {
+        if (active && !controller.signal.aborted) {
           setIsLoading(false)
         }
       }
@@ -109,28 +123,12 @@ export function CourierAssignmentList({
       active = false
       controller.abort()
     }
-  }, [api, currentPage, subject, todayOnly])
+  }, [api, currentPage, subject, todayOnly, retryCount])
 
   const handleRetry = () => {
     if (!subject) return
-    setIsLoading(true)
-    setError(null)
-    void api
-      .getMyAssignmentsPaged({
-        activeOnly: true,
-        page: currentPage,
-        size: PAGE_SIZE,
-        ...(todayOnly ? { assignedSince: startOfToday() } : {}),
-      })
-      .then((data) => {
-        setPagedData(data)
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to reload assignments.')
-      })
-      .finally(() => {
-        setIsLoading(false)
-      })
+    abortControllerRef.current?.abort()
+    setRetryCount((c) => c + 1)
   }
 
   const items = pagedData?.items ?? []

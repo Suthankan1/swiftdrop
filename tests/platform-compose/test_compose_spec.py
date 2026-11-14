@@ -212,6 +212,28 @@ class TestComposeRuntimeSpec(unittest.TestCase):
             self.assertNotIn("volume prune", content, f"Destructive 'volume prune' in {script_name}")
             self.assertNotIn("system prune", content, f"Destructive 'system prune' in {script_name}")
 
+    def test_start_script_help_option(self):
+        """Verifies that start.sh --help cleanly displays usage for both Supabase and Local modes."""
+        res = subprocess.run(
+            ["bash", str(COMPOSE_DIR / "start.sh"), "--help"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("--supabase", res.stdout)
+        self.assertIn("--local", res.stdout)
+
+    def test_stop_script_help_option(self):
+        """Verifies that stop.sh --help cleanly displays usage for both modes."""
+        res = subprocess.run(
+            ["bash", str(COMPOSE_DIR / "stop.sh"), "--help"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("--supabase", res.stdout)
+        self.assertIn("--local", res.stdout)
+
     def test_secrets_have_no_committed_fallbacks(self):
         """Passwords and client secrets must come from .env; a missing value fails instead of using a known default."""
         content = COMPOSE_FILE.read_text(encoding="utf-8")

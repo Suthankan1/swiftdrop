@@ -1,8 +1,10 @@
 # Supabase PostgreSQL for shared team development
 
-This opt-in configuration retains five independent databases, existing service
-boundaries and Keycloak identity. It does not use Supabase Auth or change any
-Flyway migration. Local PostgreSQL remains the default.
+This configuration connects SwiftDrop services to team-provisioned Supabase PostgreSQL
+while retaining five independent databases, existing service boundaries and Keycloak identity.
+It does not use Supabase Auth or change any Flyway migration. Shared Supabase is the team default
+mode for `./platform/compose/start.sh` (or `./platform/compose/start.sh --supabase`), while local
+PostgreSQL development mode is selected via `./platform/compose/start.sh --local`.
 
 | Supabase project | Database | Runtime role | Consumer |
 |---|---|---|---|
@@ -80,15 +82,66 @@ or granting schema access does not transfer table ownership.
 
 ## Choose a database mode
 
-Default local startup uses the saved, ignored `.env.local-postgres` when present,
-otherwise `.env`. The saved file preserves the original local values while
-`.env` holds the external settings:
+SwiftDrop supports two database runtime modes:
 
-```bash
-./platform/compose/start.sh
-```
+1. **Shared Supabase Development Mode (Team Default):**
+   Uses `compose.yaml` with the `compose.supabase.yaml` overlay.
+   Requires team credentials in `platform/compose/.env`.
+   ```bash
+   # Default startup (Supabase mode):
+   ./platform/compose/start.sh
+   # Or explicitly:
+   ./platform/compose/start.sh --supabase
+   ```
+   To check status or stop Supabase mode containers:
+   ```bash
+   ./platform/compose/status.sh            # or ./platform/compose/status.sh --supabase
+   ./platform/compose/stop.sh              # or ./platform/compose/stop.sh --supabase
+   ```
 
-Before first configuring external access, save the existing local file without
+2. **Local PostgreSQL Development Mode:**
+   Uses `compose.yaml` with dedicated containerized PostgreSQL instances (`accounts-postgres`, `keycloak-postgres`, `business-postgres`).
+   Uses `platform/compose/.env.local-postgres` (auto-initialized from template if absent):
+   ```bash
+   ./platform/compose/start.sh --local
+   ```
+   To check status or stop Local mode containers:
+   ```bash
+   ./platform/compose/status.sh --local
+   ./platform/compose/stop.sh --local
+   ```
+
+### Operating System & Environment Compatibility
+
+The startup and lifecycle scripts run across all major developer platforms:
+
+- **macOS (Apple Silicon & Intel):**
+  ```bash
+  ./platform/compose/start.sh [--supabase | --local]
+  ./platform/compose/status.sh [--supabase | --local]
+  ./platform/compose/stop.sh [--supabase | --local]
+  ```
+- **Linux (Ubuntu, Debian, Fedora, Arch):**
+  ```bash
+  ./platform/compose/start.sh [--supabase | --local]
+  ./platform/compose/status.sh [--supabase | --local]
+  ./platform/compose/stop.sh [--supabase | --local]
+  ```
+- **Windows 11 / Windows 10 (WSL2 recommended):**
+  ```bash
+  wsl bash ./platform/compose/start.sh [--supabase | --local]
+  wsl bash ./platform/compose/status.sh [--supabase | --local]
+  wsl bash ./platform/compose/stop.sh [--supabase | --local]
+  ```
+- **Windows (Git Bash):**
+  ```bash
+  bash ./platform/compose/start.sh [--supabase | --local]
+  bash ./platform/compose/status.sh [--supabase | --local]
+  bash ./platform/compose/stop.sh [--supabase | --local]
+  ```
+- **Explicit PowerShell Note:** Shell scripts (`.sh`) cannot be executed directly as PowerShell commands. Windows developers must run them inside WSL2 (Ubuntu) or Git Bash.
+
+Before first configuring external Supabase access, save any existing local settings without
 overwriting a previous snapshot:
 
 ```bash
@@ -99,16 +152,11 @@ chmod 600 platform/compose/.env platform/compose/.env.local-postgres
 The existing scripts also accept `SWIFTDROP_COMPOSE_ENV_FILE` for selecting a
 different local environment file.
 
-External startup is explicitly selected and first repeats the runtime checks:
+External startup can also be validated with Python 3:
 
 ```bash
 python3 platform/compose/supabase.py start
-# Equivalent entry point:
-./platform/compose/start.sh --supabase
 ```
-
-Stop external application containers with `./platform/compose/stop.sh --supabase`;
-inspect their database readiness with `./platform/compose/status.sh --supabase`.
 
 The external overlay excludes local PostgreSQL startup and its initialization
 scripts, retains Kafka, MinIO, Mailpit and the existing application services,

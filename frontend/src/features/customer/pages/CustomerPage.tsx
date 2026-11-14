@@ -59,10 +59,11 @@ export function CustomerPage({ dashboardApiOverride }: CustomerPageProps = {}) {
         ) : (
           <a href="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</a>
         )}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-          <Button variant="secondary" size="sm" onClick={() => { void auth.logout() }}>Sign out</Button>
-          {query.isError && <Button variant="primary" size="sm" onClick={() => { void query.refetch() }}>Retry profile</Button>}
-        </div>
+        {query.isError && (
+          <div style={{ marginTop: '12px' }}>
+            <Button variant="primary" size="sm" onClick={() => { void query.refetch() }}>Retry profile</Button>
+          </div>
+        )}
       </aside></div>
   </div>
 }

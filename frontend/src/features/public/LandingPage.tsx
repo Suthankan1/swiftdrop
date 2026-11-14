@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '../../components/ui/Button'
+import { useAuth } from '../../auth/context'
 
 function ArrowIcon({ diagonal = false }: { diagonal?: boolean }) {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h15m-6-6 6 6-6 6'} /></svg>
@@ -9,6 +10,36 @@ function ArrowIcon({ diagonal = false }: { diagonal?: boolean }) {
 export function LandingPage() {
   const [trackingNumber, setTrackingNumber] = useState('')
   const navigate = useNavigate()
+  const auth = useAuth()
+
+  const isAuthenticated = auth.snapshot.status === 'authenticated'
+  const roles = isAuthenticated ? auth.snapshot.roles : []
+  const hasCustomer = roles.includes('CUSTOMER')
+  const hasMerchant = roles.includes('MERCHANT')
+  const hasCourier = roles.includes('COURIER')
+  const hasDispatcher = roles.includes('DISPATCHER')
+  const hasAdmin = roles.includes('ADMIN')
+
+  // Determine primary workspace target based on role priority
+  const primaryWorkspacePath = hasAdmin
+    ? '/admin'
+    : hasDispatcher
+      ? '/dispatcher'
+      : hasCourier
+        ? '/courier'
+        : hasMerchant
+          ? '/merchant'
+          : '/customer'
+
+  const primaryWorkspaceLabel = hasAdmin
+    ? 'Admin space'
+    : hasDispatcher
+      ? 'Dispatcher space'
+      : hasCourier
+        ? 'Courier space'
+        : hasMerchant
+          ? 'Merchant space'
+          : 'Customer space'
 
   function handleTrackSubmit(e: FormEvent) {
     e.preventDefault()
@@ -45,7 +76,15 @@ export function LandingPage() {
           </form>
 
           <div className="hero-action-row">
-            <Link className="button button-primary hero-cta" to="/customer">Explore your customer space <ArrowIcon /></Link>
+            {isAuthenticated ? (
+              <Link className="button button-primary hero-cta" to={primaryWorkspacePath}>
+                Go to {primaryWorkspaceLabel} <ArrowIcon />
+              </Link>
+            ) : (
+              <Link className="button button-primary hero-cta" to="/customer">
+                Explore your customer space <ArrowIcon />
+              </Link>
+            )}
             <Link className="button button-tonal hero-secondary-cta" to="/tracking">Live tracking</Link>
           </div>
           <p className="hero-caption">One place to begin your SwiftDrop journey.</p>
@@ -78,15 +117,23 @@ export function LandingPage() {
             <h3>Personal & On-Demand</h3>
             <p>Instant pricing quotes across our delivery zones, one-click booking, live parcel updates, and downloadable delivery receipts.</p>
             <Link to="/customer" className="button button-tonal portal-cta">
-              Customer portal <ArrowIcon diagonal />
+              {isAuthenticated && hasCustomer ? 'Open Customer Space' : 'Customer portal'} <ArrowIcon diagonal />
             </Link>
           </div>
           <div className="portal-card">
             <div className="portal-card-tag">Merchant Hub</div>
             <h3>Commercial Logistics</h3>
             <p>Bulk CSV uploads, automated webhooks, developer API credentials with scopes, and real-time order lifecycle tracking.</p>
-            <Link to="/merchant" className="button button-tonal portal-cta">
-              Merchant hub <ArrowIcon diagonal />
+            <Link
+              to={isAuthenticated && !hasMerchant ? '/merchant/enroll' : '/merchant'}
+              className="button button-tonal portal-cta"
+            >
+              {isAuthenticated && hasMerchant
+                ? 'Open Merchant Hub'
+                : isAuthenticated
+                  ? 'Enroll as Merchant'
+                  : 'Merchant hub'}{' '}
+              <ArrowIcon diagonal />
             </Link>
           </div>
           <div className="portal-card">
@@ -94,7 +141,7 @@ export function LandingPage() {
             <h3>Operational Agility</h3>
             <p>Assigned route rosters, stage-by-stage status updates, recipient name capture, and photo proof of delivery.</p>
             <Link to="/courier" className="button button-tonal portal-cta">
-              Courier workspace <ArrowIcon diagonal />
+              {isAuthenticated && hasCourier ? 'Open Courier Workspace' : 'Courier workspace'} <ArrowIcon diagonal />
             </Link>
           </div>
         </div>

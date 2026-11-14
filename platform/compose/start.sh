@@ -18,16 +18,42 @@ fi
 if [ -f "${COMPOSE_DIR}/.env.local-postgres" ]; then
   chmod 600 "${COMPOSE_DIR}/.env.local-postgres" 2>/dev/null || true
 fi
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+  echo "Usage: ./platform/compose/start.sh [--supabase | --local]"
+  echo ""
+  echo "Modes:"
+  echo "  (default or --supabase)  Shared Supabase development mode"
+  echo "                           Targets team Supabase PostgreSQL using compose.yaml + compose.supabase.yaml"
+  echo "                           Requires configured platform/compose/.env"
+  echo ""
+  echo "  --local                  Local PostgreSQL development mode"
+  echo "                           Starts local containerized PostgreSQL databases using compose.yaml"
+  echo "                           Auto-initializes platform/compose/.env.local-postgres on first run"
+  exit 0
+fi
+
 if [ "${1:-}" = "--local" ]; then
   shift
   ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env.local-postgres}"
   if [ ! -f "${ENV_FILE}" ]; then
     ENV_FILE="${COMPOSE_DIR}/.env"
   fi
-else
+elif [ "${1:-}" = "--supabase" ] || [ -z "${1:-}" ]; then
   # Default mode: Supabase shared databases
   if [ "${1:-}" = "--supabase" ]; then shift; fi
-  exec python3 "${SCRIPT_DIR}/supabase.py" start "$@"
+  ENV_FILE="${SWIFTDROP_COMPOSE_ENV_FILE:-${COMPOSE_DIR}/.env}"
+  if [ ! -f "${ENV_FILE}" ]; then
+    echo "ERROR: Required environment file ${ENV_FILE} not found."
+    echo "To run in shared team Supabase mode, configure ${ENV_FILE} (see platform/compose/SUPABASE.md)."
+    echo "To run with isolated local PostgreSQL databases instead, use:"
+    echo "  ./platform/compose/start.sh --local"
+    exit 1
+  fi
+  exec python3 "${SCRIPT_DIR}/supabase.py" start --env-file "${ENV_FILE}" "$@"
+else
+  echo "ERROR: Unrecognized argument '${1}'."
+  echo "Usage: ./platform/compose/start.sh [--supabase | --local]"
+  exit 1
 fi
 
 echo "=============================================================================="

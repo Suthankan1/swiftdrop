@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
-import { TestProviders as AppProviders } from './authFixture'
+import { anonymousAuth, TestProviders as AppProviders } from './authFixture'
 import { AppRoutes } from '../app/router/routes'
 import { createAccountsApi } from '../features/customer/api/accounts'
 import { customerFixture } from './fixtures'
@@ -14,9 +14,14 @@ describe('frontend token persistence boundary', () => {
     const persist = vi.spyOn(Storage.prototype, 'setItem')
     const user = userEvent.setup()
     const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json(customerFixture))
-    render(createElement(AppProviders, null,
-      createElement(MemoryRouter, null, createElement(AppRoutes)),
-    ))
+    const customerAuth = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated' as const, subject: 'cust-1', roles: ['CUSTOMER' as const] },
+    }
+    render(createElement(AppProviders, {
+      auth: customerAuth,
+      children: createElement(MemoryRouter, null, createElement(AppRoutes)),
+    }))
 
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /customer/i }))
     const api = createAccountsApi({ getAccessToken: async () => 'synthetic-memory-only-test-value', fetch: request })

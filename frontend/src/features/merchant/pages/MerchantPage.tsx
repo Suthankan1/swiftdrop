@@ -83,13 +83,6 @@ export function MerchantPage() {
           >
             Webhook Subscriptions ↗
           </Link>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => { void auth.logout() }}
-          >
-            Sign out
-          </Button>
           {query.isError && (
             <Button
               variant="secondary"

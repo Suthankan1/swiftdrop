@@ -1,18 +1,54 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../../auth/context'
 import { Badge } from '../ui/Badge'
 import { AiDeliveryAssistant } from '../../features/ai/AiDeliveryAssistant'
+import {
+  determineActiveWorkspace,
+  getAuthorizedWorkspaces,
+} from './navigation'
 
 function MainNavigation() {
   const auth = useAuth()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
+  const switcherRef = useRef<HTMLDivElement>(null)
+  const switcherButtonRef = useRef<HTMLButtonElement>(null)
+
+  const isAuthenticated = auth.snapshot.status === 'authenticated'
+  const authorizedWorkspaces = isAuthenticated ? getAuthorizedWorkspaces(auth.snapshot.roles) : []
+  const activeWorkspace = determineActiveWorkspace(authorizedWorkspaces, location.pathname)
+  const switchableWorkspaces = activeWorkspace
+    ? authorizedWorkspaces.filter((ws) => ws.id !== activeWorkspace.id)
+    : authorizedWorkspaces
+
+  // Close switcher when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setSwitcherOpen(false)
+      }
+    }
+    if (switcherOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [switcherOpen])
 
   function closeMenu(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === 'Escape' && menuOpen) {
-      setMenuOpen(false)
-      menuButton.current?.focus()
+    if (event.key === 'Escape') {
+      if (switcherOpen) {
+        setSwitcherOpen(false)
+        switcherButtonRef.current?.focus()
+        event.stopPropagation()
+      } else if (menuOpen) {
+        setMenuOpen(false)
+        menuButton.current?.focus()
+      }
     }
   }
 
@@ -23,38 +59,96 @@ function MainNavigation() {
           <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
           <span>SwiftDrop<span className="brand-period">.</span></span>
         </Link>
-        <button ref={menuButton} className="menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="main-navigation" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} onClick={() => setMenuOpen((open) => !open)}>
+        <button
+          ref={menuButton}
+          className="menu-toggle"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="main-navigation"
+          aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
           <span className={menuOpen ? 'menu-glyph is-open' : 'menu-glyph'} aria-hidden="true"><span /><span /></span>
         </button>
         <nav id="main-navigation" className={`main-navigation${menuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
           <NavLink end to="/" className="nav-link" onClick={() => setMenuOpen(false)}>Home</NavLink>
           <NavLink to="/tracking" className="nav-link" onClick={() => setMenuOpen(false)}>Track parcel</NavLink>
-          {/* Visitors see it as the way in; signed-in users only when they actually have the customer role. */}
-          {(auth.snapshot.status !== 'authenticated' || auth.snapshot.roles.includes('CUSTOMER')) && (
-            <NavLink to="/customer" className="nav-link" onClick={() => setMenuOpen(false)}>Customer space <span aria-hidden="true">↗</span></NavLink>
+
+          {/* Active workspace link for authenticated accounts */}
+          {isAuthenticated && activeWorkspace && (
+            <NavLink
+              to={activeWorkspace.path}
+              className="nav-link nav-workspace-link"
+              onClick={() => {
+                setMenuOpen(false)
+                setSwitcherOpen(false)
+              }}
+            >
+              {activeWorkspace.label} <span aria-hidden="true">&#8599;</span>
+            </NavLink>
           )}
-          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('MERCHANT') && (
-            <NavLink to="/merchant" className="nav-link" onClick={() => setMenuOpen(false)}>Merchant space <span aria-hidden="true">&#8599;</span></NavLink>
+
+          {/* Switch Workspace menu for multi-role accounts */}
+          {isAuthenticated && switchableWorkspaces.length > 0 && (
+            <div className="workspace-switcher-container" ref={switcherRef}>
+              <button
+                ref={switcherButtonRef}
+                type="button"
+                className="nav-link workspace-switcher-toggle"
+                aria-expanded={switcherOpen}
+                aria-haspopup="menu"
+                aria-controls="workspace-switcher-menu"
+                aria-label="Switch workspace"
+                onClick={() => setSwitcherOpen((open) => !open)}
+              >
+                <span>Switch workspace</span>
+                <span className="switcher-caret" aria-hidden="true">{switcherOpen ? '▲' : '▼'}</span>
+              </button>
+              {switcherOpen && (
+                <div
+                  id="workspace-switcher-menu"
+                  className="workspace-switcher-dropdown"
+                  role="menu"
+                  aria-label="Authorized workspaces"
+                >
+                  {switchableWorkspaces.map((ws) => (
+                    <NavLink
+                      key={ws.id}
+                      to={ws.path}
+                      role="menuitem"
+                      className="workspace-switcher-item"
+                      onClick={() => {
+                        setSwitcherOpen(false)
+                        setMenuOpen(false)
+                      }}
+                    >
+                      <span>{ws.label}</span>
+                      <span className="badge-subtle">{ws.role}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('COURIER') && (
-            <NavLink to="/courier" className="nav-link" onClick={() => setMenuOpen(false)}>Courier space <span aria-hidden="true">&#8599;</span></NavLink>
-          )}
-          {auth.snapshot.status === 'authenticated' && (auth.snapshot.roles.includes('DISPATCHER') || auth.snapshot.roles.includes('ADMIN')) && (
-            <NavLink to="/dispatcher" className="nav-link" onClick={() => setMenuOpen(false)}>Dispatcher space <span aria-hidden="true">&#8599;</span></NavLink>
-          )}
-          {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && (
-            <NavLink to="/admin" className="nav-link" onClick={() => setMenuOpen(false)}>Admin space <span aria-hidden="true">&#8599;</span></NavLink>
-          )}
-          {auth.snapshot.status === 'authenticated' ? (
+
+          {isAuthenticated ? (
             <span className="nav-auth-item">
-              {auth.snapshot.roles.length > 0 && (
+              {activeWorkspace && (
                 <Badge variant="brand" className="header-role-badge">
-                  {primaryRole(auth.snapshot.roles)}
+                  {activeWorkspace.role}
                 </Badge>
               )}
-              <Link to="/logout" className="header-auth-link" onClick={() => setMenuOpen(false)}>
+              <button
+                type="button"
+                className="header-auth-link header-sign-out-button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setSwitcherOpen(false)
+                  void auth.logout()
+                }}
+              >
                 Sign out
-              </Link>
+              </button>
             </span>
           ) : (
             <Link to="/login" className="header-auth-link" onClick={() => setMenuOpen(false)}>
@@ -66,12 +160,6 @@ function MainNavigation() {
       </div>
     </header>
   )
-}
-
-/** The most specific role names the workspace; every account also starts as a customer. */
-const ROLE_PRIORITY = ['ADMIN', 'DISPATCHER', 'COURIER', 'MERCHANT', 'CUSTOMER'] as const
-function primaryRole(roles: readonly string[]): string {
-  return ROLE_PRIORITY.find((role) => roles.includes(role)) ?? roles[0] ?? ''
 }
 
 export function AppLayout() {
