@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../../../auth/context'
@@ -8,7 +8,13 @@ import { CustomerNav } from '../components/CustomerNav'
 import { CustomerHistoryTable } from '../components/CustomerHistoryTable'
 import { CustomerTrackingModal } from '../components/CustomerTrackingModal'
 
-export function CustomerHistoryPage() {
+export type CustomerDeliveriesViewMode = 'all' | 'active' | 'completed'
+
+export interface CustomerHistoryPageProps {
+  mode?: CustomerDeliveriesViewMode
+}
+
+export function CustomerHistoryPage({ mode = 'all' }: CustomerHistoryPageProps) {
   const auth = useAuth()
   const navigate = useNavigate()
   const [currentPage, setCurrentPage] = useState(0)
@@ -26,14 +32,68 @@ export function CustomerHistoryPage() {
     getAccessToken: auth.getAccessToken,
   })
 
+  const pageSize = mode === 'all' ? 10 : 50
+
   const historyQuery = useQuery({
-    queryKey: ['private', 'customer-deliveries', currentPage],
+    queryKey: ['private', 'customer-deliveries', mode, currentPage],
     enabled: auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('CUSTOMER'),
     queryFn: async ({ signal }) => {
-      return deliveryApi.getCustomerDeliveries({ page: currentPage, size: 10 }, signal)
+      return deliveryApi.getCustomerDeliveries({ page: currentPage, size: pageSize }, signal)
     },
     staleTime: 15_000,
   })
+
+  const filteredDeliveries = useMemo(() => {
+    const items = historyQuery.data?.items ?? []
+    if (mode === 'active') {
+      return items.filter(
+        (item) => item.currentStatus !== 'DELIVERED' && item.currentStatus !== 'FAILED',
+      )
+    }
+    if (mode === 'completed') {
+      return items.filter(
+        (item) => item.currentStatus === 'DELIVERED' || item.currentStatus === 'FAILED',
+      )
+    }
+    return items
+  }, [historyQuery.data?.items, mode])
+
+  const viewCopy = useMemo(() => {
+    if (mode === 'active') {
+      return {
+        eyebrow: 'Active shipments',
+        titleLine1: 'Active Deliveries &',
+        titleLine2: 'Live Tracking.',
+        subtitle: 'Monitor your in-progress shipments from booking through final doorstep delivery.',
+        sectionHeading: 'Your Active Deliveries',
+        countLabel: `${filteredDeliveries.length} active shipments`,
+        emptyTitle: 'No active deliveries',
+        emptyDescription: 'You do not have any parcels currently in transit or awaiting pickup.',
+      }
+    }
+    if (mode === 'completed') {
+      return {
+        eyebrow: 'Completed shipments',
+        titleLine1: 'Completed Deliveries &',
+        titleLine2: 'Official Receipts.',
+        subtitle: 'Review your delivered and completed shipments and download official PDF receipts.',
+        sectionHeading: 'Your Completed Deliveries',
+        countLabel: `${filteredDeliveries.length} completed shipments`,
+        emptyTitle: 'No completed deliveries yet',
+        emptyDescription: 'Your delivered parcels and official PDF receipts will appear here once completed.',
+      }
+    }
+    return {
+      eyebrow: 'Customer space',
+      titleLine1: 'Delivery History &',
+      titleLine2: 'Live Tracking.',
+      subtitle: 'Review your booked shipments, monitor milestone transitions, and download official PDF receipts.',
+      sectionHeading: 'Your Recent Deliveries',
+      countLabel: historyQuery.data ? `${historyQuery.data.totalElements} total shipments` : '',
+      emptyTitle: 'No delivery history yet',
+      emptyDescription: 'Your booked deliveries, live journey milestones, and official PDF receipts will be recorded here.',
+    }
+  }, [mode, filteredDeliveries.length, historyQuery.data])
 
   async function handleDownloadReceipt(parcelId: string) {
     if (downloadingParcelId) return
@@ -92,10 +152,10 @@ export function CustomerHistoryPage() {
   return (
     <div className="page-container customer-page customer-history-page">
       <header className="page-heading">
-        <p className="eyebrow">Customer space</p>
-        <h1>Delivery History &amp;<br />Live Tracking.</h1>
+        <p className="eyebrow">{viewCopy.eyebrow}</p>
+        <h1>{viewCopy.titleLine1}<br />{viewCopy.titleLine2}</h1>
         <p className="muted">
-          Review your booked shipments, monitor milestone transitions, and download official PDF receipts.
+          {viewCopy.subtitle}
         </p>
       </header>
 
@@ -145,10 +205,10 @@ export function CustomerHistoryPage() {
       {/* Main Delivery History Table */}
       <section className="history-content-section" aria-labelledby="history-heading">
         <div className="section-title-wrap">
-          <h2 id="history-heading">Your Recent Deliveries</h2>
+          <h2 id="history-heading">{viewCopy.sectionHeading}</h2>
           {historyQuery.data && (
             <span className="badge-count">
-              {historyQuery.data.totalElements} total shipments
+              {viewCopy.countLabel}
             </span>
           )}
         </div>
@@ -179,10 +239,10 @@ export function CustomerHistoryPage() {
 
         {historyQuery.data && (
           <CustomerHistoryTable
-            deliveries={historyQuery.data.items}
+            deliveries={filteredDeliveries}
             currentPage={historyQuery.data.currentPage}
             totalPages={historyQuery.data.totalPages}
-            totalElements={historyQuery.data.totalElements}
+            totalElements={mode === 'all' ? historyQuery.data.totalElements : filteredDeliveries.length}
             pageSize={historyQuery.data.pageSize}
             hasNext={historyQuery.data.hasNext}
             hasPrevious={historyQuery.data.hasPrevious}
@@ -191,6 +251,8 @@ export function CustomerHistoryPage() {
             onDownloadReceipt={handleDownloadReceipt}
             downloadingParcelId={downloadingParcelId}
             isLoading={historyQuery.isFetching}
+            emptyTitle={viewCopy.emptyTitle}
+            emptyDescription={viewCopy.emptyDescription}
           />
         )}
       </section>

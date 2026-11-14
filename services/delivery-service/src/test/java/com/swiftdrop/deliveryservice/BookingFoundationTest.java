@@ -80,6 +80,16 @@ class BookingFoundationTest {
   assertThat(failure.problem().toString()).doesNotContain("phone-secret");
   verifyNoInteractions(provider,authorization,repository);
  }
+ @Test void recipientPhoneRequiresPlus94AndNineDigits() {
+  var invalidPhone=new BookParcelRequest(quote,"Pickup","Dropoff","Recipient","0704174456",null);
+  var failure=catchThrowableOfType(() -> service.book(actor,key,invalidPhone),BookingFailure.class);
+  assertThat(failure.status()).isEqualTo(400);
+  assertThat(failure.problem().toString()).contains("recipientPhone").contains("+94XXXXXXXXX");
+  verifyNoInteractions(provider,authorization,repository);
+
+  var validPhone=new BookParcelRequest(quote,"Pickup","Dropoff","Recipient","+94704174456",null);
+  assertThat(service.book(actor,key,validPhone).currentStatus()).isEqualTo("CREATED");
+ }
  @Test void roleAndSubjectAreDerivedFromAuthenticatedPrincipal() {
   var jwt=Jwt.withTokenValue("test").header("alg","RS256").subject("customer-a").build();
   var customer=new JwtAuthenticationToken(jwt,List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER")));

@@ -113,11 +113,11 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
               <p className="metric-caption muted">Parcels in transit or out for delivery</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (
-                  <Link to="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <Link to="/customer/active" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View active
                   </Link>
                 ) : (
-                  <a href="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <a href="/customer/active" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View active
                   </a>
                 )}
@@ -130,11 +130,11 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
               <p className="metric-caption muted">Delivered parcels with official receipts</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (
-                  <Link to="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <Link to="/customer/completed" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View history
                   </Link>
                 ) : (
-                  <a href="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <a href="/customer/completed" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View history
                   </a>
                 )}
@@ -205,6 +205,8 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
                   <tbody>
                     {data.recentParcels.map((parcel) => {
                       const presentation = getStatusPresentation(parcel.currentStatus)
+                      const isCompleted = parcel.currentStatus === 'DELIVERED' || parcel.currentStatus === 'FAILED'
+                      const targetPath = isCompleted ? '/customer/completed' : '/customer/active'
                       return (
                         <tr key={parcel.parcelId}>
                           <th scope="row" style={{ fontFamily: 'monospace' }}>
@@ -221,7 +223,7 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
                           <td data-label="Action">
                             {inRouter ? (
                               <Link
-                                to="/customer/history"
+                                to={targetPath}
                                 className="button button-secondary"
                                 style={{ fontSize: '12px', padding: '4px 8px' }}
                                 aria-label={`View details for ${parcel.trackingNumber}`}
@@ -230,7 +232,7 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
                               </Link>
                             ) : (
                               <a
-                                href="/customer/history"
+                                href={targetPath}
                                 className="button button-secondary"
                                 style={{ fontSize: '12px', padding: '4px 8px' }}
                                 aria-label={`View details for ${parcel.trackingNumber}`}
