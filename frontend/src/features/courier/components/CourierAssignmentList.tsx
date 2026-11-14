@@ -74,12 +74,14 @@ export function CourierAssignmentList({
   }, [currentPage, onStateChange, search, searchInput, status, todayOnly])
 
   useEffect(() => {
+    const nextSearch = searchInput.trim()
+    if (nextSearch === search) return
     const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim())
+      setSearch(nextSearch)
       setCurrentPage(0)
     }, 250)
     return () => window.clearTimeout(timer)
-  }, [searchInput])
+  }, [search, searchInput])
 
   // Subject change: clear assignments, reset parcels and reset pagination
   const [prevSubject, setPrevSubject] = useState(subject)
@@ -142,7 +144,7 @@ export function CourierAssignmentList({
           setParcels({})
         }
       } catch (err) {
-        if (!active || controller.signal.aborted) return
+        if (!active || controller.signal.aborted || requestId !== requestIdRef.current) return
         if (err instanceof CourierApiError) {
           setError(err.message)
         } else if (err instanceof Error) {
@@ -151,7 +153,7 @@ export function CourierAssignmentList({
           setError('Unable to load assignments from Delivery service.')
         }
       } finally {
-        if (active && !controller.signal.aborted) {
+        if (active && !controller.signal.aborted && requestId === requestIdRef.current) {
           setIsLoading(false)
         }
       }
@@ -211,7 +213,7 @@ export function CourierAssignmentList({
             type="search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="e.g. SWD-2026"
+            placeholder="e.g. SWD-20261114-A29DD4A5"
             aria-label="Search active assignments by tracking number"
           />
         </label>

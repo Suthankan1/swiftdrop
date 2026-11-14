@@ -71,6 +71,8 @@ describe('CourierAssignmentList component', () => {
     )
 
     expect(screen.getByRole('heading', { name: /assigned deliveries/i })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: /search active assignments/i }))
+      .toHaveAttribute('placeholder', 'e.g. SWD-20261114-A29DD4A5')
     expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /view parcel details for/i })).toHaveLength(2)
 
