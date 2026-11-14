@@ -1,4 +1,6 @@
 import {
+  type CourierActiveStatus,
+  type CourierHistoryStatus,
   type PagedAssignmentsResponse,
   type ParcelDetailResponse,
   CourierApiError,
@@ -70,6 +72,8 @@ export function createCourierAssignmentsApi({
       size = 20,
       signal,
       assignedSince,
+      trackingNumber,
+      status,
     }: {
       activeOnly?: boolean
       page?: number
@@ -77,6 +81,8 @@ export function createCourierAssignmentsApi({
       signal?: AbortSignal
       /** Only assignments made at or after this instant (e.g. the courier's local midnight). */
       assignedSince?: Date
+      trackingNumber?: string
+      status?: CourierActiveStatus
     } = {}): Promise<PagedAssignmentsResponse> {
       if (!Number.isSafeInteger(page) || page < 0 || !Number.isSafeInteger(size) || size < 1 || size > 50) {
         throw new CourierApiError('invalid-pagination', 'Page must be 0 or greater and size must be between 1 and 50.')
@@ -106,7 +112,11 @@ export function createCourierAssignmentsApi({
         const since = assignedSince && !Number.isNaN(assignedSince.getTime())
           ? `&assignedSince=${encodeURIComponent(assignedSince.toISOString())}`
           : ''
-        const url = `${normalizedGateway}/api/v1/assignments/my?activeOnly=${activeOnly}&page=${page}&size=${size}${since}`
+        const search = trackingNumber?.trim()
+          ? `&trackingNumber=${encodeURIComponent(trackingNumber.trim())}`
+          : ''
+        const statusParam = status ? `&status=${encodeURIComponent(status)}` : ''
+        const url = `${normalizedGateway}/api/v1/assignments/my?activeOnly=${activeOnly}&page=${page}&size=${size}${since}${search}${statusParam}`
         const response = await request(url, {
           method: 'GET',
           headers: {
@@ -159,6 +169,56 @@ export function createCourierAssignmentsApi({
       }
     },
 
+    async getHistoryPaged({
+      page = 0,
+      size = 20,
+      status,
+      completedSince,
+      completedUntil,
+      signal,
+    }: {
+      page?: number
+      size?: number
+      status?: CourierHistoryStatus
+      completedSince?: Date
+      completedUntil?: Date
+      signal?: AbortSignal
+    } = {}): Promise<PagedAssignmentsResponse> {
+      if (!Number.isSafeInteger(page) || page < 0 || !Number.isSafeInteger(size) || size < 1 || size > 50) {
+        throw new CourierApiError('invalid-pagination', 'Page must be 0 or greater and size must be between 1 and 50.')
+      }
+      const token = await resolveAuthToken()
+      const controller = new AbortController()
+      const abort = () => controller.abort()
+      signal?.addEventListener('abort', abort, { once: true })
+      if (signal?.aborted) controller.abort()
+      try {
+        const params = new URLSearchParams({ page: String(page), size: String(size) })
+        if (status) params.set('status', status)
+        if (completedSince && !Number.isNaN(completedSince.getTime())) params.set('completedSince', completedSince.toISOString())
+        if (completedUntil && !Number.isNaN(completedUntil.getTime())) params.set('completedUntil', completedUntil.toISOString())
+        const response = await request(`${normalizedGateway}/api/v1/assignments/my/history?${params}`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json, application/problem+json' },
+          signal: controller.signal,
+          credentials: 'omit',
+          cache: 'no-store',
+        })
+        if (response.status === 401) throw new CourierApiError('auth-required', 'Session expired. Please sign in again.', 401)
+        if (response.status === 403) throw new CourierApiError('forbidden', 'Access restricted to your courier history.', 403)
+        if (!response.ok) throw new CourierApiError('unavailable', `History service returned HTTP ${response.status}`, response.status)
+        const payload: unknown = await response.json()
+        if (!isPagedAssignmentsResponse(payload)) throw new CourierApiError('invalid-response', 'History response does not match paginated contract.')
+        return payload
+      } catch (error) {
+        if (signal?.aborted) throw error
+        if (error instanceof CourierApiError) throw error
+        throw new CourierApiError('unavailable', error instanceof Error ? error.message : 'History request failed.')
+      } finally {
+        signal?.removeEventListener('abort', abort)
+      }
+    },
+
     /**
      * Retrieves authoritative parcel details from Delivery Operations REST API.
      * GET /api/v1/parcels/{parcelId}
@@ -196,6 +256,7 @@ export function createCourierAssignmentsApi({
             Authorization: `Bearer ${token}`,
             Accept: 'application/json, application/problem+json',
           },
+
           signal: controller.signal,
           credentials: 'omit',
           cache: 'no-store',
@@ -243,6 +304,28 @@ export function createCourierAssignmentsApi({
         signal?.removeEventListener('abort', abort)
         if (stopWaiting) controller.signal.removeEventListener('abort', stopWaiting)
       }
+    },
+
+    async getHistoricalParcel(parcelId: string, signal?: AbortSignal): Promise<ParcelDetailResponse> {
+      if (!parcelId?.trim()) throw new CourierApiError('not-found', 'Parcel ID is required.')
+      const token = await resolveAuthToken()
+      const response = await request(
+        `${normalizedGateway}/api/v1/parcels/courier-history/${encodeURIComponent(parcelId.trim())}`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json, application/problem+json' },
+          signal,
+          credentials: 'omit',
+          cache: 'no-store',
+        },
+      )
+      if (response.status === 401) throw new CourierApiError('auth-required', 'Session expired. Please sign in again.', 401)
+      if (response.status === 403) throw new CourierApiError('forbidden', 'Historical delivery details are not available.', 403)
+      if (response.status === 404) throw new CourierApiError('not-found', 'Historical delivery not found.', 404)
+      if (!response.ok) throw new CourierApiError('unavailable', `Historical detail request returned HTTP ${response.status}`, response.status)
+      const payload: unknown = await response.json()
+      if (!isParcelDetailResponse(payload)) throw new CourierApiError('invalid-response', 'Historical detail response does not match contract.')
+      return payload
     },
   }
 }

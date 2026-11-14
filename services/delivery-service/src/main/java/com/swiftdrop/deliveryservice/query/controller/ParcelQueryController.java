@@ -44,6 +44,14 @@ public class ParcelQueryController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/courier-history/{parcelId}")
+    public ResponseEntity<ParcelDetailResponse> getHistoricalCourierParcel(
+            @PathVariable UUID parcelId,
+            Authentication authentication) {
+        Jwt jwt = extractJwt(authentication);
+        return ResponseEntity.ok(queryService.getHistoricalCourierParcelDetail(parcelId, jwt));
+    }
+
     /**
      * Retrieves append-only status transition history for a parcel with object-level authorization.
      */

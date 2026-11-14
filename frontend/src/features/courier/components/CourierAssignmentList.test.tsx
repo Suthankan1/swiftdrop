@@ -395,4 +395,28 @@ describe('CourierAssignmentList component', () => {
     await user.click(screen.getByRole('button', { name: /retry assignments/i }))
     expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
   })
+
+  it('refreshes assignments and sends accurate search and status filters', async () => {
+    const user = userEvent.setup()
+    const getMyAssignmentsPaged = vi.fn(async (args?: { trackingNumber?: string; status?: string }) => {
+      void args
+      return mockPagedResponse
+    })
+    const api = createMockApi({ getMyAssignmentsPaged })
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+    await screen.findByText('2 Assignments')
+    await user.click(screen.getByRole('button', { name: /refresh assignments/i }))
+    expect(getMyAssignmentsPaged).toHaveBeenCalledTimes(2)
+    await user.type(screen.getByRole('searchbox', { name: /search active assignments/i }), ' SWD-2026 ')
+    await user.selectOptions(screen.getByRole('combobox', { name: /active status/i }), 'OUT_FOR_DELIVERY')
+    await vi.waitFor(() => {
+      const last = getMyAssignmentsPaged.mock.calls.at(-1)?.[0] as unknown as { trackingNumber?: string; status?: string }
+      expect(last.trackingNumber).toBe('SWD-2026')
+      expect(last.status).toBe('OUT_FOR_DELIVERY')
+    })
+  })
 })

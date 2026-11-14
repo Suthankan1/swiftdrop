@@ -118,6 +118,32 @@ paths:
               schema:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
 
+  /api/v1/parcels/courier-history/{parcelId}:
+    get:
+      summary: Retrieve a courier-owned terminal delivery record
+      description: |
+        Read-only historical detail for a DELIVERED or FAILED parcel. The caller
+        must have performed the terminal transition while owning the assignment.
+        This endpoint does not restore active assignment access or permit commands.
+      operationId: getCourierHistoricalParcel
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: parcelId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Authorized read-only historical parcel detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParcelDetailResponse'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Historical ownership or COURIER role not established
+        '404':
+          description: Parcel not found
+
   /api/v1/tracking/{trackingNumber}:
     get:
       summary: Public redacted parcel tracking view
@@ -249,6 +275,59 @@ paths:
             application/problem+json:
               schema:
                 $ref: 'problem-detail.yaml#/components/schemas/ProblemDetail'
+
+  /api/v1/assignments/my:
+    get:
+      summary: List the authenticated courier's assignments
+      description: |
+        Courier-scoped active assignment reads. trackingNumber and status are
+        server-side filters, so pagination remains complete and ownership is
+        enforced by the authenticated COURIER subject.
+      operationId: getMyCourierAssignments
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: activeOnly, in: query, schema: { type: boolean, default: true } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: assignedSince, in: query, schema: { type: string, format: date-time } }
+        - { name: trackingNumber, in: query, schema: { type: string, maxLength: 128 } }
+        - { name: status, in: query, schema: { type: string, enum: [CREATED, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY] } }
+      responses:
+        '200':
+          description: Paged assignments owned by the authenticated courier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAssignmentResponse'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: COURIER role required
+
+  /api/v1/assignments/my/history:
+    get:
+      summary: List the authenticated courier's terminal delivery history
+      operationId: getMyCourierHistory
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [DELIVERED, FAILED] } }
+        - { name: completedSince, in: query, schema: { type: string, format: date-time } }
+        - { name: completedUntil, in: query, schema: { type: string, format: date-time } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Terminal assignments completed by this courier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAssignmentResponse'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: COURIER role required
 
   /api/v1/assignments/reassign:
     post:
@@ -798,6 +877,21 @@ components:
           type: string
           description: Optional operational reason for closure.
           example: "MANUAL_UNASSIGNMENT"
+
+    PagedAssignmentResponse:
+      type: object
+      required: [items, currentPage, pageSize, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentResponse'
+        currentPage: { type: integer, minimum: 0 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        totalElements: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasNext: { type: boolean }
+        hasPrevious: { type: boolean }
 
     AssignmentResponse:
       type: object

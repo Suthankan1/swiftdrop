@@ -231,4 +231,28 @@ describe('courierAssignments API', () => {
     await api.getMyAssignmentsPaged({ assignedSince: since })
     expect(String(fetchMock.mock.calls[0]![0])).toContain(`assignedSince=${encodeURIComponent(since.toISOString())}`)
   })
+
+  it('sends server-side tracking and active-status filters', async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      void url
+      return new Response(JSON.stringify(samplePagedResponse), { status: 200 })
+    })
+    const api = createCourierAssignmentsApi({ getAccessToken, gatewayUrl: 'http://gw', fetch: fetchMock })
+    await api.getMyAssignmentsPaged({ trackingNumber: ' SWD-2026 ', status: 'OUT_FOR_DELIVERY' })
+    const url = String(fetchMock.mock.calls[0]![0])
+    expect(url).toContain('trackingNumber=SWD-2026')
+    expect(url).toContain('status=OUT_FOR_DELIVERY')
+  })
+
+  it('retrieves courier history and uses the separate historical detail endpoint', async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      if (String(url).includes('/history?')) return new Response(JSON.stringify(samplePagedResponse), { status: 200 })
+      return new Response(JSON.stringify({ ...sampleParcel, currentStatus: 'DELIVERED', activeCourierSub: null }), { status: 200 })
+    })
+    const api = createCourierAssignmentsApi({ getAccessToken, gatewayUrl: 'http://gw', fetch: fetchMock })
+    await api.getHistoryPaged({ status: 'DELIVERED' })
+    await api.getHistoricalParcel('parcel-101')
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('/api/v1/assignments/my/history?')
+    expect(String(fetchMock.mock.calls[1]![0])).toBe('http://gw/api/v1/parcels/courier-history/parcel-101')
+  })
 })
