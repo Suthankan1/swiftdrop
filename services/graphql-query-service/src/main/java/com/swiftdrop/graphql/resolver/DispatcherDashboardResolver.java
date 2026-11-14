@@ -294,12 +294,12 @@ public class DispatcherDashboardResolver implements RootQueryResolver {
                 if (!zonesMatch(assignedZone, requestedZone)) {
                     throw Status.PERMISSION_DENIED.withDescription("Requested zone outside dispatcher operational scope: " + requestedZone).asRuntimeException();
                 }
-                queueZone = canonicalZoneCode(requestedZone);
+                queueZone = requestedZone;
             } else {
-                queueZone = canonicalZoneCode(assignedZone);
+                queueZone = assignedZone;
             }
         } else {
-            queueZone = requestedZone.isEmpty() ? "" : canonicalZoneCode(requestedZone);
+            queueZone = requestedZone;
         }
         ListUnassignedParcelsRequest parcelReq = ListUnassignedParcelsRequest.newBuilder()
                 .setPage(page)
