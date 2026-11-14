@@ -46,7 +46,7 @@ describe('CustomerProfile', () => {
 
     expect(screen.getByRole('heading', { name: customerFixture.fullName })).toBeInTheDocument()
     for (const value of [customerFixture.email, customerFixture.phoneNumber, 'CUSTOMER', '15 October 2026']) {
-      expect(screen.getByText(value)).toBeInTheDocument()
+      if (value) expect(screen.getByText(value)).toBeInTheDocument()
     }
     // Internal identifiers are not shown to the customer (audit 79).
     expect(screen.queryByText(customerFixture.id)).not.toBeInTheDocument()

@@ -70,12 +70,12 @@ export function MerchantProfile({ state }: MerchantProfileProps) {
       <MerchantApprovalBanner rawStatus={merchant.status} />
 
       <dl className="profile-details">
-        <ProfileField label="Business name" value={merchant.businessName} />
-        <ProfileField label="Registration number" value={merchant.registrationNumber} />
-        <ProfileField label="Merchant ID" value={merchant.merchantId} />
-        <ProfileField label="Account owner" value={profile.fullName} />
-        <ProfileField label="Contact email" value={profile.email} />
-        <ProfileField label="Phone number" value={profile.phoneNumber || 'Not provided'} />
+        <ProfileField label="Business name" value={merchant.businessName} icon="🏬" />
+        <ProfileField label="Registration number" value={merchant.registrationNumber} icon="📋" />
+        <ProfileField label="Merchant ID" value={merchant.merchantId} icon="🆔" />
+        <ProfileField label="Account owner" value={profile.fullName} icon="👤" />
+        <ProfileField label="Contact email" value={profile.email} icon="✉️" />
+        <ProfileField label="Phone number" value={profile.phoneNumber || 'Not provided'} icon="📞" />
         <ProfileField
           label="Member since"
           value={
@@ -83,16 +83,20 @@ export function MerchantProfile({ state }: MerchantProfileProps) {
               ? 'Unavailable'
               : createdAt.toLocaleDateString('en-GB', { dateStyle: 'long', timeZone: 'UTC' })
           }
+          icon="📅"
         />
       </dl>
     </section>
   )
 }
 
-function ProfileField({ label, value }: { label: string; value: string }) {
+function ProfileField({ label, value, icon }: { label: string; value: string; icon?: string }) {
   return (
     <div className="field">
-      <dt className="field-label">{label}</dt>
+      <dt className="field-label">
+        {icon && <span aria-hidden="true" style={{ marginRight: '4px' }}>{icon}</span>}
+        {label}
+      </dt>
       <dd className="field-value">{value}</dd>
     </div>
   )

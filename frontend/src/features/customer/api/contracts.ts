@@ -12,7 +12,7 @@ export interface CurrentUserProfile {
   keycloakSub: string
   email: string
   fullName: string
-  phoneNumber: string
+  phoneNumber: string | null
   roles: string[]
   merchantProfile: MerchantProfile | null
   createdAt: string

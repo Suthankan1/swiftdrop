@@ -1,9 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
+import { BackButton } from '../../../components/ui/BackButton'
 import {
   createMerchantReviewApi, isAmbiguousCommandFailure, merchantReasonProblem, merchantReviewFailure, MerchantReviewError,
   type MerchantReviewApi, type MerchantReviewAction, type MerchantReviewDetail, type MerchantReviewFilter,
@@ -37,7 +37,9 @@ export function MerchantReviewPage({ api }: { api?: MerchantReviewApi | null } =
   const effectiveApi = api === null ? undefined : api ?? defaultApi
 
   return <div className="page-container merchant-review-page">
-    <Link to="/admin">Back to administration</Link>
+    <div style={{ marginBottom: '16px' }}>
+      <BackButton to="/admin" label="Back to administration" />
+    </div>
     <header className="staff-heading"><p className="eyebrow">Admin space</p>
       <h1 className="page-heading">Merchant review</h1>
       <p className="muted">Review business enrollment and the actions available for each merchant.</p>
@@ -86,20 +88,54 @@ function MerchantReviewWorkspace({ api }: { api: MerchantReviewApi }) {
     retry: false, gcTime: 0, staleTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false,
   })
   return <section aria-label="Merchant applications" aria-busy={query.isFetching}>
-    <div className="merchant-review-toolbar"><h2 className="section-heading">Merchant applications</h2>
-      <label htmlFor="merchant-review-filter">Show</label>
-      <select id="merchant-review-filter" value={filter} disabled={query.isFetching}
-        onChange={event => { setSelectedId(null); setPage(0); setFilter(event.target.value as MerchantReviewFilter) }}>
-        {filters.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-      </select>
-      <Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { setSelectedId(null); void query.refetch() }}>Refresh list</Button>
+    <div className="merchant-review-header-bar card" style={{ marginBottom: '16px', padding: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 className="section-heading" style={{ margin: 0 }}>Merchant applications</h2>
+          <p className="muted" style={{ margin: '4px 0 0 0', fontSize: '0.85rem' }}>Review enrollment requests and verify partner credentials</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div className="merchant-filter-box" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <label htmlFor="merchant-review-filter" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-muted)' }}>Show</label>
+            <select
+              id="merchant-review-filter"
+              value={filter}
+              disabled={query.isFetching}
+              onChange={event => { setSelectedId(null); setPage(0); setFilter(event.target.value as MerchantReviewFilter) }}
+              className="queue-sort-select"
+            >
+              {filters.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </div>
+          <Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { setSelectedId(null); void query.refetch() }}>
+            Refresh list
+          </Button>
+        </div>
+      </div>
     </div>
     {query.isFetching && <p role="status">Loading merchant applications…</p>}
     {query.isError && <div role="alert"><p>{merchantReviewFailure(query.error).message}</p>
       <Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Retry list</Button>
     </div>}
     {query.data && !query.isError && <>
-      {query.data.items.length === 0 ? <p role="status">No merchant applications on this page.</p> :
+      {query.data.items.length === 0 ? (
+        <div className="queue-empty-card card" role="status">
+          <div className="empty-icon-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 600 }}>No applications found</h3>
+          <p style={{ margin: '0 0 4px 0' }}>No merchant applications on this page.</p>
+          <span className="muted" style={{ fontSize: '0.82rem' }}>
+            There are currently no merchant applications under &ldquo;{filterLabel}&rdquo;.
+          </span>
+        </div>
+      ) : (
         <div className="merchant-review-table-scroll" tabIndex={0} role="region" aria-label="Scrollable merchant applications table"><table className="merchant-review-table">
           <caption>Merchant applications · {filterLabel} · Page {page + 1}</caption>
           <thead><tr><th scope="col">Business</th><th scope="col">Registration</th><th scope="col">Status</th><th scope="col">Submitted</th><th scope="col">Review</th></tr></thead>
@@ -111,10 +147,11 @@ function MerchantReviewWorkspace({ api }: { api: MerchantReviewApi }) {
               aria-expanded={selectedId === item.id} aria-controls={selectedId === item.id ? 'merchant-review-details' : undefined}
               onClick={event => { detailTrigger.current = event.currentTarget; setSelectedId(item.id) }}>Review {item.businessName}</Button></td>
           </tr>)}</tbody>
-        </table></div>}
-      <nav className="merchant-review-toolbar" aria-label="Merchant review pages">
+        </table></div>
+      )}
+      <nav className="merchant-review-pagination" aria-label="Merchant review pages" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '16px' }}>
         <Button variant="secondary" size="sm" disabled={page === 0 || query.isFetching} onClick={() => { setSelectedId(null); setPage(value => value - 1) }}>Previous page</Button>
-        <span>Page {page + 1}</span>
+        <span className="pagination-pill" style={{ padding: '4px 12px', background: 'rgba(0,0,0,0.04)', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 500 }}>Page {page + 1}</span>
         <Button variant="secondary" size="sm" disabled={!query.data.hasNext || query.isFetching} onClick={() => { setSelectedId(null); setPage(value => value + 1) }}>Next page</Button>
       </nav>
     </>}

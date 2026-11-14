@@ -137,5 +137,48 @@ export function createDispatcherApi({ getAccessToken, gatewayUrl = import.meta.e
         !integer(result.newParcelVersion) || result.newParcelVersion <= command.expectedVersion) throw new DispatcherError('invalid-response')
       return result as unknown as AssignmentResponse
     },
+    async getCourierAssignments(courierSub: string, signal?: AbortSignal): Promise<Array<{ assignmentId: string; parcelId: string; courierSub: string; active: boolean; assignedAt: string }>> {
+      const token = await getAccessToken()
+      if (!token?.trim()) throw new DispatcherError('auth-required')
+      try {
+        const response = await request(`${gatewayUrl.replace(/\/$/, '')}/api/v1/assignments?activeOnly=true&size=100`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          credentials: 'omit',
+          cache: 'no-store',
+          redirect: 'error',
+          signal,
+        })
+        if (!response.ok) return []
+        const data = await response.json()
+        const items = isRecord(data) && Array.isArray(data.items)
+          ? data.items
+          : (isRecord(data) && Array.isArray(data.content) ? data.content : [])
+        return items.filter((a: unknown): a is { assignmentId: string; parcelId: string; courierSub: string; active: boolean; assignedAt: string } =>
+          isRecord(a) && a.courierSub === courierSub && a.active === true && typeof a.parcelId === 'string'
+        )
+      } catch {
+        return []
+      }
+    },
+    async getParcel(parcelId: string, signal?: AbortSignal): Promise<Record<string, unknown> | null> {
+      const token = await getAccessToken()
+      if (!token?.trim()) return null
+      try {
+        const response = await request(`${gatewayUrl.replace(/\/$/, '')}/api/v1/parcels/${parcelId}`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          credentials: 'omit',
+          cache: 'no-store',
+          redirect: 'error',
+          signal,
+        })
+        if (!response.ok) return null
+        const data = await response.json()
+        return isRecord(data) ? data : null
+      } catch {
+        return null
+      }
+    },
   }
 }
