@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import com.swiftdrop.deliveryservice.core.ParcelStatus;
 
 /**
  * REST Controller for courier assignment, reassignment, closure, and audit lifecycle commands.
@@ -187,6 +188,8 @@ public class AssignmentController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
             @RequestParam(name = "assignedSince", required = false) String assignedSince,
+            @RequestParam(name = "trackingNumber", required = false) String trackingNumber,
+            @RequestParam(name = "status", required = false) String status,
             Authentication authentication) {
 
         String courierSub = extractSubject(authentication);
@@ -205,15 +208,70 @@ public class AssignmentController {
             }
         }
 
-        PagedResponse<AssignmentResponse> response = assignmentService.getMyAssignments(
-                courierSub,
-                roles,
-                activeOnly,
-                since,
-                PageRequest.of(page, size)
-        );
+        ParcelStatus parcelStatus = parseStatus(status);
+        PagedResponse<AssignmentResponse> response;
+        if (trackingNumber != null || parcelStatus != null) {
+            response = assignmentService.getMyAssignments(
+                    courierSub, roles, activeOnly, since, trackingNumber, parcelStatus, PageRequest.of(page, size));
+        } else {
+            response = assignmentService.getMyAssignments(
+                    courierSub, roles, activeOnly, since, PageRequest.of(page, size));
+        }
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/my/history")
+    public ResponseEntity<PagedResponse<AssignmentResponse>> getMyHistory(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "completedSince", required = false) String completedSince,
+            @RequestParam(name = "completedUntil", required = false) String completedUntil,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            Authentication authentication) {
+        String courierSub = extractSubject(authentication);
+        Collection<String> roles = extractRoles(authentication);
+        ParcelStatus parcelStatus = parseTerminalStatus(status);
+        java.time.Instant since = parseInstant(completedSince, "completedSince");
+        java.time.Instant until = parseInstant(completedUntil, "completedUntil");
+        return ResponseEntity.ok(assignmentService.getMyHistory(
+                courierSub,
+                roles,
+                parcelStatus,
+                since,
+                until,
+                PageRequest.of(page, size)
+        ));
+    }
+
+    private ParcelStatus parseTerminalStatus(String value) {
+        ParcelStatus parsed = parseStatus(value);
+        if (parsed != null && !parsed.isTerminal()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "History status must be DELIVERED or FAILED.");
+        }
+        return parsed;
+    }
+
+    private ParcelStatus parseStatus(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return ParcelStatus.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Unsupported parcel status.");
+        }
+    }
+
+    private java.time.Instant parseInstant(String value, String parameter) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return java.time.Instant.parse(value.trim());
+        } catch (java.time.format.DateTimeParseException ex) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, parameter + " must be an ISO-8601 instant.");
+        }
     }
 
     @GetMapping
@@ -228,7 +286,7 @@ public class AssignmentController {
             return ResponseEntity.ok(assignmentService.listAssignments(activeOnly,
                     PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)))));
         }
-        return getMyAssignments(activeOnly, page, size, null, authentication);
+        return getMyAssignments(activeOnly, page, size, null, null, null, authentication);
     }
 
     private String extractSubject(Authentication authentication) {

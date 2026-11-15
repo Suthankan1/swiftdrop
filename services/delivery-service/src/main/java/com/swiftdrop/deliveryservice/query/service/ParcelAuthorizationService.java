@@ -3,6 +3,7 @@ package com.swiftdrop.deliveryservice.query.service;
 import com.swiftdrop.deliveryservice.assignment.DeliveryAssignmentRepository;
 import com.swiftdrop.deliveryservice.core.Parcel;
 import com.swiftdrop.deliveryservice.security.KeycloakRoleExtractor;
+import com.swiftdrop.deliveryservice.status.StatusHistoryRepository;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
@@ -24,18 +25,27 @@ import java.util.List;
 public class ParcelAuthorizationService {
 
     private final DeliveryAssignmentRepository assignmentRepository;
+    private final StatusHistoryRepository statusHistoryRepository;
     private final com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver;
 
     public ParcelAuthorizationService(DeliveryAssignmentRepository assignmentRepository) {
-        this(assignmentRepository, null);
+        this(assignmentRepository, null, null);
+    }
+
+    public ParcelAuthorizationService(
+            DeliveryAssignmentRepository assignmentRepository,
+            com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver) {
+        this(assignmentRepository, merchantTenantResolver, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public ParcelAuthorizationService(
             DeliveryAssignmentRepository assignmentRepository,
-            com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver) {
+            com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver merchantTenantResolver,
+            StatusHistoryRepository statusHistoryRepository) {
         this.assignmentRepository = assignmentRepository;
         this.merchantTenantResolver = merchantTenantResolver;
+        this.statusHistoryRepository = statusHistoryRepository;
     }
 
     public boolean isAuthorizedToRead(Jwt jwt, Parcel parcel) {
@@ -86,5 +96,24 @@ public class ParcelAuthorizationService {
         }
 
         return false;
+    }
+
+    public boolean isAuthorizedToReadHistoricalCourier(Jwt jwt, Parcel parcel) {
+        if (jwt == null || parcel == null || statusHistoryRepository == null
+                || !KeycloakRoleExtractor.extractApprovedRoles(jwt).contains("COURIER")) {
+            return false;
+        }
+        String courierSub = jwt.getSubject();
+        if (courierSub == null || courierSub.isBlank()) return false;
+
+        var histories = statusHistoryRepository.findByParcelIdOrderByOccurredAtDesc(parcel.getParcelId());
+        return assignmentRepository.findByParcelIdOrderByAssignedAtDesc(parcel.getParcelId()).stream()
+                .filter(assignment -> courierSub.equals(assignment.getCourierSub()))
+                .anyMatch(assignment -> histories.stream().anyMatch(history ->
+                        courierSub.equals(history.getActorSub())
+                                && history.getNewStatus().isTerminal()
+                                && !history.getOccurredAt().isBefore(assignment.getAssignedAt())
+                                && (assignment.getEndedAt() == null
+                                || !history.getOccurredAt().isAfter(assignment.getEndedAt()))));
     }
 }

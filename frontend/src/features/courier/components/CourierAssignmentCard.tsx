@@ -69,9 +69,9 @@ export function CourierAssignmentCard({
           variant={isSelected ? 'primary' : 'secondary'}
           size="sm"
           onClick={() => onSelect(assignment.parcelId)}
-          aria-label={`View parcel details for ${assignment.parcelId.slice(0, 8)}`}
+          aria-label={`${parcel?.currentStatus === 'DELIVERED' || parcel?.currentStatus === 'FAILED' ? 'View historical details for' : 'View parcel details for'} ${assignment.parcelId.slice(0, 8)}`}
         >
-          {isSelected ? 'Viewing Details' : 'View Details & Handover'}
+          {isSelected ? 'Viewing Details' : parcel?.currentStatus === 'DELIVERED' || parcel?.currentStatus === 'FAILED' ? 'View History Details' : 'View Details & Handover'}
         </Button>
       </div>
     </article>

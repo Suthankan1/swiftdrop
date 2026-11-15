@@ -11,9 +11,11 @@ export interface CourierDashboardSummaryProps {
   apiOverride?: ReturnType<typeof createCourierDashboardApi>
   /** Changing this value reloads the counts, e.g. after a parcel status change. */
   refreshToken?: number
+  onOpenActive?: () => void
+  onOpenHistory?: (status?: 'DELIVERED' | 'FAILED') => void
 }
 
-export function CourierDashboardSummary({ apiOverride, refreshToken = 0 }: CourierDashboardSummaryProps) {
+export function CourierDashboardSummary({ apiOverride, refreshToken = 0, onOpenActive, onOpenHistory }: CourierDashboardSummaryProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
 
@@ -120,23 +122,23 @@ export function CourierDashboardSummary({ apiOverride, refreshToken = 0 }: Couri
 
       {!isLoading && !error && summary && (
         <div className="courier-summary-grid" role="region" aria-label="Operational metrics">
-          <article className="card metric-card" aria-labelledby="metric-active-heading">
+          <button type="button" className="card metric-card metric-card-button" onClick={onOpenActive} aria-labelledby="metric-active-heading">
             <p className="eyebrow" id="metric-active-heading">Active Assigned</p>
             <div className="metric-value monospace">{summary.activeAssignedCount}</div>
             <p className="muted metric-caption">Parcels currently in your shift queue</p>
-          </article>
+          </button>
 
-          <article className="card metric-card" aria-labelledby="metric-delivered-heading">
+          <button type="button" className="card metric-card metric-card-button" onClick={() => onOpenHistory?.('DELIVERED')} aria-labelledby="metric-delivered-heading">
             <p className="eyebrow" id="metric-delivered-heading">Delivered (Today)</p>
             <div className="metric-value monospace">{summary.todayDeliveredCount}</div>
             <p className="muted metric-caption">Delivered today</p>
-          </article>
+          </button>
 
-          <article className="card metric-card" aria-labelledby="metric-failed-heading">
+          <button type="button" className="card metric-card metric-card-button" onClick={() => onOpenHistory?.('FAILED')} aria-labelledby="metric-failed-heading">
             <p className="eyebrow" id="metric-failed-heading">Failed (Today)</p>
             <div className="metric-value monospace">{summary.todayFailedCount}</div>
             <p className="muted metric-caption">Delivery attempts that failed</p>
-          </article>
+          </button>
         </div>
       )}
     </section>
