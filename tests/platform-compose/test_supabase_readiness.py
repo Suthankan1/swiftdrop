@@ -199,6 +199,31 @@ class RuntimeGateTests(unittest.TestCase):
         self.assertFalse(run.called)
         self.assertIn("Nothing started", output.getvalue())
 
+    def test_start_waits_for_applications_after_successful_initializer_start(self):
+        with patch.object(helper.sys, "argv", ["supabase.py", "start"]), \
+             patch.object(helper, "read_env", return_value=values()), \
+             patch.object(helper, "config", return_value={}), \
+             patch.object(helper, "check", return_value=True), \
+             patch.object(helper.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            self.assertEqual(helper.main(), 0)
+        self.assertEqual(run.call_count, 2)
+        initial, readiness = [call.args[0] for call in run.call_args_list]
+        self.assertNotIn("--wait", initial)
+        self.assertIn("--wait", readiness)
+        self.assertNotIn("kafka-init", readiness)
+        self.assertNotIn("minio-init", readiness)
+        self.assertIn("frontend", readiness)
+        self.assertIn("keycloak", readiness)
+
+    def test_failed_start_is_returned_before_application_readiness(self):
+        with patch.object(helper.sys, "argv", ["supabase.py", "start"]), \
+             patch.object(helper, "read_env", return_value=values()), \
+             patch.object(helper, "config", return_value={}), \
+             patch.object(helper, "check", return_value=True), \
+             patch.object(helper.subprocess, "run", return_value=subprocess.CompletedProcess([], 17)) as run:
+            self.assertEqual(helper.main(), 17)
+        self.assertEqual(run.call_count, 1)
+
 
 class ConfigurationGateTests(unittest.TestCase):
     @patch.object(helper.shutil, "which", return_value="/synthetic/docker")

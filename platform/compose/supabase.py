@@ -26,6 +26,10 @@ SERVICES = {
     "KEYCLOAK": ("IDENTITY", "keycloak", "keycloak_db"),
 }
 LOCAL_DATABASES = {"accounts-postgres", "business-postgres", "keycloak-postgres"}
+RUNTIME_SERVICES = [
+    "keycloak", "accounts-service", "pricing-service", "delivery-service",
+    "communications-service", "graphql-query-service", "api-gateway", "frontend", "ai-assistant",
+]
 
 
 class CheckError(Exception):
@@ -299,11 +303,18 @@ def main():
         if not check(values):
             print("Nothing started. Ask the database owner to resolve readiness blockers.")
             return 1
-        command = compose_command(path) + ["up", "-d", "--wait", "--wait-timeout", "180"]
+        command = compose_command(path) + ["up", "-d"]
         if values.get("SWIFTDROP_IMAGE_TAG", "local") == "local":
             command.append("--build")
-        # No local DB or SQL initializer is part of the active dependency graph.
-        return subprocess.run(command, env=env).returncode
+        # Start infrastructure initializers as well as applications. Successful one-shot
+        # jobs exit 0, so wait for the long-running services separately.
+        result = subprocess.run(command, env=env)
+        if result.returncode:
+            return result.returncode
+        wait_command = compose_command(path) + [
+            "up", "-d", "--no-recreate", "--wait", "--wait-timeout", "360", *RUNTIME_SERVICES,
+        ]
+        return subprocess.run(wait_command, env=env).returncode
     except (CheckError, OSError) as error:
         message = str(error) if isinstance(error, CheckError) else "Required environment file or executable is unavailable."
         print("BLOCKED — " + message, file=sys.stderr)

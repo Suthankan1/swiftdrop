@@ -158,6 +158,12 @@ They support two database modes:
 - Stages startup: (1) Databases/Kafka/MinIO -> (2) Keycloak -> (3) Java microservices, Gateway & Frontend.
 - Waits for real readiness gates on all services.
 
+In Supabase mode, startup first launches the stack and its one-shot initializers,
+then waits up to 360 seconds for the long-running applications. Successful
+initializer exits are accepted. Keycloak has a 240-second startup grace period
+and a 120-second database connection acquisition timeout to accommodate shared
+database startup latency. Its maximum database pool remains two connections.
+
 ### 5.3 Inspect Runtime Status
 ```bash
 ./platform/compose/status.sh          # Default (Supabase)
