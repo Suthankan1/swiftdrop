@@ -164,6 +164,12 @@ initializer exits are accepted. Keycloak has a 240-second startup grace period
 and a 120-second database connection acquisition timeout to accommodate shared
 database startup latency. Its maximum database pool remains two connections.
 
+`CORS_ALLOWED_ORIGIN` accepts a comma-separated allowlist. The Compose frontend
+on `http://localhost:3000` and the Vite preview on `http://localhost:5173` are both
+included in the development template. Existing local configuration using only
+port 3000 must include port 5173 when using Vite, so the security filter and
+Gateway routing apply the same declared frontend origins.
+
 ### 5.3 Inspect Runtime Status
 ```bash
 ./platform/compose/status.sh          # Default (Supabase)
