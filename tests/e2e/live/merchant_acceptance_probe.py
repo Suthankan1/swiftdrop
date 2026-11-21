@@ -85,9 +85,14 @@ def main():
     parser.add_argument("--cloudflared", type=Path, required=True)
     parser.add_argument("--report-dir", type=Path, required=True)
     parser.add_argument("--run", action="store_true", help="Explicitly authorize disposable fixtures and receiver")
+    parser.add_argument("--browser", action="store_true", help="Also run explicitly authorized headless Playwright acceptance")
     args = parser.parse_args()
     if not args.run:
         parser.error("Use --run only against the authorized development stack")
+    if not args.cloudflared.is_file():
+        parser.error("Provide an existing official cloudflared executable")
+    if args.browser and importlib.util.find_spec("playwright") is None:
+        parser.error("Install Playwright before enabling browser acceptance")
     os.environ["NO_PROXY"] = "localhost,127.0.0.1,::1"
     args.report_dir.mkdir(parents=True, exist_ok=True)
     spec = importlib.util.spec_from_file_location("compose_config", ROOT / "platform/compose/supabase.py")
@@ -124,8 +129,9 @@ def main():
     parcels = []
     tunnel = None
     server = None
+    browser = None
     admin = KeycloakAdminClient()
-    receiver = {"secret": None, "events": [], "failed_once": False}
+    receiver = {"secret": None, "events": [], "failed_once": False, "exhaust_parcel": None}
     started = time.monotonic()
 
     def write_report():
@@ -135,6 +141,7 @@ def main():
             "fixtureSubjects": {name: user["id"] for name, user in fixtures.items()},
             "fixtureProfileIds": {name: user.get("profileId") for name, user in fixtures.items()},
             "fixtureParcels": parcels, "verifiedWebhookRequests": len(receiver["events"]),
+            "verifiedWebhookEvents": receiver["events"],
         }
         pending = args.report_dir / "merchant-live-probe.json.tmp"
         pending.write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -184,9 +191,12 @@ def main():
                 except (ValueError, TypeError):
                     self.send_error(422)
                     return
-                code = 503 if not receiver["failed_once"] else 200
+                payload = event.get("payload") or {}
+                force_failure = payload.get("parcelId") == receiver["exhaust_parcel"] and payload.get("newStatus") == "FAILED"
+                code = 503 if force_failure or not receiver["failed_once"] else 200
                 receiver["failed_once"] = True
-                receiver["events"].append({"eventId": event.get("eventId"), "status": code, "verified": True})
+                receiver["events"].append({"eventId": event.get("eventId"), "parcelId": payload.get("parcelId"),
+                    "merchantId": payload.get("merchantId"), "status": code, "verified": True})
             self.send_response(code)
             self.end_headers()
             self.wfile.write(b"ok")
@@ -202,13 +212,23 @@ def main():
         # The helper otherwise inherits workstation proxy settings for loopback traffic.
         admin.http.opener.add_handler(urllib.request.ProxyHandler({}))
         pkce = OidcPkceClient()
+
+        def login_fixture(user):
+            try:
+                return pkce.login(user["username"], user["password"])
+            except harness.HarnessError:
+                results.append({"step": "fixture PKCE bounded recovery", "status": "Observed", "attempt": 1})
+                write_report()
+                time.sleep(2)
+                return pkce.login(user["username"], user["password"])
+
         step = "disposable identities and PKCE authentication"
         for name, role in [("admin", "ADMIN"), ("dispatcher", "DISPATCHER"), ("courier", "COURIER"), ("merchant", "CUSTOMER"), ("other", "CUSTOMER")]:
             step = "create disposable " + name + " identity"
             user = admin.create_disposable_user(username_prefix="merchant-qa-" + run_tag + "-" + name, role=role)
             fixtures[name] = user
             step = "disposable " + name + " PKCE authentication"
-            session = pkce.login(user["username"], user["password"])
+            session = login_fixture(user)
             tokens[name] = session["access_token"]
             refreshes[name] = session["refresh_token"]
             profile = require(call("GET", "/api/v1/users/me", tokens[name]), (200,), step)
@@ -233,7 +253,7 @@ def main():
         step = "admin approval and refreshed merchant access"
         require(call("POST", f"/api/v1/merchants/{merchant}/approve", tokens["admin"], {}), (200,), step)
         user = fixtures["merchant"]
-        session = pkce.login(user["username"], user["password"])
+        session = login_fixture(user)
         tokens["merchant"] = session["access_token"]
         refreshes["merchant"] = session["refresh_token"]
         passed(step)
@@ -243,7 +263,7 @@ def main():
         }), (201,), step)["id"]
         merchants.append(other_merchant)
         require(call("POST", f"/api/v1/merchants/{other_merchant}/approve", tokens["admin"], {}), (200,), step)
-        other_session = pkce.login(fixtures["other"]["username"], fixtures["other"]["password"])
+        other_session = login_fixture(fixtures["other"])
         tokens["other"] = other_session["access_token"]
         refreshes["other"] = other_session["refresh_token"]
         passed(step)
@@ -318,6 +338,12 @@ def main():
             time.sleep(1 + attempt)
         passed(step)
         observed = []
+        if args.browser:
+            step = "browser PKCE login and live Merchant tracking subscription"
+            from merchant_browser_probe import MerchantBrowserProbe
+            browser = MerchantBrowserProbe(parcel, args.report_dir / "browser")
+            browser.login(fixtures["merchant"]["username"], fixtures["merchant"]["password"])
+            passed(step)
         stream = {"response": None}
 
         def read_stream():
@@ -387,6 +413,10 @@ def main():
         else:
             raise RuntimeError("No delivered status event reached the authenticated SSE client")
         passed(step)
+        if browser:
+            step = "actual courier transition rendered in Merchant UI and browser PDF download"
+            browser.delivered()
+            passed(step)
         step = "Kafka webhook delivery, HMAC verification and receiver-failure retry"
         for _ in range(90):
             events = receiver["events"]
@@ -407,6 +437,8 @@ def main():
             "quoteId": quote2["quoteId"], "merchantReference": "MQF-" + uuid.uuid4().hex,
         }, {**machine, "Idempotency-Key": str(uuid.uuid4())}, step)
         failed_id = failed_parcel["parcelId"]
+        if browser:
+            receiver["exhaust_parcel"] = failed_id
         parcels.append({"parcelId": failed_id, "trackingNumber": failed_parcel["trackingNumber"]})
         current = require(call("GET", f"/api/v1/parcels/{failed_id}", tokens["merchant"]), (200,), step)
         require(call("POST", "/api/v1/assignments", tokens["dispatcher"], {
@@ -424,7 +456,43 @@ def main():
         key = None
         require(call("POST", "/api/v1/merchant/parcels", body=booking, headers=headers), (401, 403), step)
         passed(step)
-        results.append({"step": "browser UI delivery and responsive screenshots", "status": "Blocked", "reason": "Browser automation unavailable; authenticated SSE client evidence does not prove UI rendering"})
+        if browser:
+            step = "browser responsive screens, dashboard controls and CSV downloads/import"
+            browser.finish(zones[0]["zoneCode"])
+            passed(step)
+            step = "persistent receiver failure reaches visible webhook retry exhaustion"
+            for _ in range(90):
+                history = require(call("GET", f"/api/v1/merchants/webhooks/{subscription}/deliveries?size=100", tokens["merchant"]), (200,), step)
+                exhausted = [row for row in history["deliveries"] if row["parcelId"] == failed_id and row["status"] == "EXHAUSTED"]
+                if exhausted:
+                    results.append({"step": "exhausted webhook evidence", "status": "Observed", "attemptCount": exhausted[0]["attemptCount"]})
+                    break
+                time.sleep(2)
+            else:
+                raise RuntimeError("Persistent receiver failure did not reach exhausted delivery state")
+            if any(event["merchantId"] != merchant for event in receiver["events"]):
+                raise RuntimeError("Webhook payload had an unexpected merchant association")
+            passed(step)
+            step = "deactivated subscription excludes subsequent synthetic status events"
+            require(call("DELETE", f"/api/v1/merchants/webhooks/{subscription}", tokens["merchant"]), (204,), step)
+            subscription = None
+            owned = require(call("GET", "/api/v1/parcels?size=100", tokens["merchant"]), (200,), step)
+            imported = next(parcel for parcel in owned["items"] if parcel["currentStatus"] == "CREATED")
+            imported_id = imported["parcelId"]
+            parcels.append({"parcelId": imported_id, "trackingNumber": imported["trackingNumber"]})
+            require(call("POST", "/api/v1/assignments", tokens["dispatcher"], {
+                "parcelId": imported_id, "courierSub": fixtures["courier"]["id"], "expectedVersion": imported["version"],
+            }), (200, 201), step)
+            imported = require(call("GET", f"/api/v1/parcels/{imported_id}", tokens["merchant"]), (200,), step)
+            require(call("PATCH", f"/api/v1/parcels/{imported_id}/status", tokens["courier"], {
+                "newStatus": "PICKED_UP", "expectedVersion": imported["version"],
+            }), (200,), step)
+            time.sleep(20)
+            if any(event["parcelId"] == imported_id for event in receiver["events"]):
+                raise RuntimeError("Deactivated subscription received a subsequent parcel event")
+            passed(step)
+        else:
+            results.append({"step": "browser UI delivery and responsive screenshots", "status": "Blocked", "reason": "Headless browser checks were not enabled"})
     except Exception as error:
         # Never include helper exception strings: some contain raw authentication responses.
         reason = str(error) if type(error) is RuntimeError else type(error).__name__
@@ -435,6 +503,11 @@ def main():
             elif "authorization code" in str(error): reason = "PKCE login did not return an authorization code"
             elif "Form '" in str(error): reason = "Expected login form was unavailable"
         results.append({"step": step, "status": "Blocked", "reason": reason})
+        if browser:
+            try:
+                browser.diagnostics()
+            except Exception:
+                pass
         write_report()
         print("BLOCKED: " + step + " (" + reason + ")", flush=True)
     finally:
@@ -446,6 +519,20 @@ def main():
                 results.append({"step": label, "status": "Blocked", "reason": type(error).__name__})
             write_report()
             print("CLEANUP: " + label + " " + results[-1]["status"], flush=True)
+
+        if browser:
+            try:
+                browser.close()
+                status, owned = call("GET", "/api/v1/parcels?size=100", tokens["merchant"])
+                if status == 200:
+                    known = {parcel["parcelId"] for parcel in parcels}
+                    for parcel in owned["items"]:
+                        if parcel["parcelId"] not in known:
+                            parcels.append({"parcelId": parcel["parcelId"], "trackingNumber": parcel["trackingNumber"]})
+                else:
+                    results.append({"step": "discover browser-created synthetic parcels", "status": "Blocked", "http": status})
+            except Exception as error:
+                results.append({"step": "close browser and discover synthetic parcels", "status": "Blocked", "reason": type(error).__name__})
 
         if subscription and tokens.get("merchant"):
             cleanup("deactivate disposable webhook", lambda: call("DELETE", f"/api/v1/merchants/webhooks/{subscription}", tokens["merchant"]))
