@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { useAuth } from '../../auth/context'
 import { Badge } from '../ui/Badge'
@@ -9,15 +9,30 @@ function MainNavigation() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
 
-  function closeMenu(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === 'Escape' && menuOpen) {
-      setMenuOpen(false)
-      menuButton.current?.focus()
+  useEffect(() => {
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape' && menuOpen) {
+        setMenuOpen(false)
+        menuButton.current?.focus()
+      }
     }
-  }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [menuOpen])
 
   return (
-    <header className="site-header" onKeyDown={closeMenu}>
+    <header className="site-header">
       <div className="header-inner">
         <Link className="brand" to="/" aria-label="SwiftDrop home" onClick={() => setMenuOpen(false)}>
           <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
@@ -34,16 +49,16 @@ function MainNavigation() {
             <NavLink to="/customer" className="nav-link" onClick={() => setMenuOpen(false)}>Customer space <span aria-hidden="true">↗</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('MERCHANT') && (
-            <NavLink to="/merchant" className="nav-link" onClick={() => setMenuOpen(false)}>Merchant space <span aria-hidden="true">&#8599;</span></NavLink>
+            <NavLink to="/merchant" className="nav-link" onClick={() => setMenuOpen(false)}>Merchant space <span aria-hidden="true">↗</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('COURIER') && (
-            <NavLink to="/courier" className="nav-link" onClick={() => setMenuOpen(false)}>Courier space <span aria-hidden="true">&#8599;</span></NavLink>
+            <NavLink to="/courier" className="nav-link" onClick={() => setMenuOpen(false)}>Courier space <span aria-hidden="true">↗</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' && (auth.snapshot.roles.includes('DISPATCHER') || auth.snapshot.roles.includes('ADMIN')) && (
-            <NavLink to="/dispatcher" className="nav-link" onClick={() => setMenuOpen(false)}>Dispatcher space <span aria-hidden="true">&#8599;</span></NavLink>
+            <NavLink to="/dispatcher" className="nav-link" onClick={() => setMenuOpen(false)}>Dispatcher space <span aria-hidden="true">↗</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && (
-            <NavLink to="/admin" className="nav-link" onClick={() => setMenuOpen(false)}>Admin space <span aria-hidden="true">&#8599;</span></NavLink>
+            <NavLink to="/admin" className="nav-link" onClick={() => setMenuOpen(false)}>Admin space <span aria-hidden="true">↗</span></NavLink>
           )}
           {auth.snapshot.status === 'authenticated' ? (
             <span className="nav-auth-item">

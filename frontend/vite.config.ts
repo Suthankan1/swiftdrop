@@ -20,6 +20,24 @@ export default defineConfig({
             }
             return 'vendor'
           }
+          if (id.includes('/features/admin/')) {
+            return 'feature-admin'
+          }
+          if (id.includes('/features/merchant/')) {
+            return 'feature-merchant'
+          }
+          if (id.includes('/features/courier/')) {
+            return 'feature-courier'
+          }
+          if (id.includes('/features/dispatcher/')) {
+            return 'feature-dispatcher'
+          }
+          if (id.includes('/features/customer/')) {
+            return 'feature-customer'
+          }
+          if (id.includes('/features/ai/')) {
+            return 'feature-ai'
+          }
         },
       },
     },

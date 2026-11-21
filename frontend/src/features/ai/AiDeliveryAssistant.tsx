@@ -319,13 +319,19 @@ export function AiDeliveryAssistant({ assistantApi }: { assistantApi?: Assistant
 
       {/* Slide-over Drawer */}
       {isOpen && (
-        <div
-          ref={drawerRef}
-          className="ai-assistant-drawer"
-          role="dialog"
-          aria-modal="false"
-          aria-label="SwiftDrop Help Assistant"
-        >
+        <>
+          <div
+            className="ai-assistant-backdrop"
+            aria-hidden="true"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            ref={drawerRef}
+            className="ai-assistant-drawer"
+            role="dialog"
+            aria-modal="false"
+            aria-label="SwiftDrop Help Assistant"
+          >
           {/* Header */}
           <div className="ai-drawer-header">
             <div className="ai-header-title-group">
@@ -494,6 +500,7 @@ export function AiDeliveryAssistant({ assistantApi }: { assistantApi?: Assistant
             </Button>
           </form>
         </div>
+        </>
       )}
     </>
   )

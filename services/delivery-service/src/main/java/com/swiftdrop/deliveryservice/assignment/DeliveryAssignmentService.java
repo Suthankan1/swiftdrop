@@ -267,12 +267,13 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         }
 
         // 7. Atomically increment parcel version and save assignment
+        Instant now = Instant.now();
+        parcel.setUpdatedAt(now);
         parcel.setVersion(parcel.getVersion() + 1);
         Parcel updatedParcel = parcelRepository.saveAndFlush(parcel);
         Long newParcelVersion = updatedParcel.getVersion();
 
         UUID assignmentId = UUID.randomUUID();
-        Instant now = Instant.now();
         DeliveryAssignment assignment = new DeliveryAssignment(
                 assignmentId,
                 parcel.getParcelId(),
@@ -409,6 +410,7 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
         assignmentRepository.saveAndFlush(newAssignment);
 
         // Bump parcel aggregate version for optimistic locking
+        parcel.setUpdatedAt(now);
         parcel.setVersion(parcel.getVersion() + 1);
         Parcel updatedParcel = parcelRepository.saveAndFlush(parcel);
         Long newParcelVersion = updatedParcel.getVersion();

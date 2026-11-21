@@ -154,8 +154,8 @@ public class SecurityConfig {
         if (!origins.contains("https://swiftdrop-frontend.vercel.app")) {
             origins.add("https://swiftdrop-frontend.vercel.app");
         }
-        if (!origins.contains("https://*.vercel.app")) {
-            origins.add("https://*.vercel.app");
+        if (!origins.contains("https://swiftdrop-*.vercel.app")) {
+            origins.add("https://swiftdrop-*.vercel.app");
         }
         if (!origins.contains("http://localhost:*")) {
             origins.add("http://localhost:*");
