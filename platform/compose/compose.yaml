@@ -413,7 +413,7 @@ services:
     environment:
       SERVER_PORT: 8086
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       PRICING_SERVICE_URL: http://pricing-service:8082
       DELIVERY_SERVICE_URL: http://delivery-service:8083
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/swiftdrop}
