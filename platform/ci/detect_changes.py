@@ -11,7 +11,7 @@ import fnmatch
 import os
 import subprocess
 import sys
-from typing import List
+from typing import List, Optional
 
 
 def match_path(file_path: str, patterns: List[str]) -> bool:
@@ -40,21 +40,31 @@ def set_github_output(name: str, value: str) -> None:
     print(f"[CHANGE-DETECTOR] Output set: {name}={value}")
 
 
-def get_changed_files(base_ref: str) -> List[str]:
-    """Fetches base_ref if needed and returns the list of files modified in HEAD vs base_ref."""
+def get_changed_files(base_ref: str) -> Optional[List[str]]:
+    """Fetches base_ref if needed and returns the list of files modified in HEAD vs base_ref.
+    Returns None if git commands fail, or the list of changed file paths."""
     ref_name = base_ref.removeprefix("origin/").removeprefix("refs/heads/")
     target_ref = f"origin/{ref_name}"
 
-    # Try shallow fetch of target branch from origin
-    try:
-        subprocess.run(
-            ["git", "fetch", "origin", f"{ref_name}:{target_ref}", "--depth=50"],
-            capture_output=True,
-            check=False,
-            timeout=30,
-        )
-    except (subprocess.SubprocessError, OSError) as e:
-        print(f"Warning: git fetch encountered an error: {e}", file=sys.stderr)
+    # Verify if target_ref is already resolved locally
+    check_rev = subprocess.run(
+        ["git", "rev-parse", "--verify", target_ref],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if check_rev.returncode != 0:
+        # Fetch target branch with proper refspec to avoid creating ambiguous local branch
+        try:
+            subprocess.run(
+                ["git", "fetch", "origin", f"+refs/heads/{ref_name}:refs/remotes/origin/{ref_name}", "--depth=100"],
+                capture_output=True,
+                check=False,
+                timeout=30,
+            )
+        except (subprocess.SubprocessError, OSError) as e:
+            print(f"Warning: git fetch encountered an error: {e}", file=sys.stderr)
 
     # Run git diff against base reference
     try:
@@ -78,10 +88,10 @@ def get_changed_files(base_ref: str) -> List[str]:
             return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
         else:
             print(f"Warning: git diff returned non-zero exit code {proc.returncode}: {proc.stderr}", file=sys.stderr)
-            return []
+            return None
     except (subprocess.SubprocessError, OSError) as e:
         print(f"Warning: git diff execution failed: {e}", file=sys.stderr)
-        return []
+        return None
 
 
 def main() -> int:
@@ -102,8 +112,8 @@ def main() -> int:
     print(f"[CHANGE-DETECTOR] Analyzing pull request changes against base reference '{base_ref}'...")
     changed_files = get_changed_files(base_ref)
 
-    if not changed_files:
-        print("[CHANGE-DETECTOR] Warning: Could not detect changed files or diff was empty. Failing open (changed=true).")
+    if changed_files is None:
+        print(f"[CHANGE-DETECTOR] Warning: Could not detect changed files due to git error. Failing open (changed=true).")
         set_github_output(args.output_name, "true")
         return 0
 
