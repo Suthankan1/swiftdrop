@@ -526,3 +526,5 @@ service ProblemDetail contract. A `503` is not a completed lifecycle command;
 the safe retry is `POST /api/v1/admin/reconciliation/retry/{auditId}` after
 Keycloak recovery. Independent acceptance evidence from `@abhi190503` and
 `@pushmitha20` is still required for Issue #122.
+
+<!-- CI selective verification: change impact scoping verified for accounts-service -->
