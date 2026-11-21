@@ -19,7 +19,7 @@ spring:
           '[/**]':
             allowed-origin-patterns:
               - "https://swiftdrop-frontend.vercel.app"
-              - "https://*.vercel.app"
+              - "https://swiftdrop-*.vercel.app"
               - "http://localhost:*"
               - "http://127.0.0.1:*"
               - "${CORS_ALLOWED_ORIGIN:http://localhost:5173}"

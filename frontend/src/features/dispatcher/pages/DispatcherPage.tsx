@@ -31,18 +31,20 @@ export function DispatcherPage() {
           <p>{actsAsAdmin
             ? <Link to="/admin/reports">View daily outcomes and reports</Link>
             : <Link to="/dispatcher/reports">View daily outcomes for your zones</Link>}</p>
-          <Button variant="secondary" type="button" onClick={() => { void auth.logout() }}>
-            Sign out
-          </Button>
-          {query.isError && (
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => { void refetch() }}
-            >
-              Retry profile
+          <div className="profile-card-actions">
+            <Button variant="secondary" type="button" onClick={() => { void auth.logout() }}>
+              Sign out
             </Button>
-          )}
+            {query.isError && (
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => { void refetch() }}
+              >
+                Retry profile
+              </Button>
+            )}
+          </div>
         </aside>
       </div>
       {state.status === 'ready' && <DispatcherOperations key={auth.snapshot.subject} />}

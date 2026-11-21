@@ -70,26 +70,28 @@ export function CourierPage({
           <p className="muted">
             Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
           </p>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => {
-              void auth.logout()
-            }}
-          >
-            Sign out
-          </Button>
-          {query.isError && (
+          <div className="profile-card-actions">
             <Button
               variant="secondary"
               type="button"
               onClick={() => {
-                void refetch()
+                void auth.logout()
               }}
             >
-              Retry profile
+              Sign out
             </Button>
-          )}
+            {query.isError && (
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => {
+                  void refetch()
+                }}
+              >
+                Retry profile
+              </Button>
+            )}
+          </div>
         </aside>
       </div>
 
