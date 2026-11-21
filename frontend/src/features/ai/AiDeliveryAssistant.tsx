@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState, type FormEvent } from
 import { Link, useLocation } from 'react-router'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
+import { SparkleIcon } from '../../components/ui/icons'
 import { createDeliveryApi, isValidTrackingNumber } from '../customer/api/delivery'
 import type { PublicTrackingResponse } from '../customer/api/deliveryContracts'
 import { createPricingApi } from '../customer/api/pricing'
@@ -322,7 +323,7 @@ export function AiDeliveryAssistant({ assistantApi }: { assistantApi?: Assistant
           aria-label={isOpen ? 'Close Help Assistant' : 'Open Help Assistant'}
           aria-expanded={isOpen}
         >
-          <span className="ai-launcher-icon" aria-hidden="true">✨</span>
+          <span className="ai-launcher-icon" aria-hidden="true"><SparkleIcon /></span>
           <span className="ai-launcher-text">Help Assistant</span>
         </button>
         {!isOpen && (

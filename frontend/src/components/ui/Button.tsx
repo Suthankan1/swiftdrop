@@ -1,8 +1,9 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { buttonClassName, type ButtonSize, type ButtonVariant } from './buttonStyles'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'accent' | 'light' | 'tonal' | 'ghost' | 'danger' | 'danger-ghost'
-  size?: 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm'
+  variant?: ButtonVariant
+  size?: ButtonSize
   isLoading?: boolean
   loadingText?: string
   leftIcon?: ReactNode
@@ -47,14 +48,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
-  const variantClass = `button-${variant}`
-  const sizeClass = size !== 'md' ? `button-${size}` : ''
-  const widthClass = fullWidth ? 'button-full' : ''
-  const loadingClass = isLoading ? 'is-loading' : ''
-
-  const classes = ['button', variantClass, sizeClass, widthClass, loadingClass, className]
-    .filter(Boolean)
-    .join(' ')
+  const classes = buttonClassName({ variant, size, fullWidth, isLoading, className })
 
   return (
     <button
@@ -73,7 +67,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ) : (
         <>
           {leftIcon && <span className="button-icon-left" aria-hidden="true">{leftIcon}</span>}
-          {children && <span>{children}</span>}
+          {children && <span className="button-label">{children}</span>}
           {rightIcon && <span className="button-icon-right" aria-hidden="true">{rightIcon}</span>}
         </>
       )}
