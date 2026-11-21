@@ -8,6 +8,9 @@ on:
       - 'ai-assistant/**'
       - 'platform/compose/**'
       - 'platform/identity/**'
+      - 'shared/**'
+      - 'contracts/**'
+      - 'frontend/**'
   workflow_dispatch:
 
 concurrency:
@@ -57,9 +60,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            echo "Re-applying environment updates and checking containers..."
+            echo "Re-applying environment updates and deploying containers..."
             cd /home/azureuser/swiftdrop/platform/compose
-            ./start.sh --local
+            ./start.sh
             ./status.sh
           EOF
 
