@@ -2196,3 +2196,18 @@ main:focus { outline: none; }
 
 /* The delivery stepper is an ordered list for screen readers; keep its visual layout (audit 96). */
 ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }
+
+/* ---------------------------------------------------------------------------
+   Touch target sizing (WCAG 2.5.5 / RESP-02): ensure interactive elements have
+   at least 44x44px touch targets on coarse pointer (touch) devices.
+   --------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .button,
+  button,
+  [role="button"],
+  .pagination button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
