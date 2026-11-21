@@ -4,7 +4,18 @@
 # Pinned official Keycloak 26.8.1 runtime with branded SwiftDrop theme
 # ==============================================================================
 
-FROM quay.io/keycloak/keycloak:26.8.1
+FROM quay.io/keycloak/keycloak:26.8.1 AS keycloak-base
+
+# Apply vendor Java 21 security updates while retaining the original RPM database
+# and the minimal Keycloak runtime. Package management stays in this build stage.
+FROM registry.access.redhat.com/ubi9/ubi:9.7 AS jdk-security-update
+COPY --from=keycloak-base / /mnt/rootfs/
+RUN dnf --installroot=/mnt/rootfs --releasever=9 --setopt=install_weak_deps=False \
+        --nodocs upgrade -y java-21-openjdk-headless && \
+    dnf --installroot=/mnt/rootfs clean all
+
+FROM keycloak-base
+COPY --from=jdk-security-update /mnt/rootfs/ /
 
 LABEL org.opencontainers.image.title="SwiftDrop Keycloak Identity Provider" \
       org.opencontainers.image.description="Keycloak IAM runtime with customized SwiftDrop login theme" \
