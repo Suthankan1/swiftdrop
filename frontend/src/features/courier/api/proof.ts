@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import type {
   AssignmentResponse,
   ParcelDetailResponse,
@@ -125,7 +126,7 @@ function parseProblemJson(text: string): ProblemDetail | undefined {
 
 export function createCourierProofApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
   xhrFactory = () => new XMLHttpRequest(),
 }: CourierProofApiOptions) {

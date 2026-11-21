@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import type { CurrentUserProfile, MerchantProfile } from './contracts'
 
 export type ProfileFailure = 'auth-required' | 'forbidden' | 'unavailable' | 'invalid-response'
@@ -41,7 +42,7 @@ function isCurrentUserProfile(value: unknown): value is CurrentUserProfile {
 /** Inactive until #36 supplies its token getter; never calls /me without a token. */
 export function createAccountsApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
 }: AccountsOptions) {
   return {

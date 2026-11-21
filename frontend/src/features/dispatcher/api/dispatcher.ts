@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import { isRecord } from '../../staff/api/contracts'
 
 export interface UnassignedParcel {
@@ -63,7 +64,7 @@ function isDashboard(v: unknown): v is DispatcherDashboard {
     new Set(v.unassignedParcels.map(x => x.parcelId)).size === v.unassignedParcels.length &&
     new Set(v.availableCouriers.map(x => x.courierSub)).size === v.availableCouriers.length
 }
-export function createDispatcherApi({ getAccessToken, gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080', fetch: request = globalThis.fetch, timeoutMs = 10_000 }: {
+export function createDispatcherApi({ getAccessToken, gatewayUrl = getApiGatewayUrl(), fetch: request = globalThis.fetch, timeoutMs = 10_000 }: {
   getAccessToken: () => Promise<string | null>; gatewayUrl?: string; fetch?: typeof fetch; timeoutMs?: number
 }) {
   async function post(path: string, body: unknown, signal?: AbortSignal): Promise<unknown> {

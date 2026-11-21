@@ -18,7 +18,7 @@ public record AssistantProperties(
 
     public AssistantProperties {
         geminiApiKey = geminiApiKey == null ? "" : geminiApiKey.trim();
-        geminiModel = blankTo(geminiModel, "gemini-2.5-flash");
+        geminiModel = blankTo(geminiModel, "gemini-3.5-flash-lite");
         geminiBaseUrl = stripSlash(blankTo(geminiBaseUrl, "https://generativelanguage.googleapis.com"));
         pricingUrl = stripSlash(blankTo(pricingUrl, "http://localhost:8082"));
         deliveryUrl = stripSlash(blankTo(deliveryUrl, "http://localhost:8083"));

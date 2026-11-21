@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import {
   isParcelLifecycleSseEvent,
   isPublicTrackingSseEvent,
@@ -35,7 +36,7 @@ export interface ConnectTrackingStreamOptions {
 export async function connectParcelTrackingStream({
   parcelId,
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
   signal,
   onEvent,
@@ -169,7 +170,7 @@ export interface ConnectPublicTrackingStreamOptions {
  */
 export async function connectPublicTrackingStream({
   trackingNumber,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
   signal,
   onEvent,

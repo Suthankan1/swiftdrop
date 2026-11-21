@@ -17,7 +17,11 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowed-origins:
+            allowed-origin-patterns:
+              - "https://swiftdrop-frontend.vercel.app"
+              - "https://*.vercel.app"
+              - "http://localhost:*"
+              - "http://127.0.0.1:*"
               - "${CORS_ALLOWED_ORIGIN:http://localhost:5173}"
             allowed-methods:
               - GET

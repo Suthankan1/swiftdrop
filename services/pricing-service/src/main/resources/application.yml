@@ -31,14 +31,17 @@ spring:
   application:
     name: pricing-service
   datasource:
-    url: ${PRICING_DB_URL:jdbc:postgresql://127.0.0.1:5439/pricing_db}
+    url: ${PRICING_DB_URL}
     username: ${PRICING_DB_USERNAME:pricing_app}
     password: ${PRICING_DB_PASSWORD}
     hikari:
       transaction-isolation: TRANSACTION_READ_COMMITTED
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 5000
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:5000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:300000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:900000}
+      leak-detection-threshold: ${DB_POOL_LEAK_DETECTION_MS:20000}
   security:
     oauth2:
       resourceserver:

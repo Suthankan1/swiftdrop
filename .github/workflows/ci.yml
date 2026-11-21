@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [test, main]
   push:
-    branches: [test]
+    branches: [test, main]
   workflow_dispatch:
 
 concurrency:
@@ -938,10 +938,10 @@ jobs:
 
           trusted_pub = False
           pub_reason = "PR or untrusted event - image publication intentionally not eligible"
-          if event_name == "push" and repo == "Suthankan1/swiftdrop" and (ref == "refs/heads/test" or ref.startswith("refs/tags/")):
+          if event_name == "push" and repo == "Suthankan1/swiftdrop" and (ref == "refs/heads/test" or ref == "refs/heads/main" or ref.startswith("refs/tags/")):
               if not failures:
                   trusted_pub = True
-                  pub_reason = "Approved test branch push - all required checks passed, eligible for GHCR publication"
+                  pub_reason = "Approved test/main branch push - all required checks passed, eligible for GHCR publication"
               else:
                   pub_reason = "Push event, but required checks failed - publication blocked"
 
@@ -980,7 +980,7 @@ jobs:
       - required-ci-gate
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.event_name == 'push' && github.repository == 'Suthankan1/swiftdrop' && (github.ref == 'refs/heads/test' || startsWith(github.ref, 'refs/tags/'))
+    if: github.event_name == 'push' && github.repository == 'Suthankan1/swiftdrop' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     permissions:
       contents: read
       packages: write
@@ -1099,10 +1099,10 @@ jobs:
           echo "Generating structured release candidate manifest JSON..."
           ./platform/kubernetes/release/generate-release-manifest.sh \
             --sha "${SHA_FULL}" \
-            --branch "test" \
+            --branch "${{ github.ref_name }}" \
             --run-id "${{ github.run_id }}" \
             --run-attempt "${{ github.run_attempt }}" \
-            --approval-ref "test-push-sha-${SHA_SHORT}" \
+            --approval-ref "${{ github.ref_name }}-push-sha-${SHA_SHORT}" \
             --digests-file "$MANIFEST_FILE" \
             --output "build/artifacts/digests/release-candidate-manifest.json"
 
