@@ -33,15 +33,15 @@ const PHONE = /^\+?[0-9\s\-()]{7,25}$/
 
 /** Checks one order against the same limits the services enforce; returns a message or null. */
 export function merchantOrderProblem(order: MerchantOrderInput): string | null {
-  if (!order.pickupZone || !order.dropoffZone) return 'Pickup and drop-off zones are required.'
-  if (!Number.isFinite(order.weightKg) || order.weightKg <= 0 || order.weightKg > 30) return 'Weight must be between 0.01 and 30 kg.'
+  if (!order.pickupZone.trim() || !order.dropoffZone.trim()) return 'Pickup and drop-off zones are required.'
+  if (!Number.isFinite(order.weightKg) || order.weightKg < 0.01 || order.weightKg > 30) return 'Weight must be between 0.01 and 30 kg.'
   for (const [name, value] of [['Length', order.lengthCm], ['Width', order.widthCm], ['Height', order.heightCm]] as const) {
     if (!Number.isInteger(value) || value < 1 || value > 300) return `${name} must be a whole number of centimetres between 1 and 300.`
   }
   if (!order.pickupAddress.trim() || order.pickupAddress.length > 2000) return 'Pickup address is required (max 2000 characters).'
   if (!order.dropoffAddress.trim() || order.dropoffAddress.length > 2000) return 'Drop-off address is required (max 2000 characters).'
   if (!order.recipientName.trim() || order.recipientName.length > 255) return 'Recipient name is required (max 255 characters).'
-  if (!PHONE.test(order.recipientPhone.trim())) return 'Recipient phone must be a valid phone number.'
+  if (!PHONE.test(order.recipientPhone.trim()) || order.recipientPhone.replace(/\D/g, '').length < 7) return 'Recipient phone must be a valid phone number.'
   if (!order.merchantReference.trim() || order.merchantReference.length > 255) return 'Order reference is required (max 255 characters).'
   if ((order.deliveryNotes ?? '').length > 2000) return 'Delivery notes cannot exceed 2000 characters.'
   return null
@@ -53,21 +53,27 @@ export function parseCsv(text: string): string[][] {
   let row: string[] = []
   let field = ''
   let quoted = false
+  let closed = false
   for (let i = 0; i < text.length; i++) {
     const char = text[i]
     if (quoted) {
       if (char === '"' && text[i + 1] === '"') { field += '"'; i++ }
-      else if (char === '"') quoted = false
+      else if (char === '"') { quoted = false; closed = true }
       else field += char
     } else if (char === '"' && field === '') quoted = true
-    else if (char === ',') { row.push(field); field = '' }
+    else if (char === ',') { row.push(field); field = ''; closed = false }
     else if (char === '\n' || char === '\r') {
       if (char === '\r' && text[i + 1] === '\n') i++
       row.push(field); field = ''
+      closed = false
       if (row.some(cell => cell.trim() !== '')) rows.push(row)
       row = []
-    } else field += char
+    } else {
+      if (char === '"' || closed) throw new Error('Malformed CSV quoting.')
+      field += char
+    }
   }
+  if (quoted) throw new Error('Unterminated quoted CSV field.')
   row.push(field)
   if (row.some(cell => cell.trim() !== '')) rows.push(row)
   return rows
@@ -81,14 +87,18 @@ export interface ParsedOrderRow {
 
 /** Reads the CSV template. The header row is required so column order mistakes are caught. */
 export function parseMerchantOrdersCsv(text: string): { rows: ParsedOrderRow[]; error: string | null } {
-  const table = parseCsv(text.replace(/^\uFEFF/, ''))
+  let table: string[][]
+  try { table = parseCsv(text.replace(/^\uFEFF/, '')) }
+  catch { return { rows: [], error: 'Malformed CSV quoting. Check quoted fields and download the template.' } }
   if (table.length === 0) return { rows: [], error: 'The file is empty.' }
   const header = (table[0] ?? []).map(cell => cell.trim())
+  if (new Set(header).size !== header.length) return { rows: [], error: 'Duplicate column names are not allowed.' }
   const index = Object.fromEntries(MERCHANT_ORDER_CSV_COLUMNS.map(column => [column, header.indexOf(column)]))
   const missing = MERCHANT_ORDER_CSV_COLUMNS.filter(column => column !== 'deliveryNotes' && index[column] === -1)
   if (missing.length) return { rows: [], error: `Missing columns: ${missing.join(', ')}. Download the template for the expected header.` }
   if (table.length - 1 > 500) return { rows: [], error: 'A single import is limited to 500 orders.' }
   const cell = (row: string[], column: string) => (index[column] !== undefined && index[column] >= 0 ? (row[index[column]] ?? '') : '').trim()
+  const references = new Set<string>()
   const rows = table.slice(1).map((row, offset) => {
     const order: MerchantOrderInput = {
       pickupZone: cell(row, 'pickupZone'), dropoffZone: cell(row, 'dropoffZone'),
@@ -98,7 +108,11 @@ export function parseMerchantOrdersCsv(text: string): { rows: ParsedOrderRow[]; 
       recipientName: cell(row, 'recipientName'), recipientPhone: cell(row, 'recipientPhone'),
       merchantReference: cell(row, 'merchantReference'), deliveryNotes: cell(row, 'deliveryNotes') || undefined,
     }
-    return { rowNumber: offset + 2, order, error: merchantOrderProblem(order) }
+    const duplicate = references.has(order.merchantReference)
+    references.add(order.merchantReference)
+    return { rowNumber: offset + 2, order, error: row.length !== header.length
+      ? 'Column count does not match the header.'
+      : duplicate ? 'Duplicate order reference in this file.' : merchantOrderProblem(order) }
   })
   return { rows, error: null }
 }

@@ -9,6 +9,13 @@ import {
 } from './merchantBooking'
 
 describe('merchant order CSV', () => {
+  it('rejects malformed quoting, duplicate columns and duplicate references', () => {
+    expect(parseMerchantOrdersCsv('"unterminated').error).toMatch(/Malformed/)
+    expect(parseMerchantOrdersCsv('pickupZone,pickupZone').error).toMatch(/Duplicate column/)
+    const [header, first] = MERCHANT_ORDER_CSV_SAMPLE.split('\r\n')
+    const parsed = parseMerchantOrdersCsv(`${header}\r\n${first}\r\n${first}`)
+    expect(parsed.rows[1]?.error).toMatch(/Duplicate order reference/)
+  })
   it('parses quoted fields, escaped quotes and embedded commas and line breaks', () => {
     expect(parseCsv('a,"b, c","say ""hi"""\r\n"multi\nline",x,\n')).toEqual([
       ['a', 'b, c', 'say "hi"'],

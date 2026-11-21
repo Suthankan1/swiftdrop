@@ -9,17 +9,20 @@ interface WebhookSecretAlertProps {
 
 export function WebhookSecretAlert({ secret, endpointUrl, onDismiss }: WebhookSecretAlertProps) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
 
   async function handleCopy() {
     try {
+      setCopied(false)
+      setCopyError(false)
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable')
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(secret)
       }
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch {
-      // Fallback if clipboard API is restricted
-      setCopied(true)
+      setCopyError(true)
     }
   }
 
@@ -55,6 +58,7 @@ export function WebhookSecretAlert({ secret, endpointUrl, onDismiss }: WebhookSe
       </div>
 
       <div className="secret-actions">
+        {copyError && <p role="status">Copy failed. Select the secret and copy it manually.</p>}
         <Button
           variant="primary"
           onClick={onDismiss}

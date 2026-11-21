@@ -28,6 +28,7 @@ export function MerchantOrderTable({
   onResetFilters,
 }: MerchantOrderTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copyError, setCopyError] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
   const startIndex = currentPage * pageSize
@@ -35,13 +36,15 @@ export function MerchantOrderTable({
 
   const handleCopy = async (text: string, id: string) => {
     try {
+      setCopyError(false)
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable')
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(text)
         setCopiedId(id)
         setTimeout(() => setCopiedId(null), 2000)
       }
     } catch {
-      // Ignore clipboard write failures in test or restricted environments
+      setCopyError(true)
     }
   }
 
@@ -77,6 +80,7 @@ export function MerchantOrderTable({
 
   return (
     <div className="history-table-container merchant-orders-table-container" aria-busy={isLoading}>
+      {copyError && <p role="alert">The reference could not be copied. Select it and copy it manually.</p>}
       <div className="table-responsive-wrapper">
         <table className="delivery-log-table merchant-orders-table" aria-label="Merchant orders list">
           <thead>

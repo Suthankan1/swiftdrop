@@ -220,6 +220,7 @@ class ParcelQueryServiceTest {
         @Test
         @DisplayName("Authorized read returns contract-compliant ParcelDetailResponse")
         void authorizedReadSucceeds() {
+            testParcel.setUpdatedAt(testParcel.getCreatedAt().plusSeconds(600));
             when(parcelRepository.findById(PARCEL_ID)).thenReturn(Optional.of(testParcel));
             DeliveryAssignment activeAssignment = new DeliveryAssignment(
                     UUID.randomUUID(),
@@ -248,6 +249,8 @@ class ParcelQueryServiceTest {
             assertThat(response.weightKg()).isEqualTo(2.750);
             assertThat(response.activeCourierSub()).isEqualTo(COURIER_SUB);
             assertThat(response.dimensions()).isNotBlank();
+            assertThat(response.updatedAt()).isEqualTo(testParcel.getUpdatedAt());
+            assertThat(response.updatedAt()).isNotEqualTo(response.createdAt());
         }
 
         @Test

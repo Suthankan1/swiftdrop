@@ -1,4 +1,4 @@
-import { useContext, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
 import { AuthContext } from '../../../auth/context'
@@ -38,8 +38,19 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
   const [progress, setProgress] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const attempts = useRef(new Map<number, BookingAttempt>())
+  const attempts = useRef(new Map<string, BookingAttempt>())
   const cancelled = useRef(false)
+  const busy = useRef(false)
+  const selection = useRef(0)
+  const panel = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const previous = document.activeElement
+    const generation = selection
+    panel.current?.focus()
+    return () => { cancelled.current = true; generation.current++; if (previous instanceof HTMLElement) previous.focus() }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -52,10 +63,12 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
     setRows([])
     setOutcomes({})
     setProgress(null)
-    attempts.current = new Map()
+    // Keep keys for identical rows when a file is selected again in this session.
   }
 
   function handleFileSelected(selectedFile: File) {
+    if (busy.current) return
+    const version = ++selection.current
     if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
       setFileError('Please upload a valid .csv file.')
       return
@@ -69,31 +82,35 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
     setFile(selectedFile)
     const reader = new FileReader()
     reader.onload = (e) => {
+      if (version !== selection.current) return
       const result = parseMerchantOrdersCsv(String(e.target?.result ?? ''))
       if (result.error) setFileError(result.error)
       setRows(result.rows)
     }
+    reader.onerror = () => { if (version === selection.current) setFileError('The selected file could not be read. Please choose it again.') }
     reader.readAsText(selectedFile)
   }
 
   /** Books the remaining valid rows one at a time. Failed rows can be retried without duplicates. */
   async function handleImport() {
-    if (importing || pendingRows.length === 0) return
+    if (busy.current || fileError || pendingRows.length === 0) return
+    busy.current = true
     cancelled.current = false
     setImporting(true)
     let booked = 0
     for (const [position, row] of pendingRows.entries()) {
       if (cancelled.current) break
       setProgress(`Booking order ${position + 1} of ${pendingRows.length}…`)
-      const attempt = attempts.current.get(row.rowNumber) ?? newBookingAttempt()
-      attempts.current.set(row.rowNumber, attempt)
+      const orderKey = JSON.stringify(row.order)
+      const attempt = attempts.current.get(orderKey) ?? newBookingAttempt()
+      attempts.current.set(orderKey, attempt)
       try {
         const parcel = await bookMerchantOrder(apis, row.order, attempt)
         booked++
         setOutcomes((current) => ({ ...current, [row.rowNumber]: { state: 'booked', trackingNumber: parcel.trackingNumber } }))
       } catch (error) {
-        const definite = error instanceof DeliveryError && ['validation-error', 'forbidden', 'expired', 'conflict'].includes(error.kind)
-        if (definite) attempts.current.delete(row.rowNumber) // a fresh quote and key are safe after a definite rejection
+        const definite = error instanceof DeliveryError && ['validation-error', 'forbidden', 'expired'].includes(error.kind)
+        if (definite) attempts.current.delete(orderKey) // fresh quote only after a definite rejection
         const message = error instanceof Error && error.message ? error.message : 'Booking failed.'
         setOutcomes((current) => ({
           ...current,
@@ -103,6 +120,7 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
       }
     }
     setImporting(false)
+    busy.current = false
     setProgress(null)
     if (booked > 0) onImportComplete?.(booked)
   }
@@ -128,11 +146,17 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
         aria-modal="true"
         aria-labelledby="bulk-upload-title"
         tabIndex={-1}
-        ref={(node) => { if (node && !node.contains(document.activeElement)) node.focus() }}
+        ref={panel}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           // Escape closes the dialog unless an import is running (audit 95).
           if (e.key === 'Escape' && !importing) { e.preventDefault(); cancelled.current = true; onClose() }
+          if (e.key === 'Tab') {
+            const controls = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [href], select:not(:disabled)')
+            const first = controls?.[0], last = controls?.[controls.length - 1]
+            if (e.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { e.preventDefault(); last?.focus() }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
+          }
         }}
       >
         <div className="modal-header">
@@ -146,6 +170,7 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
             type="button"
             className="modal-close-btn"
             aria-label="Close bulk upload modal"
+            disabled={importing}
             onClick={onClose}
           >
             ×
@@ -276,7 +301,7 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
+        <div className="merchant-modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
           <Button type="button" variant="ghost" size="sm" onClick={handleDownloadSample}>
             📥 Download Sample Template
           </Button>
@@ -288,7 +313,7 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
             <Button
               type="button"
               variant="primary"
-              disabled={importing || pendingRows.length === 0}
+              disabled={importing || !!fileError || pendingRows.length === 0}
               isLoading={importing}
               onClick={() => void handleImport()}
             >

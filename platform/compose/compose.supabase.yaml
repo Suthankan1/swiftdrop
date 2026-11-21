@@ -22,6 +22,9 @@ services:
       KC_DB_POOL_INITIAL_SIZE: "0"
       KC_DB_POOL_MIN_SIZE: "0"
       KC_DB_POOL_MAX_SIZE: "2"
+      KC_DB_POOL_ACQUISITION_TIMEOUT: "120s"
+    healthcheck:
+      start_period: 240s
     depends_on: !override
       mailpit:
         condition: service_healthy
