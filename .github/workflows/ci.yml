@@ -468,6 +468,14 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_REF="origin/${{ github.base_ref }}"
+          elif [ "${{ github.ref_name }}" = "main" ]; then
+            if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+              BASE_REF="HEAD~1"
+            else
+              BASE_REF="origin/main"
+            fi
+          elif [ -n "${{ github.ref_name }}" ] && git rev-parse --verify "origin/${{ github.ref_name }}" >/dev/null 2>&1; then
+            BASE_REF="origin/${{ github.ref_name }}"
           else
             BASE_REF="origin/test"
           fi
@@ -507,7 +515,8 @@ jobs:
           echo "            SWIFTDROP PROTOBUF CONTRACT & GENERATION GATE                      "
           echo "================================================================================"
           chmod +x shared/proto-contracts/mvnw
-          if (cd shared/proto-contracts && ./mvnw -B clean install); then
+          export MAVEN_OPTS="-Dmaven.wagon.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.requestSentKeepAliveRuntime=true -Dmaven.wagon.rto=60000"
+          if (cd shared/proto-contracts && (./mvnw -B clean install || (sleep 10 && ./mvnw -B clean install))); then
             echo "✓ shared/proto-contracts build, generation, and verification SUCCEEDED."
           else
             echo "✗ shared/proto-contracts build failed."
@@ -520,7 +529,8 @@ jobs:
           echo "            SWIFTDROP SHARED SECURITY ADAPTER GATE                             "
           echo "================================================================================"
           chmod +x shared/security-adapter/mvnw
-          if (cd shared/security-adapter && ./mvnw -B clean install); then
+          export MAVEN_OPTS="-Dmaven.wagon.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.requestSentKeepAliveRuntime=true -Dmaven.wagon.rto=60000"
+          if (cd shared/security-adapter && (./mvnw -B clean install || (sleep 10 && ./mvnw -B clean install))); then
             echo "✓ shared/security-adapter build, verification, and tests SUCCEEDED."
           else
             echo "✗ shared/security-adapter build failed."
@@ -611,7 +621,8 @@ jobs:
           test -f "$SERVICE_DIR/pom.xml" || { echo "ERROR: $SERVICE_DIR/pom.xml missing!"; exit 1; }
           test -f "$SERVICE_DIR/mvnw" || { echo "ERROR: $SERVICE_DIR/mvnw missing!"; exit 1; }
           chmod +x "$SERVICE_DIR/mvnw"
-          (cd "$SERVICE_DIR" && (./mvnw -B verify || mvn -B verify))
+          export MAVEN_OPTS="-Dmaven.wagon.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.requestSentKeepAliveRuntime=true -Dmaven.wagon.rto=60000"
+          (cd "$SERVICE_DIR" && (./mvnw -B verify || (echo "Maven verification failed, retrying after backoff..." && sleep 10 && ./mvnw -B verify) || mvn -B verify))
           echo "✓ ${{ matrix.service }} build and verification SUCCEEDED."
 
       - name: Skip service verification
@@ -680,7 +691,8 @@ jobs:
         if: steps.change_check.outputs.changed == 'true'
         run: |
           chmod +x ai-assistant/mvnw
-          (cd ai-assistant && (./mvnw -B verify || mvn -B verify))
+          export MAVEN_OPTS="-Dmaven.wagon.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.requestSentKeepAliveRuntime=true -Dmaven.wagon.rto=60000"
+          (cd ai-assistant && (./mvnw -B verify || (echo "Maven verification failed, retrying after backoff..." && sleep 10 && ./mvnw -B verify) || mvn -B verify))
 
       - name: Build container image
         if: steps.change_check.outputs.changed == 'true'
