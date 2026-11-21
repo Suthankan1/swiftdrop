@@ -16,7 +16,7 @@ swiftdrop:
   assistant:
     # Leave GEMINI_API_KEY empty to run with the assistant disabled (the frontend falls back to keyword mode).
     gemini-api-key: ${GEMINI_API_KEY:}
-    gemini-model: ${GEMINI_MODEL:gemini-2.5-flash}
+    gemini-model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
     gemini-base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
     pricing-url: ${PRICING_SERVICE_URL:http://localhost:8082}
     delivery-url: ${DELIVERY_SERVICE_URL:http://localhost:8083}
