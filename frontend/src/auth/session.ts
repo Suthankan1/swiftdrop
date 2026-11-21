@@ -1,5 +1,6 @@
 import Keycloak from 'keycloak-js'
 import type { AuthIntegration, AuthSnapshot, SwiftDropRole } from './contracts'
+import { getApiGatewayUrl, getKeycloakUrl, getKeycloakRealm, getKeycloakClientId, getAppOrigin } from '../config/env'
 
 export type AuthProblem = 'cancelled' | 'invalid-callback' | 'provider-unavailable' | 'session-expired' | null
 const roles: readonly SwiftDropRole[] = ['CUSTOMER', 'MERCHANT', 'COURIER', 'DISPATCHER', 'ADMIN']
@@ -234,7 +235,7 @@ export class AuthSession {
   }
   /** Restricted to approved idempotent profile reads; never replay arbitrary commands. */
   profileFetch: typeof fetch = async (input, init) => {
-    const gatewayUrl = (import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080').replace(/\/$/, '')
+    const gatewayUrl = getApiGatewayUrl()
     const allowedUrls = new Set([
       `${gatewayUrl}/api/v1/users/me`,
       `${gatewayUrl}/api/v1/staff/me`,
@@ -259,10 +260,10 @@ export class AuthSession {
 }
 
 export function getAuthConfig(): OidcConfig {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173'
-  const url = (import.meta.env.VITE_KEYCLOAK_URL || import.meta.env.VITE_KEYCLOAK_ORIGIN || 'http://localhost:8090').replace(/\/$/, '')
-  const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'swiftdrop'
-  const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'swiftdrop-frontend'
+  const origin = getAppOrigin()
+  const url = getKeycloakUrl()
+  const realm = getKeycloakRealm()
+  const clientId = getKeycloakClientId()
   const redirectUri = import.meta.env.VITE_AUTH_REDIRECT_URI || `${origin}/auth/callback`
   const postLogoutRedirectUri = import.meta.env.VITE_AUTH_POST_LOGOUT_URI || import.meta.env.VITE_AUTH_POST_LOGOUT_REDIRECT_URI || `${origin}/`
   return { url, realm, clientId, redirectUri, postLogoutRedirectUri }
@@ -270,10 +271,11 @@ export function getAuthConfig(): OidcConfig {
 
 let session: AuthSession | undefined
 export function browserSession(config?: OidcConfig): AuthSession {
+  const defaultOrigin = getAppOrigin()
   if (config) {
     return new AuthSession(
       new Keycloak({ url: config.url, realm: config.realm, clientId: config.clientId }),
-      typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173',
+      defaultOrigin,
       { redirectUri: config.redirectUri, postLogoutRedirectUri: config.postLogoutRedirectUri },
     )
   }
@@ -281,7 +283,7 @@ export function browserSession(config?: OidcConfig): AuthSession {
     const cfg = getAuthConfig()
     session = new AuthSession(
       new Keycloak({ url: cfg.url, realm: cfg.realm, clientId: cfg.clientId }),
-      typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost:5173',
+      defaultOrigin,
       { redirectUri: cfg.redirectUri, postLogoutRedirectUri: cfg.postLogoutRedirectUri },
     )
   }

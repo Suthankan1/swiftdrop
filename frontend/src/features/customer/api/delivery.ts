@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import type {
   BookParcelRequest,
   CustomerDeliveriesPage,
@@ -244,7 +245,7 @@ async function parseProblemDetail(response: Response): Promise<ProblemDetail | u
 
 export function createDeliveryApi({
   getAccessToken = async () => null,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
 }: DeliveryApiOptions = {}) {
   const normalizedGateway = gatewayUrl.replace(/\/$/, '')

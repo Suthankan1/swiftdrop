@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import { normalizeApprovalStatus } from './merchant'
 import type {
   MerchantProfileResponse,
@@ -81,7 +82,7 @@ async function parseProblemDetail(response: Response): Promise<ProblemDetail | u
 
 export function createMerchantEnrollmentApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
 }: EnrollmentApiOptions) {
   const base = `${gatewayUrl.replace(/\/$/, '')}/api/v1/merchants`

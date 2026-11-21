@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import {
   type PagedAssignmentsResponse,
   type ParcelDetailResponse,
@@ -40,7 +41,7 @@ export function isPagedAssignmentsResponse(value: unknown): value is PagedAssign
 
 export function createCourierAssignmentsApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: request = globalThis.fetch,
   timeoutMs = 10_000,
 }: CourierAssignmentsApiOptions) {

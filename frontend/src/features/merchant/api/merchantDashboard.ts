@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import type {
   MerchantDashboardData,
   MerchantOrderSummaryItem,
@@ -95,7 +96,7 @@ export const MERCHANT_DASHBOARD_QUERY = `query MerchantDashboard {
 
 export function createMerchantDashboardApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: request = globalThis.fetch,
   timeoutMs = 10_000,
 }: MerchantDashboardApiOptions) {

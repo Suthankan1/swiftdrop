@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import {
   type CustomerDashboardData,
   type CustomerParcelSummaryItem,
@@ -85,7 +86,7 @@ export const CUSTOMER_DASHBOARD_QUERY = `query CustomerDashboard {
 
 export function createCustomerDashboardApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: request = globalThis.fetch,
   timeoutMs = 10_000,
 }: CustomerDashboardApiOptions) {

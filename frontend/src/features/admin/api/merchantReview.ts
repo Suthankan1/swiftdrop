@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 /** Presentation models projected from the implemented Accounts admin review contract (#121):
  * GET /api/v1/admin/merchants, GET /api/v1/admin/merchants/{id}, GET /api/v1/admin/merchants/{id}/audit,
  * POST /api/v1/merchants/{id}/approve and POST /api/v1/merchants/{id}/suspend, all through the Gateway.
@@ -185,7 +186,7 @@ export interface MerchantReviewApiOptions {
 
 export function createMerchantReviewApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = (...args) => globalThis.fetch(...args),
 }: MerchantReviewApiOptions): MerchantReviewApi {
   const base = `${gatewayUrl.replace(/\/$/, '')}/api/v1`

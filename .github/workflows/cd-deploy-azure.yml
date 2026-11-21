@@ -1,0 +1,66 @@
+name: SwiftDrop CD — Azure VM Staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'ai-assistant/**'
+      - 'platform/compose/**'
+      - 'platform/identity/**'
+  workflow_dispatch:
+
+concurrency:
+  group: cd-deploy-azure
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-to-azure:
+    name: Deploy to Azure Staging VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Deploy services via SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+          VM_HOST: ${{ secrets.AZURE_VM_HOST || '104.211.73.205' }}
+          VM_USER: ${{ secrets.AZURE_VM_USER || 'azureuser' }}
+        run: |
+          if [ -z "${SSH_PRIVATE_KEY}" ]; then
+            echo "================================================================================"
+            echo "ℹ Notice: AZURE_VM_SSH_KEY secret is not configured in GitHub repository."
+            echo "To enable automated CD on merge to main:"
+            echo "1. Go to GitHub Repo -> Settings -> Secrets and variables -> Actions"
+            echo "2. Add secret AZURE_VM_SSH_KEY containing the private key."
+            echo "3. Add secret AZURE_VM_HOST (e.g. 104.211.73.205) and AZURE_VM_USER (azureuser)."
+            echo "Continuous Deployment step will be skipped."
+            echo "================================================================================"
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          echo "Connecting to ${VM_USER}@${VM_HOST}..."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" << 'EOF'
+            set -e
+            echo "Pulling latest changes on Azure VM..."
+            cd /home/azureuser/swiftdrop
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "Re-applying environment updates and checking containers..."
+            cd /home/azureuser/swiftdrop/platform/compose
+            ./start.sh --local
+            ./status.sh
+          EOF
+
+          echo "✓ Successfully deployed latest changes to Azure Staging VM."
