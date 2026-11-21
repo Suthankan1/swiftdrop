@@ -1032,6 +1032,7 @@ jobs:
             "communications-service:services/communications-service/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-communications"
             "graphql-query-service:services/graphql-query-service/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-graphql"
             "keycloak:platform/identity/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-keycloak"
+            "ai-assistant:ai-assistant/Dockerfile:.:ghcr.io/suthankan1/swiftdrop-ai-assistant"
           )
 
           mkdir -p build/artifacts/digests
@@ -1062,11 +1063,12 @@ jobs:
             IFS=':' read -r name df ctx base_img <<< "$entry"
             tag_short="${base_img}:${SHA_SHORT}"
             tag_full="${base_img}:${SHA_FULL}"
+            tag_latest="${base_img}:latest"
 
             echo "--------------------------------------------------------------------------------"
-            echo "Building $name: $tag_short, $tag_full"
+            echo "Building $name: $tag_short, $tag_full, $tag_latest"
             echo "--------------------------------------------------------------------------------"
-            if ! docker build -f "$df" -t "$tag_short" -t "$tag_full" "$ctx"; then
+            if ! docker build -f "$df" -t "$tag_short" -t "$tag_full" -t "$tag_latest" "$ctx"; then
               echo "✗ Build failed for $name"
               FAILED_IMAGES+=("$name")
               continue
@@ -1080,6 +1082,12 @@ jobs:
 
             if ! push_with_retry "$tag_full"; then
               echo "✗ Failed pushing full tag for $name"
+              FAILED_IMAGES+=("$name")
+              continue
+            fi
+
+            if ! push_with_retry "$tag_latest"; then
+              echo "✗ Failed pushing latest tag for $name"
               FAILED_IMAGES+=("$name")
               continue
             fi
