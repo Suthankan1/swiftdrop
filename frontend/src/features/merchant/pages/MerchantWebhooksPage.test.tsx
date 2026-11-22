@@ -96,8 +96,7 @@ describe('Merchant Webhook Subscription UI (Issue #21)', () => {
 
     // Wait for profile resolution and pending banner
     expect(await screen.findByRole('status', { name: /approval status: pending/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Webhook Management Locked' })).toBeInTheDocument()
-    expect(screen.getByText(/DEC-MER-03/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Register Webhook Destination' })).not.toBeInTheDocument()
 
     // Communications API should never be queried when not approved
     expect(globalFetch).not.toHaveBeenCalled()

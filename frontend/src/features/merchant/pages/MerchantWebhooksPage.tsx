@@ -15,6 +15,7 @@ import { WebhookSubscriptionForm } from '../components/WebhookSubscriptionForm'
 import { WebhookSubscriptionList } from '../components/WebhookSubscriptionList'
 import { WebhookDeliveryLogsModal } from '../components/WebhookDeliveryLogsModal'
 import { WebhookDeleteConfirmModal } from '../components/WebhookDeleteConfirmModal'
+import { Button } from '../../../components/ui/Button'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
 
 export function MerchantWebhooksPage() {
@@ -135,11 +136,8 @@ export function MerchantWebhooksPage() {
   return (
     <div className="page-container merchant-page merchant-webhooks-page">
       <header className="page-heading">
-        <p className="eyebrow">Merchant space</p>
-        <h1>Event webhooks.<br />Real-time status integration.</h1>
-        <p className="muted">
-          Subscribe external HTTPS endpoints to parcel status change events with HMAC-SHA256 signature verification.
-        </p>
+        <h1>Webhooks</h1>
+        <p className="muted">Send delivery updates to your store software.</p>
       </header>
 
       {actionError && (
@@ -157,107 +155,57 @@ export function MerchantWebhooksPage() {
       )}
 
       {profileQuery.isError && (
-        <FeedbackState title="Merchant account unavailable" tone="error">
-          <p>{profileQuery.error instanceof AccountsError && profileQuery.error.kind === 'auth-required'
-            ? 'Your session has expired. Please sign in again.'
-            : 'Your merchant approval could not be checked. Please retry.'}</p>
-          <button type="button" disabled={profileQuery.isFetching} onClick={() => {
+        <FeedbackState title="Merchant account unavailable" tone="error" action={
+          <Button disabled={profileQuery.isFetching} onClick={() => {
             if (!profileQuery.isFetching) void profileQuery.refetch({ cancelRefetch: false })
-          }}>Retry account</button>
+          }}>Retry account</Button>
+        }>
+          {profileQuery.error instanceof AccountsError && profileQuery.error.kind === 'auth-required'
+            ? 'Your session has expired. Please sign in again.'
+            : 'Your merchant approval could not be checked.'}
         </FeedbackState>
       )}
-      {/* Approval Status Restriction */}
       {!profileQuery.isPending && !profileQuery.isError && !isApproved && (
-        <div className="approval-restriction-container">
-          <MerchantApprovalBanner rawStatus={merchantProfile?.status} />
-          <aside className="card locked-webhooks-notice" role="status">
-            <h3 className="section-heading">Webhook Management Locked</h3>
-            <p className="muted">
-              In accordance with SwiftDrop baseline security policy (<code>DEC-MER-03</code>), webhook endpoint registration, signature generation, and delivery inspection are reserved for verified accounts.
-            </p>
-            <p className="muted">
-              Once your commercial registration is approved by SwiftDrop administration, webhook configuration will unlock automatically.
-            </p>
-          </aside>
-        </div>
+        <MerchantApprovalBanner rawStatus={merchantProfile?.status} />
       )}
 
       {/* Approved Merchant Workflow */}
       {!profileQuery.isPending && isApproved && (
-        <div className="profile-grid webhooks-grid">
-          <main className="webhooks-main-column">
-            {/* One-Time Secret Alert */}
-            {oneTimeSecret && (
-              <WebhookSecretAlert
-                secret={oneTimeSecret.secret}
-                endpointUrl={oneTimeSecret.endpointUrl}
-                onDismiss={() => setOneTimeSecret(null)}
-              />
-            )}
-
-            {/* Registration Form (Collapsible) */}
-            {showForm && (
-              <WebhookSubscriptionForm
-                onSubmit={handleCreateSubscription}
-                onCancel={() => { setShowForm(false); setFormApiError(null) }}
-                isSubmitting={formSubmitting}
-                apiError={formApiError}
-              />
-            )}
-
-            {/* Subscriptions List */}
-            <WebhookSubscriptionList
-              subscriptions={subscriptionsQuery.data || []}
-              isLoading={subscriptionsQuery.isPending}
-              isError={subscriptionsQuery.isError}
-              errorMessage={
-                subscriptionsQuery.error instanceof CommunicationsError
-                  ? subscriptionsQuery.error.message
-                  : 'The webhook service is unreachable right now. Please try again shortly.'
-              }
-              onRetry={() => { if (!subscriptionsQuery.isFetching) void subscriptionsQuery.refetch({ cancelRefetch: false }) }}
-              onInspectDeliveries={(sub) => setInspectingSub(sub)}
-              onDeleteSubscription={(sub) => setDeletingSub(sub)}
-              onOpenRegisterForm={() => { setShowForm(true); setFormApiError(null) }}
+        <div className="webhooks-main-column">
+          {/* One-Time Secret Alert */}
+          {oneTimeSecret && (
+            <WebhookSecretAlert
+              secret={oneTimeSecret.secret}
+              endpointUrl={oneTimeSecret.endpointUrl}
+              onDismiss={() => setOneTimeSecret(null)}
             />
-          </main>
+          )}
 
-          <aside className="card webhooks-info-sidebar" aria-labelledby="webhook-spec-heading">
-            <h2 id="webhook-spec-heading" className="section-heading">Security & Specifications</h2>
-            
-            <dl className="spec-list">
-              <div className="spec-item">
-                <dt className="field-label">Signature Header</dt>
-                <dd className="field-value"><code>X-SwiftDrop-Signature</code></dd>
-              </div>
-              <div className="spec-item">
-                <dt className="field-label">Algorithm</dt>
-                <dd className="field-value">HMAC-SHA256 (<code>t=timestamp,v1=hex_digest</code>)</dd>
-              </div>
-              <div className="spec-item">
-                <dt className="field-label">Replay Window</dt>
-                <dd className="field-value">5 minutes (300s timestamp tolerance)</dd>
-              </div>
-              <div className="spec-item">
-                <dt className="field-label">Retry Policy</dt>
-                <dd className="field-value">Up to 5 attempts with exponential backoff and jitter (at most 5 minutes between attempts)</dd>
-              </div>
-              <div className="spec-item">
-                <dt className="field-label">Terminal Status</dt>
-                <dd className="field-value">Transitions to <code>EXHAUSTED</code> after 5 failed attempts</dd>
-              </div>
-              <div className="spec-item">
-                <dt className="field-label">Contract Standard</dt>
-                <dd className="field-value">OpenAPI v1.0.0 / Communications Service</dd>
-              </div>
-            </dl>
+          {/* Registration Form (Collapsible) */}
+          {showForm && (
+            <WebhookSubscriptionForm
+              onSubmit={handleCreateSubscription}
+              onCancel={() => { setShowForm(false); setFormApiError(null) }}
+              isSubmitting={formSubmitting}
+              apiError={formApiError}
+            />
+          )}
 
-            <div className="sidebar-action-box">
-              <p className="muted small-note">
-                Need to rotate your signing secret? Deactivate the old destination and register a new endpoint to generate a fresh secret.
-              </p>
-            </div>
-          </aside>
+          {/* Subscriptions List */}
+          <WebhookSubscriptionList
+            subscriptions={subscriptionsQuery.data || []}
+            isLoading={subscriptionsQuery.isPending}
+            isError={subscriptionsQuery.isError}
+            errorMessage={
+              subscriptionsQuery.error instanceof CommunicationsError
+                ? subscriptionsQuery.error.message
+                : 'The webhook service is unreachable right now. Please try again shortly.'
+            }
+            onRetry={() => { if (!subscriptionsQuery.isFetching) void subscriptionsQuery.refetch({ cancelRefetch: false }) }}
+            onInspectDeliveries={(sub) => setInspectingSub(sub)}
+            onDeleteSubscription={(sub) => setDeletingSub(sub)}
+            onOpenRegisterForm={() => { setShowForm(true); setFormApiError(null) }}
+          />
         </div>
       )}
 
