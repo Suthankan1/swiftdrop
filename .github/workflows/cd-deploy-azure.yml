@@ -58,10 +58,32 @@ jobs:
           TAG_SHORT="${CUSTOM_TAG:-$(echo "${DEPLOY_SHA}" | cut -c1-7)}"
           echo "Connecting to ${VM_USER}@${VM_HOST} to deploy tag: ${TAG_SHORT} (commit ${DEPLOY_SHA})..."
 
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" bash -s -- "${DEPLOY_SHA}" "${TAG_SHORT}" << 'EOF'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" bash -s -- "${DEPLOY_SHA}" "${TAG_SHORT}" << 'EOF'
             set -euo pipefail
             DEPLOY_SHA="$1"
             TAG_SHORT="$2"
+
+            cd /home/azureuser/swiftdrop/platform/compose
+            PREV_TAG="$(grep "^SWIFTDROP_IMAGE_TAG=" .env 2>/dev/null | cut -d'=' -f2 || echo "")"
+
+            rollback() {
+              echo "================================================================================"
+              echo "⚠ Staging deployment failed! Initiating automated rollback..."
+              echo "================================================================================"
+              if [ -n "${PREV_TAG}" ]; then
+                echo "Reverting SWIFTDROP_IMAGE_TAG to '${PREV_TAG}' in .env..."
+                sed -i "s/^SWIFTDROP_IMAGE_TAG=.*/SWIFTDROP_IMAGE_TAG=${PREV_TAG}/" .env
+                echo "Pulling rollback images..."
+                docker compose -f compose.yaml -f compose.supabase.yaml pull
+                echo "Restarting runtime containers with previous version..."
+                ./start.sh
+                echo "✓ Rollback to version ${PREV_TAG} complete."
+              else
+                echo "Notice: No previous SWIFTDROP_IMAGE_TAG was found; skipping tag rollback."
+              fi
+              exit 1
+            }
+            trap 'rollback' ERR
 
             echo "Updating repository to ${DEPLOY_SHA} on Azure VM..."
             cd /home/azureuser/swiftdrop
@@ -82,7 +104,8 @@ jobs:
 
             echo "Starting runtime containers..."
             ./start.sh
-            ./status.sh
+            STRICT_HEALTH_CHECK=true ./status.sh
+            trap - ERR
           EOF
 
           echo "✓ Successfully deployed version ${TAG_SHORT} to Azure Staging VM."
