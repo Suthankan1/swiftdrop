@@ -41,9 +41,38 @@ describe('merchant quote confirmation', () => {
     await user.click(screen.getByRole('button', { name: 'Review price' }))
     expect(await screen.findByRole('heading', { name: 'Review your quote' })).toBeInTheDocument()
     expect(api.bookParcel).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'Cancel quote and edit' }))
+    await user.click(screen.getByRole('button', { name: 'Edit details' }))
     expect(screen.getByLabelText('Your order reference')).toHaveValue('CONFIRM-1')
     expect(api.bookParcel).not.toHaveBeenCalled()
+  })
+
+  it('refreshes an expired quote and resets the form after a booking', async () => {
+    api.calculateQuote.mockResolvedValueOnce({
+      quoteId: 'expired-quote', totalAmountMinorUnits: 120000, currency: 'LKR',
+      expiresAt: '2000-01-01T00:00:00Z', isExpired: true,
+    })
+    const user = await fillOrder()
+    await user.click(screen.getByRole('button', { name: 'Review price' }))
+    await user.click(await screen.findByRole('button', { name: 'Get fresh quote' }))
+    expect(api.bookParcel).not.toHaveBeenCalled()
+    await user.click(await screen.findByRole('button', { name: 'Confirm and book order' }))
+    expect(await screen.findByRole('heading', { name: 'Order booked' })).toBeInTheDocument()
+    expect(api.bookParcel.mock.calls[0]![0].quoteId).toBe('quote-confirm')
+    await user.click(screen.getByRole('button', { name: 'Book another' }))
+    expect(screen.getByLabelText('Your order reference')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Review price' })).toBeEnabled()
+    expect(screen.queryByRole('heading', { name: 'Review your quote' })).not.toBeInTheDocument()
+  })
+
+  it('shows an invalid phone number beside the field without requesting a price', async () => {
+    const user = await fillOrder()
+    const phone = screen.getByLabelText('Recipient phone')
+    await user.clear(phone)
+    await user.type(phone, '123')
+    await user.click(screen.getByRole('button', { name: 'Review price' }))
+    expect(phone).toHaveAccessibleDescription('Recipient phone must be a valid phone number.')
+    expect(phone).toHaveFocus()
+    expect(api.calculateQuote).not.toHaveBeenCalled()
   })
 
   it.each([
