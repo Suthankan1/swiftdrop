@@ -2157,13 +2157,30 @@ html:has(.merchant-workspace) { scrollbar-gutter: stable; }
   box-shadow: 0 0 0 2px rgba(46, 80, 56, 0.12);
   background: #ffffff;
 }
-@media (max-width: 480px) {
-  .ai-assistant-drawer {
-    right: 12px;
-    bottom: 74px;
-    width: calc(100vw - 24px);
-    height: calc(100vh - 100px);
+.ai-assistant-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.2);
+  z-index: 998;
+  animation: fadeIn 0.18s ease-out;
+}
+@media (min-width: 900px) {
+  .ai-assistant-backdrop {
+    background: transparent;
   }
+}
+
+.admin-nav-button {
+  width: 100%;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.profile-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2196,6 +2213,15 @@ html:has(.merchant-workspace) { scrollbar-gutter: stable; }
 @media (max-width: 640px) {
   .app-main-content { padding-bottom: 72px; }
   .ai-assistant-drawer { right: 8px; left: 8px; bottom: 88px; width: auto; height: min(70vh, 520px); }
+}
+@media (max-width: 480px) {
+  .ai-assistant-drawer {
+    right: 8px;
+    left: 8px;
+    bottom: 70px;
+    width: calc(100vw - 16px);
+    height: min(75vh, 520px);
+  }
 }
 
 /* The delivery stepper is an ordered list for screen readers; keep its visual layout (audit 96). */
@@ -2491,4 +2517,17 @@ ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }
 .ai-assistant-launcher.is-collapsed:hover,
 .ai-assistant-launcher.is-collapsed:focus-visible {
   opacity: 1;
+}
+/* ---------------------------------------------------------------------------
+   Touch target sizing (WCAG 2.5.5 / RESP-02): ensure interactive elements have
+   at least 44x44px touch targets on coarse pointer (touch) devices.
+   --------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .button,
+  button,
+  [role="button"],
+  .pagination button {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }

@@ -148,6 +148,13 @@ public class RateLimitingGatewayFilter implements GlobalFilter, Ordered {
     }
 
     private String resolveClientIp(ServerWebExchange exchange) {
+        String xForwardedFor = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            String clientIp = xForwardedFor.split(",")[0].trim();
+            if (!clientIp.isEmpty()) {
+                return clientIp;
+            }
+        }
         InetSocketAddress remoteAddress = exchange.getRequest().getRemoteAddress();
         if (remoteAddress != null && remoteAddress.getAddress() != null) {
             return remoteAddress.getAddress().getHostAddress();

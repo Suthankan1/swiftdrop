@@ -43,7 +43,7 @@ Example client entry (URL-based MCP server):
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | empty | Empty keeps the assistant disabled (`/status` reports `enabled: false`, `/chat` returns 503). Sent only in the `x-goog-api-key` header; never logged or returned. |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Any Gemini model that supports function calling. |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Any Gemini model that supports function calling. |
 | `PRICING_SERVICE_URL`, `DELIVERY_SERVICE_URL` | localhost | Internal service URLs. |
 | `ASSISTANT_MAX_TOOL_ROUNDS` | `4` | Upper bound on tool calls per answer. |
 

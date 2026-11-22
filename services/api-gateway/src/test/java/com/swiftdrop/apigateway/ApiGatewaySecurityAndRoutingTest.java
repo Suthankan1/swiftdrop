@@ -304,6 +304,47 @@ public class ApiGatewaySecurityAndRoutingTest {
     }
 
     @Test
+    @DisplayName("CORS preflight from production Vercel frontend returns permissive CORS headers")
+    void corsPreflight_VercelOrigin_ReturnsPermissiveCorsHeaders() {
+        webTestClient.options()
+                .uri("/api/v1/users/me")
+                .header(HttpHeaders.ORIGIN, "https://swiftdrop-frontend.vercel.app")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization,Content-Type")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://swiftdrop-frontend.vercel.app")
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
+                .expectHeader().exists(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS);
+    }
+
+    @Test
+    @DisplayName("CORS preflight from preview SwiftDrop Vercel frontend returns permissive CORS headers")
+    void corsPreflight_SwiftDropPreviewVercelOrigin_ReturnsPermissiveCorsHeaders() {
+        webTestClient.options()
+                .uri("/api/v1/users/me")
+                .header(HttpHeaders.ORIGIN, "https://swiftdrop-pr-123.vercel.app")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization,Content-Type")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://swiftdrop-pr-123.vercel.app")
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
+    }
+
+    @Test
+    @DisplayName("CORS preflight from unrelated 3rd-party Vercel origin does not return permissive origin header")
+    void corsPreflight_UnrelatedVercelOrigin_DoesNotReturnPermissiveHeader() {
+        webTestClient.options()
+                .uri("/api/v1/users/me")
+                .header(HttpHeaders.ORIGIN, "https://random-attacker.vercel.app")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization")
+                .exchange()
+                .expectHeader().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN);
+    }
+
+    @Test
     @DisplayName("CORS preflight from disallowed origin does not return permissive origin header")
     void corsPreflight_DisallowedOrigin_DoesNotReturnPermissiveHeader() {
         webTestClient.options()

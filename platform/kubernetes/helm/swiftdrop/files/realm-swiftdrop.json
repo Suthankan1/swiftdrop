@@ -127,8 +127,8 @@
         "https://app.swiftdrop.local:18443",
         "http://localhost:5173"
       ],
-      "rootUrl": "https://swiftdrop.local:18443",
-      "baseUrl": "https://swiftdrop.local:18443",
+      "rootUrl": "https://swiftdrop-frontend.vercel.app",
+      "baseUrl": "https://swiftdrop-frontend.vercel.app/",
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,

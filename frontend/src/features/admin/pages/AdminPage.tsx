@@ -25,25 +25,27 @@ export function AdminPage() {
             Staff access is provisioned by an authorized administrator. Signing in does not grant unrestricted access to business records.
           </p>
           <h3>Merchant review</h3>
-          <p><Link to="/admin/merchants" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Review merchant applications</span> <span aria-hidden="true">→</span></Link></p>
+          <p><Link to="/admin/merchants" className="button button-tonal button-sm admin-nav-button"><span>Review merchant applications</span> <span aria-hidden="true">→</span></Link></p>
           {auth.snapshot.status === 'authenticated' && auth.snapshot.roles.includes('ADMIN') && <>
             <h3>User and staff management</h3>
-            <p><Link to="/admin/users" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Browse account users</span> <span aria-hidden="true">→</span></Link></p>
-            <p><Link to="/admin/staff" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Manage staff profiles</span> <span aria-hidden="true">→</span></Link></p>
+            <p><Link to="/admin/users" className="button button-tonal button-sm admin-nav-button"><span>Browse account users</span> <span aria-hidden="true">→</span></Link></p>
+            <p><Link to="/admin/staff" className="button button-tonal button-sm admin-nav-button"><span>Manage staff profiles</span> <span aria-hidden="true">→</span></Link></p>
             <h3>Zones and pricing</h3>
-            <p><Link to="/admin/pricing" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Manage zones and pricing</span> <span aria-hidden="true">→</span></Link></p>
+            <p><Link to="/admin/pricing" className="button button-tonal button-sm admin-nav-button"><span>Manage zones and pricing</span> <span aria-hidden="true">→</span></Link></p>
             <h3>Reports</h3>
-            <p><Link to="/admin/reports" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>View daily outcomes and admin reports</span> <span aria-hidden="true">→</span></Link></p>
-            <p><Link to="/dispatcher" className="button button-tonal button-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: '8px' }}><span>Open the dispatch console</span> <span aria-hidden="true">→</span></Link></p>
+            <p><Link to="/admin/reports" className="button button-tonal button-sm admin-nav-button"><span>View daily outcomes and admin reports</span> <span aria-hidden="true">→</span></Link></p>
+            <p><Link to="/dispatcher" className="button button-tonal button-sm admin-nav-button"><span>Open the dispatch console</span> <span aria-hidden="true">→</span></Link></p>
           </>}
           {query.isError && (
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => { void refetch() }}
-            >
-              Retry profile
-            </Button>
+            <div className="profile-card-actions">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => { void refetch() }}
+              >
+                Retry profile
+              </Button>
+            </div>
           )}
         </aside>
       </div>

@@ -53,13 +53,15 @@ export function DispatcherPage() {
             </p>
             <p className="muted">Assigning a courier does not change the parcel lifecycle status.</p>
             {query.isError && (
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={() => { void refetch() }}
-              >
-                Retry profile
-              </Button>
+              <div className="profile-card-actions">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => { void refetch() }}
+                >
+                  Retry profile
+                </Button>
+              </div>
             )}
           </aside>
         </section>
@@ -83,13 +85,15 @@ export function DispatcherPage() {
               </p>
               <p className="muted">Assigning a courier does not change the parcel lifecycle status.</p>
               {query.isError && (
-                <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={() => { void refetch() }}
-                >
-                  Retry profile
-                </Button>
+                <div className="profile-card-actions">
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => { void refetch() }}
+                  >
+                    Retry profile
+                  </Button>
+                </div>
               )}
             </aside>
           </div>

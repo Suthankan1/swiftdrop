@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import {
   isStaffProfile,
   StaffProfileError,
@@ -12,7 +13,7 @@ export interface StaffApiOptions {
 
 export function createStaffApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
 }: StaffApiOptions) {
   return {

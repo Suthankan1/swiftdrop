@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 /** Pricing OpenAPI 1.1 / #123. Monetary int64 values stay decimal strings. */
 export const categories = ['SMALL', 'MEDIUM', 'LARGE', 'OVERSIZED'] as const
 export type Category = typeof categories[number]
@@ -97,7 +98,7 @@ export interface PricingApi {
   rules: (cardId: string, page: number, signal: AbortSignal) => Promise<Page<Rule>>
   command: (command: PricingCommand, signal: AbortSignal) => Promise<void>
 }
-export function createPricingApi({ getAccessToken, gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080', fetch: fetchRequest = (...args) => globalThis.fetch(...args) }: {
+export function createPricingApi({ getAccessToken, gatewayUrl = getApiGatewayUrl(), fetch: fetchRequest = (...args) => globalThis.fetch(...args) }: {
   getAccessToken: () => Promise<string | null>; gatewayUrl?: string; fetch?: typeof globalThis.fetch
 }): PricingApi {
   const base = `${gatewayUrl.replace(/\/$/, '')}/api/v1/admin/pricing`

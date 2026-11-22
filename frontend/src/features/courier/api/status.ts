@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import type { ParcelStatus, ProblemDetail } from './proofContracts'
 import {
   CourierStatusError,
@@ -76,7 +77,7 @@ async function readProblem(response: Response): Promise<ProblemDetail | undefine
 
 export function createCourierStatusApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: request = globalThis.fetch,
   timeoutMs = 10_000,
 }: CourierStatusApiOptions) {

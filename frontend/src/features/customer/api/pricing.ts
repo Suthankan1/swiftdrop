@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 import type { ProblemDetail } from './deliveryContracts'
 import type {
   QuoteRequest,
@@ -108,7 +109,7 @@ async function parseProblemDetail(response: Response): Promise<ProblemDetail | u
 
 export function createPricingApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = globalThis.fetch,
 }: PricingApiOptions = {}) {
   const normalizedGateway = gatewayUrl.replace(/\/$/, '')
