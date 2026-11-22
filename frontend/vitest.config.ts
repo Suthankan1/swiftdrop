@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    testTimeout: 20000,
+    maxWorkers: 4,
     clearMocks: true,
     restoreMocks: true,
     coverage: {

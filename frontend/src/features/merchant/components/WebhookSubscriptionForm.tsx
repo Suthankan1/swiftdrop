@@ -69,18 +69,13 @@ export function WebhookSubscriptionForm({
     <section className="card webhook-form-card" aria-labelledby="register-webhook-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Integration setup</p>
           <h2 id="register-webhook-heading">Register Webhook Destination</h2>
         </div>
       </div>
 
-      <p className="muted">
-        Configure an HTTPS endpoint to receive authenticated, real-time parcel status change events.
-      </p>
-
       {(validationError || apiError) && (
         <div className="form-error-banner" role="alert" aria-live="assertive">
-          <strong>Validation Error:</strong> {validationError || apiError}
+          {validationError || apiError}
         </div>
       )}
 
@@ -93,7 +88,7 @@ export function WebhookSubscriptionForm({
             id="webhook-url-input"
             type="url"
             className={`form-input${validationError ? ' is-invalid' : ''}`}
-            placeholder="https://warehouse.example.com/api/v1/swiftdrop-callbacks"
+            placeholder="https://store.example.com/webhooks"
             value={httpsUrl}
             onChange={(e) => handleUrlChange(e.target.value)}
             onBlur={handleUrlBlur}
@@ -103,16 +98,12 @@ export function WebhookSubscriptionForm({
             aria-describedby="webhook-url-hint"
           />
           <p id="webhook-url-hint" className="form-hint">
-            Must be a secure HTTPS destination (TLS 1.2+). Plain HTTP, localhost, and RFC 1918 private IP ranges are rejected per security baseline DEC-COM-01.
+            Use a public HTTPS URL.
           </p>
         </div>
 
         <fieldset className="form-group event-fieldset">
           <legend className="form-label">Subscribed Domain Event Types</legend>
-          <p className="form-hint">
-            Select the lifecycle events you want delivered to this endpoint.
-          </p>
-
           <div className="event-options">
             {SUPPORTED_WEBHOOK_EVENTS.map((eventType) => (
               <label key={eventType} className="form-checkbox-label">
@@ -125,9 +116,6 @@ export function WebhookSubscriptionForm({
                 />
                 <span className="event-label-text">
                   <code className="event-code">{eventType}</code>
-                  <span className="event-description">
-                    Emitted upon courier collection, transit scans, last-mile dispatch, final delivery handover, or terminal exception.
-                  </span>
                 </span>
               </label>
             ))}

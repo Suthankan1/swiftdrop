@@ -6,6 +6,11 @@ import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 import { CourierDashboardSummary } from '../components/CourierDashboardSummary'
 import { CourierAssignmentList } from '../components/CourierAssignmentList'
 import { CourierParcelDetails } from '../components/CourierParcelDetails'
+import { CourierDeliveryHistory } from '../components/CourierDeliveryHistory'
+import { CourierHistoricalDetails } from '../components/CourierHistoricalDetails'
+import type { CourierAssignmentListState } from '../components/CourierAssignmentList'
+import type { CourierHistoryState } from '../components/CourierDeliveryHistory'
+import type { CourierHistoryStatus } from '../api/courierContracts'
 import type { createCourierDashboardApi } from '../api/courierDashboard'
 import type { createCourierAssignmentsApi } from '../api/courierAssignments'
 import type { createCourierProofApi } from '../api/proof'
@@ -33,15 +38,38 @@ export function CourierPage({
     state.profile.role === 'COURIER'
 
   const [selectedParcelId, setSelectedParcelId] = useState<string | null>(null)
-  const [assignmentNotice, setAssignmentNotice] = useState<string | null>(null)
+  const [assignmentNotice, setAssignmentNotice] = useState<{
+    kind: 'success' | 'error'
+    message: string
+  } | null>(null)
   const [summaryRefresh, setSummaryRefresh] = useState(0)
+  const [workspace, setWorkspace] = useState<'active' | 'history'>('active')
+  const [historyStatus, setHistoryStatus] = useState<CourierHistoryStatus | undefined>()
+  const [assignmentState, setAssignmentState] = useState<CourierAssignmentListState>({
+    currentPage: 0,
+    todayOnly: false,
+    searchInput: '',
+    search: '',
+    status: '',
+  })
+  const [historyState, setHistoryState] = useState<CourierHistoryState>({
+    status: '',
+    todayOnly: false,
+    page: 0,
+  })
+  const [historyNavigationRevision, setHistoryNavigationRevision] = useState(0)
+  const [selectedHistoryParcelId, setSelectedHistoryParcelId] = useState<string | null>(null)
 
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
   const [prevSubject, setPrevSubject] = useState(subject)
   if (subject !== prevSubject) {
     setPrevSubject(subject)
     setSelectedParcelId(null)
+    setSelectedHistoryParcelId(null)
+    setWorkspace('active')
     setAssignmentNotice(null)
+    setAssignmentState({ currentPage: 0, todayOnly: false, searchInput: '', search: '', status: '' })
+    setHistoryState({ status: '', todayOnly: false, page: 0 })
   }
 
   return (
@@ -49,57 +77,27 @@ export function CourierPage({
       <header className="page-heading">
         <p className="eyebrow">Courier space</p>
         <h1>
-          Ready for your
-          <br /> next route.
+          Ready for your next route.
+          <br />
+          <span className="page-heading-subtitle" style={{ fontSize: '0.85em', fontWeight: 600, color: 'var(--color-teal)' }}>
+            Courier Operations Dashboard
+          </span>
         </h1>
         <p className="muted">
           Your assigned parcels, stage updates and proof of delivery in one place.
         </p>
       </header>
 
-      <div className="profile-grid">
-        <StaffProfile
-          state={state}
-          onRetry={() => {
-            void refetch()
-          }}
-        />
-
-        <aside className="card courier-note" aria-labelledby="courier-next-heading">
-          <h2 id="courier-next-heading">Your active delivery workflow.</h2>
-          <p className="muted">
-            Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
-          </p>
-          <div className="profile-card-actions">
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => {
-                void auth.logout()
-              }}
-            >
-              Sign out
-            </Button>
-            {query.isError && (
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={() => {
-                  void refetch()
-                }}
-              >
-                Retry profile
-              </Button>
-            )}
-          </div>
-        </aside>
-      </div>
-
+      {/* Primary operational panel visible first for operational couriers */}
       {isOperationalCourier && (
-        <div className="courier-dashboard-container" aria-label="Courier Operations Dashboard">
+        <section className="courier-dashboard-container" aria-label="Courier Operations Dashboard">
           {assignmentNotice && (
-            <div className="feedback-banner is-error" role="alert">
-              <span>{assignmentNotice}</span>
+            <div
+              className={`feedback-banner ${assignmentNotice.kind === 'success' ? 'is-success' : 'is-error'}`}
+              role={assignmentNotice.kind === 'success' ? 'status' : 'alert'}
+              aria-live="polite"
+            >
+              <span>{assignmentNotice.message}</span>
               <Button
                 type="button"
                 variant="secondary"
@@ -114,9 +112,18 @@ export function CourierPage({
             key={`summary-${subject}`}
             apiOverride={summaryApiOverride}
             refreshToken={summaryRefresh}
+            onOpenActive={() => { setWorkspace('active'); setSelectedHistoryParcelId(null) }}
+            onOpenHistory={(status) => {
+              setHistoryStatus(status)
+              setHistoryState({ status: status ?? '', todayOnly: status !== undefined, page: 0 })
+              setHistoryNavigationRevision((value) => value + 1)
+              setWorkspace('history')
+              setSelectedParcelId(null)
+              setSelectedHistoryParcelId(null)
+            }}
           />
 
-          {selectedParcelId ? (
+          {workspace === 'active' && selectedParcelId ? (
             <CourierParcelDetails
               key={`parcel-${subject}-${selectedParcelId}`}
               parcelId={selectedParcelId}
@@ -125,11 +132,15 @@ export function CourierPage({
               apiOverride={proofApiOverride}
               statusApiOverride={statusApiOverride}
               onAssignmentLost={(message) => {
-                setAssignmentNotice(message)
+                setAssignmentNotice({ kind: 'error', message })
+                setSelectedParcelId(null)
+              }}
+              onTerminalSuccess={(message) => {
+                setAssignmentNotice({ kind: 'success', message })
                 setSelectedParcelId(null)
               }}
             />
-          ) : (
+          ) : workspace === 'active' ? (
             <CourierAssignmentList
               key={`assignments-${subject}`}
               selectedParcelId={selectedParcelId}
@@ -137,10 +148,107 @@ export function CourierPage({
                 setAssignmentNotice(null)
                 setSelectedParcelId(id)
               }}
+              onOpenHistory={() => {
+                setHistoryStatus(undefined)
+                setHistoryState({ status: '', todayOnly: false, page: 0 })
+                setHistoryNavigationRevision((value) => value + 1)
+                setWorkspace('history')
+                setSelectedParcelId(null)
+              }}
               apiOverride={assignmentsApiOverride}
+              persistedState={assignmentState}
+              onStateChange={setAssignmentState}
+            />
+          ) : selectedHistoryParcelId ? (
+            <CourierHistoricalDetails
+              parcelId={selectedHistoryParcelId}
+              apiOverride={assignmentsApiOverride}
+              onBack={() => setSelectedHistoryParcelId(null)}
+            />
+          ) : (
+            <CourierDeliveryHistory
+              key={`history-${subject}-${historyNavigationRevision}`}
+              apiOverride={assignmentsApiOverride}
+              initialStatus={historyStatus}
+              persistedState={historyState}
+              onStateChange={setHistoryState}
+              onBack={() => { setWorkspace('active'); setHistoryStatus(undefined) }}
+              onSelectParcel={(id) => setSelectedHistoryParcelId(id)}
             />
           )}
-        </div>
+        </section>
+      )}
+
+      {/* When profile is not ready (loading, unprovisioned, suspended), show profile state immediately */}
+      {!isOperationalCourier && (
+        <section className="profile-grid" aria-label="Staff Profile Status">
+          <StaffProfile
+            state={state}
+            onRetry={() => {
+              void refetch()
+            }}
+          />
+
+          <aside className="card courier-note" aria-labelledby="courier-next-heading">
+            <h2 id="courier-next-heading">Your active delivery workflow.</h2>
+            <p className="muted">
+              Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
+            </p>
+            {query.isError && (
+              <div className="profile-card-actions">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => {
+                    void refetch()
+                  }}
+                >
+                  Retry profile
+                </Button>
+              </div>
+            )}
+          </aside>
+        </section>
+      )}
+
+      {/* Secondary section for operational couriers: profile information moved below operations */}
+      {isOperationalCourier && (
+        <section className="profile-section secondary-section" aria-label="Courier Profile & Staff Information" style={{ marginTop: '2.5rem' }}>
+          <div className="section-heading-row" style={{ marginBottom: '1rem' }}>
+            <div>
+              <p className="eyebrow">Staff Account</p>
+              <h2>Courier Profile Details</h2>
+            </div>
+          </div>
+          <div className="profile-grid">
+            <StaffProfile
+              state={state}
+              onRetry={() => {
+                void refetch()
+              }}
+            />
+
+            <aside className="card courier-note" aria-labelledby="courier-next-heading">
+              <h2 id="courier-next-heading">Your active delivery workflow.</h2>
+              <p className="muted">
+                Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
+              </p>
+              {query.isError && (
+                <div className="profile-card-actions">
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => {
+                      void refetch()
+                    }}
+                  >
+                    Retry profile
+                  </Button>
+                </div>
+              )}
+            </aside>
+          </div>
+        </section>
       )}
     </div>
   )

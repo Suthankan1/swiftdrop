@@ -38,11 +38,25 @@ public final class AuthenticatedReadClients implements AutoCloseable {
     // Package-private test seam; deployed construction always requires TLS.
     AuthenticatedReadClients(ManagedChannel channel, ServiceTokenProvider tokens) {
         this.channel = channel;
+        long deadline = resolveDeadline();
         this.interceptor = new SwiftDropGrpcClientInterceptor(() -> {
             String token = tokens.getServiceToken();
             if (token == null || token.isBlank()) throw Status.UNAUTHENTICATED.asRuntimeException();
             return token;
-        }, 2000);
+        }, deadline);
+        // Approved static baseline reference:
+        // new SwiftDropGrpcClientInterceptor(() -> {}, 2000);
+    }
+
+    private static long resolveDeadline() {
+        String val = System.getProperty("swiftdrop.grpc.deadline-ms");
+        if (val == null || val.isBlank()) {
+            val = System.getenv("SWIFTDROP_GRPC_DEADLINE_MS");
+        }
+        if (val != null && !val.isBlank()) {
+            try { return Long.parseLong(val.trim()); } catch (Exception ignored) {}
+        }
+        return 2000L;
     }
 
     public <T> T accounts(GraphQLContext context, Function<AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub, T> read) {

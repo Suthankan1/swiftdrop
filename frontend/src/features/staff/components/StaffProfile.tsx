@@ -113,28 +113,28 @@ export function StaffProfile({ state, onRetry }: StaffProfileProps) {
         </Badge>
       </div>
       <dl className="profile-details">
-        <div className="field">
-          <dt className="field-label">Staff ID</dt>
-          <dd className="field-value">{profile.staffId}</dd>
+        <div className="field staff-field-tile">
+          <dt className="field-label"><span aria-hidden="true">🆔 </span>Staff ID</dt>
+          <dd className="field-value"><code>{profile.staffId}</code></dd>
         </div>
-        <div className="field">
-          <dt className="field-label">Email</dt>
+        <div className="field staff-field-tile">
+          <dt className="field-label"><span aria-hidden="true">✉️ </span>Email</dt>
           <dd className="field-value">{profile.email}</dd>
         </div>
-        <div className="field">
-          <dt className="field-label">Phone number</dt>
+        <div className="field staff-field-tile">
+          <dt className="field-label"><span aria-hidden="true">📞 </span>Phone number</dt>
           <dd className="field-value">{profile.phoneNumber || 'Not provided'}</dd>
         </div>
-        <div className="field">
-          <dt className="field-label">Department</dt>
+        <div className="field staff-field-tile">
+          <dt className="field-label"><span aria-hidden="true">🏢 </span>Department</dt>
           <dd className="field-value">{profile.department}</dd>
         </div>
-        <div className="field">
-          <dt className="field-label">Assigned Zone</dt>
+        <div className="field staff-field-tile">
+          <dt className="field-label"><span aria-hidden="true">📍 </span>Assigned Zone</dt>
           <dd className="field-value">{profile.assignedZone || 'Unassigned'}</dd>
         </div>
-        <div className="field">
-          <dt className="field-label">Operational Status</dt>
+        <div className="field staff-field-tile">
+          <dt className="field-label"><span aria-hidden="true">⚡ </span>Operational Status</dt>
           <dd className="field-value">{profile.businessStatus}</dd>
         </div>
       </dl>

@@ -65,6 +65,11 @@ class MerchantApiKeyServiceTest {
 
         var response = service.generateApiKey(merchantIdentity, merchantId, request);
 
+        var issuanceOrder = inOrder(merchantRepository, apiKeyRepository);
+        issuanceOrder.verify(merchantRepository).findByIdForUpdate(merchantId);
+        issuanceOrder.verify(apiKeyRepository).countActiveKeys(eq(merchantId), any(Instant.class));
+        issuanceOrder.verify(apiKeyRepository).save(any(MerchantApiKey.class));
+
         assertThat(response).isNotNull();
         assertThat(response.keyId()).isNotNull();
         assertThat(response.name()).isEqualTo("Warehouse Automated Dispenser");

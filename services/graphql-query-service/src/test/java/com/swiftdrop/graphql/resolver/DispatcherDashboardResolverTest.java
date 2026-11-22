@@ -1087,4 +1087,142 @@ class DispatcherDashboardResolverTest {
         assertThat(refreshed.pageInfo().totalElements()).isEqualTo(0);
         assertThat(refreshed.availableCouriers().get(0).activeAssignmentsCount()).isEqualTo(3);
     }
+
+    @Test
+    @DisplayName("Colombo label maps canonically to ZONE_1 for courier and parcel scoping")
+    void testColomboLabel_MatchesZone1CourierAndParcel() throws Exception {
+        setupValidDispatcherDefaults();
+        // Dispatcher assigned to "Colombo"
+        accountsProfileResponse.set(ScopedProfileSummaryResponse.newBuilder()
+                .setSubject(DISPATCHER_SUB)
+                .setFullName("David Dispatcher")
+                .setStaffId("STF-DISP-001")
+                .setRole("DISPATCHER")
+                .setAssignedZone("Colombo")
+                .setStatus("ACTIVE")
+                .build());
+
+        // Courier assigned to "ZONE_1"
+        accountsCouriersResponse.set(AvailableCouriersSummaryResponse.newBuilder()
+                .setTotalCount(1)
+                .setPage(0)
+                .setPageSize(50)
+                .addItems(CourierSummaryItem.newBuilder()
+                        .setCourierSub(COURIER_1_SUB)
+                        .setFullName("Alice Courier")
+                        .setStaffId("STF-CR-001")
+                        .setAssignedZone("ZONE_1")
+                        .setIsActive(true)
+                        .setIsEligible(true)
+                        .build())
+                .build());
+
+        // Parcel with pickupZone "ZONE_1"
+        deliveryQueueResponse.set(ListUnassignedParcelsResponse.newBuilder()
+                .setTotalCount(1)
+                .setPage(0)
+                .setPageSize(20)
+                .addItems(UnassignedParcelSummary.newBuilder()
+                        .setParcelId(PARCEL_1_ID.toString())
+                        .setTrackingNumber("SWD-20261028-0001")
+                        .setStatus("CREATED")
+                        .setVersion(1L)
+                        .setWeightKg(3.5)
+                        .setPickupZone("ZONE_1")
+                        .setDropoffZone("ZONE_2")
+                        .setSizeCategory("MEDIUM")
+                        .setCreatedAt(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build())
+                        .build())
+                .build());
+
+        DataFetchingEnvironment env = createEnvironment(createActor(DISPATCHER_SUB, "DISPATCHER"), null);
+        DispatcherDashboard dashboard = (DispatcherDashboard) resolver.resolve(env);
+
+        assertThat(dashboard).isNotNull();
+        assertThat(dashboard.unassignedParcels()).hasSize(1);
+        assertThat(dashboard.unassignedParcels().get(0).trackingNumber()).isEqualTo("SWD-20261028-0001");
+        assertThat(dashboard.availableCouriers()).hasSize(1);
+        assertThat(dashboard.availableCouriers().get(0).courierSub()).isEqualTo(COURIER_1_SUB);
+    }
+
+    @Test
+    @DisplayName("ZONE_1 dispatcher matches Colombo Municipal District parcel name")
+    void testZone1Dispatcher_MatchesColomboMunicipalDistrictParcel() throws Exception {
+        setupValidDispatcherDefaults();
+        // Dispatcher assigned to "ZONE_1"
+        accountsProfileResponse.set(ScopedProfileSummaryResponse.newBuilder()
+                .setSubject(DISPATCHER_SUB)
+                .setFullName("David Dispatcher")
+                .setStaffId("STF-DISP-001")
+                .setRole("DISPATCHER")
+                .setAssignedZone("ZONE_1")
+                .setStatus("ACTIVE")
+                .build());
+
+        accountsCouriersResponse.set(AvailableCouriersSummaryResponse.newBuilder()
+                .setTotalCount(1)
+                .setPage(0)
+                .setPageSize(50)
+                .addItems(CourierSummaryItem.newBuilder()
+                        .setCourierSub(COURIER_1_SUB)
+                        .setFullName("Alice Courier")
+                        .setStaffId("STF-CR-001")
+                        .setAssignedZone("ZONE_1")
+                        .setIsActive(true)
+                        .setIsEligible(true)
+                        .build())
+                .build());
+
+        // Parcel with pickupZone "Colombo Municipal District"
+        deliveryQueueResponse.set(ListUnassignedParcelsResponse.newBuilder()
+                .setTotalCount(1)
+                .setPage(0)
+                .setPageSize(20)
+                .addItems(UnassignedParcelSummary.newBuilder()
+                        .setParcelId(PARCEL_1_ID.toString())
+                        .setTrackingNumber("SWD-20261028-0002")
+                        .setStatus("CREATED")
+                        .setVersion(1L)
+                        .setWeightKg(2.0)
+                        .setPickupZone("Colombo Municipal District")
+                        .setDropoffZone("ZONE_2")
+                        .setSizeCategory("MEDIUM")
+                        .setCreatedAt(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build())
+                        .build())
+                .build());
+
+        DataFetchingEnvironment env = createEnvironment(createActor(DISPATCHER_SUB, "DISPATCHER"), null);
+        DispatcherDashboard dashboard = (DispatcherDashboard) resolver.resolve(env);
+
+        assertThat(dashboard.unassignedParcels()).hasSize(1);
+        assertThat(dashboard.unassignedParcels().get(0).trackingNumber()).isEqualTo("SWD-20261028-0002");
+    }
+
+    @Test
+    @DisplayName("Scoped dispatcher requesting zone outside operational scope is rejected")
+    void testScopedDispatcher_FilteredOutsideZone_Rejected() {
+        setupValidDispatcherDefaults();
+        // Dispatcher assigned to "ZONE_1"
+        accountsProfileResponse.set(ScopedProfileSummaryResponse.newBuilder()
+                .setSubject(DISPATCHER_SUB)
+                .setFullName("David Dispatcher")
+                .setStaffId("STF-DISP-001")
+                .setRole("DISPATCHER")
+                .setAssignedZone("ZONE_1")
+                .setStatus("ACTIVE")
+                .build());
+
+        GraphQLContext context = GraphQLContext.newContext()
+                .of("actor", createActor(DISPATCHER_SUB, "DISPATCHER"), "correlationId", "test-corr-id")
+                .build();
+        DataFetchingEnvironment env = DataFetchingEnvironmentImpl.newDataFetchingEnvironment()
+                .graphQLContext(context)
+                .arguments(Map.of("zone", "ZONE_2"))
+                .build();
+
+        assertThatThrownBy(() -> resolver.resolve(env))
+                .isInstanceOf(StatusRuntimeException.class)
+                .extracting(e -> ((StatusRuntimeException) e).getStatus().getCode())
+                .isEqualTo(Status.Code.PERMISSION_DENIED);
+    }
 }

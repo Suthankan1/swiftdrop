@@ -36,11 +36,8 @@ export function AdminPage() {
             <p><Link to="/admin/reports" className="button button-tonal button-sm admin-nav-button"><span>View daily outcomes and admin reports</span> <span aria-hidden="true">→</span></Link></p>
             <p><Link to="/dispatcher" className="button button-tonal button-sm admin-nav-button"><span>Open the dispatch console</span> <span aria-hidden="true">→</span></Link></p>
           </>}
-          <div className="profile-card-actions">
-            <Button variant="secondary" type="button" onClick={() => { void auth.logout() }}>
-              Sign out
-            </Button>
-            {query.isError && (
+          {query.isError && (
+            <div className="profile-card-actions">
               <Button
                 variant="secondary"
                 type="button"
@@ -48,8 +45,8 @@ export function AdminPage() {
               >
                 Retry profile
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </aside>
       </div>
     </div>

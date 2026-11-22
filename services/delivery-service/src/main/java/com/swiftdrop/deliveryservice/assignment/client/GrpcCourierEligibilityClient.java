@@ -37,7 +37,7 @@ public class GrpcCourierEligibilityClient implements CourierEligibilityClient {
     public GrpcCourierEligibilityClient(
             @Value("${swiftdrop.accounts.grpc.host:${ACCOUNTS_GRPC_HOST:localhost}}") String grpcHost,
             @Value("${swiftdrop.accounts.grpc.port:${ACCOUNTS_GRPC_PORT:9081}}") int grpcPort,
-            @Value("${swiftdrop.accounts.grpc.deadline-ms:2000}") long deadlineMs,
+            @Value("${swiftdrop.accounts.grpc.deadline-ms:${ACCOUNTS_GRPC_DEADLINE_MS:10000}}") long deadlineMs,
             @Value("${swiftdrop.accounts.grpc.enabled:true}") boolean clientEnabled,
             ServiceTokenProvider serviceTokenProvider) {
         this.serviceTokenProvider = serviceTokenProvider;

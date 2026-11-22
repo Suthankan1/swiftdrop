@@ -84,6 +84,7 @@ function setup(
   const onParcelRefresh = vi.fn()
   const onProofRefresh = vi.fn()
   const onAssignmentLost = vi.fn()
+  const onTerminalSuccess = vi.fn()
 
   render(
     <CourierStageActions
@@ -96,10 +97,19 @@ function setup(
       onParcelRefresh={onParcelRefresh}
       onProofRefresh={onProofRefresh}
       onAssignmentLost={onAssignmentLost}
+      onTerminalSuccess={onTerminalSuccess}
     />,
   )
 
-  return { getParcel, getProofMetadata, updateStatus, onParcelRefresh, onProofRefresh, onAssignmentLost }
+  return {
+    getParcel,
+    getProofMetadata,
+    updateStatus,
+    onParcelRefresh,
+    onProofRefresh,
+    onAssignmentLost,
+    onTerminalSuccess,
+  }
 }
 
 describe('CourierStageActions', () => {
@@ -208,6 +218,30 @@ describe('CourierStageActions', () => {
     )
     expect(screen.queryByText('private/internal/object')).not.toBeInTheDocument()
     expect(await screen.findByRole('status')).toHaveTextContent(/confirmed.*DELIVERED/i)
+    expect(result.getParcel).toHaveBeenCalledOnce()
+    expect(result.onParcelRefresh).toHaveBeenLastCalledWith(expect.objectContaining({
+      currentStatus: 'DELIVERED',
+      version: 8,
+      activeCourierSub: null,
+    }))
+    expect(result.onTerminalSuccess).toHaveBeenCalledWith(expect.stringMatching(/confirmed.*DELIVERED/i))
+    expect(result.onAssignmentLost).not.toHaveBeenCalled()
+  })
+
+  it('does not misreport normal assignment closure after a confirmed delivery response', async () => {
+    const user = userEvent.setup()
+    const current = parcel('OUT_FOR_DELIVERY', 7)
+    const result = setup(current, {
+      reconciled: [current],
+      proofRecord: proof,
+      proofStatus: 'verified-exists',
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Complete Delivery' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/confirmed.*DELIVERED/i)
+    expect(result.getParcel).toHaveBeenCalledOnce()
+    expect(result.onAssignmentLost).not.toHaveBeenCalled()
   })
 
   it('reloads on conflict, never auto-repeats, and uses the new version only after a fresh user action', async () => {

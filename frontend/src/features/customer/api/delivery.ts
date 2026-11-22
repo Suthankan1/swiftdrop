@@ -160,7 +160,7 @@ function isCustomerDeliverySummary(value: unknown): value is CustomerDeliverySum
     (value.dropoffAddress === undefined || typeof value.dropoffAddress === 'string') &&
     (value.recipientCity === undefined || typeof value.recipientCity === 'string') &&
     (value.weightKg === undefined || value.weightKg === null || typeof value.weightKg === 'number') &&
-    (value.updatedAt === undefined || typeof value.updatedAt === 'string')
+    (value.updatedAt == null || typeof value.updatedAt === 'string')
   )
 }
 

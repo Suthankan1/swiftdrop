@@ -76,6 +76,7 @@ export interface ParcelDetailResponse {
   dropoffAddress: string
   activeCourierSub: string | null
   createdAt: string
+  updatedAt?: string | null
 }
 
 /**
@@ -94,7 +95,7 @@ export interface CustomerDeliverySummary {
   /** Present when the list endpoint returns full parcel rows. */
   weightKg?: number
   createdAt: string
-  updatedAt?: string
+  updatedAt?: string | null
 }
 
 export interface PaginationParams {

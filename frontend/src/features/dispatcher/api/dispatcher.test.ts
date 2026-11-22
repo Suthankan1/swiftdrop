@@ -65,4 +65,27 @@ describe('Dispatcher boundary adapters', () => {
     await result
     expect(request).not.toHaveBeenCalled()
   })
+  it('retrieves active assignments for a courier from /api/v1/assignments', async () => {
+    const assignmentsPayload = {
+      items: [
+        { assignmentId: 'asg-1', parcelId: 'parcel-1', courierSub: 'courier-1', active: true, assignedAt: '2026-11-14T10:00:00Z' },
+        { assignmentId: 'asg-2', parcelId: 'parcel-2', courierSub: 'courier-2', active: true, assignedAt: '2026-11-14T11:00:00Z' },
+        { assignmentId: 'asg-3', parcelId: 'parcel-3', courierSub: 'courier-1', active: false, assignedAt: '2026-11-14T09:00:00Z' },
+      ],
+      currentPage: 0,
+      pageSize: 100,
+    }
+    const { api, request } = setup(async () => json(assignmentsPayload))
+    const list = await api.getCourierAssignments('courier-1')
+    expect(request).toHaveBeenCalledWith('http://gateway.test/api/v1/assignments?activeOnly=true&size=100', expect.any(Object))
+    expect(list).toHaveLength(1)
+    expect(list[0]?.parcelId).toBe('parcel-1')
+  })
+  it('retrieves parcel details by ID from /api/v1/parcels/{id}', async () => {
+    const parcelPayload = { parcelId: 'parcel-1', trackingNumber: 'SWD-TEST-99', currentStatus: 'ASSIGNED', weightKg: 2.5 }
+    const { api, request } = setup(async () => json(parcelPayload))
+    const parcel = await api.getParcel('parcel-1')
+    expect(request).toHaveBeenCalledWith('http://gateway.test/api/v1/parcels/parcel-1', expect.any(Object))
+    expect(parcel?.trackingNumber).toBe('SWD-TEST-99')
+  })
 })

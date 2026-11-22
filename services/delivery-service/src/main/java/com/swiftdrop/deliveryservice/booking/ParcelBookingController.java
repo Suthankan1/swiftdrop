@@ -2,7 +2,9 @@ package com.swiftdrop.deliveryservice.booking;
 
 import com.swiftdrop.deliveryservice.query.dto.ParcelDetailResponse;
 import com.swiftdrop.deliveryservice.security.KeycloakRoleExtractor;
+import com.swiftdrop.deliveryservice.security.merchant.MerchantTenantResolver;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -26,9 +28,13 @@ import java.util.UUID;
 public class ParcelBookingController {
 
     private final ParcelBookingService bookingService;
+    private final MerchantTenantResolver merchantTenantResolver;
 
-    public ParcelBookingController(ParcelBookingService bookingService) {
+    public ParcelBookingController(
+            ParcelBookingService bookingService,
+            @Autowired(required = false) MerchantTenantResolver merchantTenantResolver) {
         this.bookingService = bookingService;
+        this.merchantTenantResolver = merchantTenantResolver;
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -54,6 +60,8 @@ public class ParcelBookingController {
                     merchantId = UUID.fromString(merchantClaim.toString().trim());
                 } catch (IllegalArgumentException ignored) {
                 }
+            } else if (merchantTenantResolver != null) {
+                merchantId = merchantTenantResolver.resolveMerchantTenant(jwt.getSubject()).orElse(null);
             }
         }
 

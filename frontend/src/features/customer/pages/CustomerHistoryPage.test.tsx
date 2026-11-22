@@ -109,7 +109,7 @@ describe('Customer History & Tracking View (Issue #27 / LATER-01)', () => {
   describe('route protection & role authorization', () => {
     it('redirects unauthenticated users to the login route', () => {
       renderCustomerHistory(anonymousAuth)
-      expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: /delivery history/i })).not.toBeInTheDocument()
     })
 
@@ -142,6 +142,32 @@ describe('Customer History & Tracking View (Issue #27 / LATER-01)', () => {
       // Check financial amount
       expect(screen.getByText('LKR 550.00')).toBeInTheDocument()
       expect(screen.getByText('LKR 320.00')).toBeInTheDocument()
+    })
+
+    it('renders the dedicated Active Deliveries page (/customer/active) with only active shipments', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(testDeliveriesPage), { status: 200 }),
+      )
+
+      renderCustomerHistory(authenticatedCustomer(), '/customer/active')
+
+      expect(await screen.findByRole('heading', { level: 1, name: /active deliveries/i })).toBeInTheDocument()
+      expect(await screen.findByText('SWD-20261025-A102')).toBeInTheDocument()
+      expect(screen.queryByText('SWD-20261025-A101')).not.toBeInTheDocument()
+      expect(screen.queryByText('SWD-20261025-A103')).not.toBeInTheDocument()
+    })
+
+    it('renders the dedicated Completed Deliveries page (/customer/completed) with only completed shipments', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify(testDeliveriesPage), { status: 200 }),
+      )
+
+      renderCustomerHistory(authenticatedCustomer(), '/customer/completed')
+
+      expect(await screen.findByRole('heading', { level: 1, name: /completed deliveries/i })).toBeInTheDocument()
+      expect(await screen.findByText('SWD-20261025-A101')).toBeInTheDocument()
+      expect(screen.getByText('SWD-20261025-A103')).toBeInTheDocument()
+      expect(screen.queryByText('SWD-20261025-A102')).not.toBeInTheDocument()
     })
 
     it('displays empty state when customer has no delivery history', async () => {

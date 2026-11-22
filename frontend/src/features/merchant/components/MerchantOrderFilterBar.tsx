@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { getStatusPresentation } from '../../customer/components/customerUiUtils'
 import { CANONICAL_PARCEL_STATUSES } from './merchantUiUtils'
@@ -7,8 +8,7 @@ interface MerchantOrderFilterBarProps {
   onStatusFilterChange: (status: string) => void
   searchQuery: string
   onSearchQueryChange: (query: string) => void
-  totalCount: number
-  filteredCount: number
+  exportAction: ReactNode
   onRefresh?: () => void
   isRefreshing?: boolean
 }
@@ -18,77 +18,13 @@ export function MerchantOrderFilterBar({
   onStatusFilterChange,
   searchQuery,
   onSearchQueryChange,
-  totalCount,
-  filteredCount,
+  exportAction,
   onRefresh,
   isRefreshing,
 }: MerchantOrderFilterBarProps) {
   return (
-    <div className="merchant-order-filter-bar card" role="search" aria-label="Order filters and search">
-      <div className="filter-controls-row">
-        {/* Quick Filter Segmented Buttons */}
-        <div className="filter-pills-group" role="radiogroup" aria-label="Status filter">
-          <button
-            type="button"
-            className={`filter-pill-btn${statusFilter === 'ALL' ? ' is-active' : ''}`}
-            onClick={() => onStatusFilterChange('ALL')}
-            aria-checked={statusFilter === 'ALL'}
-            role="radio"
-          >
-            All Orders
-          </button>
-          <button
-            type="button"
-            className={`filter-pill-btn${statusFilter === 'ACTIVE' ? ' is-active' : ''}`}
-            onClick={() => onStatusFilterChange('ACTIVE')}
-            aria-checked={statusFilter === 'ACTIVE'}
-            role="radio"
-          >
-            Active
-          </button>
-          <button
-            type="button"
-            className={`filter-pill-btn${statusFilter === 'DELIVERED' ? ' is-active' : ''}`}
-            onClick={() => onStatusFilterChange('DELIVERED')}
-            aria-checked={statusFilter === 'DELIVERED'}
-            role="radio"
-          >
-            Delivered
-          </button>
-          <button
-            type="button"
-            className={`filter-pill-btn${statusFilter === 'FAILED' ? ' is-active' : ''}`}
-            onClick={() => onStatusFilterChange('FAILED')}
-            aria-checked={statusFilter === 'FAILED'}
-            role="radio"
-          >
-            Failed
-          </button>
-        </div>
-
-        {/* Detailed Canonical Status Dropdown */}
-        <div className="filter-dropdown-wrap">
-          <label htmlFor="detailed-status-select" className="visually-hidden">
-            Specific status filter
-          </label>
-          <select
-            id="detailed-status-select"
-            className="form-control status-select"
-            value={statusFilter}
-            onChange={(e) => onStatusFilterChange(e.target.value)}
-            aria-label="Filter by specific lifecycle status"
-          >
-            <option value="ALL">All statuses</option>
-            <option value="ACTIVE">All active orders</option>
-            {CANONICAL_PARCEL_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {getStatusPresentation(status).label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Search Input */}
+    <div className="orders-toolbar" role="search" aria-label="Order filters and search">
+      <div className="orders-toolbar-row">
         <div className="filter-search-wrap">
           <label htmlFor="order-search-input" className="visually-hidden">
             Search orders by tracking number or parcel ID
@@ -97,7 +33,7 @@ export function MerchantOrderFilterBar({
             id="order-search-input"
             type="search"
             className="form-control search-input"
-            placeholder="Search tracking # or parcel ID..."
+            placeholder="Tracking number or parcel ID"
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
             aria-label="Search orders by tracking number or parcel ID"
@@ -114,7 +50,6 @@ export function MerchantOrderFilterBar({
           )}
         </div>
 
-        {/* Refresh Action */}
         {onRefresh && (
           <Button
             variant="secondary"
@@ -124,18 +59,28 @@ export function MerchantOrderFilterBar({
             disabled={isRefreshing}
             aria-label="Refresh orders list"
           >
-            {isRefreshing ? 'Refreshing...' : '↻ Refresh'}
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
         )}
+        {exportAction}
       </div>
-
-      <div className="filter-meta-row">
-        <span className="muted filter-count-text">
-          Showing <strong>{filteredCount}</strong> of <strong>{totalCount}</strong> orders
-          {statusFilter !== 'ALL' && ` (Filtered: ${statusFilter})`}
-          {searchQuery && ` (Search: "${searchQuery}")`}
-        </span>
-      </div>
+      <details className="orders-more-filters">
+        <summary>More filters{statusFilter !== 'ALL' && statusFilter !== 'ACTIVE' &&
+          statusFilter !== 'DELIVERED' && statusFilter !== 'FAILED' ? ' (1 active)' : ''}</summary>
+        <label htmlFor="detailed-status-select">Parcel status</label>
+        <select
+          id="detailed-status-select"
+          className="form-control"
+          value={statusFilter}
+          onChange={event => onStatusFilterChange(event.target.value)}
+        >
+          <option value="ALL">All statuses</option>
+          <option value="ACTIVE">In progress</option>
+          {CANONICAL_PARCEL_STATUSES.map(status => (
+            <option key={status} value={status}>{getStatusPresentation(status).label}</option>
+          ))}
+        </select>
+      </details>
     </div>
   )
 }

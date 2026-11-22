@@ -44,8 +44,8 @@ describe('Merchant role landing and approval-state UI', () => {
 
     renderMerchant(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /commercial logistics/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /manage your deliveries/i })).not.toBeInTheDocument()
     expect(request).not.toHaveBeenCalled()
   })
 
@@ -72,7 +72,7 @@ describe('Merchant role landing and approval-state UI', () => {
       renderMerchant(authenticatedMerchant([role]))
 
       expect(screen.getByRole('alert')).toHaveTextContent(/access unavailable/i)
-      expect(screen.queryByRole('heading', { name: /commercial logistics/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /manage your deliveries/i })).not.toBeInTheDocument()
       expect(screen.queryByText(/synthetic test business/i)).not.toBeInTheDocument()
       expect(request).not.toHaveBeenCalled()
     },
@@ -100,8 +100,8 @@ describe('Merchant role landing and approval-state UI', () => {
     expect(screen.getByRole('status', { name: /approval status: pending/i })).toBeInTheDocument()
     expect(screen.getByText('Approval Pending')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Application under review' })).toBeInTheDocument()
-    expect(screen.getByText(/commercial dispatching, batch order entry, and webhook API access remain locked/i)).toBeInTheDocument()
-    expect(screen.getByText(/standard verification takes 1–2 business days/i)).toBeInTheDocument()
+    expect(screen.getByText('You can book orders once your account is approved.')).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Order shortcuts' })).not.toBeInTheDocument()
 
     // Verifies business details are displayed correctly
     expect(screen.getByText('PV-001234')).toBeInTheDocument()
@@ -133,7 +133,11 @@ describe('Merchant role landing and approval-state UI', () => {
     expect(screen.getByText('Account Approved')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Verified merchant account' })).toBeInTheDocument()
     expect(screen.getByText(/your merchant account is active/i)).toBeInTheDocument()
-    expect(screen.getByText('PV-987654')).toBeInTheDocument()
+    const shortcuts = screen.getByRole('group', { name: 'Order shortcuts' })
+    expect(within(shortcuts).getByRole('link', { name: /new order/i })).toHaveAttribute('href', '/merchant/orders/new')
+    expect(within(shortcuts).getByRole('link', { name: /view orders/i })).toHaveAttribute('href', '/merchant/orders')
+    expect(screen.getByRole('heading', { name: 'Registration details' })).toBeInTheDocument()
+    expect(screen.getByText('PV-987654')).toBeVisible()
     expect(screen.getByText('merch-approved-02')).toBeInTheDocument()
   })
 
@@ -209,7 +213,7 @@ describe('Merchant role landing and approval-state UI', () => {
     expect(screen.getByRole('alert', { name: /approval status: suspended/i })).toBeInTheDocument()
     expect(screen.getByText('Account Suspended')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Operational activities suspended' })).toBeInTheDocument()
-    expect(screen.getByText(/temporarily suspended from initiating deliveries/i)).toBeInTheDocument()
+    expect(screen.getByText(/new bookings are paused/i)).toBeInTheDocument()
   })
 
   it('renders safe fallback for unknown or unrecognized approval status', async () => {
@@ -234,7 +238,7 @@ describe('Merchant role landing and approval-state UI', () => {
     expect(screen.getByRole('status', { name: /approval status: unknown/i })).toBeInTheDocument()
     expect(screen.getByText('Status Unrecognized')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Approval status unavailable' })).toBeInTheDocument()
-    expect(screen.getByText(/UNDER_INVESTIGATION/)).toBeInTheDocument()
+    expect(screen.getByText('Contact support to confirm your account status.')).toBeInTheDocument()
   })
 
   it('handles missing/null merchantProfile safely without crashing', async () => {
@@ -363,7 +367,7 @@ describe('Merchant role landing and approval-state UI', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: merchantFixture.merchantProfile!.businessName })).not.toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     })
   })
 })

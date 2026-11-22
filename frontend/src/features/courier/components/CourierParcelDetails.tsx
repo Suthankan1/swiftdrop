@@ -31,6 +31,8 @@ export interface CourierParcelDetailsProps {
   onAssignmentLost?: (message: string) => void
   /** Called after the courier changes the parcel's status. */
   onParcelChanged?: () => void
+  /** Called only after a validated successful terminal status response. */
+  onTerminalSuccess?: (message: string) => void
 }
 
 export function CourierParcelDetails({
@@ -40,6 +42,7 @@ export function CourierParcelDetails({
   statusApiOverride,
   onAssignmentLost,
   onParcelChanged,
+  onTerminalSuccess,
 }: CourierParcelDetailsProps) {
   const auth = useAuth()
   const subject = auth.snapshot.status === 'authenticated' ? auth.snapshot.subject : ''
@@ -365,6 +368,7 @@ export function CourierParcelDetails({
               setError(message)
               onAssignmentLost?.(message)
             }}
+            onTerminalSuccess={onTerminalSuccess}
           />
 
           <section className="parcel-proof-workspace" aria-label="Proof of delivery and handover">

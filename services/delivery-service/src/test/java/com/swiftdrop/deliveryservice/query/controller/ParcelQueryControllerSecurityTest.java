@@ -318,6 +318,21 @@ class ParcelQueryControllerSecurityTest {
     }
 
     @Test
+    @DisplayName("Courier historical detail uses the dedicated read-only route")
+    void courierHistoricalDetailReturns200() throws Exception {
+        when(queryService.getHistoricalCourierParcelDetail(eq(PARCEL_ID), any(Jwt.class)))
+                .thenReturn(sampleDetailResponse());
+
+        String token = issueToken(COURIER_SUB, List.of("COURIER"), null, trustedRsaKey, "swiftdrop-api", null);
+
+        mvc.perform(get("/api/v1/parcels/courier-history/" + PARCEL_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parcelId").value(PARCEL_ID.toString()));
+    }
+
+    @Test
     @DisplayName("Unassigned courier returns 403 Forbidden")
     void unassignedCourierReturns403() throws Exception {
         when(queryService.getParcelDetail(eq(PARCEL_ID), any(Jwt.class)))

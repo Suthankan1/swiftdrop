@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +7,7 @@ import type { AuthContextValue } from '../../../auth/context'
 import type { SwiftDropRole } from '../../../auth/contracts'
 import { anonymousAuth, TestProviders } from '../../../test/authFixture'
 import { courierStaffFixture } from '../../../test/fixtures'
+import { colomboTodayBounds } from '../utils/historyDateBounds'
 
 function authenticated(
   roles: readonly SwiftDropRole[] = ['COURIER'],
@@ -36,13 +37,23 @@ afterEach(() => {
 })
 
 describe('Courier role landing', () => {
+  it('computes Completed today as a half-open Asia/Colombo calendar day', () => {
+    const beforeColomboMidnight = colomboTodayBounds(new Date('2026-11-14T18:29:59Z'))
+    expect(beforeColomboMidnight.since.toISOString()).toBe('2026-11-13T18:30:00.000Z')
+    expect(beforeColomboMidnight.until.toISOString()).toBe('2026-11-14T18:30:00.000Z')
+
+    const atColomboMidnight = colomboTodayBounds(new Date('2026-11-14T18:30:00Z'))
+    expect(atColomboMidnight.since.toISOString()).toBe('2026-11-14T18:30:00.000Z')
+    expect(atColomboMidnight.until.toISOString()).toBe('2026-11-15T18:30:00.000Z')
+  })
+
   it('redirects an anonymous direct visit to the shared sign-in page without a provider request', () => {
     const request = vi.fn<typeof fetch>()
     vi.stubGlobal('fetch', request)
 
     renderCourier(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /ready for your next route/i })).not.toBeInTheDocument()
     expect(request).not.toHaveBeenCalled()
   })
@@ -215,7 +226,7 @@ describe('Courier role landing', () => {
     )
 
     expect(screen.queryByRole('heading', { name: /ready for your next route/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
   })
 
   describe('Mobile assignment dashboard and parcel detail workflow', () => {
@@ -249,6 +260,112 @@ describe('Courier role landing', () => {
       activeCourierSub: 'courier-test-subject',
       createdAt: '2026-10-26T08:00:00Z',
     }
+
+    it('applies dashboard history shortcuts on every navigation while ordinary history opens unfiltered', async () => {
+      const user = userEvent.setup()
+      const auth = authenticated(['COURIER'], 'courier-test-subject')
+      const historicalAssignment = {
+        ...sampleAssignment,
+        assignmentId: 'history-wf-1',
+        active: false,
+        endedAt: '2026-11-14T08:45:00Z',
+      }
+      const historicalParcel = {
+        ...sampleParcel,
+        currentStatus: 'DELIVERED' as const,
+        activeCourierSub: null,
+      }
+
+      const requestMock = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = url.toString()
+        if (urlStr.includes('/graphql')) {
+          return new Response(JSON.stringify({ data: { courierDashboard: sampleSummary } }), { status: 200 })
+        }
+        if (urlStr.includes('/api/v1/assignments/my/history?')) {
+          return new Response(JSON.stringify({
+            items: [historicalAssignment],
+            currentPage: 0,
+            pageSize: 20,
+            totalElements: 1,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false,
+          }), { status: 200 })
+        }
+        if (urlStr.includes('/api/v1/parcels/courier-history/')) {
+          return new Response(JSON.stringify(historicalParcel), { status: 200 })
+        }
+        if (urlStr.includes('/api/v1/assignments/my?')) {
+          return new Response(JSON.stringify({
+            items: [],
+            currentPage: 0,
+            pageSize: 20,
+            totalElements: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+          }), { status: 200 })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      vi.stubGlobal('fetch', requestMock)
+      renderCourier(auth)
+      expect(await screen.findByRole('button', { name: 'Delivered (Today)' })).toBeInTheDocument()
+
+      const historyRequests = () => requestMock.mock.calls
+        .map(([url]) => url.toString())
+        .filter((url) => url.includes('/api/v1/assignments/my/history?'))
+      const expectLatestHistoryRequest = async (status: string | null, today: boolean) => {
+        await waitFor(() => {
+          const requests = historyRequests()
+          expect(requests.length).toBeGreaterThan(0)
+          const url = new URL(requests.at(-1)!)
+          expect(url.searchParams.get('page')).toBe('0')
+          expect(url.searchParams.get('status')).toBe(status)
+          expect(url.searchParams.has('completedSince')).toBe(today)
+          expect(url.searchParams.has('completedUntil')).toBe(today)
+        })
+      }
+
+      await user.click(screen.getByRole('button', { name: 'Delivered (Today)' }))
+      expect(await screen.findByRole('heading', { name: 'Delivery History' })).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('DELIVERED')
+      expect(screen.getByRole('checkbox', { name: 'Completed today' })).toBeChecked()
+      await expectLatestHistoryRequest('DELIVERED', true)
+
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'FAILED')
+      await user.click(screen.getByRole('checkbox', { name: 'Completed today' }))
+      expect(screen.getByRole('checkbox', { name: 'Completed today' })).not.toBeChecked()
+
+      await user.click(screen.getByRole('button', { name: 'Delivered (Today)' }))
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('DELIVERED')
+      expect(screen.getByRole('checkbox', { name: 'Completed today' })).toBeChecked()
+      await expectLatestHistoryRequest('DELIVERED', true)
+
+      await user.click(screen.getByRole('button', { name: /view historical details/i }))
+      expect(await screen.findByRole('heading', { name: sampleParcel.trackingNumber })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Back to History' }))
+      expect(await screen.findByRole('combobox', { name: 'Status' })).toHaveValue('DELIVERED')
+      expect(screen.getByRole('checkbox', { name: 'Completed today' })).toBeChecked()
+
+      await user.click(screen.getByRole('button', { name: /view historical details/i }))
+      expect(await screen.findByRole('heading', { name: sampleParcel.trackingNumber })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Failed (Today)' }))
+      expect(await screen.findByRole('heading', { name: 'Delivery History' })).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('FAILED')
+      expect(screen.getByRole('checkbox', { name: 'Completed today' })).toBeChecked()
+      await expectLatestHistoryRequest('FAILED', true)
+
+      await user.click(screen.getByRole('button', { name: 'Active Assigned' }))
+      await user.click(await screen.findByRole('button', { name: 'Delivery History' }))
+      expect(await screen.findByRole('heading', { name: 'Delivery History' })).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('')
+      expect(screen.getByRole('checkbox', { name: 'Completed today' })).not.toBeChecked()
+      await expectLatestHistoryRequest(null, false)
+    })
 
     it('navigates from paginated assignments into authorized parcel detail and back', async () => {
       const user = userEvent.setup()
@@ -317,6 +434,98 @@ describe('Courier role landing', () => {
 
       // Confirms returned to assignment list
       expect(await screen.findByRole('heading', { name: /assigned deliveries/i })).toBeInTheDocument()
+    })
+
+    it('returns to the refreshed queue with success feedback after confirmed delivery closes the assignment', async () => {
+      const user = userEvent.setup()
+      const auth = authenticated(['COURIER'], 'courier-test-subject')
+      let delivered = false
+      let parcelReads = 0
+
+      const proofRecord = {
+        proofId: 'proof-wf-101',
+        parcelId: sampleParcel.parcelId,
+        objectReference: 'private/internal/proof.jpg',
+        evidenceType: 'PHOTO',
+        contentType: 'image/jpeg',
+        contentLength: 512,
+        recipientName: 'Recipient',
+        deliveryNote: null,
+        uploadedBySub: 'courier-test-subject',
+        uploadedAt: '2026-11-14T08:30:00Z',
+      }
+
+      const requestMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = url.toString()
+        if (urlStr.includes('/graphql')) {
+          return new Response(
+            JSON.stringify({
+              data: {
+                courierDashboard: {
+                  ...sampleSummary,
+                  activeAssignedCount: delivered ? 0 : 1,
+                  todayDeliveredCount: delivered ? 9 : 8,
+                },
+              },
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.includes('/api/v1/assignments/my')) {
+          const items = delivered ? [] : [sampleAssignment]
+          return new Response(
+            JSON.stringify({
+              items,
+              currentPage: 0,
+              pageSize: 20,
+              totalElements: items.length,
+              totalPages: items.length ? 1 : 0,
+              hasNext: false,
+              hasPrevious: false,
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.endsWith(`/api/v1/parcels/${sampleParcel.parcelId}/proof`)) {
+          return new Response(JSON.stringify(proofRecord), { status: 200 })
+        }
+        if (urlStr.endsWith(`/api/v1/parcels/${sampleParcel.parcelId}/status`) && init?.method === 'PATCH') {
+          delivered = true
+          return new Response(
+            JSON.stringify({
+              parcelId: sampleParcel.parcelId,
+              trackingNumber: sampleParcel.trackingNumber,
+              previousStatus: 'OUT_FOR_DELIVERY',
+              currentStatus: 'DELIVERED',
+              stateVersion: 3,
+              updatedParcelVersion: 3,
+              occurredAt: '2026-11-14T08:45:00Z',
+            }),
+            { status: 200 },
+          )
+        }
+        if (urlStr.endsWith(`/api/v1/parcels/${sampleParcel.parcelId}`)) {
+          parcelReads++
+          return delivered
+            ? new Response(null, { status: 403 })
+            : new Response(JSON.stringify(sampleParcel), { status: 200 })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      vi.stubGlobal('fetch', requestMock)
+      renderCourier(auth)
+
+      await user.click(await screen.findByRole('button', { name: /view parcel details for parcel-w/i }))
+      expect(await screen.findByRole('button', { name: 'Complete Delivery' })).toBeEnabled()
+      const parcelReadsBeforeCompletion = parcelReads
+      await user.click(screen.getByRole('button', { name: 'Complete Delivery' }))
+
+      expect(await screen.findByText(/complete delivery confirmed.*delivered/i)).toBeInTheDocument()
+      expect(screen.queryByText(/access to this parcel.*revoked/i)).not.toBeInTheDocument()
+      expect(await screen.findByText(/no active delivery assignments found/i)).toBeInTheDocument()
+      expect(parcelReads).toBe(parcelReadsBeforeCompletion + 1)
+      await waitFor(() => expect(screen.getByText('9')).toBeInTheDocument())
     })
   })
 })

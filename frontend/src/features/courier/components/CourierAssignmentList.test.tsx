@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { type AuthContextValue } from '../../../auth/context'
 import { anonymousAuth, TestProviders } from '../../../test/authFixture'
-import { CourierApiError } from '../api/courierContracts'
+import {
+  CourierApiError,
+  type PagedAssignmentsResponse,
+  type ParcelDetailResponse,
+} from '../api/courierContracts'
 import { CourierAssignmentList } from './CourierAssignmentList'
 import type { createCourierAssignmentsApi } from '../api/courierAssignments'
 
@@ -67,6 +71,8 @@ describe('CourierAssignmentList component', () => {
     )
 
     expect(screen.getByRole('heading', { name: /assigned deliveries/i })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: /search active assignments/i }))
+      .toHaveAttribute('placeholder', 'e.g. SWD-20261114-A29DD4A5')
     expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /view parcel details for/i })).toHaveLength(2)
 
@@ -205,5 +211,214 @@ describe('CourierAssignmentList component', () => {
     // The toggle stays available so the courier can turn the filter off again.
     await user.click(screen.getByRole('checkbox', { name: /assigned today only/i }))
     expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
+  })
+
+  it('enriches cards with parcel details both on initial load and after Retry (Phase 3 regression)', async () => {
+    const user = userEvent.setup()
+    let calls = 0
+    const mockParcel: ParcelDetailResponse = {
+      parcelId: mockAssignment1.parcelId,
+      trackingNumber: 'SWD-20261026-A1B2C3',
+      merchantId: null,
+      currentStatus: 'OUT_FOR_DELIVERY' as const,
+      createdBySub: 'merchant-sub',
+      version: 1,
+      weightKg: 2.5,
+      createdAt: '2026-10-26T09:00:00Z',
+    }
+
+    const getParcelMock = vi.fn(async (parcelId: string): Promise<ParcelDetailResponse> => {
+      if (parcelId === mockAssignment1.parcelId) return mockParcel
+      throw new CourierApiError('not-found', 'Not found')
+    })
+
+    const api = createMockApi({
+      getMyAssignmentsPaged: vi.fn(async () => {
+        calls++
+        if (calls === 1) {
+          throw new CourierApiError('unavailable', 'Initial network glitch')
+        }
+        return {
+          ...mockPagedResponse,
+          items: [mockAssignment1],
+          totalElements: 1,
+        }
+      }),
+      getParcel: getParcelMock,
+    })
+
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+
+    // Initial failure displays error banner
+    expect(await screen.findByRole('alert')).toHaveTextContent(/initial network glitch/i)
+
+    // Click retry
+    const retryBtn = screen.getByRole('button', { name: /retry assignments/i })
+    await user.click(retryBtn)
+
+    // Confirms assignments loaded AND getParcel was invoked during retry
+    expect(await screen.findByText('1 Assignment')).toBeInTheDocument()
+    expect(getParcelMock).toHaveBeenCalledWith(mockAssignment1.parcelId, expect.any(AbortSignal))
+    // Verifies the card displays the enriched tracking number instead of fallback parcelId
+    expect(await screen.findByText('SWD-20261026-A1B2C3')).toBeInTheDocument()
+    expect(screen.getByText('OUT FOR DELIVERY')).toBeInTheDocument()
+  })
+
+  it('handles partial parcel-detail failure gracefully without breaking card rendering', async () => {
+    const mockParcel1: ParcelDetailResponse = {
+      parcelId: mockAssignment1.parcelId,
+      trackingNumber: 'SWD-20261026-SUCCESS',
+      merchantId: null,
+      currentStatus: 'PICKED_UP' as const,
+      createdBySub: 'merchant-sub',
+      version: 1,
+      weightKg: 1.5,
+      createdAt: '2026-10-26T09:00:00Z',
+    }
+
+    const api = createMockApi({
+      getParcel: vi.fn(async (parcelId: string): Promise<ParcelDetailResponse> => {
+        if (parcelId === mockAssignment1.parcelId) return mockParcel1
+        throw new Error('Parcel detail service temporary 500')
+      }),
+    })
+
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
+    // First parcel has full details
+    expect(await screen.findByText('SWD-20261026-SUCCESS')).toBeInTheDocument()
+    expect(screen.getByText('PICKED UP')).toBeInTheDocument()
+    // Second parcel falls back gracefully to truncated parcelId
+    expect(screen.getByText('00000000...')).toBeInTheDocument()
+  })
+
+  it('clears stale parcel details and resets pagination when authentication subject changes', async () => {
+    const mockParcel: ParcelDetailResponse = {
+      parcelId: mockAssignment1.parcelId,
+      trackingNumber: 'SWD-20261026-USER-A',
+      merchantId: null,
+      currentStatus: 'PICKED_UP' as const,
+      createdBySub: 'merchant-sub',
+      version: 1,
+      weightKg: 1.5,
+      createdAt: '2026-10-26T09:00:00Z',
+    }
+
+    const api = createMockApi({
+      getParcel: vi.fn(async (): Promise<ParcelDetailResponse> => mockParcel),
+    })
+
+    const { rerender } = render(
+      <TestProviders auth={courierAuth('courier-a')}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(await screen.findByText('SWD-20261026-USER-A')).toBeInTheDocument()
+
+    // Switch subject to courier-b who has no assignments
+    const apiUserB = createMockApi({
+      getMyAssignmentsPaged: vi.fn(async () => ({
+        items: [],
+        currentPage: 0,
+        pageSize: 20,
+        totalElements: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false,
+      })),
+      getParcel: vi.fn(),
+    })
+
+    rerender(
+      <TestProviders auth={courierAuth('courier-b')}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={apiUserB} />
+      </TestProviders>,
+    )
+
+    // User A's tracking details must not remain in the DOM
+    expect(screen.queryByText('SWD-20261026-USER-A')).not.toBeInTheDocument()
+    expect(await screen.findByText(/no active delivery assignments found for your courier profile/i)).toBeInTheDocument()
+  })
+
+  it('aborts pending in-flight requests on unmount', () => {
+    let capturedSignal: AbortSignal | undefined
+    const api = createMockApi({
+      getMyAssignmentsPaged: vi.fn(async ({ signal }: { signal?: AbortSignal } = {}): Promise<PagedAssignmentsResponse> => {
+        capturedSignal = signal
+        return new Promise(() => {}) // never resolves
+      }),
+    })
+
+    const { unmount } = render(
+      <TestProviders auth={courierAuth()}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(capturedSignal).toBeDefined()
+    expect(capturedSignal?.aborted).toBe(false)
+
+    unmount()
+    expect(capturedSignal?.aborted).toBe(true)
+  })
+
+  it('displays 401/403 authorization failures with clear feedback and allows retry', async () => {
+    const user = userEvent.setup()
+    let attempts = 0
+    const api = createMockApi({
+      getMyAssignmentsPaged: vi.fn(async () => {
+        attempts++
+        if (attempts === 1) {
+          throw new CourierApiError('forbidden', 'Access denied: caller does not have COURIER role.', 403)
+        }
+        return mockPagedResponse
+      }),
+    })
+
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/access denied: caller does not have courier role/i)
+
+    // Retry after permissions fixed
+    await user.click(screen.getByRole('button', { name: /retry assignments/i }))
+    expect(await screen.findByText('2 Assignments')).toBeInTheDocument()
+  })
+
+  it('refreshes assignments and sends accurate search and status filters', async () => {
+    const user = userEvent.setup()
+    const getMyAssignmentsPaged = vi.fn(async (args?: { trackingNumber?: string; status?: string }) => {
+      void args
+      return mockPagedResponse
+    })
+    const api = createMockApi({ getMyAssignmentsPaged })
+    render(
+      <TestProviders auth={courierAuth()}>
+        <CourierAssignmentList selectedParcelId={null} onSelectParcel={vi.fn()} apiOverride={api} />
+      </TestProviders>,
+    )
+    await screen.findByText('2 Assignments')
+    await user.click(screen.getByRole('button', { name: /refresh assignments/i }))
+    expect(getMyAssignmentsPaged).toHaveBeenCalledTimes(2)
+    await user.type(screen.getByRole('searchbox', { name: /search active assignments/i }), ' SWD-2026 ')
+    await user.selectOptions(screen.getByRole('combobox', { name: /active status/i }), 'OUT_FOR_DELIVERY')
+    await vi.waitFor(() => {
+      const last = getMyAssignmentsPaged.mock.calls.at(-1)?.[0] as unknown as { trackingNumber?: string; status?: string }
+      expect(last.trackingNumber).toBe('SWD-2026')
+      expect(last.status).toBe('OUT_FOR_DELIVERY')
+    })
   })
 })

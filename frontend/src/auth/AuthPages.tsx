@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from './context'
 import { FeedbackState } from '../components/ui/FeedbackState'
 import { Button } from '../components/ui/Button'
+import { ArrowRightIcon, TruckIcon } from '../components/ui/icons'
 import type { SwiftDropRole } from './contracts'
-import { sanitizeRedirectUrl } from './redirect'
+import { readReturnTarget, saveReturnTarget, sanitizeRedirectUrl } from './redirect'
+import sessionStreet from './assets/session-street.webp'
+import sessionVan from './assets/session-delivery-van.webp'
+import sessionCourier from './assets/session-courier.webp'
+import './AuthPages.css'
 
 const messages = {
   cancelled: 'Sign-in was cancelled. You can try again.',
@@ -13,103 +18,89 @@ const messages = {
   'session-expired': 'Your session expired. Please sign in again.',
 }
 
+const sessionMotionQuery = '(prefers-reduced-motion: no-preference)'
+// The trip takes 5.2 seconds. Bound the wait if the browser misses the animation event.
+const sessionTripFallbackMs = 6_000
+
 export function LoginPage() {
   const auth = useAuth()
   const location = useLocation()
   const returnTarget = sanitizeRedirectUrl((location.state as { from?: string } | null)?.from)
+  const action = new URLSearchParams(location.search).get('start') === 'register' ? 'register' : 'login'
+  const attemptedLocation = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (auth.snapshot.status !== 'unauthenticated' || auth.problem || attemptedLocation.current === location.key) return
+    attemptedLocation.current = location.key
+    void auth[action](returnTarget ?? undefined)
+  }, [auth, action, location.key, returnTarget])
 
   if (auth.snapshot.status === 'loading') {
     return <FeedbackState title="Checking sign-in" tone="loading">Please wait.</FeedbackState>
   }
 
+  if (auth.snapshot.status === 'unauthenticated') {
+    const title = action === 'register' ? 'Opening registration' : 'Opening sign-in'
+    if (!auth.problem) return <FeedbackState title={title} tone="loading">Please wait.</FeedbackState>
+
+    return (
+      <FeedbackState
+        title="Could not open SwiftDrop authentication"
+        tone="error"
+        action={<Button onClick={() => { void auth[action](returnTarget ?? undefined) }}>Try again</Button>}
+      >
+        {messages[auth.problem]}
+      </FeedbackState>
+    )
+  }
+
   return (
-    <div className="page-container" style={{ paddingBlock: '60px 80px', maxWidth: '580px' }}>
-      <div className="card" style={{ padding: '36px 38px', boxShadow: 'var(--sd-shadow-sm)' }}>
-        <p className="eyebrow" style={{ marginBottom: '12px' }}>Authentication</p>
-        <h1 style={{ fontSize: '32px', letterSpacing: '-1px', marginBottom: '14px' }}>Sign in to SwiftDrop</h1>
-        {auth.problem && <p role="alert" className="form-error-banner" style={{ marginBottom: '20px' }}>{messages[auth.problem]}</p>}
-        {auth.snapshot.status === 'authenticated' ? (
-          <>
-            <p className="muted" style={{ marginBottom: '20px' }}>You are currently authenticated in an active session.</p>
-            {returnTarget && (
-              <p style={{ marginBottom: '18px' }}>
-                <Link to={returnTarget} className="intended-destination-link" style={{ fontWeight: 600, color: 'var(--color-teal)' }}>
-                  Continue to requested page ({returnTarget}) →
-                </Link>
-              </p>
-            )}
-            {auth.snapshot.roles.length === 0 ? (
-              <div
-                role="status"
-                className="notice notice-warning"
-                style={{
-                  margin: '16px 0',
-                  padding: '14px',
-                  borderRadius: '6px',
-                  background: 'var(--color-bg-warning, #fff8e1)',
-                  border: '1px solid var(--color-border-warning, #ffe082)',
-                }}
-              >
-                <p style={{ fontWeight: 600, marginBottom: '6px', color: '#b78103' }}>Role Assignment Pending</p>
-                <p className="muted" style={{ fontSize: '14px', margin: 0 }}>
-                  Your account is authenticated, but no workspace roles (Customer, Merchant, Courier, Dispatcher, or Admin) have been assigned to your profile yet. Please contact your system administrator or sign out below.
-                </p>
-              </div>
-            ) : (
-              <div className="role-links" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', margin: '1.2rem 0' }}>
-                {auth.snapshot.roles.includes('CUSTOMER') && <Link to="/customer" className="button button-tonal button-sm">Customer space <span aria-hidden="true">↗</span></Link>}
-                {auth.snapshot.roles.includes('MERCHANT') && <Link to="/merchant" className="button button-tonal button-sm">Merchant portal <span aria-hidden="true">↗</span></Link>}
-                {auth.snapshot.roles.includes('COURIER') && <Link to="/courier" className="button button-tonal button-sm">Courier workspace <span aria-hidden="true">↗</span></Link>}
-                {auth.snapshot.roles.includes('DISPATCHER') && <Link to="/dispatcher" className="button button-tonal button-sm">Dispatcher console <span aria-hidden="true">↗</span></Link>}
-                {auth.snapshot.roles.includes('ADMIN') && <Link to="/admin" className="button button-tonal button-sm">Admin console <span aria-hidden="true">↗</span></Link>}
-              </div>
-            )}
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-              <Button variant="secondary" size="sm" onClick={() => { void auth.logout() }}>Sign out</Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="muted" style={{ marginBottom: '24px', fontSize: '14px', lineHeight: 1.6 }}>
-              Sign in with your SwiftDrop account or Google.
+    <div className="auth-page">
+      <div className="auth-shell">
+        <div className="auth-art" aria-hidden="true">
+          <span className="auth-art-orbit" />
+          <span className="auth-art-truck"><TruckIcon size={56} /></span>
+          <span className="auth-art-arrow"><ArrowRightIcon size={22} /></span>
+        </div>
+        <div className="auth-card">
+          <h1>Your SwiftDrop workspaces</h1>
+          {returnTarget && (
+            <p style={{ marginBottom: '18px' }}>
+              <Link to={returnTarget} className="intended-destination-link" style={{ fontWeight: 600, color: 'var(--color-teal)' }}>
+                Continue to requested page ({returnTarget}) →
+              </Link>
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <Button
-                variant="primary"
-                size="md"
-                fullWidth
-                onClick={() => { void auth.login(returnTarget ?? undefined) }}
-              >
-                Sign in
-              </Button>
-              <Button
-                variant="secondary"
-                size="md"
-                fullWidth
-                onClick={() => { void auth.googleLogin(returnTarget ?? undefined) }}
-                leftIcon={
-                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style={{ width: '18px', height: '18px' }}>
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                }
-              >
-                Continue with Google
-              </Button>
-              <div style={{ textAlign: 'center', marginTop: '4px' }}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { void auth.register(returnTarget ?? undefined) }}
-                >
-                  Create account
-                </Button>
-              </div>
+          )}
+          {auth.snapshot.roles.length === 0 ? (
+            <div
+              role="status"
+              className="notice notice-warning"
+              style={{
+                margin: '16px 0',
+                padding: '14px',
+                borderRadius: '6px',
+                background: 'var(--color-bg-warning, #fff8e1)',
+                border: '1px solid var(--color-border-warning, #ffe082)',
+              }}
+            >
+              <p style={{ fontWeight: 600, marginBottom: '6px', color: '#b78103' }}>Role Assignment Pending</p>
+              <p className="muted" style={{ fontSize: '14px', margin: 0 }}>
+                Your account is authenticated, but no workspace roles (Customer, Merchant, Courier, Dispatcher, or Admin) have been assigned to your profile yet. Please contact your system administrator or sign out below.
+              </p>
             </div>
-          </>
-        )}
+          ) : (
+            <div className="role-links" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', margin: '1.2rem 0' }}>
+              {auth.snapshot.roles.includes('CUSTOMER') && <Link to="/customer" className="button button-tonal button-sm">Customer space <span aria-hidden="true">↗</span></Link>}
+              {auth.snapshot.roles.includes('MERCHANT') && <Link to="/merchant" className="button button-tonal button-sm">Merchant portal <span aria-hidden="true">↗</span></Link>}
+              {auth.snapshot.roles.includes('COURIER') && <Link to="/courier" className="button button-tonal button-sm">Courier workspace <span aria-hidden="true">↗</span></Link>}
+              {auth.snapshot.roles.includes('DISPATCHER') && <Link to="/dispatcher" className="button button-tonal button-sm">Dispatcher console <span aria-hidden="true">↗</span></Link>}
+              {auth.snapshot.roles.includes('ADMIN') && <Link to="/admin" className="button button-tonal button-sm">Admin console <span aria-hidden="true">↗</span></Link>}
+            </div>
+          )}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+            <Button variant="secondary" size="sm" onClick={() => { void auth.logout() }}>Sign out</Button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -117,33 +108,11 @@ export function LoginPage() {
 
 export function CallbackPage() {
   const { snapshot, problem } = useAuth()
-  const [target] = useState<string | null>(() => {
-    try {
-      if (typeof window !== 'undefined' && window.name) {
-        const parsed = JSON.parse(window.name) as { swiftdrop_auth_target?: string; swiftdrop_auth_at?: number }
-        const fresh = typeof parsed.swiftdrop_auth_at !== 'number' || Date.now() - parsed.swiftdrop_auth_at < 15 * 60_000
-        if (parsed.swiftdrop_auth_target && fresh) {
-          return sanitizeRedirectUrl(parsed.swiftdrop_auth_target)
-        }
-      }
-    } catch {
-      // Ignore JSON parse errors or window access
-    }
-    return null
-  })
+  const [target] = useState(readReturnTarget)
 
   useEffect(() => {
-    if ((snapshot.status === 'authenticated' || problem) && typeof window !== 'undefined' && window.name) {
-      try {
-        const parsed = JSON.parse(window.name) as { swiftdrop_auth_target?: string }
-        if (parsed.swiftdrop_auth_target) {
-          window.name = ''
-        }
-      } catch {
-        // Ignore
-      }
-    }
-  }, [snapshot.status, problem])
+    if (snapshot.status !== 'loading') saveReturnTarget()
+  }, [snapshot.status])
 
   if (snapshot.status === 'loading') {
     return <FeedbackState title="Completing sign-in" tone="loading">Please wait.</FeedbackState>
@@ -190,9 +159,54 @@ export function LogoutPage() {
 export function ProtectedRoute({ role, anyOf }: { role?: SwiftDropRole; anyOf?: readonly SwiftDropRole[] }) {
   const { snapshot } = useAuth()
   const location = useLocation()
+  const trip = useRef<HTMLDivElement>(null)
+  const [waitingForTrip, setWaitingForTrip] = useState(() =>
+    snapshot.status === 'loading' && globalThis.matchMedia?.(sessionMotionQuery).matches === true,
+  )
 
-  if (snapshot.status === 'loading') {
-    return <FeedbackState title="Checking session" tone="loading">Please wait.</FeedbackState>
+  useEffect(() => {
+    if (!waitingForTrip) return
+
+    const motion = window.matchMedia(sessionMotionQuery)
+    const vanDrive = trip.current
+    const stopWaiting = () => setWaitingForTrip(false)
+    const onTripIteration = (event: AnimationEvent) => {
+      if (event.target === vanDrive && event.animationName === 'session-loading-delivery') stopWaiting()
+    }
+    const onMotionChange = (event: MediaQueryListEvent) => {
+      if (!event.matches) stopWaiting()
+    }
+    vanDrive?.addEventListener('animationiteration', onTripIteration)
+    motion.addEventListener('change', onMotionChange)
+    const fallback = window.setTimeout(stopWaiting, sessionTripFallbackMs)
+
+    return () => {
+      vanDrive?.removeEventListener('animationiteration', onTripIteration)
+      motion.removeEventListener('change', onMotionChange)
+      window.clearTimeout(fallback)
+    }
+  }, [waitingForTrip])
+
+  if (snapshot.status === 'loading' || waitingForTrip) {
+    return (
+      <div className="session-loading">
+        <div className="session-loading-indicator" role="status">
+          <div className="session-loading-scene" aria-hidden="true">
+            <img className="session-loading-street" src={sessionStreet} alt="" width={696} height={356} />
+            <span className="session-loading-porch" />
+            <span className="session-loading-parcel session-loading-pickup" />
+            <span className="session-loading-parcel session-loading-dropoff" />
+            <div className="session-loading-drive" ref={trip}>
+              <div className="session-loading-van">
+                <img src={sessionVan} alt="" width={192} height={96} />
+              </div>
+            </div>
+            <img className="session-loading-courier" src={sessionCourier} alt="" width={88} height={132} />
+          </div>
+          <span>Checking session</span>
+        </div>
+      </div>
+    )
   }
   if (snapshot.status !== 'authenticated') {
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />

@@ -1,4 +1,5 @@
 import Keycloak from 'keycloak-js'
+import { saveReturnTarget } from './redirect'
 import type { AuthIntegration, AuthSnapshot, SwiftDropRole } from './contracts'
 import { getApiGatewayUrl, getKeycloakUrl, getKeycloakRealm, getKeycloakClientId, getAppOrigin } from '../config/env'
 
@@ -74,6 +75,7 @@ export class AuthSession {
   }
   private handleChannelMessage(data: AuthSyncMessage) {
     if (!data || typeof data !== 'object') return
+    if (this.state.snapshot.status === 'loading') return
     if (data.type === 'AUTH_SYNC_LOGIN') {
       if (this.signingOut || this.state.snapshot.subject === data.subject) return
       // Another tab signed in: sign this tab in silently through Keycloak's SSO session (no prompt).
@@ -82,7 +84,7 @@ export class AuthSession {
       if (typeof login !== 'function') return
       // Never let a cross-tab sign-in attempt surface as an unhandled error; this tab stays signed out instead.
       Promise.resolve()
-        .then(() => this.client.login({ prompt: 'none', redirectUri: window.location.href }))
+        .then(() => this.client.login({ prompt: 'none', redirectUri: this.redirectUri }))
         .catch(() => undefined)
     } else if (data.type === 'AUTH_SYNC_LOGOUT') {
       this.clearCredentials()
@@ -130,15 +132,16 @@ export class AuthSession {
       const initOptions: Record<string, unknown> = {
         flow: 'standard', pkceMethod: 'S256', responseMode: 'query', useNonce: true,
         checkLoginIframe: false, enableLogging: false, logoutMethod: 'POST',
-        redirectUri: this.redirectUri, messageReceiveTimeout: 5000,
+        redirectUri: this.redirectUri, messageReceiveTimeout: 10000,
+        silentCheckSsoFallback: false,
       }
       if (!isTestEnv && !callback) {
         initOptions.onLoad = 'check-sso'
         initOptions.silentCheckSsoRedirectUri = `${origin}/silent-check-sso.html`
       }
       const initPromise = this.client.init(initOptions as Parameters<Keycloak['init']>[0])
-      // A real callback exchanges the code with Keycloak and may be slow; only the silent check gets 3 s.
-      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), callback ? 30_000 : 3000))
+      // A real callback exchanges the code with Keycloak and may be slow; silent check gets 10 s.
+      const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), callback ? 30_000 : 10_000))
       const authenticated = await Promise.race([initPromise, timeoutPromise])
       if (generation !== this.generation) { this.clearCredentials(); return }
       if (!authenticated || !this.accept()) {
@@ -176,18 +179,10 @@ export class AuthSession {
   register = async (returnUrl?: string) => { await this.enter('register', returnUrl) }
   googleLogin = async (returnUrl?: string) => { await this.enter('google', returnUrl) }
   private enter(kind: 'login' | 'register' | 'google', returnUrl?: string) {
-    if (typeof window !== 'undefined') {
-      try {
-        // Each attempt replaces any target left by an abandoned login, so it cannot leak into a later sign-in.
-        window.name = returnUrl ? JSON.stringify({ swiftdrop_auth_target: returnUrl, swiftdrop_auth_at: Date.now() }) : ''
-      } catch {
-        // ignore window.name access issues
-      }
-    }
-    this.entry ??= this.enterOnce(kind).finally(() => { this.entry = undefined })
+    this.entry ??= this.enterOnce(kind, returnUrl).finally(() => { this.entry = undefined })
     return this.entry
   }
-  private async enterOnce(kind: 'login' | 'register' | 'google') {
+  private async enterOnce(kind: 'login' | 'register' | 'google', returnUrl?: string) {
     await this.initialize()
     if (this.signingOut) return
     const generation = this.generation
@@ -197,10 +192,15 @@ export class AuthSession {
       })
       if (generation !== this.generation || this.signingOut) return
       if (!available.ok) throw new Error('Identity provider unavailable')
+      saveReturnTarget(returnUrl)
       const options = { redirectUri: this.redirectUri }
       if (kind === 'register') await this.client.register(options)
       else await this.client.login({ ...options, ...(kind === 'google' ? { idpHint: 'google' } : {}) })
-    } catch { this.clearCredentials(); this.publish(anonymous, 'provider-unavailable') }
+    } catch {
+      saveReturnTarget()
+      this.clearCredentials()
+      this.publish(anonymous, 'provider-unavailable')
+    }
   }
   logout = () => {
     this.logoutPromise ??= this.endSession()

@@ -1,10 +1,12 @@
-import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
-import { AccountsError, createAccountsApi } from '../api/merchant'
+import { Link } from 'react-router'
+import { ArrowRightIcon } from '../../../components/ui/icons'
+import { AccountsError, createAccountsApi, normalizeApprovalStatus } from '../api/merchant'
 import { MerchantProfile, type MerchantProfileState } from '../components/MerchantProfile'
-import { MerchantNav } from '../components/MerchantNav'
+import { MerchantScene } from '../components/MerchantScene'
+import './MerchantOverview.css'
 
 export function MerchantPage() {
   const auth = useAuth()
@@ -45,63 +47,40 @@ export function MerchantPage() {
     }
   }
 
+  const approved = state.status === 'ready' && normalizeApprovalStatus(state.merchant.status) === 'APPROVED'
+
   return (
-    <div className="page-container merchant-page">
-      <header className="page-heading">
-        <p className="eyebrow">Merchant space</p>
-        <h1>Commercial logistics.<br />Delivered seamlessly.</h1>
-        <p className="muted">
-          Manage your business shipments, track approval status, and coordinate deliveries.
-        </p>
-      </header>
+    <div className="page-container merchant-page merchant-overview">
+      <div className="merchant-overview-hero">
+        <div className="merchant-overview-hero-main">
+          <header className="merchant-overview-heading">
+            <h1>Manage your deliveries</h1>
+          </header>
 
-      <MerchantNav />
-
-      <div className="profile-grid">
-        <MerchantProfile state={state} />
-
-        <aside className="card merchant-note" aria-labelledby="merchant-note-heading">
-          <h2 id="merchant-note-heading">Merchant operations</h2>
-          <p className="muted">
-            Book orders one by one or by CSV upload, manage API keys, and subscribe to delivery webhooks from the tabs above.
-          </p>
-          <Link
-            to="/merchant/orders"
-            className="button button-primary"
-          >
-            Orders Dashboard ↗
-          </Link>
-          <Link
-            to="/merchant/credentials"
-            className="button button-secondary"
-          >
-            API Credentials ↗
-          </Link>
-          <Link
-            to="/merchant/webhooks"
-            className="button button-secondary"
-          >
-            Webhook Subscriptions ↗
-          </Link>
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => { void auth.logout() }}
-          >
-            Sign out
-          </Button>
-          {query.isError && (
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => { void query.refetch() }}
-            >
-              Retry profile
-            </Button>
+          {approved && (
+            <div className="merchant-overview-shortcuts" role="group" aria-label="Order shortcuts">
+              <Link to="/merchant/orders/new" className="merchant-overview-shortcut merchant-overview-shortcut-primary">
+                <span><strong>New order</strong><span>Book a parcel for delivery</span></span>
+                <ArrowRightIcon />
+              </Link>
+              <Link to="/merchant/orders" className="merchant-overview-shortcut">
+                <span><strong>View orders</strong><span>Track deliveries and manage shipments</span></span>
+                <ArrowRightIcon />
+              </Link>
+            </div>
           )}
-        </aside>
+        </div>
+        <MerchantScene />
       </div>
 
+      <section className="merchant-overview-account" aria-label="Business account">
+        <MerchantProfile state={state} />
+        {query.isError && (
+          <Button variant="secondary" type="button" isLoading={query.isFetching} onClick={() => { void query.refetch() }}>
+            Retry profile
+          </Button>
+        )}
+      </section>
     </div>
   )
 }

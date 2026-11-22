@@ -23,7 +23,8 @@ DATABASE_PREFIXES = (*APP_DATABASES.values(), "KEYCLOAK")
 
 def synthetic_environment(external=False):
     # Do not inherit real DB credentials, Compose profiles or other shell overrides.
-    env = {key: os.environ[key] for key in ("PATH", "HOME", "TMPDIR") if key in os.environ}
+    runtime_paths = ("PATH", "HOME", "TMPDIR", "SYSTEMROOT", "WINDIR", "APPDATA", "LOCALAPPDATA", "USERPROFILE", "TEMP", "TMP")
+    env = {key: os.environ[key] for key in runtime_paths if key in os.environ}
     for prefix in DATABASE_PREFIXES:
         env[f"{prefix}_DB_USERNAME"] = f"{prefix.lower()}_app.synthetic"
         env[f"{prefix}_DB_PASSWORD"] = "synthetic-config-check-only"
@@ -45,7 +46,7 @@ def synthetic_environment(external=False):
 class SupabaseComposeTests(unittest.TestCase):
     @classmethod
     def render(cls, external=False, all_profiles=False, env=None):
-        cmd = ["docker", "compose", "--env-file", "/dev/null", "-f", str(COMPOSE / "compose.yaml")]
+        cmd = ["docker", "compose", "--env-file", os.devnull, "-f", str(COMPOSE / "compose.yaml")]
         if external:
             cmd.extend(["-f", str(COMPOSE / "compose.supabase.yaml")])
         if all_profiles:
@@ -91,6 +92,12 @@ class SupabaseComposeTests(unittest.TestCase):
             self.assertTrue(dependencies <= services.keys(), f"{service} has unresolved dependencies")
         for database in DATABASES:
             self.assertEqual(self.all_external["services"][database]["profiles"], ["local-postgres"])
+
+    def test_shared_identity_startup_allows_database_latency_with_two_connections(self):
+        keycloak = self.external["services"]["keycloak"]
+        self.assertEqual(keycloak["environment"]["KC_DB_POOL_MAX_SIZE"], "2")
+        self.assertEqual(keycloak["environment"]["KC_DB_POOL_ACQUISITION_TIMEOUT"], "120s")
+        self.assertEqual(keycloak["healthcheck"]["start_period"], "4m0s")
 
     def test_external_mode_preserves_other_runtime_dependencies(self):
         for name, spec in self.external["services"].items():
@@ -149,7 +156,7 @@ class SupabaseComposeTests(unittest.TestCase):
                 env = synthetic_environment(external=True)
                 del env[f"{prefix}_DB_URL"]
                 result = subprocess.run(
-                    ["docker", "compose", "--env-file", "/dev/null", "-f", str(COMPOSE / "compose.yaml"),
+                    ["docker", "compose", "--env-file", os.devnull, "-f", str(COMPOSE / "compose.yaml"),
                      "-f", str(COMPOSE / "compose.supabase.yaml"), "config", "--quiet"],
                     cwd=ROOT, env=env, capture_output=True, text=True, check=False,
                 )

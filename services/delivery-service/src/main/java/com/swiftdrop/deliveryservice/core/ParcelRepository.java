@@ -45,19 +45,71 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
     Page<Parcel> findUnassignedParcels(Pageable pageable);
 
     /**
-     * Unassigned queue filtered to parcels whose pickup or drop-off zone code (from the verified quote snapshot
-     * captured at booking) matches {@code zone}. Filtering happens in the database so paging stays correct.
+     * Unassigned queue filtered to parcels whose pickup or drop-off zone code or zone name
+     * (from the verified quote snapshot captured at booking) matches {@code zone}. Filtering happens in the database
+     * so paging stays correct. Supports zone codes (e.g. ZONE_1, ZONE-1), names (e.g. Colombo Municipal District),
+     * and region labels (e.g. Colombo, Western Province).
      */
     @org.springframework.data.jpa.repository.Query(value = """
         SELECT p.* FROM parcels p
         WHERE p.status = 'CREATED'
-        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND (
+            UPPER(p.quote_snapshot ->> 'pickupZone') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZone') = UPPER(:zone)
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'pickupZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'dropoffZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(p.quote_snapshot ->> 'pickupZoneName') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZoneName') = UPPER(:zone)
+            OR (UPPER(:zone) LIKE '%COLOMBO%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%COLOMBO%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%COLOMBO%'
+            ))
+            OR (UPPER(:zone) LIKE '%WESTERN%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%WESTERN%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%WESTERN%'
+            ))
+            OR ((UPPER(:zone) LIKE '%NATIONAL%' OR UPPER(:zone) LIKE '%ISLAND%') AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%ISLAND%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%ISLAND%'
+            ))
+        )
         AND NOT EXISTS (SELECT 1 FROM delivery_assignments da WHERE da.parcel_id = p.parcel_id AND da.active = true)
         ORDER BY p.created_at ASC, p.parcel_id ASC
         """, countQuery = """
         SELECT COUNT(*) FROM parcels p
         WHERE p.status = 'CREATED'
-        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND (
+            UPPER(p.quote_snapshot ->> 'pickupZone') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZone') = UPPER(:zone)
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'pickupZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'dropoffZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(p.quote_snapshot ->> 'pickupZoneName') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZoneName') = UPPER(:zone)
+            OR (UPPER(:zone) LIKE '%COLOMBO%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%COLOMBO%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%COLOMBO%'
+            ))
+            OR (UPPER(:zone) LIKE '%WESTERN%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%WESTERN%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%WESTERN%'
+            ))
+            OR ((UPPER(:zone) LIKE '%NATIONAL%' OR UPPER(:zone) LIKE '%ISLAND%') AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%ISLAND%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%ISLAND%'
+            ))
+        )
         AND NOT EXISTS (SELECT 1 FROM delivery_assignments da WHERE da.parcel_id = p.parcel_id AND da.active = true)
         """, nativeQuery = true)
     Page<Parcel> findUnassignedParcelsInZone(@org.springframework.data.repository.query.Param("zone") String zone,
@@ -87,7 +139,32 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
     @org.springframework.data.jpa.repository.Query(value = """
         SELECT COUNT(*) FROM parcels p
         WHERE p.created_at >= :startTime AND p.created_at < :endTime
-        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND (
+            UPPER(p.quote_snapshot ->> 'pickupZone') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZone') = UPPER(:zone)
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'pickupZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'dropoffZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(p.quote_snapshot ->> 'pickupZoneName') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZoneName') = UPPER(:zone)
+            OR (UPPER(:zone) LIKE '%COLOMBO%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%COLOMBO%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%COLOMBO%'
+            ))
+            OR (UPPER(:zone) LIKE '%WESTERN%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%WESTERN%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%WESTERN%'
+            ))
+            OR ((UPPER(:zone) LIKE '%NATIONAL%' OR UPPER(:zone) LIKE '%ISLAND%') AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%ISLAND%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%ISLAND%'
+            ))
+        )
         """, nativeQuery = true)
     long countCreatedBetweenInZone(
             @org.springframework.data.repository.query.Param("startTime") java.time.Instant startTime,
@@ -99,7 +176,32 @@ public interface ParcelRepository extends JpaRepository<Parcel, UUID> {
         SELECT COUNT(*) FROM parcels p
         WHERE p.status IN ('PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY')
         AND p.created_at <= :endTime
-        AND (p.quote_snapshot ->> 'pickupZone' = :zone OR p.quote_snapshot ->> 'dropoffZone' = :zone)
+        AND (
+            UPPER(p.quote_snapshot ->> 'pickupZone') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZone') = UPPER(:zone)
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'pickupZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(REPLACE(COALESCE(p.quote_snapshot ->> 'dropoffZone', ''), '-', '_')) = UPPER(REPLACE(:zone, '-', '_'))
+            OR UPPER(p.quote_snapshot ->> 'pickupZoneName') = UPPER(:zone)
+            OR UPPER(p.quote_snapshot ->> 'dropoffZoneName') = UPPER(:zone)
+            OR (UPPER(:zone) LIKE '%COLOMBO%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_1'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%COLOMBO%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%COLOMBO%'
+            ))
+            OR (UPPER(:zone) LIKE '%WESTERN%' AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_2'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%WESTERN%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%WESTERN%'
+            ))
+            OR ((UPPER(:zone) LIKE '%NATIONAL%' OR UPPER(:zone) LIKE '%ISLAND%') AND (
+                UPPER(COALESCE(p.quote_snapshot ->> 'pickupZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZone', '')) = 'ZONE_3'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'pickupZoneName', '')) LIKE '%ISLAND%'
+                OR UPPER(COALESCE(p.quote_snapshot ->> 'dropoffZoneName', '')) LIKE '%ISLAND%'
+            ))
+        )
         """, nativeQuery = true)
     long countInTransitBeforeOrAtInZone(
             @org.springframework.data.repository.query.Param("endTime") java.time.Instant endTime,

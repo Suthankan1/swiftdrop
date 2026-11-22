@@ -123,6 +123,16 @@ function renderOrderDetail(auth: AuthContextValue, parcelId = 'parcel-alpha-1111
 }
 
 describe('MerchantOrderDetailPage', () => {
+  it('does not describe a completed parcel without active assignment as awaiting dispatch', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => new Response(JSON.stringify(
+      String(url).includes('/history') ? mockParcelHistoryA : {
+        ...mockParcelDetailA, currentStatus: 'DELIVERED', activeCourierSub: null,
+      },
+    ))))
+    renderOrderDetail(authenticatedMerchant())
+    expect(await screen.findByText('Courier assignment information unavailable')).toBeInTheDocument()
+    expect(screen.queryByText(/pending dispatch assignment|awaiting dispatch assignment/i)).not.toBeInTheDocument()
+  })
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
@@ -135,7 +145,7 @@ describe('MerchantOrderDetailPage', () => {
 
   it('redirects unauthenticated visitor to login page', () => {
     renderOrderDetail(anonymousAuth)
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByText(/commercial order details/i)).not.toBeInTheDocument()
   })
 

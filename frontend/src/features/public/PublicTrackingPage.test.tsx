@@ -101,7 +101,7 @@ describe('Public Redacted Parcel Tracking (Issue #133 / N10-WF06)', () => {
       expect(screen.getByPlaceholderText(/e\.g\. SWD-20261023-A1B2C3/i)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /track parcel/i })).toBeInTheDocument()
       // Must NOT redirect to login
-      expect(screen.queryByRole('heading', { name: 'Sign in to SwiftDrop' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Opening sign-in' })).not.toBeInTheDocument()
     })
 
     it('shows descriptive text without claiming real-time or live updates', () => {

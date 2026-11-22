@@ -173,6 +173,16 @@ describe('CourierProofApi client', () => {
       const blob = await api.getProofContent(MOCK_PARCEL_ID)
       expect(blob.size).toBe(4)
     })
+
+    it.each([
+      [401, 'auth-required'],
+      [403, 'forbidden'],
+    ] as const)('blocks unauthorized private proof content reads with HTTP %s', async (status, kind) => {
+      const mockFetch = vi.fn(async () => new Response(null, { status }))
+      const api = createCourierProofApi({ getAccessToken, fetch: mockFetch as unknown as typeof fetch })
+
+      await expect(api.getProofContent(MOCK_PARCEL_ID)).rejects.toMatchObject({ kind })
+    })
   })
 
   describe('uploadProof with genuine XHR progress', () => {

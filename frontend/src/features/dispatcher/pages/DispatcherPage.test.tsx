@@ -38,7 +38,7 @@ beforeEach(() => {
 describe('Dispatcher role landing', () => {
   it('redirects an anonymous direct URL to shared login without requesting a profile', () => {
     render(entry(anonymousAuth))
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Dispatcher workspace' })).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -170,8 +170,8 @@ describe('Dispatcher role landing', () => {
     render(entry(authenticated()))
     const main = within(screen.getByRole('main'))
     expect(main.getByText(/review unassigned parcels and eligible courier workloads/i)).toBeInTheDocument()
-    expect(main.getAllByRole('button')).toHaveLength(1)
-    expect(main.getByRole('button', { name: 'Sign out' })).toHaveAttribute('type', 'button')
+    expect(main.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign out' })).toHaveAttribute('type', 'button')
     expect(main.queryByRole('table')).not.toBeInTheDocument()
     expect(main.queryByRole('spinbutton')).not.toBeInTheDocument()
     expect(screen.getByRole('main').textContent).not.toMatch(/\b\d+\b/)

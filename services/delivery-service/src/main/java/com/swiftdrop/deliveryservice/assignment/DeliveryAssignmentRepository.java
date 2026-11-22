@@ -13,7 +13,8 @@ import java.util.UUID;
  * Spring Data JPA Repository for Delivery Courier Assignments.
  */
 @Repository
-public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssignment, UUID> {
+public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssignment, UUID>,
+        DeliveryAssignmentRepositoryCustom {
 
     Optional<DeliveryAssignment> findByParcelIdAndActiveTrue(UUID parcelId);
 

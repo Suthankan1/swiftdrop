@@ -59,7 +59,7 @@ async function fillProvision() {
 describe('ADMIN routes and navigation', () => {
   it.each(['/admin/users', '/admin/staff', detailPath])('redirects anonymous direct access to %s through shared login', path => {
     setup({ current: anonymousAuth, path, productionRoutes: true })
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
   })
   for (const role of ['CUSTOMER', 'MERCHANT', 'COURIER', 'DISPATCHER'] as const) {
     it.each(['/admin/users', '/admin/staff', detailPath])(`denies ${role} direct URL %s and hides admin navigation`, path => {

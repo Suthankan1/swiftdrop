@@ -1,0 +1,148 @@
+.orders-header,
+.orders-header-actions,
+.orders-toolbar-row,
+.orders-list-meta,
+.orders-status-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.orders-header {
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.orders-header h1 {
+  margin: 0 0 6px;
+  font-size: clamp(2rem, 4.5vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.orders-status-chips { margin-bottom: 16px; }
+.orders-status-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 99px;
+  background: var(--surface);
+  color: var(--color-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.orders-status-chips button:hover { background: #eef4e1; }
+.orders-status-chips button[aria-pressed="true"] {
+  border-color: #214637;
+  background: #214637;
+  color: #fff;
+}
+
+.orders-status-chips span {
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgb(120 146 93 / 0.2);
+  font-size: .85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.orders-list-panel {
+  min-height: 24rem;
+  padding: clamp(12px, 2.2vw, 26px);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.orders-toolbar-row .filter-search-wrap { flex: 1 1 15rem; min-width: 0; }
+.orders-toolbar-row input { width: 100%; }
+.orders-more-filters { margin-top: 12px; }
+.orders-more-filters summary { width: fit-content; cursor: pointer; }
+.orders-more-filters label { display: block; margin: 8px 0 4px; }
+.orders-more-filters select { width: min(100%, 18rem); }
+
+.orders-list-meta {
+  margin: 12px 0;
+  font-size: .875rem;
+}
+.orders-list-meta p { margin: 0; }
+.orders-list-meta > span:last-child { margin-inline-start: auto; }
+.orders-list-panel .merchant-orders-empty { margin-top: 0; }
+.orders-list-panel .merchant-orders-table { font-size: .875rem; }
+.orders-list-panel .merchant-order-row:hover { background: #f8faf4; }
+.orders-list-panel .tracking-inline-wrap { flex-wrap: wrap; }
+.orders-list-panel :is(.copy-btn-inline, .safe-track-link-btn) { min-height: 30px; }
+.orders-row-fee { font-variant-numeric: tabular-nums; }
+.orders-row-updated { white-space: nowrap; }
+.orders-list-panel .tracking-text { overflow-wrap: anywhere; }
+
+.orders-skeleton {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.orders-skeleton > span[aria-hidden] {
+  display: block;
+  min-height: 44px;
+  border-radius: 8px;
+  background: #e9ede4;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .orders-status-chips button { transition: background-color 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out; }
+  .orders-list-panel { animation: orders-list-enter 240ms ease-out both; }
+}
+
+@keyframes orders-list-enter {
+  from { opacity: 0; translate: 0 5px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (max-width: 940px) {
+  .orders-list-panel .merchant-orders-table,
+  .orders-list-panel .merchant-orders-table tbody { display: block; }
+
+  .orders-list-panel .merchant-orders-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .orders-list-panel .merchant-order-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    margin-bottom: 10px;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+  }
+
+  .orders-list-panel .merchant-order-row td {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+  .orders-list-panel .tracking-number-cell { grid-column: 1 / -1; }
+  .orders-row-status { grid-column: 1 / -1; }
+  .orders-row-action { grid-column: 1 / -1; justify-self: end; }
+  .orders-list-panel td[data-label]::before {
+    display: block;
+    color: var(--color-muted);
+    font-size: .8rem;
+    content: attr(data-label);
+  }
+}
+
+@media (max-width: 560px) {
+  .orders-list-meta > span:last-child { flex-basis: 100%; margin-inline-start: 0; }
+}

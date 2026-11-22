@@ -84,43 +84,63 @@ public class StaffRoleReconciliationService {
             throw new UnapprovedRoleException("Role '" + targetRole + "' is not an approved staff role.");
         }
 
-        // Verify Keycloak identity existence
-        if (!identityAdapter.identityExists(command.keycloakSub())) {
+        String effectiveSub = command.keycloakSub();
+        UUID effectiveAccountProfileId = command.accountProfileId();
+
+        // Verify Keycloak identity existence (with graceful AccountProfile UUID resolution if submitted)
+        if (!identityAdapter.identityExists(effectiveSub)) {
+            if (accountProfiles != null) {
+                try {
+                    UUID maybeProfileId = UUID.fromString(effectiveSub);
+                    Optional<AccountProfile> accountOpt = accountProfiles.findById(maybeProfileId);
+                    if (accountOpt.isPresent()) {
+                        effectiveSub = accountOpt.get().getKeycloakSub();
+                        if (effectiveAccountProfileId == null) {
+                            effectiveAccountProfileId = maybeProfileId;
+                        }
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Not a UUID format, fall through to identityExists check
+                }
+            }
+        }
+
+        if (!identityAdapter.identityExists(effectiveSub)) {
             recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", "NONE", "FAILED",
                     ReconciliationOutcome.FAILED, adminIdentity.subject(), "Target Keycloak identity does not exist");
             throw new IdentityNotFoundException(command.keycloakSub());
         }
 
         // Check for existing profile (idempotency vs conflict)
-        Optional<StaffProfile> existingOpt = staffProfiles.findByKeycloakSub(command.keycloakSub());
+        Optional<StaffProfile> existingOpt = staffProfiles.findByKeycloakSub(effectiveSub);
         if (existingOpt.isPresent()) {
             StaffProfile existing = existingOpt.get();
             if (existing.getRole() == command.role() && existing.getStatus() == StaffStatus.ACTIVE
                     && existing.getStaffId().equals(command.staffId())) {
                 // Idempotent retry: ensure Keycloak role is synchronized
-                Set<String> roles = identityAdapter.getUserRoles(command.keycloakSub());
+                Set<String> roles = identityAdapter.getUserRoles(effectiveSub);
                 if (!roles.contains(targetRole)) {
-                    identityAdapter.grantRole(command.keycloakSub(), targetRole);
+                    identityAdapter.grantRole(effectiveSub, targetRole);
                 }
-                recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", "ACTIVE", "ACTIVE",
+                recordAudit(effectiveSub, targetRole, "PROVISION_STAFF", "ACTIVE", "ACTIVE",
                         ReconciliationOutcome.NO_OP, adminIdentity.subject(), null);
                 return mapToResponse(existing);
             }
-            recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", existing.getStatus().name(), existing.getStatus().name(),
+            recordAudit(effectiveSub, targetRole, "PROVISION_STAFF", existing.getStatus().name(), existing.getStatus().name(),
                     ReconciliationOutcome.DENIED, adminIdentity.subject(), "Staff profile already exists with conflicting attributes");
-            throw new StaffProvisioningException("Staff profile already exists for subject: " + command.keycloakSub());
+            throw new StaffProvisioningException("Staff profile already exists for subject: " + effectiveSub);
         }
 
         if (staffProfiles.existsByStaffId(command.staffId())) {
-            recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", "NONE", "DENIED",
+            recordAudit(effectiveSub, targetRole, "PROVISION_STAFF", "NONE", "DENIED",
                     ReconciliationOutcome.DENIED, adminIdentity.subject(), "Staff ID is already assigned: " + command.staffId());
             throw new StaffProvisioningException("Staff ID is already assigned: " + command.staffId());
         }
 
-        if (command.accountProfileId() != null && accountProfiles != null) {
-            AccountProfile account = accountProfiles.findById(command.accountProfileId())
+        if (effectiveAccountProfileId != null && accountProfiles != null) {
+            AccountProfile account = accountProfiles.findById(effectiveAccountProfileId)
                     .orElseThrow(() -> new StaffProvisioningException("Account profile binding does not exist"));
-            if (!command.keycloakSub().equals(account.getKeycloakSub())) {
+            if (!effectiveSub.equals(account.getKeycloakSub())) {
                 throw new StaffProvisioningException("Account profile is bound to a different identity");
             }
         }
@@ -130,8 +150,8 @@ public class StaffRoleReconciliationService {
         Instant now = Instant.now();
         StaffProfile profile = new StaffProfile(
                 profileId,
-                command.accountProfileId(),
-                command.keycloakSub(),
+                effectiveAccountProfileId,
+                effectiveSub,
                 command.staffId(),
                 command.role(),
                 command.department(),
@@ -144,14 +164,14 @@ public class StaffRoleReconciliationService {
 
         // Reconcile role in Keycloak
         try {
-            identityAdapter.grantRole(command.keycloakSub(), targetRole);
+            identityAdapter.grantRole(effectiveSub, targetRole);
             // Least privilege: staff do not keep the CUSTOMER role every self-registered account starts with.
-            identityAdapter.removeDefaultRoles(command.keycloakSub());
-            recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", "NONE", "ACTIVE",
+            identityAdapter.removeDefaultRoles(effectiveSub);
+            recordAudit(effectiveSub, targetRole, "PROVISION_STAFF", "NONE", "ACTIVE",
                     ReconciliationOutcome.SUCCESS, adminIdentity.subject(), null);
         } catch (KeycloakAdminException e) {
-            log.error("Keycloak role grant failed during staff provisioning for subject {}", command.keycloakSub(), e);
-            recordAudit(command.keycloakSub(), targetRole, "PROVISION_STAFF", "NONE", "PENDING_RETRY",
+            log.error("Keycloak role grant failed during staff provisioning for subject {}", effectiveSub, e);
+            recordAudit(effectiveSub, targetRole, "PROVISION_STAFF", "NONE", "PENDING_RETRY",
                     ReconciliationOutcome.PENDING_RETRY, adminIdentity.subject(), e.getMessage());
             // Fail closed: throw exception so caller knows reconciliation is unresolved
             throw e;

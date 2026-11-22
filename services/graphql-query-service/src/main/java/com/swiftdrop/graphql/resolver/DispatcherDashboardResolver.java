@@ -216,7 +216,7 @@ public class DispatcherDashboardResolver implements RootQueryResolver {
             }
 
             // Cross-scope protection: Courier assigned zone must match dispatcher operational scope
-            if (!assignedZone.isBlank() && !item.getAssignedZone().isBlank() && !assignedZone.equalsIgnoreCase(item.getAssignedZone().trim())) {
+            if (!assignedZone.isBlank() && !item.getAssignedZone().isBlank() && !zonesMatch(assignedZone, item.getAssignedZone().trim())) {
                 throw Status.PERMISSION_DENIED.withDescription("Courier assigned zone outside dispatcher operational scope: " + item.getAssignedZone()).asRuntimeException();
             }
 
@@ -285,10 +285,22 @@ public class DispatcherDashboardResolver implements RootQueryResolver {
         // 8. Delivery: List Unassigned Parcels. A scoped dispatcher is always limited to their own zone;
         // an unscoped dispatcher or admin may narrow the queue with the optional zone argument.
         String requestedZone = environment.getArgument("zone") instanceof String z ? z.trim().toUpperCase(java.util.Locale.ROOT) : "";
-        if (!requestedZone.isEmpty() && !requestedZone.matches("[A-Z0-9_]{1,32}")) {
+        if (!requestedZone.isEmpty() && !requestedZone.matches("[A-Z0-9_ -]{1,64}")) {
             throw Status.INVALID_ARGUMENT.withDescription("zone must be a zone code").asRuntimeException();
         }
-        String queueZone = !assignedZone.isBlank() ? assignedZone : requestedZone;
+        String queueZone;
+        if (!assignedZone.isBlank()) {
+            if (!requestedZone.isEmpty()) {
+                if (!zonesMatch(assignedZone, requestedZone)) {
+                    throw Status.PERMISSION_DENIED.withDescription("Requested zone outside dispatcher operational scope: " + requestedZone).asRuntimeException();
+                }
+                queueZone = requestedZone;
+            } else {
+                queueZone = assignedZone;
+            }
+        } else {
+            queueZone = requestedZone;
+        }
         ListUnassignedParcelsRequest parcelReq = ListUnassignedParcelsRequest.newBuilder()
                 .setPage(page)
                 .setPageSize(size)
@@ -355,7 +367,7 @@ public class DispatcherDashboardResolver implements RootQueryResolver {
             }
 
             // Cross-scope protection: Scoped dispatcher must only see parcels matching their operational zone
-            if (!assignedZone.isBlank() && !assignedZone.equalsIgnoreCase(pickupZone) && !assignedZone.equalsIgnoreCase(dropoffZone)) {
+            if (!assignedZone.isBlank() && !zonesMatch(assignedZone, pickupZone) && !zonesMatch(assignedZone, dropoffZone)) {
                 throw Status.PERMISSION_DENIED.withDescription("Parcel outside dispatcher operational scope: " + parcelId).asRuntimeException();
             }
 
@@ -403,5 +415,22 @@ public class DispatcherDashboardResolver implements RootQueryResolver {
                 pageInfo,
                 availableCouriers
         );
+    }
+
+    static boolean zonesMatch(String zoneA, String zoneB) {
+        if (zoneA == null || zoneB == null) return false;
+        if (zoneA.equalsIgnoreCase(zoneB)) return true;
+        String ca = canonicalZoneCode(zoneA);
+        String cb = canonicalZoneCode(zoneB);
+        return !ca.isEmpty() && ca.equalsIgnoreCase(cb);
+    }
+
+    static String canonicalZoneCode(String zone) {
+        if (zone == null || zone.isBlank()) return "";
+        String upper = zone.trim().toUpperCase(java.util.Locale.ROOT);
+        if (upper.equals("ZONE_1") || upper.equals("ZONE-1") || upper.contains("COLOMBO") || upper.contains("CMB")) return "ZONE_1";
+        if (upper.equals("ZONE_2") || upper.equals("ZONE-2") || upper.contains("WESTERN")) return "ZONE_2";
+        if (upper.equals("ZONE_3") || upper.equals("ZONE-3") || upper.contains("NATIONAL") || upper.contains("ISLAND")) return "ZONE_3";
+        return upper;
     }
 }

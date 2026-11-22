@@ -1,14 +1,144 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useNavigate } from 'react-router'
 import { Button } from '../../components/ui/Button'
+import { useAuth } from '../../auth/context'
+import { ButtonLink } from '../../components/ui/ButtonLink'
+import { ArrowRightIcon, ArrowUpRightIcon, PauseIcon, PlayIcon, SearchIcon, StoreIcon, TruckIcon, UserIcon } from '../../components/ui/icons'
+import { usePointerEffects } from '../../components/ui/pointerEffects'
+import { useRevealOnScroll } from '../../components/ui/useRevealOnScroll'
+import { DeliveryScene } from './DeliveryScene'
+import './LandingPage.css'
 
-function ArrowIcon({ diagonal = false }: { diagonal?: boolean }) {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h15m-6-6 6 6-6 6'} /></svg>
+/** Inline custom properties used for staggered motion (load sequence and scroll reveals). */
+const order = (index: number) => ({ '--i': index }) as CSSProperties
+const revealDelay = (ms: number) => ({ '--reveal-delay': `${ms}ms` }) as CSSProperties
+
+const PROMISES = ['Small parcels.', 'Big connections.', 'Thoughtfully delivered.'] as const
+
+const WORKSPACES = [
+  {
+    tag: 'Customer Space', title: 'Personal & On-Demand', icon: <UserIcon />, to: '/customer', cta: 'Customer portal',
+    body: 'Instant quotes, one-click booking, live parcel updates and downloadable receipts.',
+  },
+  {
+    tag: 'Merchant Hub', title: 'Commercial Logistics', icon: <StoreIcon />, to: '/merchant', cta: 'Merchant hub',
+    body: 'Bulk CSV uploads, webhooks, scoped API credentials and real-time order tracking.',
+  },
+  {
+    tag: 'Courier Dispatch', title: 'Operational Agility', icon: <TruckIcon />, to: '/courier', cta: 'Courier workspace',
+    body: 'Route rosters, stage-by-stage status updates and photo proof of delivery.',
+  },
+] as const
+
+type Workspace = Omit<(typeof WORKSPACES)[number], 'to' | 'cta'> & { to: string; cta: string }
+
+/** Glass card with a pointer-following glare and a gentle 3D tilt (mouse only, motion-safe). */
+function WorkspaceCard({ workspace }: { workspace: Workspace }) {
+  const pointer = usePointerEffects<HTMLElement>(4)
+  return (
+    <article className="workspace-card glass" {...pointer}>
+      <span className="card-glare" aria-hidden="true" />
+      <div className="workspace-card-top">
+        <span className="workspace-icon" aria-hidden="true">{workspace.icon}</span>
+        <span className="workspace-tag">{workspace.tag}</span>
+      </div>
+      <h3>{workspace.title}</h3>
+      <p>{workspace.body}</p>
+      <div className="workspace-card-footer">
+        <ButtonLink to={workspace.to} variant="link" rightIcon={<ArrowUpRightIcon />}>{workspace.cta}</ButtonLink>
+      </div>
+    </article>
+  )
+}
+
+/** Slow aurora light, a faint dot grid and grain behind the whole page. Purely decorative. */
+function AmbientBackground() {
+  return (
+    <div className="landing-ambient" aria-hidden="true">
+      <span className="ambient-blob blob-1" />
+      <span className="ambient-blob blob-2" />
+      <span className="ambient-blob blob-3" />
+      <span className="ambient-blob blob-4" />
+      <span className="ambient-dots" />
+      <span className="ambient-grain" />
+    </div>
+  )
+}
+
+function PromiseMarquee() {
+  const [paused, setPaused] = useState(false)
+  // The first set is the readable copy; every repeat exists only to make the loop seamless, so it is hidden from assistive tech.
+  const renderSet = (key: string, duplicate: boolean) => PROMISES.map((text) => (
+    <span key={`${key}-${text}`} className={`marquee-unit${duplicate ? ' is-duplicate' : ''}`} aria-hidden={duplicate || undefined}>
+      <span className="marquee-item">{text}</span>
+      <span className="marquee-star" aria-hidden="true"><span>✳</span></span>
+    </span>
+  ))
+
+  return (
+    <section className="marquee glass" aria-label="Our approach">
+      <div className="marquee-viewport">
+        <div className="marquee-track" data-paused={paused}>
+          <div className="marquee-group">{renderSet('a', false)}{renderSet('b', true)}</div>
+          <div className="marquee-group" aria-hidden="true">{renderSet('c', true)}{renderSet('d', true)}</div>
+        </div>
+      </div>
+      <Button
+        variant="secondary"
+        size="icon"
+        className="marquee-toggle"
+        aria-label={paused ? 'Play scrolling text' : 'Pause scrolling text'}
+        onClick={() => setPaused((value) => !value)}
+      >
+        {paused ? <PlayIcon /> : <PauseIcon />}
+      </Button>
+    </section>
+  )
 }
 
 export function LandingPage() {
   const [trackingNumber, setTrackingNumber] = useState('')
   const navigate = useNavigate()
+  const auth = useAuth()
+
+  const isAuthenticated = auth.snapshot.status === 'authenticated'
+  const roles = isAuthenticated ? auth.snapshot.roles : []
+  const hasCustomer = roles.includes('CUSTOMER')
+  const hasMerchant = roles.includes('MERCHANT')
+  const hasCourier = roles.includes('COURIER')
+  const hasDispatcher = roles.includes('DISPATCHER')
+  const hasAdmin = roles.includes('ADMIN')
+
+  // Determine primary workspace target based on role priority
+  const primaryWorkspacePath = hasAdmin
+    ? '/admin'
+    : hasDispatcher
+      ? '/dispatcher'
+      : hasCourier
+        ? '/courier'
+        : hasMerchant
+          ? '/merchant'
+          : '/customer'
+
+  const primaryWorkspaceLabel = hasAdmin
+    ? 'Admin space'
+    : hasDispatcher
+      ? 'Dispatcher space'
+      : hasCourier
+        ? 'Courier space'
+        : hasMerchant
+          ? 'Merchant space'
+          : 'Customer space'
+
+  const revealRoot = useRevealOnScroll<HTMLDivElement>()
+  const heroPointer = usePointerEffects<HTMLElement>()
+
+  const workspaceLinks = {
+    '/customer': { to: '/customer', cta: isAuthenticated && hasCustomer ? 'Open Customer Space' : 'Customer portal' },
+    '/merchant': { to: isAuthenticated && !hasMerchant ? '/merchant/enroll' : '/merchant', cta: isAuthenticated && hasMerchant ? 'Open Merchant Hub' : isAuthenticated ? 'Enroll as Merchant' : 'Merchant hub' },
+    '/courier': { to: '/courier', cta: isAuthenticated && hasCourier ? 'Open Courier Workspace' : 'Courier workspace' },
+  }
+  const availableWorkspaces = WORKSPACES.map(workspace => ({ ...workspace, ...workspaceLinks[workspace.to] }))
 
   function handleTrackSubmit(e: FormEvent) {
     e.preventDefault()
@@ -21,92 +151,75 @@ export function LandingPage() {
   }
 
   return (
-    <div className="landing-page">
-      <section className="hero page-container" aria-labelledby="hero-title">
+    <div className="landing-page" ref={revealRoot}>
+      <AmbientBackground />
+      <div className="scroll-progress" aria-hidden="true" />
+      <section className="hero container" aria-labelledby="hero-title" {...heroPointer}>
+        <span className="hero-spotlight" aria-hidden="true" />
         <div className="hero-copy">
-          <p className="eyebrow"><span className="eyebrow-line" aria-hidden="true" /> PEOPLE. PARCELS. POSSIBILITIES.</p>
-          <h1 id="hero-title">A little closer.<br />With every<br /><span className="hero-word">delivery<svg viewBox="0 0 410 20" preserveAspectRatio="none" aria-hidden="true"><path d="M3 13C99 1 251 0 407 9" /></svg></span><span className="hero-dot">.</span></h1>
-          <p className="hero-description">From a thoughtful little something to your next big idea. We’re building a delivery experience that brings people closer.</p>
-          
-          <form className="hero-track-form" onSubmit={handleTrackSubmit} role="search" aria-label="Quick parcel tracking">
-            <div className="hero-track-bar">
+          <p className="eyebrow hero-anim" style={order(0)}><span className="eyebrow-line" aria-hidden="true" /> PEOPLE. PARCELS. POSSIBILITIES.</p>
+          <h1 id="hero-title" className="hero-title">
+            <span className="hero-line hero-anim" style={order(1)}>A little closer. </span>
+            <span className="hero-line hero-anim" style={order(2)}>With every </span>
+            <span className="hero-line hero-anim" style={order(3)}>
+              <span className="hero-word">delivery<svg className="hero-underline" viewBox="0 0 410 20" preserveAspectRatio="none" aria-hidden="true"><path d="M3 13C99 1 251 0 407 9" pathLength={1} /></svg></span><span className="hero-dot">.</span>
+            </span>
+          </h1>
+          <p className="hero-description hero-anim" style={order(4)}>From a thoughtful little something to your next big idea. We’re building a delivery experience that brings people closer.</p>
+
+          <form className="track-form hero-anim" style={order(5)} onSubmit={handleTrackSubmit} role="search" aria-label="Quick parcel tracking">
+            <div className="track-field glass">
+              <SearchIcon className="track-field-icon" size={20} />
               <input
                 type="text"
-                className="hero-track-input"
+                className="track-input"
                 placeholder="Enter tracking number (e.g. SWD-20261023-A1B2C3)"
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 aria-label="Parcel tracking number"
               />
-              <Button type="submit" variant="primary" className="hero-track-submit">
+              <Button type="submit" variant="primary" className="track-submit">
                 Track
               </Button>
             </div>
           </form>
 
-          <div className="hero-action-row">
-            <Link className="button button-primary hero-cta" to="/customer">Explore your customer space <ArrowIcon /></Link>
-            <Link className="button button-tonal hero-secondary-cta" to="/tracking">Live tracking</Link>
+          <div className="hero-actions hero-anim" style={order(6)}>
+            <ButtonLink to={isAuthenticated ? primaryWorkspacePath : "/customer"} variant="primary" size="lg" rightIcon={<ArrowRightIcon />}>{isAuthenticated ? `Go to ${primaryWorkspaceLabel}` : "Explore your customer space"}</ButtonLink>
+            <ButtonLink to="/tracking" variant="secondary" size="lg">Live tracking</ButtonLink>
           </div>
-          <p className="hero-caption">One place to begin your SwiftDrop journey.</p>
         </div>
-        <div className="hero-art" aria-hidden="true">
-          <div className="art-grid" /><div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="art-orbit orbit-three" />
-          <div className="orbit-point point-start" /><div className="orbit-point point-end" />
-          <span className="art-coordinate coordinate-top">A LITTLE SOMETHING</span><span className="art-coordinate coordinate-bottom">A WHOLE LOT CLOSER</span>
-          <div className="art-spark spark-one">✳</div><div className="art-spark spark-two">+</div><div className="parcel-shadow" />
-          <div className="parcel"><div className="parcel-top" /><div className="parcel-side" /><div className="parcel-front">
-            <span className="parcel-tape" /><span className="parcel-brand">SwiftDrop.</span><span className="parcel-tagline">GOOD THINGS<br />ARE ON THEIR WAY.</span>
-            <div className="parcel-label"><span>WITH CARE, ALWAYS.</span><i /><small>FROM ONE PERSON TO ANOTHER</small></div><span className="parcel-arrows">↑ ↑</span>
-          </div></div>
-          <div className="art-sticker"><ArrowIcon diagonal /><span>Made to<br /><strong>connect.</strong></span></div><span className="art-index">THE SWIFTDROP WAY / 01</span>
-        </div>
+        <DeliveryScene />
       </section>
-      <section className="promise-strip" aria-label="Our approach"><div className="page-container promise-inner">
-        <span>Small parcels.</span><span className="promise-star" aria-hidden="true">✳</span><span>Big connections.</span><span className="promise-star" aria-hidden="true">✳</span><span>Thoughtfully delivered.</span><span className="promise-star" aria-hidden="true">✳</span>
-      </div></section>
-      
-      <section className="portal-showcase page-container" aria-labelledby="showcase-title">
-        <div className="portal-showcase-header">
+
+      <PromiseMarquee />
+
+      <section className="workspaces container" aria-labelledby="showcase-title">
+        <div className="section-header" data-reveal>
           <p className="eyebrow"><span className="eyebrow-line" aria-hidden="true" /> PURPOSE-BUILT WORKSPACES</p>
-          <h2 id="showcase-title">Seamless logistics for everyone.</h2>
-          <p className="showcase-subtitle">Whether sending a single gift, fulfilling thousands of merchant orders, or navigating city routes.</p>
+          <h2 id="showcase-title" className="landing-h2">Seamless logistics for everyone.</h2>
+          <p className="landing-lead">Whether sending a single gift, fulfilling thousands of merchant orders, or navigating city routes.</p>
         </div>
-        <div className="portal-grid">
-          <div className="portal-card">
-            <div className="portal-card-tag">Customer Space</div>
-            <h3>Personal & On-Demand</h3>
-            <p>Instant pricing quotes across our delivery zones, one-click booking, live parcel updates, and downloadable delivery receipts.</p>
-            <Link to="/customer" className="button button-tonal portal-cta">
-              Customer portal <ArrowIcon diagonal />
-            </Link>
-          </div>
-          <div className="portal-card">
-            <div className="portal-card-tag">Merchant Hub</div>
-            <h3>Commercial Logistics</h3>
-            <p>Bulk CSV uploads, automated webhooks, developer API credentials with scopes, and real-time order lifecycle tracking.</p>
-            <Link to="/merchant" className="button button-tonal portal-cta">
-              Merchant hub <ArrowIcon diagonal />
-            </Link>
-          </div>
-          <div className="portal-card">
-            <div className="portal-card-tag">Courier Dispatch</div>
-            <h3>Operational Agility</h3>
-            <p>Assigned route rosters, stage-by-stage status updates, recipient name capture, and photo proof of delivery.</p>
-            <Link to="/courier" className="button button-tonal portal-cta">
-              Courier workspace <ArrowIcon diagonal />
-            </Link>
-          </div>
+        <div className="workspace-grid">
+          {availableWorkspaces.map((workspace, index) => (
+            <div key={workspace.to} className="workspace-item" data-reveal style={revealDelay(index * 80)}>
+              <WorkspaceCard workspace={workspace} />
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="introduction page-container" aria-labelledby="introduction-title">
-        <div className="introduction-heading"><p className="eyebrow">A GOOD PLACE TO START</p><h2 id="introduction-title">Your journey.<br />A shared beginning.</h2></div>
-        <div className="introduction-copy"><p>Every delivery starts with a person. Your customer space brings that idea home, with a dedicated place for your profile.</p><p className="muted">Sign in to book deliveries, follow them live and download receipts.</p><Link className="text-link" to="/customer">Take a look around <ArrowIcon diagonal /></Link></div>
+      <section className="cta-section container" aria-labelledby="introduction-title">
+        <div className="cta-banner" data-reveal>
+          <div className="cta-icon" aria-hidden="true"><ArrowUpRightIcon size={28} /></div>
+          <div className="cta-copy">
+            <p className="eyebrow">A GOOD PLACE TO START</p>
+            <h2 id="introduction-title">Your journey. A shared beginning.</h2>
+            <p className="cta-text">Sign in to book deliveries, follow them live and download receipts.</p>
+          </div>
+          <ButtonLink to="/customer" variant="accent" size="lg" rightIcon={<ArrowRightIcon />}>Customer space</ButtonLink>
+        </div>
       </section>
-      <section className="welcome-banner page-container" aria-label="Customer space introduction"><div className="welcome-banner-inner">
-        <div className="welcome-symbol" aria-hidden="true">↗</div><div><p className="eyebrow">THERE’S A PLACE FOR YOU HERE</p><h2>Your next chapter starts with you.</h2></div><Link className="button button-light" to="/customer">Customer space <ArrowIcon /></Link>
-      </div></section>
     </div>
   )
 }

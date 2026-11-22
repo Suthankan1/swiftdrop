@@ -13,6 +13,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** Controller-only synthetic fixture; this is NOT a live authenticated HTTP success test. */
@@ -52,6 +53,55 @@ class CurrentUserProfileContractTest {
                 .setControllerAdvice(new ProfileProblemHandler()).build();
         mvc.perform(get("/api/v1/users/me")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("detail").value("Profile identity attributes are invalid."));
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void updatesMyContactDetailsSuccessfully() throws Exception {
+        var identity = new TrustedIdentity("user-sub-123", "user@swiftdrop.test", "Alice Old", List.of("CUSTOMER"));
+        var updatedProfile = new CurrentUserProfile(UUID.randomUUID(), identity.subject(), "user@swiftdrop.test",
+                "Alice New", "+94 77 123 4567", identity.roles(), null, Instant.parse("2026-10-16T00:00:00Z"));
+        var service = mock(CurrentUserProfileService.class);
+        when(service.updateContactDetails(eq(identity), eq("Alice New"), eq("+94 77 123 4567")))
+                .thenReturn(updatedProfile);
+
+        var mvc = MockMvcBuilders.standaloneSetup(new CurrentUserProfileController(() -> identity, service)).build();
+        mvc.perform(patch("/api/v1/users/me")
+                        .contentType("application/json")
+                        .content("{\"fullName\":\"Alice New\",\"phoneNumber\":\"+94 77 123 4567\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.fullName").value("Alice New"))
+                .andExpect(jsonPath("$.phoneNumber").value("+94 77 123 4567"));
+
+        verify(service).updateContactDetails(eq(identity), eq("Alice New"), eq("+94 77 123 4567"));
+    }
+
+    @Test
+    void rejectsInvalidPhoneNumberOnUpdate() throws Exception {
+        var identity = new TrustedIdentity("user-sub-123", "user@swiftdrop.test", "Alice", List.of("CUSTOMER"));
+        var service = mock(CurrentUserProfileService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new CurrentUserProfileController(() -> identity, service)).build();
+
+        mvc.perform(patch("/api/v1/users/me")
+                        .contentType("application/json")
+                        .content("{\"phoneNumber\":\"invalid-phone-abc\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void rejectsEmptyPatchRequest() throws Exception {
+        var identity = new TrustedIdentity("user-sub-123", "user@swiftdrop.test", "Alice", List.of("CUSTOMER"));
+        var service = mock(CurrentUserProfileService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new CurrentUserProfileController(() -> identity, service)).build();
+
+        mvc.perform(patch("/api/v1/users/me")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
         verifyNoInteractions(service);
     }
 }

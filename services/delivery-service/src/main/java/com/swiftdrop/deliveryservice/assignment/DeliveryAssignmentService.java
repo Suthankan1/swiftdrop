@@ -10,9 +10,9 @@ import com.swiftdrop.deliveryservice.assignment.exception.AssignmentConflictExce
 import com.swiftdrop.deliveryservice.assignment.exception.IneligibleCourierException;
 import com.swiftdrop.deliveryservice.assignment.exception.InvalidParcelStateException;
 import com.swiftdrop.deliveryservice.core.Parcel;
+import com.swiftdrop.deliveryservice.core.ParcelStatus;
 import com.swiftdrop.deliveryservice.core.ParcelNotFoundException;
 import com.swiftdrop.deliveryservice.core.ParcelRepository;
-import com.swiftdrop.deliveryservice.core.ParcelStatus;
 import com.swiftdrop.deliveryservice.query.dto.PagedResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -133,6 +133,82 @@ public class DeliveryAssignmentService implements CourierAssignmentContract {
             boolean activeOnly,
             Pageable pageable) {
         return getMyAssignments(courierSub, roles, activeOnly, null, pageable);
+    }
+
+    public PagedResponse<AssignmentResponse> getMyAssignments(
+            String courierSub,
+            Collection<String> roles,
+            boolean activeOnly,
+            java.time.Instant assignedSince,
+            String trackingNumber,
+            ParcelStatus status,
+            Pageable pageable) {
+        String normalizedTrackingNumber = trackingNumber == null || trackingNumber.isBlank()
+                ? null
+                : trackingNumber.trim();
+        if (normalizedTrackingNumber == null && status == null) {
+            return getMyAssignments(courierSub, roles, activeOnly, assignedSince, pageable);
+        }
+        requireCourierRead(courierSub, roles);
+        if (!activeOnly) {
+            throw new IllegalArgumentException("Tracking-number filtering is supported only for active assignments.");
+        }
+        Page<DeliveryAssignment> page = assignmentRepository.findFilteredActiveByCourierSub(
+                courierSub.trim(),
+                assignedSince,
+                normalizedTrackingNumber,
+                status,
+                safePageable(pageable)
+        );
+        return PagedResponse.of(page.map(this::toResponse));
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<AssignmentResponse> getMyHistory(
+            String courierSub,
+            Collection<String> roles,
+            ParcelStatus status,
+            java.time.Instant completedSince,
+            java.time.Instant completedUntil,
+            Pageable pageable) {
+        requireCourierRead(courierSub, roles);
+        Page<DeliveryAssignment> page = assignmentRepository.findCourierHistory(
+                courierSub.trim(),
+                status,
+                completedSince,
+                completedUntil,
+                safePageable(pageable)
+        );
+        return PagedResponse.of(page.map(this::toResponse));
+    }
+
+    private void requireCourierRead(String courierSub, Collection<String> roles) {
+        if (courierSub == null || courierSub.isBlank()) {
+            throw new AssignmentAccessDeniedException("Authenticated subject is required.");
+        }
+        if (roles == null || (!roles.contains("COURIER") && !roles.contains("ROLE_COURIER"))) {
+            throw new AssignmentAccessDeniedException("Caller does not hold required COURIER role.");
+        }
+    }
+
+    private Pageable safePageable(Pageable pageable) {
+        int pageNumber = pageable == null ? 0 : Math.max(0, pageable.getPageNumber());
+        int pageSize = pageable == null ? 20 : Math.min(Math.max(1, pageable.getPageSize()), 50);
+        return PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "assignedAt"));
+    }
+
+    private AssignmentResponse toResponse(DeliveryAssignment assignment) {
+        return new AssignmentResponse(
+                assignment.getAssignmentId(),
+                assignment.getParcelId(),
+                assignment.getCourierSub(),
+                assignment.isActive(),
+                assignment.getAssignedAt(),
+                assignment.getAssignedBy(),
+                null,
+                assignment.getEndedAt(),
+                null
+        );
     }
 
     /**

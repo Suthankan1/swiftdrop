@@ -76,6 +76,10 @@ describe('CustomerDashboardCards component', () => {
     expect(screen.getByText('Completed Deliveries')).toBeInTheDocument()
     expect(screen.getByText('Total Shipments')).toBeInTheDocument()
 
+    // Distinct navigation targets for active vs completed deliveries
+    expect(screen.getByRole('link', { name: /view active/i })).toHaveAttribute('href', '/customer/active')
+    expect(screen.getByRole('link', { name: /view history/i })).toHaveAttribute('href', '/customer/completed')
+
     // Recent parcels preview table
     expect(screen.getByText('SD-TRK-1001')).toBeInTheDocument()
     expect(screen.getByText('In Transit')).toBeInTheDocument()

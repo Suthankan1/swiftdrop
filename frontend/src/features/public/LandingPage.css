@@ -1,0 +1,308 @@
+/* ==========================================================================
+   SwiftDrop landing page. Every rule is scoped to .landing-page or a landing-only class.
+   Tokens (colour, spacing, type, radius, shadow, motion) live in styles/global.css :root.
+   Motion is opt-in: it only exists inside `prefers-reduced-motion: no-preference` blocks, and animates
+   transform/opacity (plus the one requested stroke-dashoffset underline draw).
+   ========================================================================== */
+
+.landing-page { color: var(--ink); overflow-x: clip; }
+
+/* ---- Shared type ---- */
+.landing-page .eyebrow {
+  display: inline-flex; align-items: center; gap: var(--space-3); margin: 0;
+  font-size: var(--font-eyebrow); line-height: 1.4; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600;
+  color: var(--ink-muted);
+}
+.landing-page .eyebrow-line { width: 24px; height: 1px; margin: 0; background: currentColor; }
+.landing-h2 { margin: 0; font-size: var(--font-h2); line-height: 1.08; letter-spacing: -0.025em; font-weight: 600; color: var(--brand); }
+.landing-lead { margin: 0; max-width: 60ch; font-size: var(--font-body); line-height: 1.6; color: var(--ink-muted); }
+
+/* ==========================================================================
+   Hero
+   ========================================================================== */
+.hero {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-8); align-items: center;
+  padding-block: var(--space-7);
+  /* Fill the first screen, but never grow past a comfortable height on very tall (e.g. portrait) displays. */
+  min-height: min(calc(100vh - var(--header-height)), 760px);
+  min-height: min(calc(100svh - var(--header-height)), 760px);
+}
+.hero-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.hero-title {
+  margin: var(--space-4) 0 0; font-size: var(--font-display); line-height: 1.02; letter-spacing: -0.03em; font-weight: 600;
+  color: var(--brand);
+}
+.hero-line { display: block; }
+.hero-word { position: relative; display: inline-block; z-index: 0; }
+.hero-underline { position: absolute; left: -2%; bottom: 0.02em; width: 104%; height: 0.2em; z-index: -1; color: var(--accent); overflow: visible; }
+.hero-underline path { fill: none; stroke-width: 9px;stroke-dasharray: 1; stroke-dashoffset: 0; }
+.hero-dot { color: #7b9440; }
+.hero-description { margin: var(--space-5) 0 0; max-width: 46ch; font-size: var(--font-body); line-height: 1.6; color: var(--ink-muted); }
+
+/* Tracking field: one pill with the icon at the start and the submit button nested at the end. */
+.track-form { width: 100%; max-width: 520px; margin-top: var(--space-6); }
+.track-field {
+  position: relative; display: flex; align-items: center; gap: var(--space-2);
+  height: 56px; padding: 6px 6px 6px 48px;
+  background: var(--glass-bg-strong); border: 1px solid var(--border-strong); border-radius: 999px; box-shadow: var(--glass-highlight), var(--shadow-sm);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.track-field:hover { border-color: rgb(31 61 51 / 0.35); }
+.track-field:focus-within { border-color: var(--brand); background: rgb(255 255 255 / 0.92); box-shadow: var(--glass-highlight), var(--shadow-sm), 0 0 0 4px rgb(200 224 106 / 0.6); }
+.track-field-icon { position: absolute; left: 18px; top: 50%; translate: 0 -50%; color: var(--ink-muted); pointer-events: none; }
+.track-input {
+  flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; outline: none;
+  color: var(--ink); font-size: 16px; text-overflow: ellipsis;
+}
+.track-input::placeholder { color: var(--ink-muted); opacity: 1; }
+.track-field .track-submit { border-radius: 999px; }
+
+.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-4); }
+
+/* ---- Hero illustration card ---- */
+.hero-art {
+  position: relative; align-self: stretch; min-width: 0; min-height: 440px; overflow: hidden; isolation: isolate;
+  border-radius: var(--radius-feature);
+  background: linear-gradient(180deg, #eef2e2 0%, #f4f5ec 55%, var(--surface-muted) 100%);
+  box-shadow: var(--shadow-sm), inset 0 0 0 1px rgb(31 61 51 / 0.06);
+  container: hero-art / size;
+}
+/* "Made to connect." badge: pinned inside the card, 24px from the bottom-right corner. */
+.art-sticker {
+  position: absolute; right: var(--space-5); bottom: var(--space-5); width: clamp(88px, 24cqmin, 120px); aspect-ratio: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: 50%; border: 1px solid #b6cd77; background: var(--accent); color: var(--brand);
+  box-shadow: 0 8px 20px -8px rgb(31 61 51 / 0.4); rotate: 12deg;
+}
+.art-sticker > svg { width: 24%; height: auto; }
+.art-sticker-text { font-size: clamp(11px, 3cqmin, 14px); line-height: 1.15; text-align: center; }
+.art-sticker strong { display: block; font-size: 1.35em; font-weight: 650; letter-spacing: -0.02em; }
+
+/* ==========================================================================
+   Marquee
+   ========================================================================== */
+.marquee { position: relative; padding-block: var(--space-5); background: rgb(255 255 255 / 0.38); border-inline: 0; border-block: 1px solid rgb(255 255 255 / 0.75); box-shadow: inset 0 -1px 0 var(--border), 0 1px 0 var(--border); }
+.marquee-viewport { overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 6%, #000 88%, transparent); }
+.marquee-track { display: flex; width: max-content; }
+.marquee-group { display: flex; flex-shrink: 0; align-items: center; }
+.marquee-unit { display: inline-flex; align-items: center; gap: var(--space-6); padding-right: var(--space-6); }
+.marquee-item { font-size: clamp(18px, 15.3px + 0.75vw, 22px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; white-space: nowrap; color: var(--brand); }
+.marquee-star {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); color: var(--brand); font-size: 20px; line-height: 1;
+}
+.marquee-star > span { display: block; }
+.marquee .marquee-toggle {
+  position: absolute; top: 50%; right: var(--container-pad); translate: 0 -50%;
+  border-radius: 50%; background: var(--bg); color: var(--brand);
+}
+
+/* ==========================================================================
+   Workspaces
+   ========================================================================== */
+.workspaces { padding-block: var(--space-8); }
+.section-header { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+.workspace-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); margin-top: var(--space-7); }
+.workspace-item { display: flex; }
+.workspace-card {
+  flex: 1; display: flex; flex-direction: column; padding: var(--space-6);
+  position: relative; overflow: hidden; isolation: isolate; border-radius: var(--radius-card);
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); translate: 0 0;
+  transition: transform var(--dur-base) var(--ease-out), translate var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+}
+.workspace-card:hover { box-shadow: var(--glass-highlight), var(--shadow-lg); border-color: rgb(31 61 51 / 0.28); }
+.card-glare {
+  position: absolute; left: 0; top: 0; z-index: -1; width: 380px; height: 380px; margin: -190px 0 0 -190px; border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.95), rgb(200 224 106 / 0.22) 38%, transparent 68%);
+  translate: var(--px, 0px) var(--py, 0px); opacity: 0; pointer-events: none;
+  transition: opacity 350ms var(--ease-out);
+}
+.workspace-card[data-pointer='on'] .card-glare { opacity: 1; }
+.workspace-card-top { display: flex; align-items: center; gap: var(--space-3); }
+.workspace-icon {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--radius-control);
+  background: var(--surface-muted); color: var(--brand);
+  transition: background-color var(--dur-base) var(--ease-out);
+}
+.workspace-icon svg { width: 20px; height: 20px; }
+.workspace-card:hover .workspace-icon { background: var(--accent); }
+.workspace-tag { font-size: var(--font-eyebrow); line-height: 1.4; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--ink-muted); }
+.workspace-card h3 { margin: var(--space-5) 0 var(--space-2); font-size: var(--font-h3); line-height: 1.25; letter-spacing: -0.015em; font-weight: 600; color: var(--brand); }
+.workspace-card p { margin: 0; font-size: 16px; line-height: 1.6; color: var(--ink-muted); }
+.workspace-card-footer { margin-top: auto; padding-top: var(--space-5); }
+.workspace-card:hover .button-link .button-label::after { transform: scaleX(1); transform-origin: left; }
+
+/* ==========================================================================
+   Journey + CTA banner
+   ========================================================================== */
+
+.cta-section { padding-bottom: var(--space-8); }
+.cta-banner {
+  --focus-gap: var(--brand);
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-6);
+  padding: var(--space-7) 56px; border-radius: var(--radius-feature); color: var(--bg);
+  background: rgb(31 61 51 / 0.9); border: 1px solid rgb(255 255 255 / 0.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), var(--shadow-lg);
+}
+.cta-banner::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(55% 120% at 100% 0%, rgb(200 224 106 / 0.26), transparent 60%),
+    radial-gradient(40% 80% at 0% 100%, rgb(200 224 106 / 0.07), transparent 70%);
+}
+.cta-banner::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.14; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+.cta-icon {
+  display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%;
+  background: rgb(200 224 106 / 0.12); border: 1px solid rgb(200 224 106 / 0.3); color: var(--accent);
+}
+.cta-icon svg { transition: transform var(--dur-base) var(--ease-out); }
+.cta-copy { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.cta-text { margin: 0; max-width: 56ch; font-size: var(--font-small); line-height: 1.6; color: #cbd7bd; }
+.landing-page .cta-banner .eyebrow { color: #cbd7bd; }
+.cta-banner h2 { margin: 0; font-size: clamp(24px, 20px + 1.1vw, 32px); line-height: 1.15; letter-spacing: -0.02em; font-weight: 550; color: var(--bg); }
+
+/* ==========================================================================
+   Motion (opt-in)
+   ========================================================================== */
+@keyframes landing-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes landing-art-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes landing-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes landing-badge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes landing-spin { to { transform: rotate(360deg); } }
+@keyframes landing-marquee { to { transform: translateX(-50%); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Load: nav fades (global), hero text lines stagger 60ms, then the illustration scales in. */
+  /* fill-mode backwards: once finished, these stop applying opacity, so they no longer act as a backdrop root and the glass inside them blurs the page behind. */
+  .hero-anim { animation: landing-rise var(--dur-slow) var(--ease-out) backwards; animation-delay: calc(120ms + var(--i, 0) * 60ms); }
+  .hero-underline path { animation: landing-draw 900ms var(--ease-out) 750ms both; }
+  .hero-art { animation: landing-art-in var(--dur-slow) var(--ease-out) 420ms backwards; }
+
+
+  .marquee-track { animation: landing-marquee 40s linear infinite; }
+  .marquee-star > span { animation: landing-spin 14s linear infinite; }
+  .marquee-viewport:hover .marquee-track,
+  .marquee-viewport:hover .marquee-star > span,
+  .marquee-track[data-paused='true'],
+  .marquee-track[data-paused='true'] .marquee-star > span { animation-play-state: paused; }
+
+  .workspace-card:hover { translate: 0 -4px; }
+  .workspace-card:hover .button-icon-right > svg { transform: translate(2px, -2px); }
+  .cta-banner:hover .cta-icon svg { transform: translate(3px, -3px); }
+}
+
+/* Reduced motion: a calm, static phrase row and no loop control (there is nothing to pause). */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-viewport { mask-image: none; }
+  .marquee-track { width: auto; justify-content: center; }
+  .marquee-group { flex-wrap: wrap; justify-content: center; row-gap: var(--space-4); padding-inline: var(--container-pad); }
+  .marquee-group[aria-hidden='true'], .marquee-unit.is-duplicate { display: none; }
+  .marquee-unit:last-of-type { padding-right: 0; }
+  .marquee .marquee-toggle { display: none; }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-7); min-height: 0; padding-block: var(--space-6) var(--space-8); }
+  .hero-art { align-self: auto; min-height: 0; height: 440px; }
+  .workspace-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+  .cta-section { padding-bottom: var(--space-7); }
+  .cta-banner { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); padding: var(--space-6) var(--space-5); }
+  .cta-banner .button { width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .hero-art { height: clamp(280px, 88vw, 360px); }
+  .track-form { max-width: none; }
+  .hero-actions { flex-direction: column; align-items: stretch; width: 100%; }
+  .hero-actions .button { width: 100%; }
+  .workspaces { padding-block: var(--space-7); }
+  .workspace-grid { grid-template-columns: minmax(0, 1fr); }
+  .marquee-unit { gap: var(--space-4); padding-right: var(--space-4); }
+  .marquee-star { width: 28px; height: 28px; font-size: 16px; }
+}
+
+/* ==========================================================================
+   Ambient background, hero spotlight, scroll progress and button shine.
+   Decorative only: everything is aria-hidden, pointer-events: none, and the moving parts exist only
+   under prefers-reduced-motion: no-preference (pointer effects are also mouse-only, see pointerEffects.ts).
+   ========================================================================== */
+.landing-page { position: relative; isolation: isolate; }
+
+/* Slow aurora light behind the page; it starts under the transparent header so there is no seam. */
+.landing-ambient {
+  position: absolute; inset: calc(-1 * var(--header-height)) 0 0 0; z-index: -1; overflow: hidden; pointer-events: none;
+}
+.ambient-blob { position: absolute; border-radius: 50%; translate: 0 0; scale: 1; }
+.blob-1 { width: 760px; height: 760px; left: -260px; top: -200px; background: radial-gradient(circle, rgb(200 224 106 / 0.16), transparent 62%); }
+.blob-2 { width: 860px; height: 860px; right: -300px; top: 0; background: radial-gradient(circle, rgb(140 176 132 / 0.3), transparent 64%); }
+.blob-3 { width: 720px; height: 720px; left: 18%; top: 1050px; background: radial-gradient(circle, rgb(200 224 106 / 0.3), transparent 62%); }
+.blob-4 { width: 640px; height: 640px; right: -180px; bottom: -160px; background: radial-gradient(circle, rgb(122 160 120 / 0.22), transparent 64%); }
+.ambient-dots {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle, rgb(31 61 51 / 0.12) 1px, transparent 1.6px) 0 0 / 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 42% at 28% 12%, #000, transparent 72%);
+  mask-image: radial-gradient(ellipse 70% 42% at 28% 12%, #000, transparent 72%);
+}
+.ambient-grain { position: absolute; inset: 0; opacity: 0.05; background-image: var(--noise); background-size: 180px 180px; mix-blend-mode: multiply; }
+
+/* Soft lime light that follows the mouse around the hero. */
+.hero { position: relative; isolation: isolate; }
+.hero-spotlight {
+  position: absolute; left: 0; top: 0; z-index: -1; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%;
+  background: radial-gradient(circle, rgb(200 224 106 / 0.2), transparent 62%);
+  translate: var(--px, 0px) var(--py, 0px); opacity: 0; pointer-events: none;
+}
+.hero[data-pointer='on'] .hero-spotlight { opacity: 1; }
+
+/* Thin reading-progress line under the header (scroll-driven; nothing renders without support). */
+.scroll-progress {
+  position: fixed; left: 0; right: 0; top: var(--header-height); z-index: 51; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--brand)); transform-origin: 0 50%; transform: scaleX(0); pointer-events: none;
+}
+
+/* Light sweep across primary and accent buttons on hover. */
+.landing-page .button-primary, .landing-page .button-accent { overflow: hidden; isolation: isolate; }
+.landing-page .button-primary::after, .landing-page .button-accent::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.26) 50%, transparent 70%);
+  translate: -120% 0;
+}
+
+@keyframes ambient-drift-a { 0%, 100% { translate: 0 0; scale: 1; } 50% { translate: 90px 70px; scale: 1.08; } }
+@keyframes ambient-drift-b { 0%, 100% { translate: 0 0; scale: 1; } 50% { translate: -110px 60px; scale: 1.06; } }
+@keyframes ambient-drift-c { 0%, 100% { translate: 0 0; scale: 1; } 50% { translate: 120px -50px; scale: 1.1; } }
+@keyframes landing-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .blob-1 { animation: ambient-drift-a 26s ease-in-out infinite; }
+  .blob-2 { animation: ambient-drift-b 32s ease-in-out infinite; }
+  .blob-3 { animation: ambient-drift-c 28s ease-in-out infinite; }
+  .blob-4 { animation: ambient-drift-a 36s ease-in-out infinite reverse; }
+
+  .hero-spotlight { transition: opacity 500ms var(--ease-out), translate 220ms var(--ease-out); }
+
+  .landing-page .button-primary:hover:not(:disabled)::after,
+  .landing-page .button-accent:hover:not(:disabled)::after { translate: 120% 0; transition: translate 750ms var(--ease-out); }
+
+  @supports (animation-timeline: scroll()) {
+    .scroll-progress { animation: landing-progress auto linear both; animation-timeline: scroll(root); }
+  }
+}
+
+@media (max-width: 640px) {
+  .blob-1 { width: 480px; height: 480px; left: -200px; top: -120px; }
+  .blob-2 { width: 520px; height: 520px; right: -260px; top: 360px; }
+  .blob-3 { width: 480px; height: 480px; left: -120px; top: 1400px; }
+}

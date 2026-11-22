@@ -107,43 +107,52 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
       {data && (
         <>
           <div className="customer-summary-grid">
-            <div className="card metric-card">
-              <span className="spec-label">Active Deliveries</span>
-              <span className="metric-value">{data.activeDeliveriesCount}</span>
+            <div className="card metric-card metric-card--active">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>🚚</span>
+                <span className="spec-label">Active Deliveries</span>
+              </div>
+              <span className="metric-value metric-value--active">{data.activeDeliveriesCount}</span>
               <p className="metric-caption muted">Parcels in transit or out for delivery</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (
-                  <Link to="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <Link to="/customer/active" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View active
                   </Link>
                 ) : (
-                  <a href="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <a href="/customer/active" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View active
                   </a>
                 )}
               </div>
             </div>
 
-            <div className="card metric-card">
-              <span className="spec-label">Completed Deliveries</span>
-              <span className="metric-value">{data.completedDeliveriesCount}</span>
+            <div className="card metric-card metric-card--completed">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>✅</span>
+                <span className="spec-label">Completed Deliveries</span>
+              </div>
+              <span className="metric-value metric-value--completed">{data.completedDeliveriesCount}</span>
               <p className="metric-caption muted">Delivered parcels with official receipts</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (
-                  <Link to="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <Link to="/customer/completed" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View history
                   </Link>
                 ) : (
-                  <a href="/customer/history" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
+                  <a href="/customer/completed" className="button button-secondary" style={{ fontSize: '13px', padding: '6px 12px' }}>
                     View history
                   </a>
                 )}
               </div>
             </div>
 
-            <div className="card metric-card">
-              <span className="spec-label">Total Shipments</span>
-              <span className="metric-value">{totalBookings}</span>
+            <div className="card metric-card metric-card--total">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>📦</span>
+                <span className="spec-label">Total Shipments</span>
+              </div>
+              <span className="metric-value metric-value--total">{totalBookings}</span>
               <p className="metric-caption muted">Total dispatches booked with SwiftDrop</p>
               <div style={{ marginTop: '8px' }}>
                 {inRouter ? (
@@ -205,6 +214,8 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
                   <tbody>
                     {data.recentParcels.map((parcel) => {
                       const presentation = getStatusPresentation(parcel.currentStatus)
+                      const isCompleted = parcel.currentStatus === 'DELIVERED' || parcel.currentStatus === 'FAILED'
+                      const targetPath = isCompleted ? '/customer/completed' : '/customer/active'
                       return (
                         <tr key={parcel.parcelId}>
                           <th scope="row" style={{ fontFamily: 'monospace' }}>
@@ -221,7 +232,7 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
                           <td data-label="Action">
                             {inRouter ? (
                               <Link
-                                to="/customer/history"
+                                to={targetPath}
                                 className="button button-secondary"
                                 style={{ fontSize: '12px', padding: '4px 8px' }}
                                 aria-label={`View details for ${parcel.trackingNumber}`}
@@ -230,7 +241,7 @@ export function CustomerDashboardCards({ apiOverride, apiOptions }: CustomerDash
                               </Link>
                             ) : (
                               <a
-                                href="/customer/history"
+                                href={targetPath}
                                 className="button button-secondary"
                                 style={{ fontSize: '12px', padding: '4px 8px' }}
                                 aria-label={`View details for ${parcel.trackingNumber}`}

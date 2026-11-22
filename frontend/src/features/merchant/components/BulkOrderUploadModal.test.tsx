@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { createDeliveryApi } from '../../customer/api/delivery'
+import { createPricingApi } from '../../customer/api/pricing'
+import { MERCHANT_ORDER_CSV_SAMPLE } from '../api/merchantBooking'
 import { BulkOrderUploadModal } from './BulkOrderUploadModal'
 
 describe('BulkOrderUploadModal', () => {
@@ -42,6 +45,33 @@ describe('BulkOrderUploadModal', () => {
     const alertBanner = screen.getByRole('alert')
     expect(alertBanner).toBeInTheDocument()
     expect(alertBanner).toHaveTextContent('Please upload a valid .csv file.')
+  })
+
+  it('keeps keyboard focus in the dialog when the import button becomes disabled', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const options = { getAccessToken: async () => null }
+    const bookingApis = {
+      pricing: {
+        ...createPricingApi(options),
+        calculateQuote: vi.fn().mockResolvedValue({ quoteId: 'quote-focus' }),
+      },
+      delivery: {
+        ...createDeliveryApi(options),
+        bookParcel: vi.fn().mockResolvedValue({ trackingNumber: 'SWD-TEST-FOCUS' }),
+      },
+    }
+    render(<BulkOrderUploadModal isOpen onClose={onClose} bookingApis={bookingApis} />)
+    const [header, row] = MERCHANT_ORDER_CSV_SAMPLE.split('\r\n')
+    const file = new File([header + '\r\n' + row], 'orders.csv', { type: 'text/csv' })
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await user.click(await screen.findByRole('button', { name: 'Import 1 orders' }))
+    await screen.findByText('1 of 1 valid orders booked.')
+    expect(screen.getByRole('dialog')).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })
 

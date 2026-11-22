@@ -678,6 +678,47 @@ class AccountsInternalServiceGrpcTest {
     }
 
     @Test
+    @DisplayName("GetAvailableCouriersSummary: matches couriers via canonical zone fallback when filter is alias")
+    void testAvailableCouriersSummary_ZoneFilterAlias_Fallback_Success() {
+        String courierSub = "courier-sub-alias";
+        UUID courierId = UUID.randomUUID();
+        UUID customerProfileId = UUID.randomUUID();
+
+        StaffProfile courier1 = new StaffProfile(
+                courierId, customerProfileId, courierSub, "STF-002", StaffRole.COURIER, "LOGISTICS", "ZONE_1",
+                StaffStatus.ACTIVE, Instant.now(), Instant.now()
+        );
+        AccountProfile courierAcct = mockCustomerProfile(customerProfileId, courierSub, "nimal@swiftdrop.internal", "Nimal Silva", "+94773333333");
+
+        // Direct query for "Colombo" returns empty
+        when(staffProfileRepository.findByRoleAndAssignedZone(StaffRole.COURIER, "Colombo"))
+                .thenReturn(List.of());
+        // Fallback findByRole returns all couriers, including ZONE_1
+        when(staffProfileRepository.findByRole(StaffRole.COURIER))
+                .thenReturn(List.of(courier1));
+        when(accountProfileRepository.findByKeycloakSub(courierSub)).thenReturn(Optional.of(courierAcct));
+
+        AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =
+                createStub(SwiftDropServiceIdentity.DELIVERY_SERVICE.getServiceName(), dispatcherSub, "DISPATCHER");
+
+        AvailableCouriersSummaryResponse response = stub.getAvailableCouriersSummary(
+                AvailableCouriersSummaryRequest.newBuilder()
+                        .setZoneFilter("Colombo")
+                        .setPage(0)
+                        .setPageSize(20)
+                        .build()
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotalCount()).isEqualTo(1);
+        assertThat(response.getItemsList()).hasSize(1);
+        CourierSummaryItem item = response.getItems(0);
+        assertThat(item.getCourierSub()).isEqualTo(courierSub);
+        assertThat(item.getFullName()).isEqualTo("Nimal Silva");
+        assertThat(item.getAssignedZone()).isEqualTo("ZONE_1");
+    }
+
+    @Test
     @DisplayName("GetAvailableCouriersSummary: customer caller is rejected with PERMISSION_DENIED")
     void testGetAvailableCouriersSummary_CustomerCaller_Denied() {
         AccountsInternalServiceGrpc.AccountsInternalServiceBlockingStub stub =

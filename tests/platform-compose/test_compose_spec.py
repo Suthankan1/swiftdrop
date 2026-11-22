@@ -199,6 +199,13 @@ class TestComposeRuntimeSpec(unittest.TestCase):
         self.assertNotIn("ghp_", content)
         self.assertNotIn("eyJ", content)
 
+    def test_gateway_security_and_routing_share_frontend_origins(self):
+        environment = self.compose_data["services"]["api-gateway"]["environment"]
+        origins = "http://localhost:3000,http://localhost:5173"
+        self.assertEqual(environment["CORS_ALLOWED_ORIGIN"], "${CORS_ALLOWED_ORIGIN:-" + origins + "}")
+        self.assertEqual(environment["SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_ORIGINS"], origins)
+        self.assertIn("CORS_ALLOWED_ORIGIN=" + origins, ENV_EXAMPLE.read_text(encoding="utf-8"))
+
     def test_lifecycle_scripts_exist_and_non_destructive(self):
         """Verifies all operator lifecycle scripts exist, are executable, and contain no destructive commands."""
         for script_name in LIFECYCLE_SCRIPTS:
@@ -211,6 +218,28 @@ class TestComposeRuntimeSpec(unittest.TestCase):
             self.assertNotIn("down -v", content, f"Destructive 'down -v' in {script_name}")
             self.assertNotIn("volume prune", content, f"Destructive 'volume prune' in {script_name}")
             self.assertNotIn("system prune", content, f"Destructive 'system prune' in {script_name}")
+
+    def test_start_script_help_option(self):
+        """Verifies that start.sh --help cleanly displays usage for both Supabase and Local modes."""
+        res = subprocess.run(
+            ["bash", str(COMPOSE_DIR / "start.sh"), "--help"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("--supabase", res.stdout)
+        self.assertIn("--local", res.stdout)
+
+    def test_stop_script_help_option(self):
+        """Verifies that stop.sh --help cleanly displays usage for both modes."""
+        res = subprocess.run(
+            ["bash", str(COMPOSE_DIR / "stop.sh"), "--help"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("--supabase", res.stdout)
+        self.assertIn("--local", res.stdout)
 
     def test_secrets_have_no_committed_fallbacks(self):
         """Passwords and client secrets must come from .env; a missing value fails instead of using a known default."""

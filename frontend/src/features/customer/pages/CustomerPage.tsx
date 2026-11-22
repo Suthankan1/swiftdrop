@@ -41,28 +41,31 @@ export function CustomerPage({ dashboardApiOverride }: CustomerPageProps = {}) {
     {state.status === 'ready' && (
       <CustomerDashboardCards key={auth.snapshot.subject} apiOverride={dashboardApiOverride} />
     )}
-    <div className="profile-grid" style={{ marginTop: '24px' }}><CustomerProfile state={state} />
+    <div className="profile-grid" style={{ marginTop: '24px' }}><CustomerProfile state={state} onProfileUpdated={() => { void query.refetch() }} />
       <aside className="card customer-note" aria-labelledby="customer-note-heading"><h2 id="customer-note-heading">Built around you.</h2>
-        <p>Calculate dynamic rates, book delivery dispatches, monitor active milestones, and download official receipts.</p>
-        {inRouter ? (
-          <Link to="/customer/quote" className="button button-primary">Request a quote &amp; book</Link>
-        ) : (
-          <a href="/customer/quote" className="button button-primary">Request a quote &amp; book</a>
-        )}
-        {inRouter ? (
-          <Link to="/customer/history" className="button button-secondary">View delivery history</Link>
-        ) : (
-          <a href="/customer/history" className="button button-secondary">View delivery history</a>
-        )}
-        {inRouter ? (
-          <Link to="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</Link>
-        ) : (
-          <a href="/merchant/enroll" className="button button-secondary">Merchant onboarding ↗</a>
-        )}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-          <Button variant="secondary" size="sm" onClick={() => { void auth.logout() }}>Sign out</Button>
-          {query.isError && <Button variant="primary" size="sm" onClick={() => { void query.refetch() }}>Retry profile</Button>}
+        <p className="muted" style={{ lineHeight: 1.6, marginBottom: '16px' }}>Calculate dynamic rates, book delivery dispatches, monitor active milestones, and download official receipts.</p>
+        <div className="customer-quick-actions" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {inRouter ? (
+            <Link to="/customer/quote" className="button button-primary" style={{ justifyContent: 'center' }}>Request a quote &amp; book</Link>
+          ) : (
+            <a href="/customer/quote" className="button button-primary" style={{ justifyContent: 'center' }}>Request a quote &amp; book</a>
+          )}
+          {inRouter ? (
+            <Link to="/customer/history" className="button button-secondary" style={{ justifyContent: 'center' }}>View delivery history</Link>
+          ) : (
+            <a href="/customer/history" className="button button-secondary" style={{ justifyContent: 'center' }}>View delivery history</a>
+          )}
+          {inRouter ? (
+            <Link to="/merchant/enroll" className="button button-tonal" style={{ justifyContent: 'center' }}>Merchant onboarding ↗</Link>
+          ) : (
+            <a href="/merchant/enroll" className="button button-tonal" style={{ justifyContent: 'center' }}>Merchant onboarding ↗</a>
+          )}
         </div>
+        {query.isError && (
+          <div style={{ marginTop: '16px' }}>
+            <Button variant="primary" size="sm" onClick={() => { void query.refetch() }}>Retry profile</Button>
+          </div>
+        )}
       </aside></div>
   </div>
 }

@@ -9,6 +9,7 @@ import { StaffConfirmation } from '../components/StaffConfirmation'
 import { formatDateTime } from '../../customer/components/customerUiUtils'
 import { Button } from '../../../components/ui/Button'
 import { Badge as UiBadge } from '../../../components/ui/Badge'
+import { BackButton } from '../../../components/ui/BackButton'
 
 type Section = 'users' | 'staff' | 'detail'
 export function UserStaffPage({ section, api }: { section: Section; api?: AdminManagementApi }) {
@@ -34,7 +35,9 @@ function AdminWorkspace({ section, id, api }: { section: Section; id?: string; a
     }
   } }
   return <div className="page-container admin-management">
-    <Link to="/admin">Back to administration</Link>
+    <div style={{ marginBottom: '16px' }}>
+      <BackButton to="/admin" label="Back to administration" />
+    </div>
     <header className="staff-heading"><p className="eyebrow">Admin space</p><h1 className="page-heading">{section === 'users' ? 'User management' : section === 'staff' ? 'Staff management' : 'Staff details'}</h1>
       <p className="muted">Manage Accounts business profiles and controlled staff access.</p></header>
     {denied ? <p role="alert">{denied}</p> : <>
@@ -109,15 +112,17 @@ function Users({ api, scope }: { api: AdminManagementApi; scope: AdminScope }) {
     {query.isError && <ReadError error={query.error} busy={query.isFetching} retry={() => { void query.refetch() }} />}
     {query.data && !query.isError && <>
       {!query.data.content.length ? <p role="status">No users on this page.</p> : <div className="admin-management-scroll" tabIndex={0} role="region" aria-label="Scrollable users table"><table>
-        <caption>Accounts user summaries</caption><thead><tr><th scope="col">Name</th><th scope="col">Account profile ID</th><th scope="col">Email</th><th scope="col">Created</th><th scope="col">Sign-in</th><th scope="col">Action</th></tr></thead>
-        <tbody>{query.data.content.map(user => <tr key={user.profileId}><td>{user.fullName ?? 'Not provided'}</td><td>{user.profileId}</td><td>{user.email ?? 'Not provided'}</td><td><time dateTime={user.createdAt}>{formatDateTime(user.createdAt)}</time></td>
+        <caption>Accounts user summaries</caption><thead><tr><th scope="col">Name</th><th scope="col">Identity subject (Keycloak)</th><th scope="col">Account profile ID</th><th scope="col">Email</th><th scope="col">Created</th><th scope="col">Sign-in</th><th scope="col">Action</th></tr></thead>
+        <tbody>{query.data.content.map(user => <tr key={user.profileId}><td>{user.fullName ?? 'Not provided'}</td><td><code>{user.keycloakSub}</code></td><td><code>{user.profileId}</code></td><td>{user.email ?? 'Not provided'}</td><td><time dateTime={user.createdAt}>{formatDateTime(user.createdAt)}</time></td>
           <td>{user.identityDeleted ? 'Deleted in sign-in provider' : user.enabled === true ? <Badge value="ACTIVE" /> : user.enabled === false ? <Badge value="SUSPENDED" /> : 'Not available right now'}</td>
-          <td>{api.setUserEnabled && !user.identityDeleted && typeof user.enabled === 'boolean' && <Button variant="secondary" size="sm" disabled={command.pending}
-            onClick={() => setConfirmUser({ profileId: user.profileId, enabled: !user.enabled, label: user.fullName ?? user.email ?? user.profileId })}>
-            {user.enabled ? 'Disable' : 'Enable'}</Button>}
+          <td className="action-buttons-cell"><div className="table-actions">
+            {api.setUserEnabled && !user.identityDeleted && typeof user.enabled === 'boolean' && <Button variant="secondary" size="sm" disabled={command.pending}
+              onClick={() => setConfirmUser({ profileId: user.profileId, enabled: !user.enabled, label: user.fullName ?? user.email ?? user.profileId })}>
+              {user.enabled ? 'Disable' : 'Enable'}</Button>}
             {api.updateUser && <Button variant="secondary" size="sm" disabled={command.pending}
               onClick={() => setEditUser({ profileId: user.profileId, label: user.fullName ?? user.email ?? user.profileId, fullName: user.fullName ?? '', phoneNumber: '', originalName: user.fullName ?? '' })}>
-              Edit</Button>}</td></tr>)}</tbody>
+              Edit</Button>}
+          </div></td></tr>)}</tbody>
       </table></div>}
       <Pagination data={query.data} busy={query.isFetching} change={setPage} />
     </>}
@@ -159,7 +164,7 @@ function ProvisionForm({ api, scope }: { api: AdminManagementApi; scope: AdminSc
   const command = useAdminCommand(scope), navigate = useNavigate(), formId = useId()
   return <section className="card" aria-labelledby={`${formId}-heading`}>
     <h2 id={`${formId}-heading`}>Provision staff business profile</h2>
-    <p>Use an existing identity verified through the approved identity process. Accounts verifies the subject and reconciles the selected approved role. This form does not create a login or handle credentials.</p>
+    <p>Use an existing identity verified through the approved identity process. Accounts verifies the subject (or registered Account profile ID) and reconciles the selected approved role. This form does not create a login or handle credentials.</p>
     <form onSubmit={event => { event.preventDefault(); const error = provisionProblem(value); setProblem(error); if (!error && !command.pending) setConfirm({ ...value }) }}>
       <fieldset disabled={command.pending || confirm !== null} className="admin-management-filters"><legend>Staff binding</legend>
         {([{ name: 'keycloakSub', label: 'Existing identity subject', max: 255 }, { name: 'staffId', label: 'Staff ID', max: 50 }, { name: 'department', label: 'Department', max: 100 }, { name: 'assignedZone', label: 'Assigned zone (optional)', max: 100 }, { name: 'accountProfileId', label: 'Account profile ID (optional UUID)', max: 36 }] as const).map(field => <label key={field.name}>{field.label}<input required={['keycloakSub', 'staffId', 'department'].includes(field.name)} maxLength={field.max} value={value[field.name] ?? ''} onChange={event => setValue({ ...value, [field.name]: ['assignedZone', 'accountProfileId'].includes(field.name) ? event.target.value || null : event.target.value })} /></label>)}
@@ -178,7 +183,9 @@ function ProvisionForm({ api, scope }: { api: AdminManagementApi; scope: AdminSc
 function StaffDetails({ id, api, scope }: { id: string; api: AdminManagementApi; scope: AdminScope }) {
   const query = useAdminQuery(scope, ['detail', id], signal => api.detail(id, signal))
   return <section aria-label="Staff business details" aria-busy={query.isFetching}>
-    <Link to="/admin/staff">Back to staff directory</Link>
+    <div style={{ marginBottom: '16px' }}>
+      <BackButton to="/admin/staff" label="Back to staff directory" />
+    </div>
     <p><Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch() }}>Refresh profile</Button></p>
     {query.isFetching && <p role="status">Loading staff details…</p>}
     {query.isError && <ReadError error={query.error} busy={query.isFetching} retry={() => { void query.refetch() }} />}

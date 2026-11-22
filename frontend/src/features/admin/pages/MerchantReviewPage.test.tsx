@@ -62,7 +62,7 @@ async function openConfirm(action = 'Approve merchant') {
 describe('Merchant review route and production boundary', () => {
   it('redirects anonymous navigation through the existing login route', () => {
     setup(undefined, anonymousAuth, true)
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
   })
   it('waits for shared authentication', () => {
     setup(undefined, { ...anonymousAuth, snapshot: { status: 'loading', subject: null, roles: [] } }, true)

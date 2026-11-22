@@ -38,7 +38,7 @@ beforeEach(() => {
 describe('Admin role landing', () => {
   it('redirects an anonymous direct URL to shared login without requesting staff data', () => {
     render(entry(anonymousAuth))
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Administration workspace' })).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -180,8 +180,8 @@ describe('Admin role landing', () => {
     expect(main.queryByText(/operational reporting is a future feature/i)).not.toBeInTheDocument()
     expect(main.queryByRole('combobox')).not.toBeInTheDocument()
     expect(main.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(main.getAllByRole('button')).toHaveLength(1)
-    expect(main.getByRole('button', { name: 'Sign out' })).toHaveAttribute('type', 'button')
+    expect(main.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign out' })).toHaveAttribute('type', 'button')
     expect(screen.getByRole('main').textContent).not.toMatch(/\b\d+\b/)
   })
 

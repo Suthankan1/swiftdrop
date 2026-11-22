@@ -6,4 +6,6 @@
 *.csv text eol=lf
 *.svg text eol=lf
 *.sh text eol=lf
+mvnw text eol=lf
+*.cmd text eol=crlf
 *.bat text eol=crlf
