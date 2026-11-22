@@ -64,7 +64,7 @@ class BrandingConfigurationTests(unittest.TestCase):
         self.assertIn('SwiftDrop', template)
         self.assertIn('Create Account &bull; SwiftDrop', template)
         self.assertIn('Sign In &bull; SwiftDrop', template)
-        self.assertIn('registerSubtitle=Get started with SwiftDrop', messages)
+        self.assertIn('registerSubtitle=Enter your details to get started.', messages)
         self.assertIn('backToApplication=Return to SwiftDrop', messages)
         # Obsolete standalone Devarom brand copy is absent
         self.assertNotRegex(template + messages, r"(?i)(?<![a-z-])devarom(?![a-z-])")
