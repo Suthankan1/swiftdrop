@@ -1073,7 +1073,7 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       renderAcceptanceJourney(expiredAuth, '/merchant/orders')
 
       // Should be redirected to /login
-      expect(await screen.findByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: /your orders/i })).not.toBeInTheDocument()
     })
   })

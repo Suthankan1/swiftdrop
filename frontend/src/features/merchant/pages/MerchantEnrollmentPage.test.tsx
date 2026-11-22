@@ -88,7 +88,7 @@ describe('Merchant Pending-Enrollment Screen & Workflow', () => {
 
     renderEnrollment(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /commercial logistics/i })).not.toBeInTheDocument()
     expect(request).not.toHaveBeenCalled()
   })

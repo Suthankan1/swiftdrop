@@ -1,4 +1,5 @@
 import Keycloak from 'keycloak-js'
+import { saveReturnTarget } from './redirect'
 import type { AuthIntegration, AuthSnapshot, SwiftDropRole } from './contracts'
 
 export type AuthProblem = 'cancelled' | 'invalid-callback' | 'provider-unavailable' | 'session-expired' | null
@@ -177,18 +178,10 @@ export class AuthSession {
   register = async (returnUrl?: string) => { await this.enter('register', returnUrl) }
   googleLogin = async (returnUrl?: string) => { await this.enter('google', returnUrl) }
   private enter(kind: 'login' | 'register' | 'google', returnUrl?: string) {
-    if (typeof window !== 'undefined') {
-      try {
-        // Each attempt replaces any target left by an abandoned login, so it cannot leak into a later sign-in.
-        window.name = returnUrl ? JSON.stringify({ swiftdrop_auth_target: returnUrl, swiftdrop_auth_at: Date.now() }) : ''
-      } catch {
-        // ignore window.name access issues
-      }
-    }
-    this.entry ??= this.enterOnce(kind).finally(() => { this.entry = undefined })
+    this.entry ??= this.enterOnce(kind, returnUrl).finally(() => { this.entry = undefined })
     return this.entry
   }
-  private async enterOnce(kind: 'login' | 'register' | 'google') {
+  private async enterOnce(kind: 'login' | 'register' | 'google', returnUrl?: string) {
     await this.initialize()
     if (this.signingOut) return
     const generation = this.generation
@@ -198,10 +191,15 @@ export class AuthSession {
       })
       if (generation !== this.generation || this.signingOut) return
       if (!available.ok) throw new Error('Identity provider unavailable')
+      saveReturnTarget(returnUrl)
       const options = { redirectUri: this.redirectUri }
       if (kind === 'register') await this.client.register(options)
       else await this.client.login({ ...options, ...(kind === 'google' ? { idpHint: 'google' } : {}) })
-    } catch { this.clearCredentials(); this.publish(anonymous, 'provider-unavailable') }
+    } catch {
+      saveReturnTarget()
+      this.clearCredentials()
+      this.publish(anonymous, 'provider-unavailable')
+    }
   }
   logout = () => {
     this.logoutPromise ??= this.endSession()

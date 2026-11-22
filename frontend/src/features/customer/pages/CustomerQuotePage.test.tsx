@@ -140,7 +140,7 @@ describe('CustomerQuotePage & Booking Workflow (Issue #118)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     })
   })
 

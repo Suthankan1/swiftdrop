@@ -169,7 +169,7 @@ describe('MerchantOrdersDashboardPage', () => {
 
   it('redirects unauthenticated visitor to the login page', () => {
     renderOrdersDashboard(anonymousAuth)
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByText(/your orders/i)).not.toBeInTheDocument()
   })
 

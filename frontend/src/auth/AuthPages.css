@@ -1,0 +1,96 @@
+.auth-page {
+  padding: clamp(24px, 6vw, 80px) var(--container-pad);
+  background:
+    radial-gradient(ellipse at 15% 18%, rgb(199 223 131 / 0.27), transparent 55%),
+    radial-gradient(ellipse at 88% 80%, rgb(150 190 157 / 0.24), transparent 48%);
+}
+
+.auth-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  width: min(100%, 920px);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid rgb(31 61 51 / 0.14);
+  border-radius: 28px;
+  background: rgb(255 255 251 / 0.79);
+  box-shadow: 0 24px 70px rgb(31 61 51 / 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.auth-art {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-height: 100%;
+  background: radial-gradient(circle at 70% 29%, #587944, transparent 53%), linear-gradient(145deg, #162f27, #2b5340);
+  color: #e5f4b0;
+}
+
+.auth-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle, rgb(234 250 186 / 0.29) 1px, transparent 1.6px) center / 22px 22px;
+  mask-image: radial-gradient(ellipse, #000 15%, transparent 78%);
+}
+
+.auth-art-orbit {
+  position: absolute;
+  width: min(78%, 320px);
+  aspect-ratio: 2.4;
+  border: 1px dashed rgb(234 250 186 / 0.65);
+  border-radius: 50%;
+  rotate: -29deg;
+}
+
+.auth-art-truck,
+.auth-art-arrow {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(234 250 186 / 0.38);
+  background: linear-gradient(145deg, rgb(230 244 189 / 0.25), rgb(36 77 58 / 0.9));
+  box-shadow: 0 15px 32px rgb(12 33 25 / 0.35);
+}
+
+.auth-art-truck {
+  width: 116px;
+  height: 116px;
+  border-radius: 30px;
+  rotate: -10deg;
+}
+
+.auth-art-arrow {
+  position: absolute;
+  top: 30%;
+  left: 71%;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  rotate: -20deg;
+}
+
+.auth-card {
+  min-width: 0;
+  padding: clamp(24px, 5vw, 58px);
+}
+
+.auth-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+}
+
+@media (max-width: 680px) {
+  .auth-page { padding-inline: 16px; }
+  .auth-shell { grid-template-columns: minmax(0, 1fr); border-radius: 22px; }
+  .auth-art { min-height: 120px; }
+  .auth-art-orbit { width: min(56%, 220px); }
+  .auth-art-truck { width: 68px; height: 68px; border-radius: 20px; }
+  .auth-art-truck .icon { width: 36px; height: 36px; }
+  .auth-art-arrow { top: 22%; left: 68%; width: 32px; height: 32px; border-radius: 10px; }
+}

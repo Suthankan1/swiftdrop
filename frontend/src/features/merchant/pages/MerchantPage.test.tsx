@@ -44,7 +44,7 @@ describe('Merchant role landing and approval-state UI', () => {
 
     renderMerchant(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /commercial logistics/i })).not.toBeInTheDocument()
     expect(request).not.toHaveBeenCalled()
   })
@@ -363,7 +363,7 @@ describe('Merchant role landing and approval-state UI', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: merchantFixture.merchantProfile!.businessName })).not.toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     })
   })
 })

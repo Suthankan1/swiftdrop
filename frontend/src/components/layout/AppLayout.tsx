@@ -206,6 +206,7 @@ function MainNavigation() {
           ) : (
             <>
               <ButtonLink to="/login" variant="secondary" onClick={() => setMenuOpen(false)}>Sign in</ButtonLink>
+              <ButtonLink to="/login?start=register" variant="primary" onClick={() => setMenuOpen(false)}>Create account</ButtonLink>
               <ButtonLink to="/customer" variant="primary" onClick={() => setMenuOpen(false)}>Get started</ButtonLink>
             </>
           )}

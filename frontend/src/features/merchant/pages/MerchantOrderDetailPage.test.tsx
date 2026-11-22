@@ -145,7 +145,7 @@ describe('MerchantOrderDetailPage', () => {
 
   it('redirects unauthenticated visitor to login page', () => {
     renderOrderDetail(anonymousAuth)
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByText(/commercial order details/i)).not.toBeInTheDocument()
   })
 

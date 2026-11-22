@@ -53,7 +53,7 @@ describe('Courier role landing', () => {
 
     renderCourier(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /ready for your next route/i })).not.toBeInTheDocument()
     expect(request).not.toHaveBeenCalled()
   })
@@ -226,7 +226,7 @@ describe('Courier role landing', () => {
     )
 
     expect(screen.queryByRole('heading', { name: /ready for your next route/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
   })
 
   describe('Mobile assignment dashboard and parcel detail workflow', () => {

@@ -50,7 +50,7 @@ describe('report route security', () => {
   it.each(['/admin/reports', '/dispatcher/reports'])('redirects anonymous %s to login without a GraphQL request', path => {
     const mock = stub(ok)
     render(entry(anonymousAuth, path))
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(mock).not.toHaveBeenCalled()
   })
 

@@ -38,7 +38,7 @@ beforeEach(() => {
 describe('Dispatcher role landing', () => {
   it('redirects an anonymous direct URL to shared login without requesting a profile', () => {
     render(entry(anonymousAuth))
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Dispatcher workspace' })).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })

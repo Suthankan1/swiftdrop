@@ -71,7 +71,7 @@ describe('Merchant Webhook Subscription UI (Issue #21)', () => {
 
     renderWebhooks(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /event webhooks/i })).not.toBeInTheDocument()
     expect(globalFetch).not.toHaveBeenCalled()
   })

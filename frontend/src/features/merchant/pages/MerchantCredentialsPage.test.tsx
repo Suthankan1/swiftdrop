@@ -82,7 +82,7 @@ describe('Merchant Credential Settings Screen', () => {
 
     renderCredentials(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /machine credentials/i })).not.toBeInTheDocument()
     expect(request).not.toHaveBeenCalled()
   })

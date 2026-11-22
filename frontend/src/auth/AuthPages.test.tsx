@@ -414,8 +414,8 @@ describe('AuthPages - Browser Recovery & In-Memory Routing', () => {
       expect(screen.queryByText('Customer Space Home')).not.toBeInTheDocument()
     })
 
-    it('recovers intended destination from window.name state and purges it', () => {
-      window.name = JSON.stringify({ swiftdrop_auth_target: '/admin/pricing' })
+    it('recovers and clears the saved return target', () => {
+      sessionStorage.setItem('swiftdrop.auth.return-target', JSON.stringify({ target: '/admin/pricing', createdAt: Date.now() }))
       const auth = createMockAuthContext({
         snapshot: { status: 'authenticated', subject: 'sub-admin', roles: ['ADMIN'] },
       })
@@ -433,7 +433,7 @@ describe('AuthPages - Browser Recovery & In-Memory Routing', () => {
       )
 
       expect(screen.getByText('Admin Pricing Page')).toBeInTheDocument()
-      expect(window.name).toBe('')
+      expect(sessionStorage.getItem('swiftdrop.auth.return-target')).toBeNull()
     })
   })
 
