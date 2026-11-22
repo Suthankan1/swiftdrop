@@ -366,12 +366,12 @@ describe('CustomerQuotePage & Booking Workflow (Issue #118)', () => {
     await user.type(screen.getByLabelText(/dropoff street address/i), '45 Kandy Road, Gampaha')
     await user.type(screen.getByLabelText(/recipient full name/i), 'Nimal Perera')
     const phoneInput = screen.getByLabelText(/recipient phone number/i)
-    await user.type(phoneInput, '0704174456')
+    await user.type(phoneInput, '0704038632')
 
     await user.click(screen.getByRole('button', { name: /confirm & book delivery/i }))
 
     expect(
-      screen.getByText(/phone number must be in \+94xxxxxxxxx format \(e\.g\. \+94704174456\)\./i),
+      screen.getByText(/phone number must be in \+94xxxxxxxxx format \(e\.g\. \+94704038632\)\./i),
     ).toBeInTheDocument()
     expect(phoneInput).toHaveAttribute('aria-invalid', 'true')
     expect(mockFetch).not.toHaveBeenCalledWith(
