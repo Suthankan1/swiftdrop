@@ -195,15 +195,17 @@ export function CourierPage({
               Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
             </p>
             {query.isError && (
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={() => {
-                  void refetch()
-                }}
-              >
-                Retry profile
-              </Button>
+              <div className="profile-card-actions">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => {
+                    void refetch()
+                  }}
+                >
+                  Retry profile
+                </Button>
+              </div>
             )}
           </aside>
         </section>
@@ -232,15 +234,17 @@ export function CourierPage({
                 Review authorized assignments, record operational notes, update parcel stages, and verify proof before completing delivery.
               </p>
               {query.isError && (
-                <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={() => {
-                    void refetch()
-                  }}
-                >
-                  Retry profile
-                </Button>
+                <div className="profile-card-actions">
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => {
+                      void refetch()
+                    }}
+                  >
+                    Retry profile
+                  </Button>
+                </div>
               )}
             </aside>
           </div>

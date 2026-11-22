@@ -71,7 +71,7 @@ def evaluate_gate_policy(needs_dict, event_name, ref, repo):
                 failures.append((job_id, f"Expected 'success', found '{res}'"))
 
     trusted_pub = False
-    if event_name == "push" and repo == "Suthankan1/swiftdrop" and (ref == "refs/heads/test" or ref.startswith("refs/tags/")):
+    if event_name == "push" and repo == "Suthankan1/swiftdrop" and (ref == "refs/heads/test" or ref == "refs/heads/main" or ref.startswith("refs/tags/")):
         if not failures:
             trusted_pub = True
 
@@ -220,6 +220,14 @@ class TestWorkflowPipeline(unittest.TestCase):
         """Positive control: all jobs succeeded on test push -> gate passes, publication eligible."""
         mock_needs = {job_id: {"result": "success"} for job_id in EXPECTED_REQUIRED_GATE_JOBS}
         code, eligible, fails = evaluate_gate_policy(mock_needs, "push", "refs/heads/test", "Suthankan1/swiftdrop")
+        self.assertEqual(code, 0)
+        self.assertTrue(eligible)
+        self.assertEqual(len(fails), 0)
+
+    def test_gate_positive_control_on_push_to_main(self):
+        """Positive control: all jobs succeeded on main push -> gate passes, publication eligible."""
+        mock_needs = {job_id: {"result": "success"} for job_id in EXPECTED_REQUIRED_GATE_JOBS}
+        code, eligible, fails = evaluate_gate_policy(mock_needs, "push", "refs/heads/main", "Suthankan1/swiftdrop")
         self.assertEqual(code, 0)
         self.assertTrue(eligible)
         self.assertEqual(len(fails), 0)

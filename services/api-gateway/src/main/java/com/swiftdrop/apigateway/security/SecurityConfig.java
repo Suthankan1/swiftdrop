@@ -147,11 +147,23 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource(
             @Value("${CORS_ALLOWED_ORIGIN:${swiftdrop.cors.allowed-origin:${devarom.cors.allowed-origin:http://localhost:5173}}}") String allowedOrigin) {
         CorsConfiguration config = new CorsConfiguration();
-        List<String> origins = java.util.Arrays.stream(allowedOrigin.split(","))
+        java.util.List<String> origins = java.util.Arrays.stream(allowedOrigin.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
-                .toList();
-        config.setAllowedOrigins(origins);
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        if (!origins.contains("https://swiftdrop-frontend.vercel.app")) {
+            origins.add("https://swiftdrop-frontend.vercel.app");
+        }
+        if (!origins.contains("https://swiftdrop-*.vercel.app")) {
+            origins.add("https://swiftdrop-*.vercel.app");
+        }
+        if (!origins.contains("http://localhost:*")) {
+            origins.add("http://localhost:*");
+        }
+        if (!origins.contains("http://127.0.0.1:*")) {
+            origins.add("http://127.0.0.1:*");
+        }
+        config.setAllowedOriginPatterns(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "Idempotency-Key",
                 "Cache-Control", "Last-Event-ID"));

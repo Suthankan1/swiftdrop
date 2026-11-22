@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 /** Accounts #122/#107 DTO projections. All requests go through the configured Gateway. */
 export const staffRoles = ['COURIER', 'DISPATCHER', 'ADMIN'] as const
 export const staffStatuses = ['ACTIVE', 'SUSPENDED', 'INACTIVE'] as const
@@ -116,7 +117,7 @@ export interface AdminManagementApi {
   provision: (value: ProvisionStaff, signal: AbortSignal) => Promise<string>
   command: (value: StaffCommand, signal: AbortSignal) => Promise<void>
 }
-export function createAdminManagementApi({ getAccessToken, gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080', fetch: fetchRequest = (...args) => globalThis.fetch(...args) }: {
+export function createAdminManagementApi({ getAccessToken, gatewayUrl = getApiGatewayUrl(), fetch: fetchRequest = (...args) => globalThis.fetch(...args) }: {
   getAccessToken: () => Promise<string | null>; gatewayUrl?: string; fetch?: typeof globalThis.fetch
 }): AdminManagementApi {
   const base = `${gatewayUrl.replace(/\/$/, '')}/api/v1/admin`

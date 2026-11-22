@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../config/env'
 /**
  * Client for the server-side AI assistant (ai-assistant service, Gemini function calling).
  * The Gemini key never reaches the browser: the browser only talks to /api/v1/assistant/* on the gateway.
@@ -46,7 +47,7 @@ export function trimConversation(turns: AssistantTurn[]): AssistantTurn[] {
 
 export function createAssistantApi({
   getAccessToken,
-  gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080',
+  gatewayUrl = getApiGatewayUrl(),
   fetch: fetchRequest = (...args) => globalThis.fetch(...args),
 }: {
   getAccessToken?: () => Promise<string | null>

@@ -1,3 +1,4 @@
+import { getApiGatewayUrl } from '../../../config/env'
 /**
  * Read-only reporting adapter (Issue #147) for the frozen GraphQL contracts:
  * deliveryStats (LATER-11 / #30, DISPATCHER or ADMIN) and adminDashboard (N10-WF23 / #139, ADMIN).
@@ -159,7 +160,7 @@ function graphqlFailure(errors: unknown[]): ReportError {
 }
 const httpKinds: Record<number, ReportFailure> = { 400: 'invalid-filter', 401: 'auth-required', 403: 'forbidden', 408: 'timeout', 504: 'timeout' }
 
-export function createReportsApi({ getAccessToken, gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080', fetch: fetchRequest = (...args) => globalThis.fetch(...args), timeoutMs = REPORT_TIMEOUT_MS }: {
+export function createReportsApi({ getAccessToken, gatewayUrl = getApiGatewayUrl(), fetch: fetchRequest = (...args) => globalThis.fetch(...args), timeoutMs = REPORT_TIMEOUT_MS }: {
   getAccessToken: () => Promise<string | null>; gatewayUrl?: string; fetch?: typeof globalThis.fetch; timeoutMs?: number
 }): ReportsApi {
   const endpoint = `${gatewayUrl.replace(/\/$/, '')}/graphql`

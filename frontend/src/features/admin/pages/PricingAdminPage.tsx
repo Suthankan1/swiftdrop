@@ -12,7 +12,7 @@ function usePricingRead<T>(prefix: readonly string[], key: readonly unknown[], r
   return useQuery({ queryKey: [...prefix, ...key], queryFn: async ({ signal }) => {
     try { const result = await read(signal); signal.throwIfAborted(); return result }
     catch (error) { await fail(error, signal); throw error }
-  }, enabled, retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false })
+  }, enabled, retry: false, staleTime: 30_000, gcTime: 120_000, refetchOnWindowFocus: false, refetchOnReconnect: false })
 }
 function checkEffectivePeriod(card: Card) {
   const now = Date.now()

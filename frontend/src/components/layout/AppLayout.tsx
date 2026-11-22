@@ -95,9 +95,39 @@ function MainNavigation() {
       } else if (menuOpen) {
         setMenuOpen(false)
         menuButton.current?.focus()
+        event.stopPropagation()
       }
     }
   }
+
+  useEffect(() => {
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') {
+        if (switcherOpen) {
+          setSwitcherOpen(false)
+          switcherButtonRef.current?.focus()
+        } else if (menuOpen) {
+          setMenuOpen(false)
+          menuButton.current?.focus()
+        }
+      }
+    }
+    if (menuOpen || switcherOpen) {
+      window.addEventListener('keydown', handleKeyDown)
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen, switcherOpen])
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [menuOpen])
 
   return (
     <>
@@ -137,7 +167,6 @@ function MainNavigation() {
               {activeWorkspace.label} <span aria-hidden="true">&#8599;</span>
             </NavLink>
           )}
-
           {/* Switch Workspace menu for multi-role accounts */}
           {isAuthenticated && switchableWorkspaces.length > 0 && (
             <div className="workspace-switcher-container" ref={switcherRef}>
