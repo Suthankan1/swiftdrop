@@ -4,7 +4,6 @@ import { useAuth } from '../../../auth/context'
 import { Button } from '../../../components/ui/Button'
 import { AccountsError, createAccountsApi } from '../api/merchant'
 import { MerchantProfile, type MerchantProfileState } from '../components/MerchantProfile'
-import { MerchantNav } from '../components/MerchantNav'
 
 export function MerchantPage() {
   const auth = useAuth()
@@ -54,8 +53,6 @@ export function MerchantPage() {
           Manage your business shipments, track approval status, and coordinate deliveries.
         </p>
       </header>
-
-      <MerchantNav />
 
       <div className="profile-grid">
         <MerchantProfile state={state} />

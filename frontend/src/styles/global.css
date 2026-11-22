@@ -599,10 +599,37 @@ body { background: var(--bg); }
 .state-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #e9eedb; color: var(--color-teal); margin-bottom: 24px; }
 
 /* Merchant Sub-navigation Tabs */
-.merchant-sub-nav { display: flex; gap: 8px; border-bottom: 1px solid var(--color-border); margin-bottom: 30px; }
-.merchant-nav-tab { font-size: 14px; text-decoration: none; font-weight: 550; padding: 12px 18px; border-bottom: 2px solid transparent; color: var(--color-muted); transition: color .15s, border-color .15s; }
+html:has(.merchant-workspace) { scrollbar-gutter: stable; }
+.merchant-workspace { min-height: calc(100svh - var(--header-height)); }
+.merchant-workspace-tabs {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 20;
+  background: var(--bg);
+}
+.merchant-sub-nav {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+}
+.merchant-nav-tab {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 12px 18px;
+  border-bottom: 2px solid transparent;
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 550;
+  text-decoration: none;
+  white-space: nowrap;
+}
 .merchant-nav-tab:hover { color: var(--color-ink); }
 .merchant-nav-tab.is-active { color: var(--color-teal); border-bottom-color: var(--color-teal); }
+.merchant-nav-tab:focus-visible { outline-offset: -3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .merchant-nav-tab { transition: color .15s, border-color .15s; }
+}
 
 /* Customer Sub-navigation Tabs */
 .customer-sub-nav { display: flex; gap: 8px; border-bottom: 1px solid var(--color-border); margin-bottom: 30px; }
@@ -2458,15 +2485,13 @@ ol.timeline-stepper { list-style: none; padding: 0; margin-left: 0; }
 
 /* Wrap merchant navigation; keep wide-table scrolling inside its container. */
 .merchant-page, .merchant-dashboard-content-section, .merchant-orders-table-container { min-width: 0; max-width: 100%; }
-.merchant-sub-nav { flex-wrap: wrap; min-width: 0; }
-.merchant-nav-tab { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
 .merchant-order-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: 8px 0; }
 .merchant-order-detail-page .spec-value { overflow-wrap: anywhere; }
 .merchant-page .modal-actions, .merchant-modal-footer { flex-wrap: wrap; gap: 12px; }
 .merchant-page .modal-panel { min-width: 0; max-width: calc(100vw - 24px); }
 @media (max-width: 600px) {
   .merchant-sub-nav { gap: 4px; }
-  .merchant-nav-tab { flex: 1 1 140px; padding: 12px 10px; }
+  .merchant-nav-tab { padding-inline: 10px; }
   .merchant-order-actions > button { flex: 1 1 140px; }
 }
 

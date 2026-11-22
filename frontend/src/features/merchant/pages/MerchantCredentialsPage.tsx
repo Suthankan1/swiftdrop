@@ -11,7 +11,6 @@ import {
   type ApiKeySummaryItem,
   type CreateApiKeyRequest,
 } from '../api/merchant'
-import { MerchantNav } from '../components/MerchantNav'
 import { MerchantApprovalBanner } from '../components/MerchantApprovalBanner'
 import { ApiKeyListTable } from '../components/ApiKeyListTable'
 import { ApiKeyCreateFormModal } from '../components/ApiKeyCreateFormModal'
@@ -151,8 +150,6 @@ export function MerchantCredentialsPage() {
           Manage scoped high-entropy API keys for machine-to-machine order integration and webhook authorization.
         </p>
       </header>
-
-      <MerchantNav />
 
       {actionErrorMessage && (
         <div className="feedback-banner is-error" role="alert">

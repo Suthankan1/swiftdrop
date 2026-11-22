@@ -8,7 +8,6 @@ import {
 } from '../api/merchantDashboard'
 import { createDeliveryApi, triggerBlobDownload } from '../../customer/api/delivery'
 import type { MerchantOrderSummaryItem } from '../api/merchantDashboardContracts'
-import { MerchantNav } from '../components/MerchantNav'
 import { MerchantMachineApiBanner } from '../components/MerchantMachineApiBanner'
 import { MerchantOrderSummaryCards } from '../components/MerchantOrderSummaryCards'
 import { MerchantOrderFilterBar } from '../components/MerchantOrderFilterBar'
@@ -213,8 +212,6 @@ export function MerchantOrdersDashboardPage({ apiOverride }: MerchantOrdersDashb
           Review commercial shipments, inspect live milestone states, and track fulfillment across delivery routes.
         </p>
       </header>
-
-      <MerchantNav />
 
       {/* Distinction between Browser JWT and Scoped Machine API */}
       <MerchantMachineApiBanner

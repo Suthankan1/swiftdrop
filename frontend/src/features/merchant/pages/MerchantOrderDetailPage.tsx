@@ -7,7 +7,6 @@ import {
   DeliveryError,
 } from '../api/merchantOrders'
 import { createDeliveryApi, triggerBlobDownload } from '../../customer/api/delivery'
-import { MerchantNav } from '../components/MerchantNav'
 import {
   formatCurrency,
   formatDateTime,
@@ -94,8 +93,6 @@ export function MerchantOrderDetailPage({ apiOverride }: MerchantOrderDetailPage
         <p className="eyebrow">Merchant space</p>
         <h1>Commercial Order Details.<br />Fulfillment &amp; History.</h1>
       </header>
-
-      <MerchantNav />
 
       {/* Navigation Return Link */}
       <div className="detail-navigation-bar">

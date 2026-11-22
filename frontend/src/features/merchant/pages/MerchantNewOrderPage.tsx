@@ -8,7 +8,6 @@ import { createPricingApi, PricingError } from '../../customer/api/pricing'
 import type { ParcelDetailResponse } from '../../customer/api/deliveryContracts'
 import type { QuoteResponse } from '../../customer/api/pricingContracts'
 import { formatCurrency } from '../../customer/components/customerUiUtils'
-import { MerchantNav } from '../components/MerchantNav'
 import {
   bookMerchantOrder,
   merchantOrderProblem,
@@ -125,8 +124,6 @@ export function MerchantNewOrderPage() {
         <h1>New order.</h1>
         <p className="muted">Book one parcel for your store. For many orders at once, use Bulk CSV Upload on the Orders Dashboard.</p>
       </header>
-      <MerchantNav />
-
       {booked ? (
         <section className="card" role="status" aria-labelledby="order-booked-heading">
           <h2 id="order-booked-heading">Order booked</h2>

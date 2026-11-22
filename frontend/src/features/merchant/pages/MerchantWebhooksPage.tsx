@@ -9,7 +9,6 @@ import type {
   WebhookDeliveryLogListResponse,
   WebhookSubscription,
 } from '../api/webhookContracts'
-import { MerchantNav } from '../components/MerchantNav'
 import { MerchantApprovalBanner } from '../components/MerchantApprovalBanner'
 import { WebhookSecretAlert } from '../components/WebhookSecretAlert'
 import { WebhookSubscriptionForm } from '../components/WebhookSubscriptionForm'
@@ -142,8 +141,6 @@ export function MerchantWebhooksPage() {
           Subscribe external HTTPS endpoints to parcel status change events with HMAC-SHA256 signature verification.
         </p>
       </header>
-
-      <MerchantNav />
 
       {actionError && (
         <div className="feedback-banner is-error" role="alert">

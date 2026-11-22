@@ -240,6 +240,25 @@ describe('shared application routes', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/commercial logistics/i)
   })
 
+  it('keeps the same Merchant tab bar mounted as the workspace changes sections', async () => {
+    const user = userEvent.setup()
+    const auth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'merchant-sub', roles: ['MERCHANT'] },
+    }
+    renderRoute('/merchant', auth)
+
+    const tabs = screen.getByRole('navigation', { name: 'Merchant space sections' })
+    expect(within(tabs).getByRole('link', { name: 'Overview', current: 'page' })).toBeInTheDocument()
+
+    for (const name of ['Orders', 'New Order', 'API Credentials', 'Webhooks', 'Overview']) {
+      const link = within(tabs).getByRole('link', { name })
+      await user.click(link)
+      expect(screen.getByRole('navigation', { name: 'Merchant space sections' })).toBe(tabs)
+      expect(link).toHaveAttribute('aria-current', 'page')
+    }
+  })
+
   it('protects /merchant/credentials for MERCHANT role only', () => {
     const customerAuth: AuthContextValue = {
       ...anonymousAuth,
