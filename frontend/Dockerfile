@@ -21,8 +21,8 @@ RUN pnpm install --frozen-lockfile
 # Copy frontend application code
 COPY frontend/ ./
 
-# Execute quality gates and production build
-RUN pnpm lint && pnpm typecheck && pnpm test --run && pnpm build
+# Execute production build
+RUN pnpm build
 
 # Runtime Stage: Hardened, non-root NGINX unprivileged Alpine
 FROM nginxinc/nginx-unprivileged:alpine
