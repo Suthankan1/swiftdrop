@@ -59,6 +59,8 @@ class BrandingConfigurationTests(unittest.TestCase):
         template = (target_dir / "template.ftl").read_text()
         messages = (target_dir / "messages" / "messages_en.properties").read_text()
         self.assertIn('aria-label="SwiftDrop Home"', template)
+        self.assertIn('href="${client.baseUrl}"', template)
+        self.assertNotIn('href="http://localhost:5173/', template)
         self.assertIn('SwiftDrop', template)
         self.assertIn('Create Account &bull; SwiftDrop', template)
         self.assertIn('Sign In &bull; SwiftDrop', template)
