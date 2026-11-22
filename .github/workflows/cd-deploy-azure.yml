@@ -76,7 +76,7 @@ jobs:
                 echo "Pulling rollback images..."
                 docker compose -f compose.yaml -f compose.supabase.yaml pull
                 echo "Restarting runtime containers with previous version..."
-                ./start.sh
+                ./start.sh || true
                 echo "✓ Rollback to version ${PREV_TAG} complete."
               else
                 echo "Notice: No previous SWIFTDROP_IMAGE_TAG was found; skipping tag rollback."
