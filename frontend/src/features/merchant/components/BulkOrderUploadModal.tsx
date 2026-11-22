@@ -94,6 +94,8 @@ export function BulkOrderUploadModal({ isOpen, onClose, onImportComplete, bookin
   /** Books the remaining valid rows one at a time. Failed rows can be retried without duplicates. */
   async function handleImport() {
     if (busy.current || fileError || pendingRows.length === 0) return
+    // Keep keyboard events in the dialog when the import button becomes disabled.
+    panel.current?.focus()
     busy.current = true
     cancelled.current = false
     setImporting(true)
