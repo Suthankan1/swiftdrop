@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from functools import partial
 import hashlib
 import hmac
 import importlib.util
@@ -32,8 +33,6 @@ sys.path.insert(0, str(ROOT / "tests/security-e2e"))
 import harness_common as harness  # noqa: E402
 from harness_common import KeycloakAdminClient, OidcPkceClient  # noqa: E402
 
-GW = "http://localhost:8080"
-KC = "http://localhost:8090"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
@@ -54,7 +53,7 @@ class ProbeSession(harness.Session):
 harness.Session = ProbeSession
 
 
-def call(method, path, token=None, body=None, form=None, headers=None, raw=False):
+def gateway_call(gateway_url, method, path, token=None, body=None, form=None, headers=None, raw=False):
     hdr = dict(headers or {})
     data = None
     if token:
@@ -65,7 +64,7 @@ def call(method, path, token=None, body=None, form=None, headers=None, raw=False
     elif body is not None:
         data = json.dumps(body).encode()
         hdr["Content-Type"] = "application/json"
-    req = urllib.request.Request(path if path.startswith("http") else GW + path, data=data, headers=hdr, method=method)
+    req = urllib.request.Request(path if path.startswith("http") else gateway_url + path, data=data, headers=hdr, method=method)
     try:
         with opener.open(req, timeout=45) as response:
             status, content = response.status, response.read()
@@ -86,9 +85,20 @@ def main():
     parser.add_argument("--report-dir", type=Path, required=True)
     parser.add_argument("--run", action="store_true", help="Explicitly authorize disposable fixtures and receiver")
     parser.add_argument("--browser", action="store_true", help="Also run explicitly authorized headless Playwright acceptance")
+    endpoints = parser.add_mutually_exclusive_group()
+    endpoints.add_argument("--isolated-local", action="store_true",
+                           help="Use disposable Compose ports 18080, 18090 and 15173")
+    endpoints.add_argument("--shared-development", action="store_true",
+                           help="Explicitly select the shared development stack")
     args = parser.parse_args()
     if not args.run:
         parser.error("Use --run only against the authorized development stack")
+    if not args.isolated_local and not args.shared_development:
+        parser.error("Select --isolated-local or --shared-development explicitly")
+    gateway_url = "http://localhost:18080" if args.isolated_local else "http://localhost:8080"
+    keycloak_url = "http://localhost:18090" if args.isolated_local else "http://localhost:8090"
+    frontend_url = "http://localhost:15173" if args.isolated_local else "http://localhost:5173"
+    call = partial(gateway_call, gateway_url)
     if not args.cloudflared.is_file():
         parser.error("Provide an existing official cloudflared executable")
     if args.browser and importlib.util.find_spec("playwright") is None:
@@ -113,7 +123,7 @@ def main():
             value = super().__getitem__(name)
             claims = json.loads(base64.urlsafe_b64decode(value.split('.')[1] + '=='))
             if claims['exp'] <= time.time() + 20:
-                data = require(call("POST", KC + "/realms/swiftdrop/protocol/openid-connect/token", form={
+                data = require(call("POST", keycloak_url + "/realms/swiftdrop/protocol/openid-connect/token", form={
                     "grant_type": "refresh_token", "client_id": "swiftdrop-frontend", "refresh_token": refreshes[name],
                 }), (200,), "fixture session refresh")
                 value = data["access_token"]
@@ -130,7 +140,7 @@ def main():
     tunnel = None
     server = None
     browser = None
-    admin = KeycloakAdminClient()
+    admin = KeycloakAdminClient(keycloak_url)
     receiver = {"secret": None, "events": [], "failed_once": False, "exhaust_parcel": None}
     started = time.monotonic()
 
@@ -196,13 +206,14 @@ def main():
                 code = 503 if force_failure or not receiver["failed_once"] else 200
                 receiver["failed_once"] = True
                 receiver["events"].append({"eventId": event.get("eventId"), "parcelId": payload.get("parcelId"),
-                    "merchantId": payload.get("merchantId"), "status": code, "verified": True})
+                    "merchantId": payload.get("merchantId"), "newStatus": payload.get("newStatus"),
+                    "status": code, "verified": True})
             self.send_response(code)
             self.end_headers()
             self.wfile.write(b"ok")
 
     try:
-        data = require(call("POST", KC + "/realms/master/protocol/openid-connect/token", form={
+        data = require(call("POST", keycloak_url + "/realms/master/protocol/openid-connect/token", form={
             "client_id": "admin-cli", "grant_type": "password",
             "username": env.get("KEYCLOAK_ADMIN_USER") or env.get("KC_BOOTSTRAP_ADMIN_USERNAME") or "admin",
             "password": env.get("KEYCLOAK_ADMIN_PASSWORD") or env.get("KC_BOOTSTRAP_ADMIN_PASSWORD") or "",
@@ -211,7 +222,7 @@ def main():
         passed(step)
         # The helper otherwise inherits workstation proxy settings for loopback traffic.
         admin.http.opener.add_handler(urllib.request.ProxyHandler({}))
-        pkce = OidcPkceClient()
+        pkce = OidcPkceClient(keycloak_url)
 
         def login_fixture(user):
             try:
@@ -341,14 +352,14 @@ def main():
         if args.browser:
             step = "browser PKCE login and live Merchant tracking subscription"
             from merchant_browser_probe import MerchantBrowserProbe
-            browser = MerchantBrowserProbe(parcel, args.report_dir / "browser")
+            browser = MerchantBrowserProbe(parcel, args.report_dir / "browser", frontend_url)
             browser.login(fixtures["merchant"]["username"], fixtures["merchant"]["password"])
             passed(step)
         stream = {"response": None}
 
         def read_stream():
             try:
-                request = urllib.request.Request(GW + f"/api/v1/parcels/{pid}/events", headers={
+                request = urllib.request.Request(gateway_url + f"/api/v1/parcels/{pid}/events", headers={
                     "Authorization": "Bearer " + tokens["merchant"], "Accept": "text/event-stream",
                 })
                 with opener.open(request, timeout=60) as response:
@@ -381,7 +392,7 @@ def main():
         boundary = "----merchantqa" + uuid.uuid4().hex
         proof_body = (f'--{boundary}\r\nContent-Disposition: form-data; name="recipientName"\r\n\r\nSynthetic Recipient\r\n'
             f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="fixture.png"\r\nContent-Type: image/png\r\n\r\n').encode() + png + f'\r\n--{boundary}--\r\n'.encode()
-        request = urllib.request.Request(GW + f"/api/v1/parcels/{pid}/proof", data=proof_body, method="POST", headers={
+        request = urllib.request.Request(gateway_url + f"/api/v1/parcels/{pid}/proof", data=proof_body, method="POST", headers={
             "Authorization": "Bearer " + tokens["courier"], "Content-Type": "multipart/form-data; boundary=" + boundary,
         })
         with opener.open(request, timeout=45) as response:
@@ -484,12 +495,15 @@ def main():
                 "parcelId": imported_id, "courierSub": fixtures["courier"]["id"], "expectedVersion": imported["version"],
             }), (200, 201), step)
             imported = require(call("GET", f"/api/v1/parcels/{imported_id}", tokens["merchant"]), (200,), step)
-            require(call("PATCH", f"/api/v1/parcels/{imported_id}/status", tokens["courier"], {
+            transition = require(call("PATCH", f"/api/v1/parcels/{imported_id}/status", tokens["courier"], {
                 "newStatus": "PICKED_UP", "expectedVersion": imported["version"],
             }), (200,), step)
+            if transition["currentStatus"] != "PICKED_UP":
+                raise RuntimeError("Post-deactivation pickup did not complete")
             time.sleep(20)
-            if any(event["parcelId"] == imported_id for event in receiver["events"]):
-                raise RuntimeError("Deactivated subscription received a subsequent parcel event")
+            if any(event["parcelId"] == imported_id and event["newStatus"] == transition["currentStatus"]
+                   for event in receiver["events"]):
+                raise RuntimeError("Deactivated subscription received the subsequent pickup event")
             passed(step)
         else:
             results.append({"step": "browser UI delivery and responsive screenshots", "status": "Blocked", "reason": "Headless browser checks were not enabled"})

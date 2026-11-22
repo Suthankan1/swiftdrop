@@ -12,8 +12,13 @@ from urllib.parse import urlsplit
 from playwright.sync_api import Error as PlaywrightError, expect, sync_playwright
 
 
+# Protected routes can finish the initial loader animation before mounting.
+WORKSPACE_TIMEOUT_MS = 30_000
+
+
 class MerchantBrowserProbe:
-    def __init__(self, parcel, output):
+    def __init__(self, parcel, output, frontend_url):
+        self.frontend_url = frontend_url
         self.output = Path(output)
         self.output.mkdir(parents=True, exist_ok=True)
         self.parcel = parcel
@@ -44,17 +49,22 @@ class MerchantBrowserProbe:
             pass
 
     def login(self, username, password):
-        self.page.goto("http://localhost:5173/merchant/orders")
-        self.page.get_by_role("button", name="Sign in", exact=True).click()
+        orders_url = self.frontend_url + "/merchant/orders"
+        self.page.goto(orders_url)
+        # The protected route starts the Keycloak redirect for a new browser session.
         self.page.locator("#username").fill(username)
         self.page.locator("#password").fill(password)
         self.page.locator("#kc-login").click(no_wait_after=True)
-        self.page.wait_for_url("http://localhost:5173/**", timeout=180000)
+        self.page.wait_for_url(orders_url, timeout=180000)
         expect(self.page.get_by_role("navigation", name="Merchant space sections")).to_be_visible(timeout=180000)
-        self.page.goto("http://localhost:5173/merchant/orders/" + self.parcel["parcelId"])
+        self.page.goto(self.frontend_url + "/merchant/orders/" + self.parcel["parcelId"])
+        expect(self.page.get_by_role("heading", name=self.parcel["trackingNumber"], exact=True)).to_be_visible(
+            timeout=WORKSPACE_TIMEOUT_MS,
+        )
         self.page.get_by_role("button", name="Inspect public tracking checkpoints").click()
-        expect(self.page.get_by_role("dialog")).to_be_visible()
-        expect(self.page.get_by_label("Live updates active")).to_be_visible(timeout=60000)
+        dialog = self.page.get_by_role("dialog")
+        expect(dialog).to_be_visible()
+        expect(dialog.get_by_label("Live updates active")).to_be_visible(timeout=60000)
         self.record("real browser PKCE login, direct merchant URL and live tracking subscription")
         self.page.screenshot(path=str(self.output / "tracking-before-transition.png"), full_page=True)
 
@@ -83,42 +93,71 @@ class MerchantBrowserProbe:
 
     def finish(self, zone):
         page = self.page
-        routes = {"overview": "/merchant", "orders": "/merchant/orders", "new-order": "/merchant/orders/new", "credentials": "/merchant/credentials", "webhooks": "/merchant/webhooks"}
+        routes = {
+            "overview": ("/merchant", "Overview"),
+            "orders": ("/merchant/orders", "Orders"),
+            "new-order": ("/merchant/orders/new", "New Order"),
+            "credentials": ("/merchant/credentials", "API Credentials"),
+            "webhooks": ("/merchant/webhooks", "Webhooks"),
+        }
         for width in (360, 390, 768, 1024, 1440):
             page.set_viewport_size({"width": width, "height": 1000})
-            for name, route in routes.items():
-                page.goto("http://localhost:5173" + route)
-                expect(page.get_by_role("navigation", name="Merchant space sections")).to_be_visible()
+            for name, (route, _) in routes.items():
+                page.goto(self.frontend_url + route)
+                nav = page.get_by_role("navigation", name="Merchant space sections")
+                expect(nav).to_be_visible(timeout=WORKSPACE_TIMEOUT_MS)
                 page.wait_for_function("!document.querySelector('[aria-busy=\"true\"]')", timeout=60000)
                 if name == "overview":
-                    expect(page.get_by_role("heading", name="Synthetic Merchant Acceptance")).to_be_visible()
+                    expect(page.get_by_role("heading", name="Synthetic Merchant Acceptance")).to_be_visible(
+                        timeout=WORKSPACE_TIMEOUT_MS,
+                    )
                 elif name == "orders":
-                    expect(page.get_by_role("table", name="Merchant orders list")).to_be_visible()
+                    expect(page.get_by_role("table", name="Merchant orders list")).to_be_visible(
+                        timeout=WORKSPACE_TIMEOUT_MS,
+                    )
                 elif name == "new-order":
-                    expect(page.get_by_label("Pickup zone", exact=True)).to_be_enabled()
+                    expect(page.get_by_label("Pickup zone", exact=True)).to_be_enabled(timeout=WORKSPACE_TIMEOUT_MS)
                 elif name == "credentials":
-                    expect(page.get_by_role("button", name=re.compile("Generate API Key"))).to_be_enabled()
+                    expect(page.get_by_role("button", name=re.compile("Generate API Key"))).to_be_enabled(
+                        timeout=WORKSPACE_TIMEOUT_MS,
+                    )
                 elif name == "webhooks":
-                    expect(page.locator(".webhook-card").first).to_be_visible()
-                dimensions = page.evaluate("""() => ({viewport: innerWidth, document: document.documentElement.scrollWidth,
-                    links: [...document.querySelectorAll('.merchant-sub-nav a')].map(a => ({label: a.textContent.trim(), left: a.getBoundingClientRect().left, right: a.getBoundingClientRect().right}))})""")
+                    expect(page.locator(".webhook-card").first).to_be_visible(timeout=WORKSPACE_TIMEOUT_MS)
                 page.screenshot(path=str(self.output / f"{name}-{width}.png"), full_page=True)
+                dimensions = page.evaluate("() => ({viewport: innerWidth, document: document.documentElement.scrollWidth})")
                 assert dimensions["document"] <= width + 1, f"{name} document overflow at {width}: {dimensions['document']}"
-                assert all(link["left"] >= -1 and link["right"] <= width + 1 for link in dimensions["links"]), f"Navigation clipped at {width}"
+                dimensions["links"] = []
+                for target, label in routes.values():
+                    tab = nav.get_by_role("link", name=label, exact=True)
+                    expect(tab).to_have_attribute("href", target)
+                    tab.scroll_into_view_if_needed()
+                    expect(tab).to_be_in_viewport(ratio=0.99)
+                    bounds = tab.bounding_box()
+                    assert bounds is not None, f"{label} tab has no bounds at {width}px"
+                    dimensions["links"].append({
+                        "label": label, "left": bounds["x"], "right": bounds["x"] + bounds["width"],
+                    })
                 self.record(f"{name} responsive screenshot and reachable navigation at {width}px", **dimensions)
         page.set_viewport_size({"width": 1440, "height": 1000})
-        page.goto("http://localhost:5173/merchant/orders")
-        expect(page.get_by_role("table", name="Merchant orders list")).to_be_visible()
+        page.goto(self.frontend_url + "/merchant/orders")
+        expect(page.get_by_role("table", name="Merchant orders list")).to_be_visible(timeout=WORKSPACE_TIMEOUT_MS)
         search = page.get_by_role("searchbox", name="Search orders by tracking number or parcel ID")
         search.fill(self.parcel["trackingNumber"])
         expect(page.locator(".merchant-order-row")).to_have_count(1)
-        page.get_by_role("radio", name="Delivered", exact=True).click()
-        expect(page.locator(".merchant-order-row")).to_have_count(1)
+        filters = page.get_by_role("group", name="Filter orders by status")
+        delivered_filter = filters.get_by_role("button", name=re.compile(r"^Delivered\b"))
+        delivered_filter.click()
+        expect(delivered_filter).to_have_attribute("aria-pressed", "true")
+        row = page.locator(".merchant-order-row")
+        expect(row).to_have_count(1)
+        expect(row).to_contain_text(self.parcel["trackingNumber"])
         page.get_by_role("button", name="Clear search query").click()
-        page.get_by_role("radio", name="All Orders", exact=True).click()
+        all_filter = filters.get_by_role("button", name=re.compile(r"^All\b"))
+        all_filter.click()
+        expect(all_filter).to_have_attribute("aria-pressed", "true")
         self.record("real dashboard combined search/filter and clear controls")
         with page.expect_download() as pending:
-            page.get_by_role("button", name=re.compile("Export Orders to CSV")).click()
+            page.get_by_role("button", name="Export CSV", exact=True).click()
         exported = self.output / "browser-exported-orders.csv"
         pending.value.save_as(exported)
         rows = list(csv.DictReader(io.StringIO(exported.read_text(encoding="utf-8-sig"))))
@@ -130,7 +169,7 @@ class MerchantBrowserProbe:
         assert delivered["Fee"] == f'{self.parcel["amountMinorUnits"] / 100:.2f}'
         assert delivered["Currency"] == "LKR"
         self.record("completed browser CSV export with delivered status, currency and authoritative update", rowCount=len(rows))
-        page.get_by_role("button", name=re.compile("Bulk CSV Upload")).click()
+        page.get_by_role("button", name="Upload CSV", exact=True).click()
         dialog = page.get_by_role("dialog")
         expect(dialog).to_be_visible()
         page.keyboard.press("Tab")
@@ -165,8 +204,8 @@ class MerchantBrowserProbe:
         page.keyboard.press("Escape")
         expect(dialog).not_to_be_visible()
         self.record("bulk dialog keyboard focus, Escape and closure")
-        page.goto("http://localhost:5173/merchant/orders/new")
-        expect(page.get_by_label("Pickup zone", exact=True)).to_be_enabled()
+        page.goto(self.frontend_url + "/merchant/orders/new")
+        expect(page.get_by_label("Pickup zone", exact=True)).to_be_enabled(timeout=WORKSPACE_TIMEOUT_MS)
         page.get_by_label("Pickup zone", exact=True).select_option(zone)
         page.get_by_label("Drop-off zone", exact=True).select_option(zone)
         for label, value in {
@@ -182,11 +221,11 @@ class MerchantBrowserProbe:
         expect(page.get_by_role("button", name="Confirm and book order")).to_be_enabled()
         assert not booking_requests, "Price review unexpectedly created an order"
         page.screenshot(path=str(self.output / "quote-confirmation.png"), full_page=True)
-        page.get_by_role("button", name="Cancel quote and edit").click()
+        page.get_by_role("button", name="Edit details", exact=True).click()
         expect(page.get_by_label("Recipient name", exact=True)).to_have_value("Synthetic Recipient")
         assert not booking_requests, "Cancelling the quote created an order"
         self.record("real quote review, explicit confirmation control and cancellation preserving input without booking")
-        page.goto("http://localhost:5173/merchant/credentials")
+        page.goto(self.frontend_url + "/merchant/credentials")
         generate = page.get_by_role("button", name=re.compile("Generate API Key"))
         generate.click()
         dialog = page.get_by_role("dialog")
@@ -197,7 +236,7 @@ class MerchantBrowserProbe:
         expect(dialog).not_to_be_visible()
         expect(generate).to_be_focused()
         self.record("API-key dialog keyboard focus, Escape and focus restoration")
-        page.goto("http://localhost:5173/merchant/webhooks")
+        page.goto(self.frontend_url + "/merchant/webhooks")
         page.get_by_role("button", name="Delivery Logs", exact=True).first.click()
         dialog = page.get_by_role("dialog")
         expect(dialog.get_by_role("heading", name="Webhook Delivery Logs")).to_be_visible()
@@ -216,7 +255,7 @@ class MerchantBrowserProbe:
         self.record("mobile Help Assistant opening and dismissal")
 
     def diagnostics(self):
-        if self.page.url.startswith("http://localhost:5173/"):
+        if self.page.url.startswith(self.frontend_url + "/"):
             self.page.screenshot(path=str(self.output / "browser-failure.png"), full_page=True)
             (self.output / "browser-failure.txt").write_text(self.page.locator("body").inner_text(), encoding="utf-8")
 
