@@ -1250,8 +1250,9 @@ public class DeliveryInternalServiceImpl extends DeliveryInternalServiceGrpc.Del
         Instant createdAt = p.getCreatedAt() != null ? p.getCreatedAt() : Instant.now();
         Instant updatedAt = p.getUpdatedAt() != null ? p.getUpdatedAt() : createdAt;
         com.swiftdrop.deliveryservice.core.ParcelRoute route = com.swiftdrop.deliveryservice.core.ParcelRoute.of(p);
-        String recipientCity = route.dropoffZoneName() != null ? route.dropoffZoneName()
-                : (route.dropoffZone() != null ? route.dropoffZone() : "Not recorded");
+        String recipientCity = route.dropoffZoneName() != null && !route.dropoffZoneName().isBlank()
+                ? route.dropoffZoneName()
+                : (route.dropoffZone() != null && !route.dropoffZone().isBlank() ? route.dropoffZone() : "Not recorded");
 
         return CustomerParcelSummary.newBuilder()
                 .setParcelId(p.getParcelId().toString())

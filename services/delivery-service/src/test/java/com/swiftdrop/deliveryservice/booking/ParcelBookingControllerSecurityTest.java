@@ -281,5 +281,28 @@ class ParcelBookingControllerSecurityTest {
 
         verifyNoInteractions(bookingService);
     }
+
+    @Test
+    @DisplayName("Invalid recipient phone format returns 400 Bad Request")
+    void invalidPhoneFormatReturns400() throws Exception {
+        String token = issueToken(SENDER_SUB, List.of("CUSTOMER"));
+
+        mvc.perform(post("/api/v1/parcels")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "quoteId": "%s",
+                          "pickupAddress": "123 Galle Rd, Colombo",
+                          "dropoffAddress": "45 Kandy Rd, Gampaha",
+                          "recipientName": "Perera",
+                          "recipientPhone": "0704038632"
+                        }
+                        """.formatted(QUOTE_ID)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        verifyNoInteractions(bookingService);
+    }
 }
 

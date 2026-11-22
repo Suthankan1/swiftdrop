@@ -258,7 +258,7 @@ export function CustomerQuotePage() {
     if (!recipientPhone.trim()) {
       errors.recipientPhone = 'Recipient phone number is required.'
     } else if (!/^\+94[0-9]{9}$/.test(recipientPhone.trim())) {
-      errors.recipientPhone = 'Phone number must be in +94XXXXXXXXX format (e.g. +94704174456).'
+      errors.recipientPhone = 'Phone number must be in +94XXXXXXXXX format (e.g. +94704038632).'
     }
 
     if (deliveryNotes.length > 2000) {
@@ -869,7 +869,8 @@ export function CustomerQuotePage() {
                           id={recipientPhoneId}
                           type="tel"
                           className="form-control"
-                          placeholder="e.g. +94704174456"
+                          placeholder="e.g. +94704038632"
+                          pattern="^\+94[0-9]{9}$"
                           value={recipientPhone}
                           onChange={(e) => {
                             setRecipientPhone(e.target.value)
