@@ -808,9 +808,24 @@ jobs:
             exit 1
           }
 
+      - name: Get current date for Trivy cache
+        if: steps.change_check.outputs.changed == 'true'
+        id: trivy_cache_date
+        run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy Vulnerability Database
+        if: steps.change_check.outputs.changed == 'true'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ steps.trivy_cache_date.outputs.date }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
+
       - name: Build container image
         if: steps.change_check.outputs.changed == 'true'
         run: |
+          export DOCKER_BUILDKIT=1
           echo "Building ${{ matrix.target.name }} (${{ matrix.target.tag }}) using ${{ matrix.target.dockerfile }}..."
           docker build -f "${{ matrix.target.dockerfile }}" -t "${{ matrix.target.tag }}" "${{ matrix.target.context }}"
 
@@ -821,6 +836,7 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD/.trivyignore:/.trivyignore" \
+            -v "$HOME/.cache/trivy:/root/.cache/trivy" \
             aquasec/trivy:0.59.1 image \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
@@ -1058,44 +1074,84 @@ jobs:
             return 1
           }
 
-          FAILED_IMAGES=()
-          for entry in "${TARGETS[@]}"; do
+          export DOCKER_BUILDKIT=1
+          TMP_DIR=$(mktemp -d)
+
+          process_target() {
+            local entry="$1"
             IFS=':' read -r name df ctx base_img <<< "$entry"
-            tag_short="${base_img}:${SHA_SHORT}"
-            tag_full="${base_img}:${SHA_FULL}"
-            tag_latest="${base_img}:latest"
+            local tag_short="${base_img}:${SHA_SHORT}"
+            local tag_full="${base_img}:${SHA_FULL}"
+            local tag_latest="${base_img}:latest"
+            local log_file="${TMP_DIR}/${name}.log"
 
-            echo "--------------------------------------------------------------------------------"
-            echo "Building $name: $tag_short, $tag_full, $tag_latest"
-            echo "--------------------------------------------------------------------------------"
-            if ! docker build -f "$df" -t "$tag_short" -t "$tag_full" -t "$tag_latest" "$ctx"; then
-              echo "✗ Build failed for $name"
-              FAILED_IMAGES+=("$name")
-              continue
+            run_steps() {
+              echo "--------------------------------------------------------------------------------"
+              echo "Building $name: $tag_short, $tag_full, $tag_latest"
+              echo "--------------------------------------------------------------------------------"
+              if ! docker build -f "$df" -t "$tag_short" -t "$tag_full" -t "$tag_latest" "$ctx"; then
+                echo "✗ Build failed for $name"
+                return 1
+              fi
+
+              if ! push_with_retry "$tag_short"; then
+                echo "✗ Failed pushing short tag for $name"
+                return 1
+              fi
+
+              if ! push_with_retry "$tag_full"; then
+                echo "✗ Failed pushing full tag for $name"
+                return 1
+              fi
+
+              if ! push_with_retry "$tag_latest"; then
+                echo "✗ Failed pushing latest tag for $name"
+                return 1
+              fi
+
+              local digest
+              digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag_full" 2>/dev/null || docker inspect --format '{{index .RepoDigests 0}}' "$tag_short" 2>/dev/null || echo "digest-pending")
+              echo "$name: $tag_full ($digest)" > "${TMP_DIR}/${name}.digest"
+              echo "✓ Recorded publication digest for $name: $digest"
+              return 0
+            }
+
+            local exit_code=0
+            if ! run_steps > "$log_file" 2>&1; then
+              exit_code=1
             fi
+            cat "$log_file"
+            return "$exit_code"
+          }
 
-            if ! push_with_retry "$tag_short"; then
-              echo "✗ Failed pushing short tag for $name"
-              FAILED_IMAGES+=("$name")
-              continue
-            fi
+          FAILED_IMAGES=()
+          pids=()
+          target_names=()
+          PARALLEL_LIMIT=3
 
-            if ! push_with_retry "$tag_full"; then
-              echo "✗ Failed pushing full tag for $name"
-              FAILED_IMAGES+=("$name")
-              continue
-            fi
-
-            if ! push_with_retry "$tag_latest"; then
-              echo "✗ Failed pushing latest tag for $name"
-              FAILED_IMAGES+=("$name")
-              continue
-            fi
-
-            digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$tag_full" 2>/dev/null || docker inspect --format '{{index .RepoDigests 0}}' "$tag_short" 2>/dev/null || echo "digest-pending")
-            echo "$name: $tag_full ($digest)" >> "$MANIFEST_FILE"
-            echo "✓ Recorded publication digest for $name: $digest"
+          for entry in "${TARGETS[@]}"; do
+            IFS=':' read -r name _ _ _ <<< "$entry"
+            while [ "$(jobs -r | wc -l)" -ge "$PARALLEL_LIMIT" ]; do
+              sleep 1
+            done
+            process_target "$entry" &
+            pids+=($!)
+            target_names+=("$name")
           done
+
+          idx=0
+          for pid in "${pids[@]}"; do
+            name="${target_names[$idx]}"
+            if ! wait "$pid"; then
+              FAILED_IMAGES+=("$name")
+            else
+              if [ -f "${TMP_DIR}/${name}.digest" ]; then
+                cat "${TMP_DIR}/${name}.digest" >> "$MANIFEST_FILE"
+              fi
+            fi
+            idx=$((idx + 1))
+          done
+          rm -rf "$TMP_DIR"
 
           if [ ${#FAILED_IMAGES[@]} -gt 0 ]; then
             echo ""

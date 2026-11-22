@@ -48,6 +48,7 @@ echo ""
 echo "------------------------------------------------------------------------------"
 echo " Endpoint Health Probes Audit"
 echo "------------------------------------------------------------------------------"
+FAILED_PROBES=0
 probe_http() {
   local name="$1"
   local url="$2"
@@ -58,6 +59,7 @@ probe_http() {
     printf "  %-32s : [PASS] HTTP %s (%s)\n" "$name" "$status" "$url"
   else
     printf "  %-32s : [FAIL] HTTP %s (expected %s) (%s)\n" "$name" "$status" "$expected" "$url"
+    FAILED_PROBES=$((FAILED_PROBES + 1))
   fi
 }
 
@@ -93,6 +95,7 @@ probe_db() {
     printf "  %-32s : [PASS] Database ready (%s on %s)\n" "$name" "$db" "$container"
   else
     printf "  %-32s : [FAIL] Database unreachable (%s on %s)\n" "$name" "$db" "$container"
+    FAILED_PROBES=$((FAILED_PROBES + 1))
   fi
 }
 
@@ -110,6 +113,14 @@ if docker exec "$(container_for kafka)" /opt/kafka/bin/kafka-broker-api-versions
   printf "  %-32s : [PASS] Broker responsive (PLAINTEXT://kafka:29092)\n" "Kafka KRaft Broker"
 else
   printf "  %-32s : [FAIL] Broker unresponsive\n" "Kafka KRaft Broker"
+  FAILED_PROBES=$((FAILED_PROBES + 1))
 fi
 
 echo "=============================================================================="
+
+if [ "${STRICT_HEALTH_CHECK:-false}" = "true" ] || [ "${1:-}" = "--strict" ]; then
+  if [ "$FAILED_PROBES" -gt 0 ]; then
+    echo "FATAL: Deployment verification failed on $FAILED_PROBES health probe(s)." >&2
+    exit 1
+  fi
+fi
