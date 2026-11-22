@@ -152,10 +152,10 @@ describe('MerchantOrdersDashboardPage', () => {
       items: [{ ...recent, amountMinorUnits: recent.feeMinorUnits, updatedAt: recent.lastStatusUpdate }], totalElements: 1,
       totalPages: 1, currentPage: 0, pageSize: 100, hasNext: false, hasPrevious: false,
     }))))
-    expect(await screen.findByText(/showing 1 loaded orders/i)).toBeInTheDocument()
+    expect(await screen.findByText(/1 of 1 orders.*full history/i)).toBeInTheDocument()
     const row = screen.getByText(recent.trackingNumber).closest('tr')!
     expect(within(row).getByText(formatDateTime(recent.lastStatusUpdate))).toBeInTheDocument()
-    expect(within(row).getByText(formatDateTime(recent.createdAt))).toBeInTheDocument()
+    expect(within(row).queryByText(formatDateTime(recent.createdAt))).not.toBeInTheDocument()
   })
   beforeEach(() => {
     localStorage.clear()
@@ -199,7 +199,7 @@ describe('MerchantOrdersDashboardPage', () => {
 
     // Page Heading & Navigation
     expect(screen.getByRole('heading', { name: /your orders/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /orders dashboard/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Orders', current: 'page' })).toBeInTheDocument()
 
     // Orders Table Rows (wait for async query resolution)
     expect(await screen.findByText('SWD-20261027-ALPH1')).toBeInTheDocument()
@@ -207,15 +207,15 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(screen.getByText('SWD-20261027-ALPH3')).toBeInTheDocument()
     expect(screen.getByText('SWD-20261027-ALPH4')).toBeInTheDocument()
 
-    // Banner points merchants at API keys and webhooks, without internal identifiers (re-audit U2)
+    // The dashboard leaves integration links in the workspace tabs.
     expect(screen.queryByText(/browser session jwt/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/tenant id/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /manage api keys/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /manage webhooks/i })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /manage api keys/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /manage webhooks/i })).not.toBeInTheDocument()
 
     // Authoritative State Counts (AC1)
-    expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('4')).toBeInTheDocument()
-    expect(within(screen.getByRole('button', { name: /active dispatches/i })).getByText('2')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /^all /i })).getByText('4')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /^in progress/i })).getByText('2')).toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /^delivered/i })).getByText('1')).toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /^failed/i })).getByText('1')).toBeInTheDocument()
 
@@ -242,7 +242,7 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(await screen.findByText('SWD-20261027-ALPH1')).toBeInTheDocument()
 
     // Click Active filter
-    const activeBtn = screen.getByRole('radio', { name: /^active$/i })
+    const activeBtn = screen.getByRole('button', { name: /^in progress/i })
     await user.click(activeBtn)
 
     // Active dispatches (ALPH1 and ALPH2) should be visible; Delivered and Failed should be filtered out
@@ -252,14 +252,14 @@ describe('MerchantOrdersDashboardPage', () => {
     expect(screen.queryByText('SWD-20261027-ALPH4')).not.toBeInTheDocument()
 
     // Click Delivered filter
-    const deliveredBtn = screen.getByRole('radio', { name: /^delivered$/i })
+    const deliveredBtn = screen.getByRole('button', { name: /^delivered/i })
     await user.click(deliveredBtn)
 
     expect(screen.queryByText('SWD-20261027-ALPH1')).not.toBeInTheDocument()
     expect(screen.getByText('SWD-20261027-ALPH3')).toBeInTheDocument()
 
     // Click All Orders to restore
-    const allBtn = screen.getByRole('radio', { name: /all orders/i })
+    const allBtn = screen.getByRole('button', { name: /^all /i })
     await user.click(allBtn)
 
     expect(screen.getByText('SWD-20261027-ALPH1')).toBeInTheDocument()
@@ -315,9 +315,9 @@ describe('MerchantOrdersDashboardPage', () => {
     await user.type(searchInput, 'NONEXISTENT')
 
     expect(await screen.findByText(/no orders found/i)).toBeInTheDocument()
-    expect(screen.getByText(/no orders matched your current status filter/i)).toBeInTheDocument()
+    expect(screen.getByText(/no orders match these filters/i)).toBeInTheDocument()
 
-    const resetBtn = screen.getByRole('button', { name: /reset filters/i })
+    const resetBtn = screen.getByRole('button', { name: /clear filters/i })
     await user.click(resetBtn)
 
     expect(await screen.findByText('SWD-20261027-ALPH1')).toBeInTheDocument()
@@ -469,14 +469,13 @@ describe('MerchantOrdersDashboardPage', () => {
 
     // Package appears automatically without clicking "Load all orders"
     expect(await screen.findByText('SWD-20261114-AUTO1')).toBeInTheDocument()
-    expect(screen.getByText('5.00 kg')).toBeInTheDocument()
 
     // Summary cards reflect the loaded order
-    expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('1')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /^all /i })).getByText('1')).toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /^delivered/i })).getByText('1')).toBeInTheDocument()
 
     // Status line shows all orders loaded
-    expect(screen.getByText(/showing 1 loaded orders/i)).toBeInTheDocument()
+    expect(screen.getByText(/1 of 1 orders.*full history/i)).toBeInTheDocument()
 
     // Search bar works immediately on auto-loaded orders
     const searchInput = screen.getByRole('searchbox', { name: /search orders/i })

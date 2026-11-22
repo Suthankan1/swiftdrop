@@ -335,8 +335,8 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       expect(screen.getByRole('heading', { name: /Alpha Logistics PLC/i })).toBeInTheDocument()
 
       // 2. Summary Metric Cards
-      expect(within(screen.getByRole('button', { name: /total bookings/i })).getByText('4')).toBeInTheDocument()
-      expect(within(screen.getByRole('button', { name: /active dispatches/i })).getByText('2')).toBeInTheDocument()
+      expect(within(screen.getByRole('button', { name: /^all /i })).getByText('4')).toBeInTheDocument()
+      expect(within(screen.getByRole('button', { name: /^in progress/i })).getByText('2')).toBeInTheDocument()
       expect(within(screen.getByRole('button', { name: /^delivered/i })).getByText('1')).toBeInTheDocument()
       expect(within(screen.getByRole('button', { name: /^failed/i })).getByText('1')).toBeInTheDocument()
 
@@ -370,7 +370,7 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       await screen.findByText('SWD-20261028-A101')
 
       // Filter by ACTIVE -> Should show IN_TRANSIT (A101) and OUT_FOR_DELIVERY (A102)
-      const activeFilterBtn = screen.getByRole('radio', { name: /^active$/i })
+      const activeFilterBtn = screen.getByRole('button', { name: /^in progress/i })
       await user.click(activeFilterBtn)
 
       expect(screen.getByText('SWD-20261028-A101')).toBeInTheDocument()
@@ -379,14 +379,14 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       expect(screen.queryByText('SWD-20261028-A104')).not.toBeInTheDocument() // FAILED
 
       // Filter by DELIVERED -> Should show only A103
-      const deliveredFilterBtn = screen.getByRole('radio', { name: /^delivered$/i })
+      const deliveredFilterBtn = screen.getByRole('button', { name: /^delivered/i })
       await user.click(deliveredFilterBtn)
 
       expect(screen.queryByText('SWD-20261028-A101')).not.toBeInTheDocument()
       expect(screen.getByText('SWD-20261028-A103')).toBeInTheDocument()
 
       // Reset to ALL
-      const allFilterBtn = screen.getByRole('radio', { name: /all orders/i })
+      const allFilterBtn = screen.getByRole('button', { name: /^all /i })
       await user.click(allFilterBtn)
       expect(screen.getByText('SWD-20261028-A101')).toBeInTheDocument()
       expect(screen.getByText('SWD-20261028-A104')).toBeInTheDocument()
@@ -473,7 +473,7 @@ describe('SwiftDrop Acceptance Suite (N10-QA-03 / Issue #163)', () => {
       // Back navigation button returns to /merchant/orders
       const backBtn = screen.getByRole('link', { name: /back to orders dashboard/i })
       await user.click(backBtn)
-      expect(await screen.findByRole('button', { name: /total bookings/i })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /^all /i })).toBeInTheDocument()
     })
 
     it('AC-MO-05: Direct deep linking to nonexistent order displays 404 state', async () => {

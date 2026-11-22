@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Button } from '../../../components/ui/Button'
+import { ButtonLink } from '../../../components/ui/ButtonLink'
 import type { MerchantOrderSummaryItem } from '../api/merchantDashboardContracts'
 import { formatCurrency, formatDateTime, getStatusPresentation } from './merchantUiUtils'
 
@@ -31,7 +32,8 @@ export function MerchantOrderTable({
   const [copyError, setCopyError] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-  const startIndex = currentPage * pageSize
+  const page = Math.min(currentPage, totalPages - 1)
+  const startIndex = page * pageSize
   const pagedOrders = orders.slice(startIndex, startIndex + pageSize)
 
   const handleCopy = async (text: string, id: string) => {
@@ -51,28 +53,14 @@ export function MerchantOrderTable({
   if (orders.length === 0) {
     return (
       <div className="card empty-state-box merchant-orders-empty" role="status">
-        <div className="state-icon" aria-hidden="true">📦</div>
-        <h3>No orders found</h3>
+        <h3>{hasFiltersApplied ? 'No orders found' : 'No orders yet'}</h3>
         {hasFiltersApplied ? (
           <>
-            <p className="muted">
-              No orders matched your current status filter or search query.
-            </p>
-            {onResetFilters && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={onResetFilters}
-              >
-                Reset Filters
-              </Button>
-            )}
+            <p className="muted">No orders match these filters.</p>
+            {onResetFilters && <Button variant="secondary" size="sm" onClick={onResetFilters}>Clear filters</Button>}
           </>
         ) : (
-          <p className="muted">
-            You do not have any commercial orders booked yet. Shipments booked through your machine API or customer dispatches will appear here.
-          </p>
+          <ButtonLink to="/merchant/orders/new" size="sm">Create first order</ButtonLink>
         )}
       </div>
     )
@@ -82,28 +70,25 @@ export function MerchantOrderTable({
     <div className="history-table-container merchant-orders-table-container" aria-busy={isLoading}>
       {copyError && <p role="alert">The reference could not be copied. Select it and copy it manually.</p>}
       <div className="table-responsive-wrapper">
-        <table className="delivery-log-table merchant-orders-table" aria-label="Merchant orders list">
-          <thead>
-            <tr>
-              <th scope="col">Tracking Number</th>
-              <th scope="col">Parcel ID</th>
-              <th scope="col">Status</th>
-              <th scope="col">Weight</th>
-              <th scope="col">Delivery Fee</th>
-              <th scope="col">Created Date</th>
-              <th scope="col">Last Update</th>
-              <th scope="col" className="text-right">Action</th>
+        <table role="table" className="delivery-log-table merchant-orders-table" aria-label="Merchant orders list">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th role="columnheader" scope="col">Tracking number</th>
+              <th role="columnheader" scope="col">Status</th>
+              <th role="columnheader" scope="col">Last update</th>
+              <th role="columnheader" scope="col">Fee</th>
+              <th role="columnheader" scope="col" className="text-right">Order</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {pagedOrders.map((order) => {
               const statusInfo = getStatusPresentation(order.currentStatus)
               const isTrackingCopied = copiedId === `track-${order.parcelId}`
 
               return (
-                <tr key={order.parcelId} className="merchant-order-row">
+                <tr role="row" key={order.parcelId} className="merchant-order-row">
                   {/* Tracking Number */}
-                  <td className="tracking-number-cell">
+                  <td role="cell" className="tracking-number-cell">
                     <div className="tracking-inline-wrap">
                       <span className="monospace tracking-text font-bold">
                         {order.trackingNumber}
@@ -124,62 +109,31 @@ export function MerchantOrderTable({
                           onClick={() => onSelectTracking(order.trackingNumber, order.parcelId)}
                           aria-label={`Inspect tracking checkpoint for ${order.trackingNumber}`}
                         >
-                          Track ↗
+                          Track
                         </button>
                       )}
                     </div>
                   </td>
 
-                  {/* Parcel ID (Truncated) */}
-                  <td className="parcel-id-cell">
-                    <span
-                      className="monospace parcel-id-snippet"
-                      title={order.parcelId}
-                      aria-label={`Parcel ID ${order.parcelId}`}
-                    >
-                      {order.parcelId.length > 12 ? `${order.parcelId.slice(0, 8)}...` : order.parcelId}
-                    </span>
-                  </td>
-
-                  {/* Status Badge */}
-                  <td>
-                    <span
-                      className={statusInfo.pillClass}
-                      title={statusInfo.description}
-                      role="status"
-                    >
+                  <td role="cell" className="orders-row-status">
+                    <span className={statusInfo.pillClass} title={statusInfo.description} role="status">
                       {statusInfo.label}
                     </span>
                   </td>
-
-                  {/* Weight */}
-                  <td className="monospace">
-                    {Number.isFinite(order.weightKg) ? `${order.weightKg.toFixed(2)} kg` : '—'}
-                  </td>
-
-                  {/* Delivery Fee */}
-                  <td className="monospace font-semibold">
-                    {formatCurrency(order.feeMinorUnits, order.currency)}
-                  </td>
-
-                  {/* Created At */}
-                  <td className="muted text-small">
-                    {formatDateTime(order.createdAt)}
-                  </td>
-
-                  {/* Last Update */}
-                  <td className="muted text-small">
+                  <td role="cell" className="orders-row-updated" data-label="Last update">
                     {formatDateTime(order.lastStatusUpdate)}
                   </td>
-
+                  <td role="cell" className="orders-row-fee" data-label="Fee">
+                    {formatCurrency(order.feeMinorUnits, order.currency)}
+                  </td>
                   {/* Actions */}
-                  <td className="text-right">
+                  <td role="cell" className="text-right orders-row-action">
                     <Link
                       to={`/merchant/orders/${encodeURIComponent(order.parcelId)}`}
                       className="button button-secondary button-small view-order-btn"
                       aria-label={`View details for order ${order.trackingNumber}`}
                     >
-                      View Details →
+                      View order
                     </Link>
                   </td>
                 </tr>
@@ -204,21 +158,21 @@ export function MerchantOrderTable({
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 0 || isLoading}
+              onClick={() => onPageChange(page - 1)}
+              disabled={page === 0 || isLoading}
               aria-label="Previous page"
             >
               ← Previous
             </Button>
             <span className="pagination-current-page" aria-current="page">
-              Page {currentPage + 1} of {totalPages}
+              Page {page + 1} of {totalPages}
             </span>
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages - 1 || isLoading}
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages - 1 || isLoading}
               aria-label="Next page"
             >
               Next →
