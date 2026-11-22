@@ -39,6 +39,8 @@ services:
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
       SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    healthcheck:
+      start_period: 180s
     depends_on: !override
       grpc-certs:
         condition: service_completed_successfully
@@ -55,6 +57,8 @@ services:
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
       SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    healthcheck:
+      start_period: 180s
     depends_on: !override
       grpc-certs:
         condition: service_completed_successfully
@@ -73,6 +77,8 @@ services:
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
       SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    healthcheck:
+      start_period: 180s
     depends_on: !override
       grpc-certs:
         condition: service_completed_successfully
@@ -93,6 +99,8 @@ services:
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "0"
       SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "5000"
+    healthcheck:
+      start_period: 180s
     depends_on: !override
       grpc-certs:
         condition: service_completed_successfully
