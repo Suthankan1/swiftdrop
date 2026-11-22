@@ -32,14 +32,10 @@ else
 fi
 
 echo "=============================================================================="
-echo " SwiftDrop Platform — Runtime Status & Health Audit"
+echo " SwiftDrop Platform — Runtime Status & Health Audit (Mode: ${MODE})"
 echo "=============================================================================="
 
-if [ -f "${ENV_FILE}" ]; then
-  docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" ps -a
-else
-  docker compose -f "${COMPOSE_FILE}" ps -a
-fi
+compose ps -a
 
 echo ""
 echo "------------------------------------------------------------------------------"
@@ -52,6 +48,7 @@ echo ""
 echo "------------------------------------------------------------------------------"
 echo " Endpoint Health Probes Audit"
 echo "------------------------------------------------------------------------------"
+FAILED_PROBES=0
 probe_http() {
   local name="$1"
   local url="$2"
@@ -62,6 +59,7 @@ probe_http() {
     printf "  %-32s : [PASS] HTTP %s (%s)\n" "$name" "$status" "$url"
   else
     printf "  %-32s : [FAIL] HTTP %s (expected %s) (%s)\n" "$name" "$status" "$expected" "$url"
+    FAILED_PROBES=$((FAILED_PROBES + 1))
   fi
 }
 
