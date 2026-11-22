@@ -274,6 +274,6 @@ describe('shared application routes', () => {
       getAccessToken: async () => 'test-token',
     }
     renderRoute('/merchant/credentials', merchantAuth)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/machine credentials/i)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/api credentials/i)
   })
 })

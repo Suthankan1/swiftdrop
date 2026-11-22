@@ -81,7 +81,6 @@ export function ApiKeyCreateFormModal({
       >
         <div className="modal-header">
           <div>
-            <p className="eyebrow">Machine credentials</p>
             <h2 id="create-key-modal-heading" className="modal-title">Generate Merchant API Key</h2>
           </div>
           <button
@@ -94,10 +93,6 @@ export function ApiKeyCreateFormModal({
             ×
           </button>
         </div>
-
-        <p className="muted">
-          Scoped API keys authenticate automated enterprise software, warehouse management systems, or dispatch scripts to book and monitor parcels.
-        </p>
 
         {validationError && (
           <div className="form-alert form-alert-error" role="alert">
@@ -120,14 +115,13 @@ export function ApiKeyCreateFormModal({
               id="api-key-name"
               type="text"
               className="form-input"
-              placeholder="e.g. Warehouse ERP Integration"
+              placeholder="e.g. Online store"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
               maxLength={100}
               required
             />
-            <span className="field-hint">A recognizable label for this integration or service.</span>
           </div>
 
           <fieldset className="form-field">
@@ -166,7 +160,7 @@ export function ApiKeyCreateFormModal({
               onChange={(e) => setExpiresInDays(parseInt(e.target.value, 10) || 90)}
               disabled={isSubmitting}
             />
-            <span className="field-hint">Standard lifespan is 90 days. Range: 1 to 365 days.</span>
+            <span className="field-hint">1 to 365 days.</span>
           </div>
 
           <div className="modal-actions">
