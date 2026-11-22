@@ -1,0 +1,143 @@
+.merchant-overview {
+  display: grid;
+  gap: 20px;
+}
+.merchant-page.merchant-overview { padding-bottom: 24px; }
+
+.merchant-overview-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  align-items: center;
+  gap: clamp(20px, 4vw, 40px);
+}
+.merchant-overview-hero-main { display: grid; gap: 20px; min-width: 0; }
+.merchant-overview-hero .merchant-overview-shortcuts { grid-template-columns: minmax(0, 1fr); }
+
+.merchant-overview-heading h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4.5vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.merchant-overview-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.merchant-overview-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 96px;
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.merchant-overview-shortcut strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1.15rem;
+}
+
+.merchant-overview-shortcut span span { color: var(--color-muted); }
+.merchant-overview-shortcut .icon { flex: none; }
+.merchant-overview-shortcut:hover { border-color: #548064; background: #f2f6e8; }
+
+.merchant-overview-shortcut-primary {
+  border-color: #214637;
+  background: #214637;
+  color: #fff;
+}
+.merchant-overview-shortcut-primary span span { color: #e0eddf; }
+.merchant-overview-shortcut-primary:hover { background: #2c5845; }
+
+.merchant-overview-account {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+.merchant-overview-account > :first-child { width: 100%; }
+.merchant-overview-business {
+  display: grid;
+  gap: 20px;
+  padding: clamp(16px, 3vw, 30px);
+  border-radius: 18px;
+}
+
+.merchant-overview-business-header .eyebrow { margin: 0 0 6px; }
+.merchant-overview-business-header h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  overflow-wrap: anywhere;
+}
+
+.merchant-overview-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f0f2ec;
+  color: #293a30;
+}
+.merchant-overview-status[data-approval="APPROVED"] { background: #edf5e7; color: #214637; }
+.merchant-overview-status[data-approval="PENDING"] { background: #fbf3df; color: #654b22; }
+.merchant-overview-status:is([data-approval="REJECTED"], [data-approval="SUSPENDED"]) {
+  background: #fbefeb;
+  color: #762d25;
+}
+.merchant-overview-status-label {
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 99px;
+  font-size: .75rem;
+  font-weight: 650;
+}
+.merchant-overview-status h3 { margin: 0; font-size: 1rem; }
+.merchant-overview-status p { margin: 4px 0 0; font-size: .9rem; }
+
+.merchant-overview-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 18px;
+  margin: 0;
+}
+.merchant-overview-profile-fields dt { color: var(--color-muted); font-size: .85rem; }
+.merchant-overview-profile-fields dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+
+.merchant-overview-profile-details {
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+.merchant-overview-profile-details h3 { margin: 0; font-size: 1rem; font-weight: 650; }
+.merchant-overview-profile-details dl { margin-top: 14px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .merchant-overview-shortcuts,
+  .merchant-overview-business { animation: merchant-overview-enter 220ms ease-out both; }
+  .merchant-overview-shortcut { transition: background-color 160ms ease-out, border-color 160ms ease-out; }
+  .merchant-overview-shortcut .icon { transition: transform 160ms ease-out; }
+  .merchant-overview-shortcut:is(:hover, :focus-visible) .icon { transform: translateX(4px); }
+}
+
+@keyframes merchant-overview-enter {
+  from { opacity: 0; translate: 0 5px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (max-width: 860px) {
+  .merchant-overview-hero { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .merchant-overview-shortcuts,
+  .merchant-overview-profile-fields { grid-template-columns: minmax(0, 1fr); }
+}
