@@ -1,6 +1,6 @@
 # Merchant module implementation and verification — 21 November 2026
 
-The user approved headless Playwright acceptance after the computer-use connection failed. The current Supabase runtime and final browser evidence are being verified on 21 November.
+The user approved headless Playwright acceptance after the computer-use connection failed. On 22 November, the full Merchant probe passed against disposable local PostgreSQL and Kafka. The shared Supabase environment remains configured as before. The earlier Supabase and browser attempts are retained below as historical evidence.
 
 ## Revision and ownership
 
@@ -153,16 +153,48 @@ No coverage percentage is claimed. Unit/component tests, real PostgreSQL tests a
 
 ### Reproduce acceptance checks
 
-1. On a healthy Supabase stack, open the isolated preview and sign in with a dedicated Merchant fixture. Open orders, wait for full history, search/filter, refresh and inspect a delivered row. The Last Update must not become booking time.
+1. On the disposable local test stack, sign in with a synthetic Merchant fixture. Open orders, wait for full history, search and filter, refresh and inspect a delivered row. Compare Last Update with the authoritative Delivery timestamp.
 2. At 360, 390, 768, 1024 and desktop widths, inspect document width and reach every Merchant section. Wide-table scrolling must remain inside the table.
 3. Submit New Order once: verify the quoted total appears and no parcel exists yet. Cancel and check the input remains; then quote and confirm a fixture order.
-4. Run the approved live probe with `--env-file`, `--cloudflared`, and `--report-dir` pointing outside tracked source. Read its sanitized report and verify cleanup. It does not establish browser UI acceptance.
+4. Run the live probe with `--run --isolated-local --browser` and point `--env-file`, `--cloudflared` and `--report-dir` outside tracked source. Read the sanitized API and browser reports and verify cleanup.
 5. Complete actual SSE-to-UI evidence, browser CSV/PDF download completion, all dialog keyboard checks and screenshot acceptance before final Merchant sign-off. Verify disabled subscriptions receive no subsequent event and observe retry exhaustion in a controlled live run. Deactivation itself and callback failure/retry passed, while exhaustion is currently covered by Communications tests.
 
-Next small task — approve isolated Supabase development schemas or provide the shared Kafka endpoint, then complete terminal-event and browser acceptance with the prepared probe.
+The disposable local integration results below supersede the earlier shared-environment acceptance status.
 
 ### Public frontend integration follow-up
 
 The old homepage at port 5173 was the review worktree baseline. Integrated the newer original-workspace landing page, animated delivery scene, shared buttons, header/footer and assistant styling, while preserving authorized workspace selection and Merchant enrollment routing. The original checkout remains untouched. Restarted the Vite preview to clear stale transformed modules from the Windows bind mount.
 
 Validation: TypeScript, ESLint, all 82 frontend test files (1,303 tests) and the production build passed. Installed Chrome headless rendered the updated public page at 1440px and 390px with matching document widths and no page errors. Scrolled through reveal sections and inspected screenshots stored under ignored `.local/merchant-verification/latest-design/`. The build retains a 525.97 kB application chunk warning. This public-page check does not resolve the shared-broker terminal SSE blocker above.
+
+### Resumed verification
+
+- Fetched `origin/test`. `git rev-list --left-right --count HEAD...origin/test` returned 13 branch-only commits and zero upstream-only commits.
+- Draft PR #340 still targets `test` at head `13b1d78`. The required CI gate, frontend quality/build and Keycloak image scan passed. [CI run](https://github.com/Suthankan1/swiftdrop/actions/runs/44932485611)
+- The local frontend and Keycloak discovery returned HTTP 200, and the Gateway health endpoint reported `UP`. Docker reported healthy business services and GraphQL.
+- The read-only `supabase.py check` passed for Accounts, Pricing, Delivery, Communications and Keycloak after adding the installed PostgreSQL client to the shell PATH. Each runtime login passed TLS, dedicated-role, own-permission, cross-service denial and schema-history checks.
+- Reran the headless Chrome public design check. The document widths matched the 1440 px and 390 px viewports, with no browser errors.
+- The user chose to preserve the existing Supabase setup. Further synthetic writes and migrations are restricted to disposable local infrastructure.
+
+### Disposable local Merchant integration
+
+- The local Compose project `merchant-local-it` uses separate containers, networks and named volumes, with five service-owned databases across three local PostgreSQL containers and its own Kafka broker. The applications use Docker-internal database and Kafka addresses. The local Gateway, Keycloak and frontend bind to loopback on ports 18080, 18090 and 15173 respectively.
+- Ignored helper scripts under `.local/merchant-verification/` prepare the local Compose configuration and allow the browser's loopback origin in the disposable Keycloak realm and Gateway. They use the existing reviewed database migrations and local service images. The existing Supabase configuration is outside this test project.
+- The acceptance probe now requires `--isolated-local` or `--shared-development` explicitly. Use `--run --isolated-local --browser` with the ignored `isolated-local.env`, the existing cloudflared executable and an ignored report directory. The isolated flag selects all three local endpoints together.
+- Docker started the isolated PostgreSQL, Kafka and Keycloak containers. Both Kafka lifecycle topics were created, and the disposable Keycloak client was configured for the test frontend. The isolated Gateway never passed preflight after Docker Desktop stopped responding. The existing local Gateway and preview also timed out. A separate read-only Supabase check still passed for all five databases.
+- `mvn -B verify` passed Accounts (332 unit and 29 integration tests). Delivery passed 514 unit tests and the first 10 PostgreSQL integration cases. Communications passed 365 unit tests, 16 PostgreSQL persistence cases and four Kafka consumer cases. The Delivery run was stopped during host memory pressure. The Communications run was stopped after its remaining webhook Kafka suite lost its disposable PostgreSQL connection. The partial runs do not establish completion of either integration suite.
+- After Docker recovered, Communications passed all 27 integration tests with `mvn -B -DreuseForks=false failsafe:integration-test failsafe:verify`. Maven reported a delayed test JVM shutdown after the webhook assertions and returned a successful build with zero skipped tests.
+- Delivery's `mvn -B -Dspring.test.context.cache.maxSize=2 -Dfailsafe.exitTimeout=8 failsafe:integration-test failsafe:verify` completed with 78 passed and one provider opt-in. This includes the real Kafka outbox, SSE bridge and two-replica fanout suites. Enabled the provider opt-in against disposable MinIO on port 19000 and reran `S3ProofObjectStorageMinioIT`. Both cases passed with zero skips, completing all 79 distinct Delivery integration cases.
+- The contract suite passed all 90 tests after installing its Python dependencies. Both probe files compiled, and the CLI rejected `--run` without explicit environment selection.
+- The native Windows frontend passed typechecking, ESLint and all 1,303 Vitest cases across 82 files. The production build produced its assets with the existing 525.97 kB application chunk warning.
+- The native Windows run of `test_supabase_readiness.py` passed 18 of 19 tests. The remaining test expects a POSIX file-mode rejection that the helper intentionally does not perform on Windows. After recovery, Ubuntu WSL passed all 19 readiness tests and all 47 platform Compose tests.
+- The user chose to keep the other containers running. The Docker-heavy reruns were scheduled sequentially to reduce memory pressure.
+- The Docker engine recovered without a restart. Both the existing preview and Gateway returned HTTP 200. The isolated Gateway then passed readiness and browser CORS preflight.
+- The first isolated browser run, recorded under `.local/merchant-verification/isolated-live-2/`, passed terminal Kafka-to-SSE delivery in the already-open Merchant tracking dialog, parsed the downloaded PDF, verified signed callback retry, and checked all five Merchant routes at 360, 390, 768, 1024 and 1440 px. Dashboard filtering, CSV export, template download, invalid-file rejection and real CSV import also passed.
+- After the CSV import, Escape failed because Chrome lost focus when the active Import button became disabled. The dialog now takes focus before the import starts. The targeted frontend regression suite passed all five component tests. The first browser run's disposable cleanup passed, and the second isolated run was started with the updated component.
+- The second browser run passed the keyboard fix, the remaining browser checks and webhook exhaustion. Its last assertion counted the imported parcel's earlier `CREATED` callback as a post-deactivation callback. Read-only inspection of the disposable Delivery and Communications databases found the later `PICKED_UP` event published and only the earlier `CREATED` job. The corrected probe checks for the pickup that occurs after deactivation.
+- The final isolated run `24fe2603` exited 0 with 39 passed steps and one recorded observation. Its controlled receiver verified 14 signed requests, the failure path exhausted after five attempts, and deactivation prevented the subsequent pickup callback. Local read-only inspection again confirmed the pickup was published and Communications had no job for that version. All five identities were deleted during successful fixture cleanup.
+- Chrome completed the real PDF and CSV downloads, validated the CSV timestamp against the Delivery API, imported a CSV order, confirmed Escape closure after import, exercised quote cancellation, verified credential and webhook dialog keyboard behavior, and opened and dismissed the Help Assistant on mobile. All 25 route and viewport combinations passed. Screenshots and sanitized reports are in `.local/merchant-verification/isolated-live-4/`.
+- The original preview on port 5173 still serves its cached transform of the bulk import component. The focus fix was verified from the worktree on the isolated preview. The original frontend process was left running.
+- On the final worktree, typechecking, lint and the production build passed. The complete frontend suite passed all 1,304 tests across 82 files, including the focus regression.
+- Stopped only the disposable project after testing and retained its volumes and ignored reports. The existing preview and Gateway responded successfully, and all five read-only Supabase readiness checks passed again.
