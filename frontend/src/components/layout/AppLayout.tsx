@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../../auth/context'
 import type { AuthSnapshot, SwiftDropRole } from '../../auth/contracts'
-import { Badge } from '../ui/Badge'
 import { ButtonLink } from '../ui/ButtonLink'
 import { AiDeliveryAssistant } from '../../features/ai/AiDeliveryAssistant'
 import {
@@ -63,6 +62,7 @@ function MainNavigation() {
   const switcherButtonRef = useRef<HTMLButtonElement>(null)
 
   const isAuthenticated = auth.snapshot.status === 'authenticated'
+  const isRestoringSession = auth.snapshot.status === 'loading'
   const authorizedWorkspaces = isAuthenticated ? getAuthorizedWorkspaces(auth.snapshot.roles) : []
   const activeWorkspace = determineActiveWorkspace(authorizedWorkspaces, location.pathname)
   const switchableWorkspaces = activeWorkspace
@@ -184,12 +184,17 @@ function MainNavigation() {
           <span ref={indicator} className="nav-indicator" aria-hidden="true" />
           </div>
           <div className="nav-actions">
-          {isAuthenticated ? (
+          {isRestoringSession ? (
+            <span className="nav-auth-item nav-auth-placeholder" aria-hidden="true">
+              <span />
+              <span />
+            </span>
+          ) : isAuthenticated ? (
             <span className="nav-auth-item">
               {activeWorkspace && (
-                <Badge variant="brand" className="header-role-badge">
-                  {activeWorkspace.role}
-                </Badge>
+                <span className="header-role-badge">
+                  {activeWorkspace.role.toLowerCase()}
+                </span>
               )}
               <button
                 type="button"

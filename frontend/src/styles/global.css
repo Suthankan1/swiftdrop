@@ -188,7 +188,56 @@ body { background: var(--bg); }
 }
 .nav-indicator[data-visible='true'] { opacity: 1; }
 .nav-actions { justify-self: end; display: flex; align-items: center; gap: var(--space-3); }
-.header-role-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 8px; text-transform: uppercase; }
+.nav-auth-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--sd-brand-surface);
+  white-space: nowrap;
+}
+.header-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  color: var(--brand);
+  font-size: .8rem;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+.header-role-badge::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64844e;
+  content: '';
+}
+.nav-auth-item .header-sign-out-button {
+  width: auto;
+  min-height: 38px;
+  padding: 6px 12px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: #e9eee2;
+  color: var(--brand);
+  font-size: .875rem;
+}
+.nav-auth-item .header-sign-out-button:hover { background: #dce7d3; }
+.nav-auth-placeholder {
+  gap: 10px;
+  min-height: 48px;
+  padding-inline: 12px;
+}
+.nav-auth-placeholder > span {
+  width: 66px;
+  height: 12px;
+  border-radius: 6px;
+  background: #e6ebe0;
+}
+.nav-auth-placeholder > span:last-child { width: 72px; height: 30px; }
 .menu-toggle {
   display: none; justify-self: end; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0;
   border: 1px solid var(--border-strong); border-radius: 50%; background: transparent; color: var(--brand);
@@ -301,7 +350,7 @@ body { background: var(--bg); }
   .nav-link[aria-current='page'] { font-weight: 650; }
   .nav-links .nav-link[aria-current='page']::after, .nav-indicator { display: none; }
   .nav-actions { flex-direction: column; align-items: stretch; gap: var(--space-3); }
-  .nav-actions .header-role-badge { align-self: flex-start; }
+  .nav-auth-item { justify-content: space-between; }
   .nav-actions .button { width: 100%; }
 }
 @media (max-width: 1023px) and (prefers-reduced-motion: no-preference) {
