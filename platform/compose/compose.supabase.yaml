@@ -66,6 +66,8 @@ services:
       com.swiftdrop.database-mode: supabase
     environment:
       DELIVERY_DB_URL: ${DELIVERY_DB_URL:?set DELIVERY_DB_URL in the ignored platform/compose/.env}
+      # Quote validation may open a cold TLS session to the remote Pricing database.
+      PRICING_GRPC_DEADLINE_MS: "8000"
       SPRING_FLYWAY_ENABLED: "false"
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "2"
