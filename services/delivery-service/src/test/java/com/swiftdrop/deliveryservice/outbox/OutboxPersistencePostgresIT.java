@@ -252,25 +252,30 @@ class OutboxPersistencePostgresIT {
         int batchSize = 5;
         ExecutorService executor = Executors.newFixedThreadPool(workerCount);
         CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch batchesRead = new CountDownLatch(workerCount);
         List<Future<List<UUID>>> futures = new ArrayList<>();
 
         for (int w = 0; w < workerCount; w++) {
-            final String workerId = "worker-" + w;
             futures.add(executor.submit(() -> {
                 startLatch.await();
                 TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
                 return txTemplate.execute(status -> {
-                    List<OutboxEvent> claimed = outboxEventRepository.claimNextBatch(
+                    List<UUID> ids = outboxEventRepository.claimNextBatch(
                             Instant.now(),
                             5,
                             batchSize
-                    );
-                    List<UUID> ids = new ArrayList<>();
-                    for (OutboxEvent e : claimed) {
-                        e.setClaimedBy(workerId);
-                        ids.add(e.getEventId());
+                    ).stream().map(OutboxEvent::getEventId).toList();
+
+                    // Keep both transactions open until both SELECTs have acquired their row locks.
+                    batchesRead.countDown();
+                    try {
+                        assertThat(batchesRead.await(5, TimeUnit.SECONDS))
+                                .as("both workers finish claiming before either transaction commits")
+                                .isTrue();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError("Interrupted while waiting for both batches", e);
                     }
-                    outboxEventRepository.saveAll(claimed);
                     return ids;
                 });
             }));
