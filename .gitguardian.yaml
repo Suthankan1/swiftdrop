@@ -1,0 +1,30 @@
+# SwiftDrop GitGuardian Secret Scanner Configuration
+# Reference: https://docs.gitguardian.com/ggshield-docs/reference/configuration
+
+version: 2
+
+secret:
+  ignored_paths:
+    - "docs/**"
+    - "tests/**"
+    - "frontend/src/test/**"
+    - "frontend/src/**/*.test.ts"
+    - "frontend/src/**/*.test.tsx"
+    - "services/**/src/test/**"
+    - "platform/identity/tests/**"
+
+  ignored_matches:
+    - name: Generic Password
+      match: accounts_dev_password
+    - name: Generic Password
+      match: keycloak_dev_password
+    - name: Generic Password
+      match: admin_local_dev
+    - name: Generic Password
+      match: pricing_dev_password
+    - name: Generic Password
+      match: delivery_dev_password
+    - name: Generic Password
+      match: communications_dev_password
+    - name: Generic Password
+      match: minio_dev_password
