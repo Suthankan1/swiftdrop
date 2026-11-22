@@ -32,20 +32,15 @@ describe('shared application routes', () => {
     expect(container.querySelector('[aria-label*="Devarom" i]')).not.toBeInTheDocument()
   })
 
-  it('retains sign-in, Google and registration actions under SwiftDrop branding', async () => {
-    const user = userEvent.setup()
-    const auth = { ...anonymousAuth, login: vi.fn(), googleLogin: vi.fn(), register: vi.fn() }
-    renderRoute('/login', auth)
-
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
-    await user.click(screen.getByRole('button', { name: 'Create account' }))
-
-    expect(auth.login).toHaveBeenCalledOnce()
-    expect(auth.googleLogin).toHaveBeenCalledOnce()
-    expect(auth.register).toHaveBeenCalledOnce()
-  })
+  it.each([['/login', 'login', 'Opening sign-in'], ['/login?start=register', 'register', 'Opening registration']] as const)(
+    'opens Keycloak directly from %s',
+    (route, action, title) => {
+      const auth = { ...anonymousAuth, [action]: vi.fn() }
+      renderRoute(route, auth)
+      expect(auth[action]).toHaveBeenCalledOnce()
+      expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
+    },
+  )
 
   it('uses SwiftDrop on the authenticated Customer page', async () => {
     const auth: AuthContextValue = {
@@ -76,7 +71,7 @@ describe('shared application routes', () => {
     renderRoute()
 
     await user.click(within(screen.getByRole('main')).getByRole('link', { name: /explore your customer space/i }))
-    expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /opening sign-in/i })).toBeInTheDocument()
 
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /^home$/i }))
     expect(screen.queryByRole('heading', { name: /your profile, kept private/i })).not.toBeInTheDocument()
@@ -88,9 +83,7 @@ describe('shared application routes', () => {
     vi.stubGlobal('fetch', request)
     renderRoute('/customer')
 
-    expect(within(screen.getByRole('main')).getByRole('heading', { level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument()
+    expect(within(screen.getByRole('main')).getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     expect(screen.queryByText(customerFixture.email)).not.toBeInTheDocument()
     expect(screen.queryByText(customerFixture.keycloakSub)).not.toBeInTheDocument()
     expect(screen.queryByText(/logged in successfully/i)).not.toBeInTheDocument()
@@ -112,7 +105,7 @@ describe('shared application routes', () => {
     await user.click(toggle)
     await user.click(within(screen.getByRole('navigation', { name: /main navigation/i })).getByRole('link', { name: /sign in/i }))
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('heading', { name: /sign in to swiftdrop/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /opening sign-in/i })).toBeInTheDocument()
   })
 
   it('provides a not-found experience and a way home', async () => {
@@ -234,7 +227,7 @@ describe('shared application routes', () => {
 
   it('protects /merchant/enroll for authenticated users and redirects unauthenticated to login', async () => {
     const { unmount } = renderRoute('/merchant/enroll', anonymousAuth)
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
     unmount()
 
     const auth: AuthContextValue = {
@@ -245,6 +238,25 @@ describe('shared application routes', () => {
     }
     renderRoute('/merchant/enroll', auth)
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/commercial logistics/i)
+  })
+
+  it('keeps the same Merchant tab bar mounted as the workspace changes sections', async () => {
+    const user = userEvent.setup()
+    const auth: AuthContextValue = {
+      ...anonymousAuth,
+      snapshot: { status: 'authenticated', subject: 'merchant-sub', roles: ['MERCHANT'] },
+    }
+    renderRoute('/merchant', auth)
+
+    const tabs = screen.getByRole('navigation', { name: 'Merchant space sections' })
+    expect(within(tabs).getByRole('link', { name: 'Overview', current: 'page' })).toBeInTheDocument()
+
+    for (const name of ['Orders', 'New Order', 'API Credentials', 'Webhooks', 'Overview']) {
+      const link = within(tabs).getByRole('link', { name })
+      await user.click(link)
+      expect(screen.getByRole('navigation', { name: 'Merchant space sections' })).toBe(tabs)
+      expect(link).toHaveAttribute('aria-current', 'page')
+    }
   })
 
   it('protects /merchant/credentials for MERCHANT role only', () => {
@@ -262,6 +274,6 @@ describe('shared application routes', () => {
       getAccessToken: async () => 'test-token',
     }
     renderRoute('/merchant/credentials', merchantAuth)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/machine credentials/i)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/api credentials/i)
   })
 })

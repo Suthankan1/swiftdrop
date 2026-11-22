@@ -74,13 +74,14 @@ describe('Phase 1 — Role-Aware Global Navigation & Workspace Switcher', () => 
     expect(nav.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument()
   })
 
-  it('3. Loading / initializing auth state does not temporarily leak role links', () => {
+  it('3. Restoring a session hides guest actions and protected workspace links', () => {
     renderShell(createAuth(['ADMIN', 'CUSTOMER'], 'loading'))
     const nav = within(screen.getByRole('navigation', { name: 'Main navigation' }))
 
     expect(nav.getByRole('link', { name: 'Home' })).toBeInTheDocument()
     expect(nav.getByRole('link', { name: 'Track parcel' })).toBeInTheDocument()
-    expect(nav.getByRole('link', { name: 'Sign in' })).toBeInTheDocument()
+    expect(nav.queryByRole('link', { name: /sign in|create account|get started/i })).not.toBeInTheDocument()
+    expect(nav.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument()
 
     expect(nav.queryByRole('link', { name: /admin space/i })).not.toBeInTheDocument()
     expect(nav.queryByRole('link', { name: /customer space/i })).not.toBeInTheDocument()
@@ -94,7 +95,7 @@ describe('Phase 1 — Role-Aware Global Navigation & Workspace Switcher', () => 
     expect(nav.getByRole('link', { name: /customer space/i })).toHaveAttribute('href', '/customer')
     expect(nav.queryByRole('button', { name: /switch workspace/i })).not.toBeInTheDocument()
     expect(nav.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
-    expect(screen.getByText('CUSTOMER')).toBeInTheDocument()
+    expect(nav.getByText(/^customer$/i)).toBeInTheDocument()
   })
 
   it('5. MERCHANT only: displays Merchant space as primary workspace', () => {

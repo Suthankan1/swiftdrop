@@ -199,6 +199,13 @@ class TestComposeRuntimeSpec(unittest.TestCase):
         self.assertNotIn("ghp_", content)
         self.assertNotIn("eyJ", content)
 
+    def test_gateway_security_and_routing_share_frontend_origins(self):
+        environment = self.compose_data["services"]["api-gateway"]["environment"]
+        origins = "http://localhost:3000,http://localhost:5173"
+        self.assertEqual(environment["CORS_ALLOWED_ORIGIN"], "${CORS_ALLOWED_ORIGIN:-" + origins + "}")
+        self.assertEqual(environment["SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_ORIGINS"], origins)
+        self.assertIn("CORS_ALLOWED_ORIGIN=" + origins, ENV_EXAMPLE.read_text(encoding="utf-8"))
+
     def test_lifecycle_scripts_exist_and_non_destructive(self):
         """Verifies all operator lifecycle scripts exist, are executable, and contain no destructive commands."""
         for script_name in LIFECYCLE_SCRIPTS:

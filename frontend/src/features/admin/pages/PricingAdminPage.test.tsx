@@ -47,7 +47,7 @@ describe('Pricing access and session isolation', () => {
   it.each<SwiftDropRole>(['DISPATCHER', 'CUSTOMER', 'MERCHANT', 'COURIER'])('production route denies %s', role => {
     setup(provider(), auth([role]), true); expect(screen.getByRole('alert')).toHaveTextContent('Access unavailable'); expect(screen.queryByRole('heading', { name: 'Zones and pricing' })).not.toBeInTheDocument()
   })
-  it('production anonymous route uses shared login', () => { setup(provider(), anonymousAuth, true); expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument() })
+  it('production anonymous route uses shared login', () => { setup(provider(), anonymousAuth, true); expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument() })
   it.each(['session', 'denied'] as const)('handles backend %s independently and removes privileged content', async kind => {
     const api = provider(); api.zones.mockRejectedValue(new PricingError(kind)); const view = setup(api)
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Create zone' })).not.toBeInTheDocument())

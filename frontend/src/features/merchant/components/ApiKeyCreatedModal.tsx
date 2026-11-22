@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMerchantDialog } from './useMerchantDialog'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
 import type { ApiKeyCreatedResponse } from '../api/credentialsContracts'
@@ -10,16 +11,21 @@ interface ApiKeyCreatedModalProps {
 
 export function ApiKeyCreatedModal({ createdKey, onClose }: ApiKeyCreatedModalProps) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
+  const dialog = useMerchantDialog(true, onClose)
 
   async function handleCopy() {
     try {
+      setCopied(false)
+      setCopyError(false)
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable')
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(createdKey.plaintextKey)
       }
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch {
-      setCopied(true)
+      setCopyError(true)
     }
   }
 
@@ -28,6 +34,8 @@ export function ApiKeyCreatedModal({ createdKey, onClose }: ApiKeyCreatedModalPr
       <div
         className="modal-panel"
         role="dialog"
+        ref={dialog}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="created-key-modal-heading"
         onClick={(e) => e.stopPropagation()}
@@ -77,6 +85,7 @@ export function ApiKeyCreatedModal({ createdKey, onClose }: ApiKeyCreatedModalPr
         </div>
 
         <div className="modal-actions">
+          {copyError && <p role="alert">Copy failed. Select the secret and copy it manually.</p>}
           <Button
             type="button"
             variant="primary"

@@ -251,7 +251,8 @@ public class DefaultParcelQueryService implements ParcelQueryService {
                 parcel.getPickupAddress() != null ? parcel.getPickupAddress() : "",
                 parcel.getDropoffAddress() != null ? parcel.getDropoffAddress() : "",
                 activeCourier,
-                parcel.getCreatedAt()
+                parcel.getCreatedAt(),
+                parcel.getUpdatedAt()
         );
     }
 

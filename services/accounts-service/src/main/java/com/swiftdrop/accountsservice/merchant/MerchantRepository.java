@@ -12,6 +12,11 @@ import java.util.UUID;
  */
 public interface MerchantRepository extends Repository<Merchant, UUID> {
 
+    /** Serializes credential issuance per tenant, including when no keys exist yet. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select m from Merchant m where m.id = :id")
+    Optional<Merchant> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") UUID id);
+
     Optional<Merchant> findById(UUID id);
 
     Optional<Merchant> findByKeycloakSub(String keycloakSub);

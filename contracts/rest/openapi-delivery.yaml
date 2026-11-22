@@ -1134,6 +1134,12 @@ components:
         createdAt:
           type: string
           format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+          description: Authoritative parcel update instant. May be absent or null in older command snapshots; never substitute createdAt for a missing update.
 
     PublicTrackingResponse:
       type: object

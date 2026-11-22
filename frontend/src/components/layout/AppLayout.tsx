@@ -1,12 +1,56 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../../auth/context'
-import { Badge } from '../ui/Badge'
+import type { AuthSnapshot, SwiftDropRole } from '../../auth/contracts'
+import { ButtonLink } from '../ui/ButtonLink'
 import { AiDeliveryAssistant } from '../../features/ai/AiDeliveryAssistant'
 import {
   determineActiveWorkspace,
   getAuthorizedWorkspaces,
 } from './navigation'
+
+function BrandMark() {
+  return <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
+}
+
+/** Turns on the header's blurred backdrop once the page has scrolled past a tiny sentinel at the very top. */
+function useScrolledPastTop() {
+  const sentinel = useRef<HTMLDivElement>(null)
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const node = sentinel.current
+    if (!node || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(([entry]) => setScrolled(!(entry?.isIntersecting ?? true)))
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+  return { sentinel, scrolled }
+}
+
+/** Positions the small pill under the active link; CSS animates it between links (transform only). */
+function useActiveIndicator(dependencyKey: string) {
+  const links = useRef<HTMLDivElement>(null)
+  const indicator = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const list = links.current
+    const pill = indicator.current
+    if (!list || !pill) return
+    const place = () => {
+      const active = list.querySelector<HTMLElement>('.nav-link[aria-current="page"]')
+      if (!active) { pill.dataset.visible = 'false'; return }
+      const x = active.offsetLeft + active.offsetWidth / 2 - pill.offsetWidth / 2
+      pill.style.setProperty('--indicator-x', `${Math.round(x)}px`)
+      pill.dataset.visible = 'true'
+      list.dataset.indicator = 'ready'
+    }
+    place()
+    const frame = requestAnimationFrame(() => { pill.dataset.animate = 'true' })
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place)
+    resize?.observe(list)
+    return () => { cancelAnimationFrame(frame); resize?.disconnect() }
+  }, [dependencyKey])
+  return { links, indicator }
+}
 
 function MainNavigation() {
   const auth = useAuth()
@@ -18,6 +62,7 @@ function MainNavigation() {
   const switcherButtonRef = useRef<HTMLButtonElement>(null)
 
   const isAuthenticated = auth.snapshot.status === 'authenticated'
+  const isRestoringSession = auth.snapshot.status === 'loading'
   const authorizedWorkspaces = isAuthenticated ? getAuthorizedWorkspaces(auth.snapshot.roles) : []
   const activeWorkspace = determineActiveWorkspace(authorizedWorkspaces, location.pathname)
   const switchableWorkspaces = activeWorkspace
@@ -38,6 +83,8 @@ function MainNavigation() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [switcherOpen])
+  const { sentinel, scrolled } = useScrolledPastTop()
+  const { links, indicator } = useActiveIndicator(`${location.pathname}|${auth.snapshot.status}|${auth.snapshot.roles.join(',')}`)
 
   function closeMenu(event: KeyboardEvent<HTMLElement>) {
     if (event.key === 'Escape') {
@@ -53,10 +100,12 @@ function MainNavigation() {
   }
 
   return (
-    <header className="site-header" onKeyDown={closeMenu}>
-      <div className="header-inner">
+    <>
+      <div ref={sentinel} className="header-sentinel" aria-hidden="true" />
+      <header className="site-header" data-scrolled={scrolled} data-menu-open={menuOpen} onKeyDown={closeMenu}>
+      <div className="container header-inner">
         <Link className="brand" to="/" aria-label="SwiftDrop home" onClick={() => setMenuOpen(false)}>
-          <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
+          <BrandMark />
           <span>SwiftDrop<span className="brand-period">.</span></span>
         </Link>
         <button
@@ -71,6 +120,7 @@ function MainNavigation() {
           <span className={menuOpen ? 'menu-glyph is-open' : 'menu-glyph'} aria-hidden="true"><span /><span /></span>
         </button>
         <nav id="main-navigation" className={`main-navigation${menuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
+          <div ref={links} className="nav-links">
           <NavLink end to="/" className="nav-link" onClick={() => setMenuOpen(false)}>Home</NavLink>
           <NavLink to="/tracking" className="nav-link" onClick={() => setMenuOpen(false)}>Track parcel</NavLink>
 
@@ -131,16 +181,24 @@ function MainNavigation() {
             </div>
           )}
 
-          {isAuthenticated ? (
+          <span ref={indicator} className="nav-indicator" aria-hidden="true" />
+          </div>
+          <div className="nav-actions">
+          {isRestoringSession ? (
+            <span className="nav-auth-item nav-auth-placeholder" aria-hidden="true">
+              <span />
+              <span />
+            </span>
+          ) : isAuthenticated ? (
             <span className="nav-auth-item">
               {activeWorkspace && (
-                <Badge variant="brand" className="header-role-badge">
-                  {activeWorkspace.role}
-                </Badge>
+                <span className="header-role-badge">
+                  {activeWorkspace.role.toLowerCase()}
+                </span>
               )}
               <button
                 type="button"
-                className="header-auth-link header-sign-out-button"
+                className="button button-secondary header-sign-out-button"
                 onClick={() => {
                   setMenuOpen(false)
                   setSwitcherOpen(false)
@@ -151,14 +209,68 @@ function MainNavigation() {
               </button>
             </span>
           ) : (
-            <Link to="/login" className="header-auth-link" onClick={() => setMenuOpen(false)}>
-              Sign in
-            </Link>
+            <>
+              <ButtonLink to="/login" variant="secondary" onClick={() => setMenuOpen(false)}>Sign in</ButtonLink>
+              <ButtonLink to="/login?start=register" variant="primary" onClick={() => setMenuOpen(false)}>Create account</ButtonLink>
+              <ButtonLink to="/customer" variant="primary" onClick={() => setMenuOpen(false)}>Get started</ButtonLink>
+            </>
           )}
+          </div>
         </nav>
-        <span className="header-note"><span aria-hidden="true" /> A new way forward</span>
       </div>
     </header>
+    </>
+  )
+}
+
+/** Visitors see every entry point (as on the landing page); signed-in users only the workspaces their roles grant. */
+function canSeeWorkspace(snapshot: AuthSnapshot, role: SwiftDropRole): boolean {
+  return snapshot.status !== 'authenticated' || snapshot.roles.includes(role)
+}
+
+function SiteFooter() {
+  const { snapshot } = useAuth()
+  const isAuthenticated = snapshot.status === 'authenticated'
+  const workspaces = [
+    { role: 'MERCHANT', to: '/merchant', label: 'Merchant hub' },
+    { role: 'COURIER', to: '/courier', label: 'Courier workspace' },
+  ] as const satisfies readonly { role: SwiftDropRole; to: string; label: string }[]
+  const visibleWorkspaces = workspaces.filter((workspace) => canSeeWorkspace(snapshot, workspace.role))
+  return (
+    <footer className="site-footer">
+      <div className="container">
+        <div className="footer-grid">
+          <div className="footer-about">
+            <Link className="footer-brand" to="/"><BrandMark /><span>SwiftDrop<span className="brand-period">.</span></span></Link>
+            <p className="footer-tagline">Moving things. Connecting people.</p>
+          </div>
+          <nav className="footer-column" aria-label="Product">
+            <p className="footer-heading">Product</p>
+            <ul className="footer-links">
+              <li><Link to="/tracking">Track parcel</Link></li>
+              {canSeeWorkspace(snapshot, 'CUSTOMER') && <li><Link to="/customer">Customer space</Link></li>}
+            </ul>
+          </nav>
+          {visibleWorkspaces.length > 0 && (
+            <nav className="footer-column" aria-label="Workspaces">
+              <p className="footer-heading">Workspaces</p>
+              <ul className="footer-links">
+                {visibleWorkspaces.map((workspace) => <li key={workspace.to}><Link to={workspace.to}>{workspace.label}</Link></li>)}
+              </ul>
+            </nav>
+          )}
+          <nav className="footer-column" aria-label="Account">
+            <p className="footer-heading">Account</p>
+            <ul className="footer-links">
+              <li>{isAuthenticated ? <Link to="/logout">Sign out</Link> : <Link to="/login">Sign in</Link>}</li>
+            </ul>
+          </nav>
+        </div>
+        <div className="footer-bottom">
+          <span>© {new Date().getFullYear()} SwiftDrop</span>
+        </div>
+      </div>
+    </footer>
   )
 }
 
@@ -168,10 +280,7 @@ export function AppLayout() {
       <a className="skip-link" href="#main-content">Skip to content</a>
       <MainNavigation />
       <main id="main-content" className="app-main-content" tabIndex={-1}><Outlet /></main>
-      <footer className="site-footer"><div className="footer-inner">
-        <Link className="footer-brand" to="/">SwiftDrop.</Link><span>Moving things. Connecting people.</span>
-        <span className="footer-location">Made for the journey ahead <span aria-hidden="true">↗</span></span>
-      </div></footer>
+      <SiteFooter />
       <AiDeliveryAssistant />
     </div>
   )

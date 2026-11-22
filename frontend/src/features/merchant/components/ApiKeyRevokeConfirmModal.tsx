@@ -1,4 +1,5 @@
 import type { ApiKeySummaryItem } from '../api/credentialsContracts'
+import { useMerchantDialog } from './useMerchantDialog'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
 
@@ -15,6 +16,7 @@ export function ApiKeyRevokeConfirmModal({
   onClose,
   onConfirm,
 }: ApiKeyRevokeConfirmModalProps) {
+  const dialog = useMerchantDialog(!!keyItem, onClose, isRevoking)
   if (!keyItem) return null
 
   return (
@@ -22,6 +24,8 @@ export function ApiKeyRevokeConfirmModal({
       <div
         className="modal-panel"
         role="dialog"
+        ref={dialog}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="revoke-modal-title"
         onClick={(e) => e.stopPropagation()}

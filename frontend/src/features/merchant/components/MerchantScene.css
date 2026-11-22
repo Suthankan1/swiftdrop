@@ -1,0 +1,233 @@
+/* ==========================================================================
+   Merchant overview scene: one order's life, from the merchant's side, in a single 12s loop.
+   Every timed element shares --ms-loop and starts together, so the order card, the route and the street
+   scene stay in step. Base styles are the static "Delivered + webhook received" moment (what reduced-motion
+   users see); the keyframes only exist under prefers-reduced-motion: no-preference.
+
+   Timeline (% of the loop)
+     3–11   "POST /orders" lands in the store      Order received
+     12–15  parcel is packed onto the step          Packed & labelled (14)
+     17–28  van drives in and parks at the store
+     30–36  parcel hops into the van                Courier picked up (33)
+     40–58  van leaves for the customer; route arc fills to 62   Out for delivery (42)
+     62–72  check pops on the customer's pin        Delivered (64)
+     68–80  webhook rides the route back to the store
+     79–95  "webhook · 200" chip pops above the store; 95–100 card resets
+   ========================================================================== */
+
+.merchant-scene {
+  --ms-loop: 12s;
+  --ms-sticker-size: clamp(64px, 21cqmin, 96px);
+  position: relative; height: 340px; min-width: 0; overflow: hidden; isolation: isolate;
+  border-radius: var(--radius-feature);
+  background: linear-gradient(180deg, #eef2e2 0%, #f4f5ec 55%, var(--surface-muted) 100%);
+  box-shadow: var(--shadow-sm), inset 0 0 0 1px rgb(31 61 51 / 0.06);
+  container: merchant-scene / size;
+}
+.ms-stage { position: absolute; inset: 0; }
+
+/* ---- Sky ---- */
+.ms-cloud { position: absolute; width: 64px; height: 18px; border-radius: 999px; background: rgb(255 255 255 / 0.75); }
+.ms-cloud::before, .ms-cloud::after { content: ''; position: absolute; border-radius: 50%; background: inherit; }
+.ms-cloud::before { width: 26px; height: 26px; left: 10px; top: -13px; }
+.ms-cloud::after { width: 20px; height: 20px; left: 30px; top: -8px; }
+.ms-cloud-one { top: 40%; left: 6%; }
+.ms-cloud-two { top: 31%; left: 60%; transform: scale(0.75); opacity: 0.8; }
+
+/* ---- Live order card ---- */
+.ms-order-card {
+  position: absolute; top: var(--space-4); left: var(--space-4); z-index: 1;
+  width: min(232px, calc(100% - 2 * var(--space-4) - var(--ms-sticker-size) - var(--space-2)));
+  display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+  background: rgb(255 255 255 / 0.66); border-radius: 16px;
+}
+.ms-order-head {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted);
+}
+.ms-live-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #7b9440; }
+.ms-live-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: #7b9440; opacity: 0; }
+.ms-order-number { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; letter-spacing: 0.02em; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-order-status { display: grid; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; color: var(--brand); }
+.ms-stage-label { grid-area: 1 / 1; opacity: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-stage-label.stage-4 { opacity: 1; }
+.ms-order-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
+.ms-progress-step { position: relative; height: 4px; overflow: hidden; border-radius: 2px; background: var(--border); }
+.ms-progress-step::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--brand); transform-origin: left; }
+
+/* Narrow cards: a compact order card so the route arc above the street stays visible. */
+@container merchant-scene (max-width: 330px) {
+  .ms-order-number { display: none; }
+  .ms-order-status { font-size: 14px; }
+}
+
+/* "Ready to ship." badge plays the sun, top-right. */
+.ms-sticker {
+  position: absolute; top: var(--space-4); right: var(--space-4); z-index: 1;
+  width: var(--ms-sticker-size); aspect-ratio: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: 50%; border: 1px solid #b6cd77; background: var(--accent); color: var(--brand);
+  box-shadow: 0 8px 20px -8px rgb(31 61 51 / 0.4); rotate: 12deg;
+}
+.ms-sticker > svg { width: 24%; height: auto; }
+.ms-sticker-text { font-size: clamp(10px, 3cqmin, 13px); line-height: 1.15; text-align: center; }
+.ms-sticker strong { display: block; font-size: 1.35em; font-weight: 650; letter-spacing: -0.02em; }
+
+/* ---- Street scene (SVG, user units) ---- */
+.ms-svg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 70%; overflow: hidden; }
+.ms-svg path { stroke: none; }
+.ms-svg .ms-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.ms-svg .ms-line-road { stroke: #eef0e4; stroke-width: 2; stroke-dasharray: 10 12; }
+.ms-svg .ms-line-shelf { stroke: #cfd5bf; stroke-width: 1.5; }
+.ms-svg .ms-line-string { stroke: #c8e06a; stroke-width: 0.8; }
+.ms-svg .ms-line-soft { stroke: #9aa68a; stroke-width: 1.5; }
+.ms-svg .ms-route-base { stroke: #b4bda0; stroke-width: 1.25; stroke-dasharray: 2 5; }
+.ms-svg .ms-route-progress { stroke: var(--brand); stroke-width: 2; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.ms-svg .ms-webhook-trail { stroke: #9bbb3a; stroke-width: 3.5; stroke-dasharray: 0.12 2; stroke-dashoffset: 0.12; opacity: 0; }
+.ms-svg .ms-check-mark { stroke: var(--brand); stroke-width: 2.2; }
+.ms-svg .ms-chip-mark { stroke: var(--brand); stroke-width: 1.2; }
+.ms-sign { font-size: 8px; font-weight: 700; letter-spacing: 0.08em; fill: #f7f5ee; text-anchor: middle; }
+.ms-open-text { font-size: 4.6px; font-weight: 700; letter-spacing: 0.06em; fill: #1f3d33; text-anchor: middle; }
+.ms-van-logo { font-size: 8.5px; font-weight: 700; letter-spacing: -0.02em; fill: #f7f5ee; }
+.ms-ticket-text { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 8.4px; font-weight: 600; fill: #dcf09b; text-anchor: middle; }
+.ms-chip-text { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 8.4px; font-weight: 600; fill: #1f3d33; text-anchor: middle; }
+.ms-ripple { stroke: var(--brand); stroke-width: 1.5; opacity: 0; }
+
+/* Static "Delivered + webhook received" moment. */
+.ms-van { transform: translateX(0); }
+.ms-speed { opacity: 0; }
+.ms-order-ticket { opacity: 0; }
+.ms-parcel { opacity: 0; }
+.ms-van-body { transform-box: fill-box; transform-origin: 96% 100%; }
+.ms-open-sign { transform-box: fill-box; transform-origin: 50% 0%; }
+.ms-wheel, .ms-check, .ms-ripple, .ms-webhook-chip, .ms-order-ticket { transform-box: fill-box; transform-origin: 50% 50%; }
+.ms-parcel { transform-box: view-box; }
+
+/* Pause control: bottom-right, on the road. */
+.merchant-scene .ms-toggle {
+  position: absolute; right: var(--space-3); bottom: var(--space-3); z-index: 2;
+  border-radius: 50%; background: rgb(247 245 238 / 0.9); color: var(--brand);
+}
+@media (prefers-reduced-motion: reduce) { .merchant-scene .ms-toggle { display: none; } }
+
+@media (max-width: 760px) {
+  .merchant-scene { height: clamp(300px, 80vw, 360px); }
+}
+
+/* ==========================================================================
+   Motion
+   ========================================================================== */
+@keyframes ms-van {
+  0%, 17% { transform: translateX(-300px); animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+  28%, 40% { transform: translateX(0); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.4); }
+  58%, 100% { transform: translateX(420px); }
+}
+@keyframes ms-wheel {
+  0%, 17% { transform: rotate(0deg); animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+  28%, 40% { transform: rotate(2160deg); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.4); }
+  58%, 100% { transform: rotate(5184deg); }
+}
+@keyframes ms-brake {
+  0%, 28%, 31%, 100% { transform: rotate(0deg); }
+  29.5% { transform: rotate(1.4deg); }
+}
+@keyframes ms-speed {
+  0%, 18% { opacity: 0; }
+  20%, 25% { opacity: 0.9; }
+  28%, 43% { opacity: 0; }
+  47%, 58% { opacity: 0.9; }
+  60%, 100% { opacity: 0; }
+}
+@keyframes ms-order-ticket {
+  0%, 2% { opacity: 0; transform: translateY(-46px) scale(0.9); }
+  4% { opacity: 1; transform: translateY(-40px) scale(1); animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0); }
+  9% { opacity: 1; transform: translateY(32px) scale(0.95); }
+  11%, 100% { opacity: 0; transform: translateY(40px) scale(0.6); }
+}
+@keyframes ms-parcel {
+  0%, 12% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  14% { opacity: 1; transform: translate(0, 0) scale(1.08); }
+  15%, 30% { opacity: 1; transform: translate(0, 0) scale(1); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  33% { opacity: 1; transform: translate(43px, -38px) scale(1); animation-timing-function: cubic-bezier(0.4, 0, 0.7, 1); }
+  36% { opacity: 1; transform: translate(70px, -2px) scale(1); }
+  37%, 100% { opacity: 0; transform: translate(70px, -2px) scale(1); }
+}
+@keyframes ms-route {
+  0%, 40% { stroke-dashoffset: 1; opacity: 1; }
+  62%, 92% { stroke-dashoffset: 0; opacity: 1; }
+  96% { stroke-dashoffset: 0; opacity: 0; }
+  97% { stroke-dashoffset: 1; opacity: 0; }
+  100% { stroke-dashoffset: 1; opacity: 1; }
+}
+@keyframes ms-webhook-trail {
+  0%, 68% { stroke-dashoffset: 0.12; opacity: 0; }
+  69% { stroke-dashoffset: 0.1; opacity: 1; animation-timing-function: cubic-bezier(0.45, 0, 0.35, 1); }
+  80% { stroke-dashoffset: -0.98; opacity: 1; }
+  81%, 100% { stroke-dashoffset: -1; opacity: 0; }
+}
+@keyframes ms-check {
+  0%, 62% { opacity: 0; transform: scale(0); }
+  65.5% { opacity: 1; transform: scale(1.12); }
+  67%, 90% { opacity: 1; transform: scale(1); }
+  94%, 100% { opacity: 0; transform: scale(0.8); }
+}
+@keyframes ms-ripple {
+  0%, 63% { opacity: 0; transform: scale(0.8); }
+  63.5% { opacity: 0.5; transform: scale(0.9); }
+  72%, 100% { opacity: 0; transform: scale(1.9); }
+}
+@keyframes ms-webhook-chip {
+  0%, 79% { opacity: 0; transform: translateY(6px) scale(0.6); }
+  82% { opacity: 1; transform: translateY(0) scale(1.08); }
+  84%, 92% { opacity: 1; transform: translateY(0) scale(1); }
+  95%, 100% { opacity: 0; transform: translateY(-4px) scale(0.95); }
+}
+@keyframes ms-open-sign { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes ms-stage-0 { 0%, 13% { opacity: 1; } 15%, 96% { opacity: 0; } 98%, 100% { opacity: 1; } }
+@keyframes ms-stage-1 { 0%, 13% { opacity: 0; } 15%, 32% { opacity: 1; } 34%, 100% { opacity: 0; } }
+@keyframes ms-stage-2 { 0%, 32% { opacity: 0; } 34%, 41% { opacity: 1; } 43%, 100% { opacity: 0; } }
+@keyframes ms-stage-3 { 0%, 41% { opacity: 0; } 43%, 63% { opacity: 1; } 65%, 100% { opacity: 0; } }
+@keyframes ms-stage-4 { 0%, 63% { opacity: 0; } 65%, 94% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes ms-step-1 { 0%, 14% { transform: scaleX(0); } 18%, 94% { transform: scaleX(1); } 97%, 100% { transform: scaleX(0); } }
+@keyframes ms-step-2 { 0%, 33% { transform: scaleX(0); } 37%, 94% { transform: scaleX(1); } 97%, 100% { transform: scaleX(0); } }
+@keyframes ms-step-3 { 0%, 42% { transform: scaleX(0); } 46%, 94% { transform: scaleX(1); } 97%, 100% { transform: scaleX(0); } }
+@keyframes ms-step-4 { 0%, 64% { transform: scaleX(0); } 68%, 94% { transform: scaleX(1); } 97%, 100% { transform: scaleX(0); } }
+@keyframes ms-live { 0% { opacity: 0.6; transform: scale(1); } 80%, 100% { opacity: 0; transform: scale(2.6); } }
+@keyframes ms-cloud { from { translate: -40cqw 0; } to { translate: 70cqw 0; } }
+@keyframes ms-badge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Shared clock for the story (clouds, live dot, sign and badge keep their own rhythms). */
+  .ms-svg *, .ms-stage-label { animation-duration: var(--ms-loop); animation-iteration-count: infinite; animation-fill-mode: both; }
+  .ms-van { animation-name: ms-van; }
+  .ms-wheel { animation-name: ms-wheel; }
+  .ms-van-body { animation-name: ms-brake; animation-timing-function: ease-in-out; }
+  .ms-speed { animation-name: ms-speed; animation-timing-function: linear; }
+  .ms-order-ticket { animation-name: ms-order-ticket; }
+  .ms-parcel { animation-name: ms-parcel; }
+  .ms-svg .ms-route-progress { animation-name: ms-route; animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1); }
+  .ms-svg .ms-webhook-trail { animation-name: ms-webhook-trail; animation-timing-function: linear; }
+  .ms-check { animation-name: ms-check; animation-timing-function: ease-out; }
+  .ms-ripple { animation-name: ms-ripple; animation-timing-function: ease-out; }
+  .ms-webhook-chip { animation-name: ms-webhook-chip; animation-timing-function: ease-out; }
+  .ms-open-sign { animation: ms-open-sign 3s ease-in-out infinite; }
+  .ms-stage-label { animation-timing-function: linear; }
+  .ms-stage-label.stage-0 { animation-name: ms-stage-0; }
+  .ms-stage-label.stage-1 { animation-name: ms-stage-1; }
+  .ms-stage-label.stage-2 { animation-name: ms-stage-2; }
+  .ms-stage-label.stage-3 { animation-name: ms-stage-3; }
+  .ms-stage-label.stage-4 { animation-name: ms-stage-4; }
+  .ms-progress-step::after { animation: var(--ms-loop) cubic-bezier(0.2, 0.8, 0.2, 1) infinite both; }
+  .ms-progress-step.step-1::after { animation-name: ms-step-1; }
+  .ms-progress-step.step-2::after { animation-name: ms-step-2; }
+  .ms-progress-step.step-3::after { animation-name: ms-step-3; }
+  .ms-progress-step.step-4::after { animation-name: ms-step-4; }
+  .ms-live-dot::after { animation: ms-live 1.8s ease-out infinite; }
+  .ms-cloud { animation: ms-cloud 44s linear infinite; }
+  .ms-cloud-two { animation-duration: 60s; animation-delay: -28s; }
+  .ms-sticker { animation: ms-badge 7s ease-in-out infinite; }
+
+  /* Pausing freezes every element at once, so the story stays in sync when it resumes. */
+  .merchant-scene[data-paused='true'] *,
+  .merchant-scene[data-paused='true'] *::after { animation-play-state: paused; }
+}

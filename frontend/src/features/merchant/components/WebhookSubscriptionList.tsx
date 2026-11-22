@@ -27,7 +27,7 @@ export function WebhookSubscriptionList({
   if (isLoading) {
     return (
       <FeedbackState title="Loading webhook subscriptions" tone="loading">
-        Connecting to Communications Service to retrieve your registered endpoints...
+        Please wait.
       </FeedbackState>
     )
   }
@@ -54,12 +54,8 @@ export function WebhookSubscriptionList({
     return (
       <section className="card empty-webhooks-card" aria-labelledby="empty-webhooks-heading">
         <div className="section-heading">
-          <p className="eyebrow">Zero endpoints registered</p>
           <h2 id="empty-webhooks-heading">No Webhook Subscriptions Active</h2>
         </div>
-        <p className="muted">
-          Your merchant account does not currently have any webhook callback destinations registered. Register an HTTPS endpoint to receive automated real-time callbacks when parcels are collected, updated in transit, or delivered.
-        </p>
         <div className="empty-actions">
           <Button
             type="button"
@@ -77,7 +73,6 @@ export function WebhookSubscriptionList({
     <section className="webhook-subscriptions-container" aria-labelledby="webhook-list-heading">
       <div className="webhook-list-header">
         <div>
-          <p className="eyebrow">Registered endpoints</p>
           <h2 id="webhook-list-heading" className="section-heading">
             Configured Webhooks ({subscriptions.length})
           </h2>
@@ -102,15 +97,14 @@ export function WebhookSubscriptionList({
             <article key={sub.subscriptionId} className="card webhook-card" aria-label={`Subscription ${sub.subscriptionId}`}>
               <div className="webhook-card-main">
                 <div className="webhook-url-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <Badge variant="neutral" size="sm">HTTPS</Badge>
                   <code className="webhook-destination-url">{sub.httpsUrl}</code>
-                  <Badge variant={sub.active ? 'success' : 'neutral'} size="sm" pulse={sub.active}>
+                  <Badge variant={sub.active ? 'success' : 'neutral'} size="sm">
                     {sub.active ? 'Active' : 'Deactivated'}
                   </Badge>
                 </div>
 
                 <div className="webhook-events-row">
-                  <span className="webhook-meta-label">Subscribed Events:</span>
+                  <span className="webhook-meta-label">Events</span>
                   <div className="webhook-event-tags">
                     {sub.allowedEventTypes.map((event) => (
                       <code key={event} className="event-badge">

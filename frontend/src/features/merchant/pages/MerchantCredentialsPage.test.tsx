@@ -82,8 +82,8 @@ describe('Merchant Credential Settings Screen', () => {
 
     renderCredentials(anonymousAuth)
 
-    expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /machine credentials/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /api credentials/i })).not.toBeInTheDocument()
     expect(request).not.toHaveBeenCalled()
   })
 
@@ -96,7 +96,7 @@ describe('Merchant Credential Settings Screen', () => {
     renderCredentials(customerAuth)
 
     expect(screen.getByRole('alert')).toHaveTextContent(/access unavailable/i)
-    expect(screen.queryByRole('heading', { name: /machine credentials/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /api credentials/i })).not.toBeInTheDocument()
   })
 
   it('disables key generation when merchant approval status is PENDING', async () => {
@@ -121,13 +121,11 @@ describe('Merchant Credential Settings Screen', () => {
 
     renderCredentials(auth)
 
-    expect(await screen.findByRole('heading', { name: /machine credentials/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /api credentials/i })).toBeInTheDocument()
     expect(await screen.findByRole('status', { name: /approval status: pending/i })).toBeInTheDocument()
     expect(screen.getByText(/application under review/i)).toBeInTheDocument()
-    expect(screen.getByText(/api key management requires verified merchant approval/i)).toBeInTheDocument()
 
-    const generateBtn = screen.getByRole('button', { name: /\+ generate api key \(disabled\)/i })
-    expect(generateBtn).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /generate api key/i })).not.toBeInTheDocument()
   })
 
   it('disables key generation when merchant approval status is SUSPENDED', async () => {
@@ -152,12 +150,10 @@ describe('Merchant Credential Settings Screen', () => {
 
     renderCredentials(auth)
 
-    expect(await screen.findByRole('heading', { name: /machine credentials/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /api credentials/i })).toBeInTheDocument()
     expect(await screen.findByRole('alert', { name: /approval status: suspended/i })).toBeInTheDocument()
-    expect(screen.getByText(/your merchant account is suspended/i)).toBeInTheDocument()
 
-    const generateBtn = screen.getByRole('button', { name: /\+ generate api key \(disabled\)/i })
-    expect(generateBtn).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /generate api key/i })).not.toBeInTheDocument()
   })
 
   it('renders active and revoked keys table for APPROVED merchant without exposing plaintext secrets', async () => {

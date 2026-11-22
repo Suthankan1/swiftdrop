@@ -59,10 +59,12 @@ class BrandingConfigurationTests(unittest.TestCase):
         template = (target_dir / "template.ftl").read_text()
         messages = (target_dir / "messages" / "messages_en.properties").read_text()
         self.assertIn('aria-label="SwiftDrop Home"', template)
+        self.assertIn('href="${client.baseUrl}"', template)
+        self.assertNotIn('href="http://localhost:5173/', template)
         self.assertIn('SwiftDrop', template)
         self.assertIn('Create Account &bull; SwiftDrop', template)
         self.assertIn('Sign In &bull; SwiftDrop', template)
-        self.assertIn('registerSubtitle=Get started with SwiftDrop', messages)
+        self.assertIn('registerSubtitle=Enter your details to get started.', messages)
         self.assertIn('backToApplication=Return to SwiftDrop', messages)
         # Obsolete standalone Devarom brand copy is absent
         self.assertNotRegex(template + messages, r"(?i)(?<![a-z-])devarom(?![a-z-])")

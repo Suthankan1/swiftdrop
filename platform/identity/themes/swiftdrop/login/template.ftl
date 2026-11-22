@@ -155,14 +155,18 @@
   <div class="${properties.kcLoginContainer!} swiftdrop-login-container devarom-login-container">
     <header id="kc-header" class="pf-v5-c-login__header swiftdrop-login-header devarom-login-header">
       <div id="kc-header-wrapper" class="swiftdrop-brand-wrapper devarom-brand-wrapper">
-        <a href="http://localhost:5173/" class="swiftdrop-brand-link devarom-brand-link" aria-label="SwiftDrop Home">
+        <#if (client.baseUrl)?has_content>
+          <a href="${client.baseUrl}" class="swiftdrop-brand-link devarom-brand-link" aria-label="SwiftDrop Home">
+        <#else>
+          <span class="swiftdrop-brand-link devarom-brand-link">
+        </#if>
           <span class="swiftdrop-brand-mark devarom-brand-mark" aria-hidden="true">
             <span></span>
             <span></span>
             <span></span>
           </span>
           <span class="swiftdrop-brand-title devarom-brand-title">SwiftDrop<span class="swiftdrop-brand-period devarom-brand-period">.</span></span>
-        </a>
+        <#if (client.baseUrl)?has_content></a><#else></span></#if>
       </div>
     </header>
     <main class="${properties.kcLoginMain!} swiftdrop-card-main devarom-card-main" id="main-content">

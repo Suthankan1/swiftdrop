@@ -109,7 +109,7 @@ describe('Customer History & Tracking View (Issue #27 / LATER-01)', () => {
   describe('route protection & role authorization', () => {
     it('redirects unauthenticated users to the login route', () => {
       renderCustomerHistory(anonymousAuth)
-      expect(screen.getByRole('heading', { name: 'Sign in to SwiftDrop' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Opening sign-in' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: /delivery history/i })).not.toBeInTheDocument()
     })
 

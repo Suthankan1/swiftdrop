@@ -7,7 +7,7 @@ import { DeliveryError } from '../api/delivery'
 import type { ParcelDetailResponse } from '../api/deliveryContracts'
 import {
   formatCurrency,
-  formatDateTime,
+  formatDateTime as defaultFormatDateTime,
   formatDimensions,
   formatWeight,
   getActiveStepIndex,
@@ -34,6 +34,7 @@ interface CustomerTrackingModalProps {
   fetch?: typeof globalThis.fetch
   reconnectConfig?: ReconnectConfig
   randomFn?: () => number
+  formatTimestamp?: (value: string) => string
 }
 
 export function CustomerTrackingModal({
@@ -51,7 +52,9 @@ export function CustomerTrackingModal({
   fetch: customFetch,
   reconnectConfig,
   randomFn,
+  formatTimestamp = defaultFormatDateTime,
 }: CustomerTrackingModalProps) {
+  const formatDateTime = formatTimestamp
   const [copyFeedback, setCopyFeedback] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)

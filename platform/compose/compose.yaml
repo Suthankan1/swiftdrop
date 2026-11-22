@@ -459,7 +459,7 @@ services:
       GATEWAY_CONNECT_TIMEOUT_MS: "10000"
       GATEWAY_RESPONSE_TIMEOUT: "30s"
       SWIFTDROP_GATEWAY_MERCHANT_KEYS_DELEGATE_TO_SERVICE: "true"
-      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:3000}
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:3000,http://localhost:5173}
       SPRING_CLOUD_GATEWAY_GLOBALCORS_CORS_CONFIGURATIONS_[/**]_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
       JAVA_TOOL_OPTIONS: "-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
     ports:

@@ -1,6 +1,29 @@
 import type { CurrentUserProfile, MerchantProfile as MerchantProfileData } from '../api/merchant'
 import { FeedbackState } from '../../../components/ui/FeedbackState'
-import { MerchantApprovalBanner } from './MerchantApprovalBanner'
+import { normalizeApprovalStatus } from '../api/merchant'
+
+const approvalContent = {
+  PENDING: {
+    label: 'Approval Pending', title: 'Application under review',
+    detail: 'You can book orders once your account is approved.',
+  },
+  APPROVED: {
+    label: 'Account Approved', title: 'Verified merchant account',
+    detail: 'Your merchant account is active.',
+  },
+  REJECTED: {
+    label: 'Registration Rejected', title: 'Application not approved',
+    detail: 'Your merchant registration could not be approved.',
+  },
+  SUSPENDED: {
+    label: 'Account Suspended', title: 'Operational activities suspended',
+    detail: 'New bookings are paused for this account.',
+  },
+  UNKNOWN: {
+    label: 'Status Unrecognized', title: 'Approval status unavailable',
+    detail: 'Contact support to confirm your account status.',
+  },
+} as const
 
 export type MerchantProfileState =
   | { status: 'auth-required' | 'loading' | 'empty' | 'unavailable' | 'forbidden' }
@@ -22,7 +45,7 @@ export function MerchantProfile({ state }: MerchantProfileProps) {
   if (state.status === 'loading') {
     return (
       <FeedbackState title="Loading merchant details" tone="loading">
-        Please wait while we retrieve your merchant account details and approval status.
+        Checking your business account.
       </FeedbackState>
     )
   }
@@ -30,8 +53,7 @@ export function MerchantProfile({ state }: MerchantProfileProps) {
   if (state.status === 'empty') {
     return (
       <FeedbackState title="No merchant profile linked" tone="neutral">
-        Your account is authenticated with the Merchant role, but no commercial merchant profile is currently registered.
-        Please complete merchant registration or contact support to bind your organization.
+        No commercial merchant profile is currently registered. Complete merchant registration or contact support.
       </FeedbackState>
     )
   }
@@ -57,47 +79,56 @@ export function MerchantProfile({ state }: MerchantProfileProps) {
   const { profile, merchant } = state
   const createdAt = new Date(profile.createdAt)
 
+  const approval = normalizeApprovalStatus(merchant.status)
+  const content = approvalContent[approval]
+  const needsSupport = approval === 'REJECTED' || approval === 'SUSPENDED' || approval === 'UNKNOWN'
+
   return (
-    <section className="card" aria-labelledby="merchant-profile-heading">
-      <div className="section-heading">
+    <section className="card merchant-overview-business" aria-labelledby="merchant-profile-heading">
+      <header className="merchant-overview-business-header">
+        <p className="eyebrow">Business account</p>
+        <h2 id="merchant-profile-heading">{merchant.businessName}</h2>
+      </header>
+
+      <div className="merchant-overview-status" data-approval={approval}
+        role={approval === 'REJECTED' || approval === 'SUSPENDED' ? 'alert' : 'status'}
+        aria-label={`Approval status: ${approval.toLowerCase()}`}>
+        <span className="merchant-overview-status-label">{content.label}</span>
         <div>
-          <p className="eyebrow">Merchant account</p>
-          <h2 id="merchant-profile-heading">{merchant.businessName}</h2>
+          <h3>{content.title}</h3>
+          <p>{content.detail}</p>
+          {needsSupport && <a href="mailto:support@swiftdrop.test">support@swiftdrop.test</a>}
         </div>
-        <span className="badge">{profile.roles.join(' · ') || 'MERCHANT'}</span>
       </div>
 
-      <MerchantApprovalBanner rawStatus={merchant.status} />
-
-      <dl className="profile-details">
-        <ProfileField label="Business name" value={merchant.businessName} icon="🏬" />
-        <ProfileField label="Registration number" value={merchant.registrationNumber} icon="📋" />
-        <ProfileField label="Merchant ID" value={merchant.merchantId} icon="🆔" />
-        <ProfileField label="Account owner" value={profile.fullName} icon="👤" />
-        <ProfileField label="Contact email" value={profile.email} icon="✉️" />
-        <ProfileField label="Phone number" value={profile.phoneNumber || 'Not provided'} icon="📞" />
-        <ProfileField
-          label="Member since"
-          value={
-            Number.isNaN(createdAt.getTime())
-              ? 'Unavailable'
-              : createdAt.toLocaleDateString('en-GB', { dateStyle: 'long', timeZone: 'UTC' })
-          }
-          icon="📅"
-        />
+      <dl className="merchant-overview-profile-fields">
+        <ProfileField label="Account owner" value={profile.fullName} />
+        <ProfileField label="Contact email" value={profile.email} />
+        <ProfileField label="Phone number" value={profile.phoneNumber || 'Not provided'} />
       </dl>
+
+      <section className="merchant-overview-profile-details" aria-labelledby="merchant-registration-heading">
+        <h3 id="merchant-registration-heading">Registration details</h3>
+        <dl className="merchant-overview-profile-fields">
+          <ProfileField label="Registration number" value={merchant.registrationNumber} />
+          <ProfileField label="Merchant ID" value={merchant.merchantId} />
+          <ProfileField
+            label="Member since"
+            value={Number.isNaN(createdAt.getTime())
+              ? 'Unavailable'
+              : createdAt.toLocaleDateString('en-GB', { dateStyle: 'long', timeZone: 'UTC' })}
+          />
+        </dl>
+      </section>
     </section>
   )
 }
 
-function ProfileField({ label, value, icon }: { label: string; value: string; icon?: string }) {
+function ProfileField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="field">
-      <dt className="field-label">
-        {icon && <span aria-hidden="true" style={{ marginRight: '4px' }}>{icon}</span>}
-        {label}
-      </dt>
-      <dd className="field-value">{value}</dd>
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useMerchantDialog } from './useMerchantDialog'
 import type { WebhookSubscription } from '../api/webhookContracts'
 import { Button } from '../../../components/ui/Button'
 
@@ -15,6 +16,7 @@ export function WebhookDeleteConfirmModal({
   onCancel,
   isDeleting,
 }: WebhookDeleteConfirmModalProps) {
+  const dialog = useMerchantDialog(true, onCancel, isDeleting)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && !isDeleting) {
@@ -30,6 +32,8 @@ export function WebhookDeleteConfirmModal({
       <div
         className="modal-panel"
         role="dialog"
+        ref={dialog}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="delete-modal-title"
         aria-describedby="delete-modal-desc"

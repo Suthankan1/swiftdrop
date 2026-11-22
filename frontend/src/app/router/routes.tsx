@@ -11,6 +11,7 @@ import { CustomerQuotePage } from '../../features/customer/pages/CustomerQuotePa
 import { CustomerBookingConfirmedPage } from '../../features/customer/pages/CustomerBookingConfirmedPage'
 import { CustomerHistoryPage } from '../../features/customer/pages/CustomerHistoryPage'
 import { DispatcherPage } from '../../features/dispatcher/pages/DispatcherPage'
+import { MerchantWorkspace } from '../../features/merchant/components/MerchantWorkspace'
 import { MerchantPage } from '../../features/merchant/pages/MerchantPage'
 import { MerchantOrdersDashboardPage } from '../../features/merchant/pages/MerchantOrdersDashboardPage'
 import { MerchantOrderDetailPage } from '../../features/merchant/pages/MerchantOrderDetailPage'
@@ -44,12 +45,14 @@ export function AppRoutes() {
           <Route path="merchant/enroll" element={<MerchantEnrollmentPage />} />
         </Route>
         <Route element={<ProtectedRoute role="MERCHANT" />}>
-          <Route path="merchant" element={<MerchantPage />} />
-          <Route path="merchant/orders" element={<MerchantOrdersDashboardPage />} />
-          <Route path="merchant/orders/new" element={<MerchantNewOrderPage />} />
-          <Route path="merchant/orders/:parcelId" element={<MerchantOrderDetailPage />} />
-          <Route path="merchant/credentials" element={<MerchantCredentialsPage />} />
-          <Route path="merchant/webhooks" element={<MerchantWebhooksPage />} />
+          <Route path="merchant" element={<MerchantWorkspace />}>
+            <Route index element={<MerchantPage />} />
+            <Route path="orders" element={<MerchantOrdersDashboardPage />} />
+            <Route path="orders/new" element={<MerchantNewOrderPage />} />
+            <Route path="orders/:parcelId" element={<MerchantOrderDetailPage />} />
+            <Route path="credentials" element={<MerchantCredentialsPage />} />
+            <Route path="webhooks" element={<MerchantWebhooksPage />} />
+          </Route>
         </Route>
         <Route element={<ProtectedRoute role="COURIER" />}><Route path="courier" element={<CourierPage />} /></Route>
         {/* Admins can run dispatch too; the backend allows ADMIN on every dispatch API. */}

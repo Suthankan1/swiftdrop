@@ -111,6 +111,40 @@ class MerchantEnrollmentPostgresIT {
     @Autowired JdbcTemplate jdbc;
     @Autowired Flyway flyway;
     @Autowired PlatformTransactionManager transactionManager;
+    @Autowired com.swiftdrop.accountsservice.merchant.credential.MerchantApiKeyService apiKeys;
+
+    @Test
+    void concurrentCredentialIssuanceCannotExceedThreeActiveKeys() throws Exception {
+        String sub = "key-limit-" + UUID.randomUUID();
+        var owner = new TrustedIdentity(sub, "credential-race@example.test", "Credential Test", List.of("CUSTOMER"));
+        var merchant = enrollmentService.enrollMerchant(owner,
+                new MerchantRegistrationRequest("Credential Race Test", "KEY-" + UUID.randomUUID()));
+        jdbc.update("UPDATE merchants SET status = 'APPROVED' WHERE id = ?", merchant.id());
+        var identity = new TrustedIdentity(sub, owner.email(), "Credential Test", List.of("MERCHANT"));
+        var request = new com.swiftdrop.accountsservice.merchant.credential.CreateApiKeyRequest(
+                "Concurrency fixture", List.of("parcels:read"), 1);
+        apiKeys.generateApiKey(identity, merchant.id(), request);
+        apiKeys.generateApiKey(identity, merchant.id(), request);
+        var start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(4)) {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<Boolean>>();
+            for (int i = 0; i < 4; i++) futures.add(executor.submit(() -> {
+                if (!start.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Start timeout");
+                try {
+                    apiKeys.generateApiKey(identity, merchant.id(), request);
+                    return true;
+                } catch (com.swiftdrop.accountsservice.merchant.credential.ApiKeyLimitExceededException expected) {
+                    return false;
+                }
+            }));
+            start.countDown();
+            int issued = 0;
+            for (var future : futures) if (future.get(15, TimeUnit.SECONDS)) issued++;
+            assertThat(issued).isEqualTo(1);
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM merchant_api_keys WHERE merchant_id = ? AND is_revoked = false",
+                Integer.class, merchant.id())).isEqualTo(3);
+    }
 
     @Test
     @DisplayName("1. Flyway migrations V1 through V4 apply cleanly and merchants table exists")

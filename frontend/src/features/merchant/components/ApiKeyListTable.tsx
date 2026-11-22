@@ -27,7 +27,7 @@ export function ApiKeyListTable({
   if (isLoading) {
     return (
       <FeedbackState title="Loading API keys" tone="loading">
-        Retrieving machine credential metadata from Accounts Service...
+        Please wait.
       </FeedbackState>
     )
   }
@@ -60,7 +60,6 @@ export function ApiKeyListTable({
     <section className="card credentials-card" aria-labelledby="credentials-heading">
       <div className="section-heading credentials-header">
         <div>
-          <p className="eyebrow">Machine credentials</p>
           <h2 id="credentials-heading">API Keys ({activeKeysCount}/3 active)</h2>
         </div>
         <Button
@@ -79,31 +78,16 @@ export function ApiKeyListTable({
         </Button>
       </div>
 
-      <p className="muted">
-        Manage machine API keys for external automated order dispatching. Keys authenticate via the <code>X-API-Key</code> request header.
-      </p>
-
       {limitReached && (
         <div className="form-alert form-alert-warning" role="status">
           <strong>Maximum active API key limit reached (3/3).</strong>
-          <p>Revoke an existing key to issue a replacement without exceeding tenant capacity.</p>
+          <p>Revoke a key before creating a new one.</p>
         </div>
       )}
 
       {keys.length === 0 ? (
         <div className="empty-state-box">
           <p className="empty-title">No API keys generated yet</p>
-          <p className="muted">
-            You do not have any machine API keys configured. Generate an API key to connect external ERP systems, store management software, or warehouse fulfillment tools.
-          </p>
-          {canGenerate && (
-            <Button
-              variant="secondary"
-              onClick={onOpenGenerateModal}
-            >
-              Generate First API Key
-            </Button>
-          )}
         </div>
       ) : (
         <div className="table-responsive-wrapper">
