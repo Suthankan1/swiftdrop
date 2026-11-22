@@ -6,6 +6,9 @@ import { Button } from '../components/ui/Button'
 import { ArrowRightIcon, TruckIcon } from '../components/ui/icons'
 import type { SwiftDropRole } from './contracts'
 import { readReturnTarget, saveReturnTarget, sanitizeRedirectUrl } from './redirect'
+import sessionStreet from './assets/session-street.webp'
+import sessionVan from './assets/session-delivery-van.webp'
+import sessionCourier from './assets/session-courier.webp'
 import './AuthPages.css'
 
 const messages = {
@@ -14,6 +17,10 @@ const messages = {
   'provider-unavailable': 'The identity provider is unavailable. Please try again later.',
   'session-expired': 'Your session expired. Please sign in again.',
 }
+
+const sessionMotionQuery = '(prefers-reduced-motion: no-preference)'
+// The trip takes 5.2 seconds. Bound the wait if the browser misses the animation event.
+const sessionTripFallbackMs = 6_000
 
 export function LoginPage() {
   const auth = useAuth()
@@ -152,9 +159,54 @@ export function LogoutPage() {
 export function ProtectedRoute({ role, anyOf }: { role?: SwiftDropRole; anyOf?: readonly SwiftDropRole[] }) {
   const { snapshot } = useAuth()
   const location = useLocation()
+  const trip = useRef<HTMLDivElement>(null)
+  const [waitingForTrip, setWaitingForTrip] = useState(() =>
+    snapshot.status === 'loading' && globalThis.matchMedia?.(sessionMotionQuery).matches === true,
+  )
 
-  if (snapshot.status === 'loading') {
-    return <FeedbackState title="Checking session" tone="loading">Please wait.</FeedbackState>
+  useEffect(() => {
+    if (!waitingForTrip) return
+
+    const motion = window.matchMedia(sessionMotionQuery)
+    const vanDrive = trip.current
+    const stopWaiting = () => setWaitingForTrip(false)
+    const onTripIteration = (event: AnimationEvent) => {
+      if (event.target === vanDrive && event.animationName === 'session-loading-delivery') stopWaiting()
+    }
+    const onMotionChange = (event: MediaQueryListEvent) => {
+      if (!event.matches) stopWaiting()
+    }
+    vanDrive?.addEventListener('animationiteration', onTripIteration)
+    motion.addEventListener('change', onMotionChange)
+    const fallback = window.setTimeout(stopWaiting, sessionTripFallbackMs)
+
+    return () => {
+      vanDrive?.removeEventListener('animationiteration', onTripIteration)
+      motion.removeEventListener('change', onMotionChange)
+      window.clearTimeout(fallback)
+    }
+  }, [waitingForTrip])
+
+  if (snapshot.status === 'loading' || waitingForTrip) {
+    return (
+      <div className="session-loading">
+        <div className="session-loading-indicator" role="status">
+          <div className="session-loading-scene" aria-hidden="true">
+            <img className="session-loading-street" src={sessionStreet} alt="" width={696} height={356} />
+            <span className="session-loading-porch" />
+            <span className="session-loading-parcel session-loading-pickup" />
+            <span className="session-loading-parcel session-loading-dropoff" />
+            <div className="session-loading-drive" ref={trip}>
+              <div className="session-loading-van">
+                <img src={sessionVan} alt="" width={192} height={96} />
+              </div>
+            </div>
+            <img className="session-loading-courier" src={sessionCourier} alt="" width={88} height={132} />
+          </div>
+          <span>Checking session</span>
+        </div>
+      </div>
+    )
   }
   if (snapshot.status !== 'authenticated') {
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />

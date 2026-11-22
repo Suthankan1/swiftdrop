@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AuthContextValue } from './context'
@@ -77,6 +77,36 @@ describe('AuthPages - Browser Recovery & In-Memory Routing', () => {
   // =========================================================================
 
   describe('ProtectedRoute', () => {
+    function renderSessionRestoration(animate: boolean) {
+      const motion = Object.assign(new EventTarget(), { matches: animate })
+      vi.stubGlobal('matchMedia', () => motion)
+
+      function protectedTree(snapshot: AuthSnapshot) {
+        return (
+          <AuthContext.Provider value={createMockAuthContext({ snapshot })}>
+            <MemoryRouter initialEntries={['/merchant']}>
+              <Routes>
+                <Route element={<ProtectedRoute role="MERCHANT" />}>
+                  <Route path="/merchant" element={<div>Merchant workspace</div>} />
+                </Route>
+              </Routes>
+            </MemoryRouter>
+          </AuthContext.Provider>
+        )
+      }
+
+      const { container, rerender } = render(protectedTree({ status: 'loading', subject: null, roles: [] }))
+      return {
+        resolveSession: () => rerender(protectedTree({ status: 'authenticated', subject: 'merchant-1', roles: ['MERCHANT'] })),
+        finishTrip: () => {
+          const drive = container.querySelector('.session-loading-drive')!
+          fireEvent(drive, Object.assign(new Event('animationiteration', { bubbles: true }), {
+            animationName: 'session-loading-delivery',
+          }))
+        },
+      }
+    }
+
     it('displays loading state while session verification is in progress', () => {
       const auth = createMockAuthContext({
         snapshot: { status: 'loading', subject: null, roles: [] },
@@ -96,6 +126,50 @@ describe('AuthPages - Browser Recovery & In-Memory Routing', () => {
 
       expect(screen.getByText('Checking session')).toBeInTheDocument()
       expect(screen.queryByText('Protected Customer Space')).not.toBeInTheDocument()
+    })
+
+    it('finishes the visible trip when the session is ready first', () => {
+      const { resolveSession, finishTrip } = renderSessionRestoration(true)
+      const loader = screen.getByRole('status')
+
+      resolveSession()
+      expect(screen.getByRole('status')).toBe(loader)
+      expect(screen.queryByText('Merchant workspace')).not.toBeInTheDocument()
+
+      finishTrip()
+      expect(screen.getByText('Merchant workspace')).toBeInTheDocument()
+    })
+
+    it('still waits for session verification when the first trip finishes first', () => {
+      const { resolveSession, finishTrip } = renderSessionRestoration(true)
+
+      finishTrip()
+      expect(screen.getByRole('status')).toHaveTextContent('Checking session')
+      expect(screen.queryByText('Merchant workspace')).not.toBeInTheDocument()
+
+      resolveSession()
+      expect(screen.getByText('Merchant workspace')).toBeInTheDocument()
+    })
+
+    it('opens the workspace as soon as the session is ready with reduced motion', () => {
+      const { resolveSession } = renderSessionRestoration(false)
+
+      resolveSession()
+      expect(screen.getByText('Merchant workspace')).toBeInTheDocument()
+    })
+
+    it('releases the workspace if the animation event is missed', () => {
+      vi.useFakeTimers()
+      try {
+        const { resolveSession } = renderSessionRestoration(true)
+        resolveSession()
+        expect(screen.queryByText('Merchant workspace')).not.toBeInTheDocument()
+
+        act(() => vi.advanceTimersByTime(6_000))
+        expect(screen.getByText('Merchant workspace')).toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('intercepts unauthenticated user and redirects to /login with state.from preserved', () => {
