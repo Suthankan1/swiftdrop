@@ -142,7 +142,7 @@ jobs:
 
             if [ -n "${SMTP_USER}" ] && [ -n "${SMTP_PASSWORD}" ]; then
               echo "Applying SMTP configuration to Keycloak realm..."
-              python3 /home/azureuser/swiftdrop/platform/identity/configure-smtp.py --env-file .env || {
+              python3 /home/azureuser/swiftdrop/platform/identity/configure-smtp.py --env-file .env --keycloak-url http://127.0.0.1:8090 || {
                 echo "Warning: Keycloak SMTP configuration script exited with code $?; continuing health checks."
               }
             fi
