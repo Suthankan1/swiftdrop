@@ -1,4 +1,19 @@
 import { isRecord } from '../../staff/api/contracts'
+import type {
+  HistoricalParcelItem,
+  ParcelListResponse,
+  ParcelStatusHistoryEntry,
+  ParcelStatusHistoryPageResponse,
+  AssignmentAuditEntry,
+} from './dispatcherContracts'
+
+export type {
+  HistoricalParcelItem,
+  ParcelListResponse,
+  ParcelStatusHistoryEntry,
+  ParcelStatusHistoryPageResponse,
+  AssignmentAuditEntry,
+}
 
 export interface UnassignedParcel {
   parcelId: string
@@ -179,6 +194,241 @@ export function createDispatcherApi({ getAccessToken, gatewayUrl = import.meta.e
       } catch {
         return null
       }
+    },
+    async getParcelList(params: { page?: number; size?: number } = {}, signal?: AbortSignal): Promise<ParcelListResponse> {
+      const token = await getAccessToken()
+      if (!token?.trim()) throw new DispatcherError('auth-required')
+      const page = params.page ?? 0
+      const size = params.size ?? 20
+      if (!integer(page) || !integer(size) || size < 1 || size > 50) throw new DispatcherError('invalid-pagination')
+
+      const response = await request(`${gatewayUrl.replace(/\/$/, '')}/api/v1/parcels?page=${page}&size=${size}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        credentials: 'omit',
+        cache: 'no-store',
+        redirect: 'error',
+        signal,
+      })
+
+      if (response.status === 401) throw new DispatcherError('auth-required')
+      if (response.status === 403 || response.status === 404) throw new DispatcherError('forbidden')
+      if (!response.ok) throw new DispatcherError('unavailable')
+
+      let data: unknown
+      try {
+        data = await response.json()
+      } catch {
+        throw new DispatcherError('invalid-response')
+      }
+
+      if (!isRecord(data)) throw new DispatcherError('invalid-response')
+      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data.content) ? data.content : null)
+      if (!rawItems) throw new DispatcherError('invalid-response')
+
+      const totalElements = typeof data.totalElements === 'number' ? data.totalElements : null
+      const totalPages = typeof data.totalPages === 'number' ? data.totalPages : null
+      const currentPage = typeof data.currentPage === 'number' ? data.currentPage : (typeof data.page === 'number' ? data.page : null)
+      const pageSize = typeof data.pageSize === 'number' ? data.pageSize : (typeof data.size === 'number' ? data.size : null)
+      const hasNext = typeof data.hasNext === 'boolean' ? data.hasNext : null
+
+      if (totalElements === null || totalPages === null || currentPage === null || pageSize === null || hasNext === null) {
+        throw new DispatcherError('invalid-response')
+      }
+
+      const items: HistoricalParcelItem[] = []
+      for (const item of rawItems) {
+        if (!isRecord(item)) throw new DispatcherError('invalid-response')
+        const parcelId = typeof item.parcelId === 'string' && item.parcelId.trim() ? item.parcelId.trim() : null
+        const trackingNumber = typeof item.trackingNumber === 'string' && item.trackingNumber.trim() ? item.trackingNumber.trim() : null
+        const currentStatus = typeof item.currentStatus === 'string' && item.currentStatus.trim()
+          ? item.currentStatus.trim()
+          : (typeof item.status === 'string' && item.status.trim() ? item.status.trim() : null)
+        const createdAt = typeof item.createdAt === 'string' && Number.isFinite(Date.parse(item.createdAt))
+          ? item.createdAt
+          : null
+
+        if (!parcelId || !trackingNumber || !currentStatus || !createdAt) {
+          throw new DispatcherError('invalid-response')
+        }
+
+        items.push({
+          parcelId,
+          trackingNumber,
+          pickupZone: typeof item.pickupZone === 'string' && item.pickupZone.trim() ? item.pickupZone.trim() : undefined,
+          dropoffZone: typeof item.dropoffZone === 'string' && item.dropoffZone.trim() ? item.dropoffZone.trim() : undefined,
+          pickupAddress: typeof item.pickupAddress === 'string' && item.pickupAddress.trim() ? item.pickupAddress.trim() : undefined,
+          dropoffAddress: typeof item.dropoffAddress === 'string' && item.dropoffAddress.trim() ? item.dropoffAddress.trim() : undefined,
+          weightKg: typeof item.weightKg === 'number' && Number.isFinite(item.weightKg) ? item.weightKg : undefined,
+          currentStatus,
+          activeCourierSub: typeof item.activeCourierSub === 'string' && item.activeCourierSub.trim() ? item.activeCourierSub.trim() : null,
+          createdAt,
+          version: typeof item.version === 'number' && Number.isFinite(item.version) ? item.version : undefined,
+        })
+      }
+
+      return {
+        items,
+        currentPage,
+        pageSize,
+        totalElements,
+        totalPages,
+        hasNext,
+      }
+    },
+    async getParcelStatusHistory(parcelId: string, params: { page?: number; size?: number } = {}, signal?: AbortSignal): Promise<ParcelStatusHistoryPageResponse> {
+      if (!parcelId?.trim()) throw new DispatcherError('rejected')
+      const token = await getAccessToken()
+      if (!token?.trim()) throw new DispatcherError('auth-required')
+      const page = params.page ?? 0
+      const size = params.size ?? 50
+      if (!integer(page) || !integer(size) || size < 1 || size > 100) throw new DispatcherError('invalid-pagination')
+
+      const response = await request(`${gatewayUrl.replace(/\/$/, '')}/api/v1/parcels/${encodeURIComponent(parcelId)}/history?page=${page}&size=${size}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        credentials: 'omit',
+        cache: 'no-store',
+        redirect: 'error',
+        signal,
+      })
+
+      if (response.status === 401) throw new DispatcherError('auth-required')
+      if (response.status === 403 || response.status === 404) throw new DispatcherError('forbidden')
+      if (!response.ok) throw new DispatcherError('unavailable')
+
+      let data: unknown
+      try {
+        data = await response.json()
+      } catch {
+        throw new DispatcherError('invalid-response')
+      }
+
+      if (!isRecord(data)) throw new DispatcherError('invalid-response')
+      const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data.content) ? data.content : null)
+      if (!rawItems) throw new DispatcherError('invalid-response')
+
+      const totalElements = typeof data.totalElements === 'number' ? data.totalElements : null
+      const totalPages = typeof data.totalPages === 'number' ? data.totalPages : null
+      const currentPage = typeof data.currentPage === 'number' ? data.currentPage : null
+      const pageSize = typeof data.pageSize === 'number' ? data.pageSize : null
+      const hasNext = typeof data.hasNext === 'boolean' ? data.hasNext : null
+
+      if (totalElements === null || totalPages === null || currentPage === null || pageSize === null || hasNext === null) {
+        throw new DispatcherError('invalid-response')
+      }
+
+      const items: ParcelStatusHistoryEntry[] = []
+      for (const entry of rawItems) {
+        if (!isRecord(entry)) throw new DispatcherError('invalid-response')
+        const historyId = typeof entry.historyId === 'string' && entry.historyId.trim() ? entry.historyId.trim() : null
+        const entryParcelId = typeof entry.parcelId === 'string' && entry.parcelId.trim() ? entry.parcelId.trim() : parcelId
+        const newStatus = typeof entry.newStatus === 'string' && entry.newStatus.trim() ? entry.newStatus.trim() : null
+        const resultingVersion = typeof entry.resultingVersion === 'number' && Number.isFinite(entry.resultingVersion)
+          ? entry.resultingVersion
+          : null
+        const occurredAt = typeof entry.occurredAt === 'string' && Number.isFinite(Date.parse(entry.occurredAt))
+          ? entry.occurredAt
+          : null
+
+        if (!historyId || !newStatus || resultingVersion === null || !occurredAt) {
+          throw new DispatcherError('invalid-response')
+        }
+
+        items.push({
+          historyId,
+          parcelId: entryParcelId,
+          previousStatus: typeof entry.previousStatus === 'string' && entry.previousStatus.trim() ? entry.previousStatus.trim() : null,
+          newStatus,
+          reason: typeof entry.reason === 'string' && entry.reason.trim() ? entry.reason.trim() : null,
+          note: typeof entry.note === 'string' && entry.note.trim() ? entry.note.trim() : null,
+          proofId: typeof entry.proofId === 'string' && entry.proofId.trim() ? entry.proofId.trim() : null,
+          resultingVersion,
+          occurredAt,
+        })
+      }
+
+      // Older events first, newest last as required by section 5 Option A:
+      items.sort((a, b) => a.resultingVersion - b.resultingVersion || Date.parse(a.occurredAt) - Date.parse(b.occurredAt))
+
+      return {
+        items,
+        currentPage,
+        pageSize,
+        totalElements,
+        totalPages,
+        hasNext,
+      }
+    },
+    async getAssignmentHistory(parcelId: string, signal?: AbortSignal): Promise<AssignmentAuditEntry[]> {
+      if (!parcelId?.trim()) throw new DispatcherError('rejected')
+      const token = await getAccessToken()
+      if (!token?.trim()) throw new DispatcherError('auth-required')
+
+      const response = await request(`${gatewayUrl.replace(/\/$/, '')}/api/v1/assignments/parcels/${encodeURIComponent(parcelId)}/history`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        credentials: 'omit',
+        cache: 'no-store',
+        redirect: 'error',
+        signal,
+      })
+
+      if (response.status === 401) throw new DispatcherError('auth-required')
+      if (response.status === 403 || response.status === 404) throw new DispatcherError('forbidden')
+      if (!response.ok) throw new DispatcherError('unavailable')
+
+      let data: unknown
+      try {
+        data = await response.json()
+      } catch {
+        throw new DispatcherError('invalid-response')
+      }
+
+      const rawItems = Array.isArray(data)
+        ? data
+        : (isRecord(data) && Array.isArray(data.items) ? data.items : (isRecord(data) && Array.isArray(data.content) ? data.content : null))
+
+      if (!rawItems) throw new DispatcherError('invalid-response')
+
+      const items: AssignmentAuditEntry[] = []
+      for (const entry of rawItems) {
+        if (!isRecord(entry)) throw new DispatcherError('invalid-response')
+        const auditId = typeof entry.auditId === 'string' && entry.auditId.trim() ? entry.auditId.trim() : null
+        const entryParcelId = typeof entry.parcelId === 'string' && entry.parcelId.trim() ? entry.parcelId.trim() : parcelId
+        const assignmentId = typeof entry.assignmentId === 'string' && entry.assignmentId.trim() ? entry.assignmentId.trim() : null
+        const courierSub = typeof entry.courierSub === 'string' && entry.courierSub.trim() ? entry.courierSub.trim() : null
+        const action = typeof entry.action === 'string' && entry.action.trim() ? entry.action.trim() : null
+        const actorSub = typeof entry.actorSub === 'string' && entry.actorSub.trim() ? entry.actorSub.trim() : null
+        const actorRole = typeof entry.actorRole === 'string' && entry.actorRole.trim() ? entry.actorRole.trim() : ''
+        const occurredAt = typeof entry.occurredAt === 'string' && Number.isFinite(Date.parse(entry.occurredAt))
+          ? entry.occurredAt
+          : null
+
+        if (!auditId || !assignmentId || !courierSub || !action || !actorSub || !occurredAt) {
+          throw new DispatcherError('invalid-response')
+        }
+
+        items.push({
+          auditId,
+          parcelId: entryParcelId,
+          assignmentId,
+          courierSub,
+          action,
+          actorSub,
+          actorRole,
+          previousCourierSub: typeof entry.previousCourierSub === 'string' && entry.previousCourierSub.trim() ? entry.previousCourierSub.trim() : null,
+          previousAssignmentId: typeof entry.previousAssignmentId === 'string' && entry.previousAssignmentId.trim() ? entry.previousAssignmentId.trim() : null,
+          reason: typeof entry.reason === 'string' && entry.reason.trim() ? entry.reason.trim() : null,
+          parcelVersion: typeof entry.parcelVersion === 'number' && Number.isFinite(entry.parcelVersion) ? entry.parcelVersion : null,
+          occurredAt,
+        })
+      }
+
+      // Older actions first, newest last for chronological timeline:
+      items.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt))
+
+      return items
     },
   }
 }

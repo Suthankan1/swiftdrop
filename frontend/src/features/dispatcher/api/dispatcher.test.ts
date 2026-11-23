@@ -88,4 +88,146 @@ describe('Dispatcher boundary adapters', () => {
     expect(request).toHaveBeenCalledWith('http://gateway.test/api/v1/parcels/parcel-1', expect.any(Object))
     expect(parcel?.trackingNumber).toBe('SWD-TEST-99')
   })
+
+  describe('getParcelList', () => {
+    it('successfully retrieves and validates parcel list with server pagination', async () => {
+      const validPayload = {
+        items: [
+          {
+            parcelId: 'p-1',
+            trackingNumber: 'SWD-001',
+            currentStatus: 'CREATED',
+            createdAt: '2026-11-20T10:00:00Z',
+            weightKg: 2.5,
+            activeCourierSub: 'courier-1',
+          },
+        ],
+        currentPage: 0,
+        pageSize: 20,
+        totalElements: 1,
+        totalPages: 1,
+        hasNext: false,
+      }
+      const { api, request } = setup(async () => json(validPayload))
+      const res = await api.getParcelList({ page: 0, size: 20 })
+      expect(request).toHaveBeenCalledWith('http://gateway.test/api/v1/parcels?page=0&size=20', expect.any(Object))
+      expect(res.items).toHaveLength(1)
+      expect(res.items[0]?.trackingNumber).toBe('SWD-001')
+      expect(res.totalElements).toBe(1)
+    })
+
+    it.each([
+      ['missing trackingNumber', { parcelId: 'p-1', currentStatus: 'CREATED', createdAt: '2026-11-20T10:00:00Z' }],
+      ['missing parcelId', { trackingNumber: 'SWD-001', currentStatus: 'CREATED', createdAt: '2026-11-20T10:00:00Z' }],
+      ['missing currentStatus', { parcelId: 'p-1', trackingNumber: 'SWD-001', createdAt: '2026-11-20T10:00:00Z' }],
+      ['invalid createdAt', { parcelId: 'p-1', trackingNumber: 'SWD-001', currentStatus: 'CREATED', createdAt: 'not-a-date' }],
+    ])('rejects invalid parcel items without fallback (%s)', async (_, invalidItem) => {
+      const payload = {
+        items: [invalidItem],
+        currentPage: 0,
+        pageSize: 20,
+        totalElements: 1,
+        totalPages: 1,
+        hasNext: false,
+      }
+      const { api } = setup(async () => json(payload))
+      await expect(api.getParcelList({ page: 0, size: 20 })).rejects.toMatchObject({ kind: 'invalid-response' })
+    })
+
+    it('rejects response missing pagination metadata', async () => {
+      const payload = {
+        items: [],
+      }
+      const { api } = setup(async () => json(payload))
+      await expect(api.getParcelList({ page: 0, size: 20 })).rejects.toMatchObject({ kind: 'invalid-response' })
+    })
+  })
+
+  describe('getParcelStatusHistory', () => {
+    it('successfully retrieves and validates status history ordered chronologically', async () => {
+      const validPayload = {
+        items: [
+          {
+            historyId: 'h-2',
+            parcelId: 'p-1',
+            previousStatus: 'CREATED',
+            newStatus: 'PICKED_UP',
+            resultingVersion: 2,
+            occurredAt: '2026-11-20T11:00:00Z',
+          },
+          {
+            historyId: 'h-1',
+            parcelId: 'p-1',
+            previousStatus: null,
+            newStatus: 'CREATED',
+            resultingVersion: 1,
+            occurredAt: '2026-11-20T10:00:00Z',
+          },
+        ],
+        currentPage: 0,
+        pageSize: 50,
+        totalElements: 2,
+        totalPages: 1,
+        hasNext: false,
+      }
+      const { api } = setup(async () => json(validPayload))
+      const res = await api.getParcelStatusHistory('p-1')
+      expect(res.items).toHaveLength(2)
+      // Oldest first
+      expect(res.items[0]?.historyId).toBe('h-1')
+      expect(res.items[1]?.historyId).toBe('h-2')
+    })
+
+    it.each([
+      ['missing historyId', { newStatus: 'CREATED', resultingVersion: 1, occurredAt: '2026-11-20T10:00:00Z' }],
+      ['missing newStatus', { historyId: 'h-1', resultingVersion: 1, occurredAt: '2026-11-20T10:00:00Z' }],
+      ['missing resultingVersion', { historyId: 'h-1', newStatus: 'CREATED', occurredAt: '2026-11-20T10:00:00Z' }],
+      ['invalid occurredAt', { historyId: 'h-1', newStatus: 'CREATED', resultingVersion: 1, occurredAt: 'bad-date' }],
+    ])('rejects invalid history entries (%s)', async (_, invalidEntry) => {
+      const payload = {
+        items: [invalidEntry],
+        currentPage: 0,
+        pageSize: 50,
+        totalElements: 1,
+        totalPages: 1,
+        hasNext: false,
+      }
+      const { api } = setup(async () => json(payload))
+      await expect(api.getParcelStatusHistory('p-1')).rejects.toMatchObject({ kind: 'invalid-response' })
+    })
+  })
+
+  describe('getAssignmentHistory', () => {
+    it('successfully retrieves and validates assignment history', async () => {
+      const validPayload = [
+        {
+          auditId: 'a-1',
+          parcelId: 'p-1',
+          assignmentId: 'asg-1',
+          courierSub: 'c-1',
+          action: 'ASSIGNED',
+          actorSub: 'd-1',
+          actorRole: 'DISPATCHER',
+          occurredAt: '2026-11-20T10:00:00Z',
+        },
+      ]
+      const { api } = setup(async () => json(validPayload))
+      const res = await api.getAssignmentHistory('p-1')
+      expect(res).toHaveLength(1)
+      expect(res[0]?.auditId).toBe('a-1')
+      expect(res[0]?.action).toBe('ASSIGNED')
+    })
+
+    it.each([
+      ['missing auditId', { assignmentId: 'asg-1', courierSub: 'c-1', action: 'ASSIGNED', actorSub: 'd-1', occurredAt: '2026-11-20T10:00:00Z' }],
+      ['missing courierSub', { auditId: 'a-1', assignmentId: 'asg-1', action: 'ASSIGNED', actorSub: 'd-1', occurredAt: '2026-11-20T10:00:00Z' }],
+      ['missing action', { auditId: 'a-1', assignmentId: 'asg-1', courierSub: 'c-1', actorSub: 'd-1', occurredAt: '2026-11-20T10:00:00Z' }],
+      ['missing actorSub', { auditId: 'a-1', assignmentId: 'asg-1', courierSub: 'c-1', action: 'ASSIGNED', occurredAt: '2026-11-20T10:00:00Z' }],
+      ['invalid occurredAt', { auditId: 'a-1', assignmentId: 'asg-1', courierSub: 'c-1', action: 'ASSIGNED', actorSub: 'd-1', occurredAt: 'invalid' }],
+    ])('rejects invalid assignment history entries (%s)', async (_, invalidEntry) => {
+      const payload = [invalidEntry]
+      const { api } = setup(async () => json(payload))
+      await expect(api.getAssignmentHistory('p-1')).rejects.toMatchObject({ kind: 'invalid-response' })
+    })
+  })
 })
