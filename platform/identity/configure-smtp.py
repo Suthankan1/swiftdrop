@@ -208,11 +208,12 @@ def main():
                 break
 
     env = read_env(env_file)
+    keycloak_port = env.get("KEYCLOAK_PORT", "8090")
     keycloak_url = (
         args.keycloak_url
-        or env.get("KEYCLOAK_ADMIN_SERVERURL")
-        or env.get("KEYCLOAK_HOSTNAME")
-        or "http://127.0.0.1:8090"
+        or env.get("KEYCLOAK_ADMIN_URL")
+        or env.get("SWIFTDROP_KEYCLOAK_ADMIN_SERVERURL")
+        or f"http://127.0.0.1:{keycloak_port}"
     )
     admin_user = env.get("KEYCLOAK_ADMIN_USER") or env.get("KC_BOOTSTRAP_ADMIN_USERNAME") or "admin"
     admin_password = env.get("KEYCLOAK_ADMIN_PASSWORD") or env.get("KC_BOOTSTRAP_ADMIN_PASSWORD")
