@@ -38,6 +38,9 @@ jobs:
           VM_USER: ${{ secrets.AZURE_VM_USER || 'azureuser' }}
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           CUSTOM_TAG: ${{ github.event.inputs.image_tag || '' }}
+          SMTP_USER: ${{ secrets.SMTP_USER || '' }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || '' }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM || '' }}
         run: |
           if [ -z "${SSH_PRIVATE_KEY}" ]; then
             echo "================================================================================"
@@ -58,10 +61,13 @@ jobs:
           TAG_SHORT="${CUSTOM_TAG:-$(echo "${DEPLOY_SHA}" | cut -c1-7)}"
           echo "Connecting to ${VM_USER}@${VM_HOST} to deploy tag: ${TAG_SHORT} (commit ${DEPLOY_SHA})..."
 
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" bash -s -- "${DEPLOY_SHA}" "${TAG_SHORT}" << 'EOF'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" bash -s -- "${DEPLOY_SHA}" "${TAG_SHORT}" "${SMTP_USER}" "${SMTP_PASSWORD}" "${SMTP_FROM}" << 'EOF'
             set -euo pipefail
             DEPLOY_SHA="$1"
             TAG_SHORT="$2"
+            SMTP_USER="$3"
+            SMTP_PASSWORD="$4"
+            SMTP_FROM="$5"
 
             cd /home/azureuser/swiftdrop/platform/compose
             PREV_TAG="$(grep "^SWIFTDROP_IMAGE_TAG=" .env 2>/dev/null | cut -d'=' -f2 || echo "")"
@@ -99,11 +105,48 @@ jobs:
               echo "SWIFTDROP_IMAGE_TAG=${TAG_SHORT}" >> .env
             fi
 
+            if [ -n "${SMTP_USER}" ] && [ -n "${SMTP_PASSWORD}" ]; then
+              echo "Configuring production SMTP credentials in .env..."
+              sed -i '/^SMTP_/d' .env 2>/dev/null || true
+              sed -i '/^SPRING_MAIL_/d' .env 2>/dev/null || true
+              sed -i '/^NOTIFICATION_EMAIL_FROM=/d' .env 2>/dev/null || true
+
+              effective_from="${SMTP_FROM:-${SMTP_USER}}"
+              {
+                echo "SMTP_HOST=smtp.gmail.com"
+                echo "SMTP_PORT=587"
+                echo "SMTP_FROM=${effective_from}"
+                echo "SMTP_FROM_DISPLAY_NAME=SwiftDrop"
+                echo "SMTP_AUTH=true"
+                echo "SMTP_STARTTLS=true"
+                echo "SMTP_SSL=false"
+                echo "SMTP_USER=${SMTP_USER}"
+                echo "SMTP_PASSWORD=${SMTP_PASSWORD}"
+                echo "SPRING_MAIL_HOST=smtp.gmail.com"
+                echo "SPRING_MAIL_PORT=587"
+                echo "SPRING_MAIL_USERNAME=${SMTP_USER}"
+                echo "SPRING_MAIL_PASSWORD=${SMTP_PASSWORD}"
+                echo "SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true"
+                echo "SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true"
+                echo "SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED=true"
+                echo "NOTIFICATION_EMAIL_FROM=${effective_from}"
+              } >> .env
+              chmod 600 .env
+            fi
+
             echo "Pulling verified runtime images from GitHub Container Registry..."
             docker compose -f compose.yaml -f compose.supabase.yaml pull
 
             echo "Starting runtime containers..."
             ./start.sh
+
+            if [ -n "${SMTP_USER}" ] && [ -n "${SMTP_PASSWORD}" ]; then
+              echo "Applying SMTP configuration to Keycloak realm..."
+              python3 /home/azureuser/swiftdrop/platform/identity/configure-smtp.py --env-file .env || {
+                echo "Warning: Keycloak SMTP configuration script exited with code $?; continuing health checks."
+              }
+            fi
+
             STRICT_HEALTH_CHECK=true ./status.sh
             trap - ERR
           EOF
