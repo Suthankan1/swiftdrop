@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button'
 import { StaffProfile } from '../../staff/components/StaffProfile'
 import { useStaffProfile } from '../../staff/hooks/useStaffProfile'
 import { DispatcherOperations } from '../components/DispatcherOperations'
+import { DeliveryAssignmentHistory } from '../components/DeliveryAssignmentHistory'
 
 export function DispatcherPage() {
   const auth = useAuth()
@@ -37,9 +38,12 @@ export function DispatcherPage() {
 
       {/* Primary operational panel visible first when profile is ready */}
       {state.status === 'ready' && (
-        <section className="dispatcher-operations-container" aria-label="Dispatch Operations Console">
-          <DispatcherOperations key={auth.snapshot.subject} />
-        </section>
+        <>
+          <section className="dispatcher-operations-container" aria-label="Dispatch Operations Console">
+            <DispatcherOperations key={auth.snapshot.subject} />
+          </section>
+          <DeliveryAssignmentHistory key={`history-${auth.snapshot.subject}`} />
+        </>
       )}
 
       {/* When profile is not ready (loading, unprovisioned, error), show profile feedback immediately */}
